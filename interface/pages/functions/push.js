@@ -33,7 +33,7 @@ export async function onRequestPost({ request, env }) {
         `INSERT INTO cards (card_id, instance, profile, type, title, body, salience,
                             created, refreshed, expires, source_ref, items, actions,
                             state, snooze_until, schema_version)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT(card_id) DO UPDATE SET
            title=excluded.title, body=excluded.body, salience=excluded.salience,
            refreshed=excluded.refreshed, expires=excluded.expires,
