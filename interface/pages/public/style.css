@@ -1,0 +1,123 @@
+/* soma feed renderer — dark, phone-first. Per-profile accents via
+   --accent (set inline from a hash of the profile name; known profiles
+   have tuned values below). */
+
+:root {
+  --bg: #0f1115;
+  --card: #1a1d26;
+  --edge: #2a2e3d;
+  --ink: #e8e8ec;
+  --dim: #8a8f9e;
+  --ok: #2e7d5b;
+  --no: #8a3a4a;
+  --warn: #b98a2e;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  max-width: 38em;
+  margin: 0 auto;
+  padding: 1em 1em 3em;
+}
+
+header { display: flex; align-items: baseline; justify-content: space-between; }
+h1 { font-size: 1.2em; font-weight: 600; }
+.dim { color: var(--dim); font-size: .85em; }
+
+#refresh {
+  background: none; border: 1px solid var(--edge); border-radius: 8px;
+  color: var(--ink); font-size: 1.1em; padding: .2em .6em; cursor: pointer;
+}
+
+.card {
+  --accent: #9aa0b0;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-left: 3px solid var(--accent);
+  border-radius: 12px;
+  padding: 1em 1.1em;
+  margin: 1em 0;
+}
+.card[data-profile="mnemo"] { --accent: #7ea4ff; }
+.card[data-profile="oiko"]  { --accent: #5fd6a2; }
+.card[data-type="alert"]    { --accent: #d66; }
+
+.tag {
+  display: inline-block;
+  font-size: .68em; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: .15em .6em;
+  margin-bottom: .6em;
+}
+.card h2 { font-size: 1.05em; margin: 0 0 .3em; font-weight: 600; }
+.card .body { font-size: .92em; color: #c6cad4; line-height: 1.45; }
+.card .body p { margin: .4em 0; }
+.card .body ul { margin: .4em 0; padding-left: 1.2em; }
+.card .body code {
+  background: #12141b; border-radius: 4px; padding: .05em .3em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9em;
+}
+.card .body a { color: var(--accent); }
+
+.meta { color: var(--dim); font-size: .78em; margin-top: .8em; }
+
+/* review stacks */
+.item {
+  border-top: 1px solid var(--edge);
+  padding: .7em 0;
+  position: relative;
+  transition: opacity .2s, transform .15s;
+  touch-action: pan-y;
+}
+.item.sent { opacity: .45; }
+.item .chip {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .72em;
+  background: #12141b;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  padding: .1em .45em;
+  margin-right: .5em;
+  color: var(--accent);
+  vertical-align: middle;
+}
+.item .title { display: inline; font-size: .92em; }
+.item .itembody { font-size: .82em; color: var(--dim); margin-top: .3em; line-height: 1.4; }
+.item .src { font-size: .75em; color: var(--dim); margin-top: .3em; }
+
+.actions { margin-top: .55em; display: flex; flex-wrap: wrap; gap: .5em; }
+button.act {
+  font-size: .88em; border: 0; border-radius: 8px;
+  padding: .45em .95em; cursor: pointer; color: #fff;
+  background: #333849;
+}
+button.act.approve { background: var(--ok); }
+button.act.reject  { background: var(--no); }
+button.act.snooze  { background: #4a4f63; }
+button.act.dismiss { background: #4a4f63; }
+button.act:disabled { opacity: .5; cursor: default; }
+
+.swipe-hint {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  font-size: .8em; color: var(--dim); opacity: 0; transition: opacity .1s;
+}
+.swipe-hint.right { right: .2em; color: var(--ok); }
+.swipe-hint.left  { left: .2em;  color: var(--no); }
+
+.empty {
+  border: 1px dashed var(--edge); border-radius: 12px;
+  padding: 1.2em; margin: 1em 0; color: var(--dim);
+  font-size: .9em; line-height: 1.5;
+}
+.empty b { color: var(--ink); }
+.gestures { margin-top: .6em; font-size: .92em; }
+.gestures div { margin: .15em 0; }
+
+footer { margin-top: 2em; text-align: center; }

@@ -12,16 +12,22 @@ its implementation home.
 
 ## Status
 
-Seed stage. The real renderer + Pages Functions land after the platform
-migration completes. What is here now:
+The Pages app exists (`pages/`): static renderer + Pages Functions over D1
+implementing the card contract. The syncer (`syncer/sync.py`) is the single
+writer: it validates an instance's local outbox against the schema allowlist
+and pushes diffs. What is here:
 
+- `pages/` — the Cloudflare Pages app (renderer + Functions). See its README
+  for routes, auth, renderer contract, and deploy steps.
+- `syncer/sync.py` — outbox → publisher syncer (validation, diff cache,
+  tombstones). Env-driven; instance values never live here.
 - `reference/cloudflare-spike/` — the validated spike (run 2026-08-07, all
   five checks passed): a single Worker with two routes (`GET /feed`,
   `POST /decide`) over one D1 database holding the card outbox and the
   decisions mailbox, plus a sample card and the drain-side consumer script.
-  Kept as the reference implementation the Pages app will be built from.
-  Secrets were never in the repo — the Worker reads `FEED_KEY` / `PUSH_KEY`
-  from its environment.
+  Kept as the reference implementation; the spike worker itself stays up
+  and untouched. Secrets were never in the repo — the Worker reads
+  `FEED_KEY` / `PUSH_KEY` from its environment.
 
 ## Invariants (load-bearing, from the design)
 
