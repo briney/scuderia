@@ -1,5 +1,5 @@
 ---
-name: paper-ingest
+name: paper-ingest-patches-2026-08-05
 description: "Profile-side patch pointer for the paper-ingest vault skill."
 triggers:
   - "patch paper-ingest skill"

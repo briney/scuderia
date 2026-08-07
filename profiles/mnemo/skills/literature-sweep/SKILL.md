@@ -1,6 +1,6 @@
 ---
 name: literature-sweep
-description: Standing literature scan — daily new-publication sweep plus rotating brain-coverage gap analysis. Creates stubs (needs-ingest: true) for novel on-topic papers; a scheduled drain fills them. Lenient by design: prefer redundant stubs over missed load-bearing papers.
+description: "Standing literature scan — daily new-publication sweep plus rotating brain-coverage gap analysis. Creates stubs (needs-ingest: true) for novel on-topic papers; a scheduled drain fills them. Lenient by design: prefer redundant stubs over missed load-bearing papers."
 triggers:
   - "literature sweep"
   - "publication sweep"
