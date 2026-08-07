@@ -1,0 +1,60 @@
+# mnemo install manifest — Layer 0 of the setup contract (soma spec §8).
+#
+# "Installed" is defined as data, here, so the two entry paths (the `soma` CLI
+# and an agent-guided install) can never drift. The CLI reads this file; the
+# agent-guided install skill reads the same file through the CLI's output.
+
+manifest_version: 1
+profile: mnemo
+
+# Directories the instance must have. Derived from schema.yaml kinds plus the
+# instance-skill layer; listed explicitly so init is declarative.
+dirs:
+  - papers
+  - methods
+  - concepts
+  - hypotheses
+  - projects
+  - grants
+  - interactions
+  - people
+  - institutions
+  - notes
+  - tasks
+  - conversations
+  - skills
+
+# Files copied into the instance at scaffold time. `template` is relative to
+# the profile root; `target` is relative to the instance root. Placeholders
+# {{INSTANCE_NAME}} and {{CREATED}} are substituted in file contents.
+files:
+  - template: example-brain/brain.yaml
+    target: brain.yaml
+  - template: SOUL.md
+    target: SOUL.md
+    strip_header: true
+  - template: STYLE.md
+    target: STYLE.md
+    strip_header: true
+  - template: USER.md
+    target: USER.md
+
+placeholders:
+  INSTANCE_NAME: the instance's name (minds are named)
+  CREATED: ISO date of scaffold
+
+# Harness-side bindings are NOT performed by the CLI (soma spec §8: the CLI
+# touches only soma-owned things). They are documented one-liners in
+# docs/harnesses/<harness>.md; `soma doctor` verifies them. Listed here so the
+# agent-guided install knows what to perform and doctor knows what to check.
+bindings:
+  - id: harness-character
+    description: harness loads the instance SOUL.md (and USER.md) at session start
+    verify: harness-specific; see the adapter doc
+  - id: harness-skills
+    description: harness skill path exposes the layered skill set
+                 (platform < profile template < instance)
+    verify: harness-specific; see the adapter doc
+  - id: harness-cwd
+    description: sessions run with the instance root as working directory
+    verify: harness-specific; see the adapter doc

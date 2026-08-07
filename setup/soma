@@ -1,0 +1,235 @@
+#!/usr/bin/env python3
+"""soma — the platform CLI (skeleton).
+
+Three commands over one declarative core (the profile's manifest.yaml):
+
+  soma init   --profile mnemo --name <name> --path <dir>
+      Scaffold a new instance: create the manifest's dirs, copy its templated
+      files with {{INSTANCE_NAME}} / {{CREATED}} substituted.
+
+  soma doctor --path <dir>
+      Verify the instance contract (spec §5) against the bound profile:
+      brain.yaml parses with the required keys; every page directory declared
+      by the profile's schema.yaml exists; skills/ exists; version pins are
+      satisfiable. Exits nonzero with one complaint per failure. Idempotent;
+      the shared definition of done.
+
+  soma adopt  --path <existing vault> [--name <name>] [--profile mnemo]
+      Generate brain.yaml for a pre-existing brain and validate it. Refuses to
+      overwrite an existing brain.yaml.
+
+Dependencies: stdlib + PyYAML (also required by core/tools/lint-frontmatter.py).
+Run in place from the soma checkout: `setup/soma <cmd>`.
+"""
+
+from __future__ import annotations
+
+import argparse
+import datetime
+import sys
+from pathlib import Path
+
+try:
+    import yaml
+except ImportError:  # pragma: no cover
+    sys.exit("soma requires PyYAML (pip install pyyaml) — also used by "
+             "core/tools/lint-frontmatter.py")
+
+SOMA_ROOT = Path(__file__).resolve().parent.parent
+BRAIN_YAML_KEYS = ("name", "profile", "profile_version", "schema_version", "created")
+
+
+def profile_dir(profile: str) -> Path:
+    d = SOMA_ROOT / "profiles" / profile
+    if not d.is_dir():
+        sys.exit(f"soma: unknown profile `{profile}` (no profiles/{profile}/ "
+                 f"in this checkout)")
+    return d
+
+
+def load_yaml(path: Path) -> dict:
+    try:
+        doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError) as e:
+        sys.exit(f"soma: could not parse {path}: {e}")
+    return doc if isinstance(doc, dict) else {}
+
+
+def substitute(text: str, name: str, created: str, strip_header: bool = False) -> str:
+    if strip_header:
+        # Template files open with a "> ..." preamble addressed to template
+        # readers, terminated by a "> ---" marker line. Instances get only
+        # the body below it.
+        lines = text.splitlines(keepends=True)
+        for i, line in enumerate(lines):
+            if line.strip() == "> ---":
+                text = "".join(lines[i + 1:]).lstrip("\n")
+                break
+    return (text
+            .replace("{{INSTANCE_NAME}}", name)
+            .replace("{{CREATED}}", created))
+
+
+def cmd_init(args: argparse.Namespace) -> int:
+    prof = profile_dir(args.profile)
+    manifest = load_yaml(prof / "manifest.yaml")
+    target = args.path.expanduser().resolve()
+    created = datetime.date.today().isoformat()
+
+    if target.exists() and any(target.iterdir()) and not args.force:
+        sys.exit(f"soma init: {target} is not empty (pass --force to scaffold "
+                 f"into it anyway)")
+    target.mkdir(parents=True, exist_ok=True)
+
+    for d in manifest.get("dirs", []):
+        (target / d).mkdir(parents=True, exist_ok=True)
+        (target / d / ".gitkeep").touch(exist_ok=True)
+
+    for entry in manifest.get("files", []):
+        src = prof / entry["template"]
+        dst = target / entry["target"]
+        if dst.exists() and not args.force:
+            print(f"  skip (exists): {entry['target']}")
+            continue
+        if not src.is_file():
+            sys.exit(f"soma init: manifest template missing: {src}")
+        dst.write_text(substitute(src.read_text(encoding="utf-8"),
+                                  args.name, created,
+                                  strip_header=bool(entry.get("strip_header"))),
+                       encoding="utf-8")
+        print(f"  wrote: {entry['target']}")
+
+    print(f"soma init: scaffolded `{args.name}` (profile {args.profile}) at "
+          f"{target}")
+    print("next: bind your harness per docs/harnesses/<harness>.md, then "
+          f"`soma doctor --path {target}`")
+    return 0
+
+
+def check_contract(path: Path, prof_name: str | None) -> list[str]:
+    """Return a list of contract violations; empty means valid."""
+    complaints: list[str] = []
+
+    brain_yaml = path / "brain.yaml"
+    if not brain_yaml.is_file():
+        return [f"brain.yaml missing at {path} — run `soma adopt --path {path}` "
+                f"or `soma init`"]
+
+    data = load_yaml(brain_yaml)
+    for key in BRAIN_YAML_KEYS:
+        if key not in data:
+            complaints.append(f"brain.yaml: missing required key `{key}`")
+
+    profile = data.get("profile", prof_name or "mnemo")
+    prof = SOMA_ROOT / "profiles" / str(profile)
+    if not prof.is_dir():
+        complaints.append(f"brain.yaml: profile `{profile}` not present in "
+                          f"this soma checkout")
+        return complaints
+
+    schema_path = prof / "schema.yaml"
+    if not schema_path.is_file():
+        complaints.append(f"profile `{profile}` has no schema.yaml")
+        return complaints
+    schema = load_yaml(schema_path)
+
+    for spec in schema.get("kinds", {}).values():
+        d = path / spec["dir"]
+        if not d.is_dir():
+            complaints.append(f"page directory missing: {spec['dir']}/")
+
+    if not (path / "skills").is_dir():
+        complaints.append("skills/ directory missing (may be empty, must exist)")
+
+    # Version pins: the brain's schema_version must be satisfiable by the
+    # profile schema it binds to (currently: must not exceed it).
+    brain_sv = data.get("schema_version")
+    prof_sv = schema.get("schema_version")
+    if isinstance(brain_sv, int) and isinstance(prof_sv, int):
+        if brain_sv > prof_sv:
+            complaints.append(
+                f"brain.yaml pins schema_version {brain_sv} but profile "
+                f"`{profile}` ships {prof_sv} — update the soma checkout")
+
+    # Binding health: harness-side bindings are adapter-doc one-liners the CLI
+    # does not perform (spec §8). Surface them as a reminder, not a failure.
+    manifest = load_yaml(prof / "manifest.yaml")
+    for b in manifest.get("bindings", []):
+        print(f"  binding to verify ({b['id']}): {b['description']}")
+    return complaints
+
+
+def cmd_doctor(args: argparse.Namespace) -> int:
+    path = args.path.expanduser().resolve()
+    complaints = check_contract(path, args.profile)
+    if complaints:
+        print("soma doctor: FAIL")
+        for c in complaints:
+            print(f"  - {c}")
+        return 1
+    print(f"soma doctor: OK — {path} is a valid instance")
+    return 0
+
+
+def cmd_adopt(args: argparse.Namespace) -> int:
+    path = args.path.expanduser().resolve()
+    if not path.is_dir():
+        sys.exit(f"soma adopt: {path} is not a directory")
+    brain_yaml = path / "brain.yaml"
+    if brain_yaml.exists():
+        sys.exit(f"soma adopt: {brain_yaml} already exists — refusing to "
+                 f"overwrite; run `soma doctor --path {path}` instead")
+
+    name = args.name or path.name
+    doc = {
+        "name": name,
+        "profile": args.profile,
+        "profile_version": 1,
+        "schema_version": 1,
+        "created": datetime.date.today().isoformat(),
+    }
+    brain_yaml.write_text(
+        "# brain.yaml — the instance contract (generated by `soma adopt`)\n"
+        + yaml.safe_dump(doc, sort_keys=False, default_flow_style=False),
+        encoding="utf-8")
+    print(f"soma adopt: wrote {brain_yaml} (name: {name}, profile: "
+          f"{args.profile})")
+
+    complaints = check_contract(path, args.profile)
+    if complaints:
+        print("soma adopt: brain.yaml written, but the contract is not met:")
+        for c in complaints:
+            print(f"  - {c}")
+        return 1
+    print("soma adopt: instance valid")
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="soma", description=__doc__.splitlines()[0])
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    p_init = sub.add_parser("init", help="scaffold a new instance")
+    p_init.add_argument("--profile", default="mnemo")
+    p_init.add_argument("--name", required=True)
+    p_init.add_argument("--path", type=Path, required=True)
+    p_init.add_argument("--force", action="store_true")
+    p_init.set_defaults(fn=cmd_init)
+
+    p_doc = sub.add_parser("doctor", help="verify the instance contract")
+    p_doc.add_argument("--path", type=Path, default=Path.cwd())
+    p_doc.add_argument("--profile", default=None)
+    p_doc.set_defaults(fn=cmd_doctor)
+
+    p_adopt = sub.add_parser("adopt", help="generate brain.yaml for an existing brain")
+    p_adopt.add_argument("--path", type=Path, required=True)
+    p_adopt.add_argument("--name", default=None)
+    p_adopt.add_argument("--profile", default="mnemo")
+    p_adopt.set_defaults(fn=cmd_adopt)
+
+    args = parser.parse_args()
+    return args.fn(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

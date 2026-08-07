@@ -1,0 +1,8 @@
+name = "soma-feed-spike"
+main = "src/index.js"
+compatibility_date = "2026-08-01"
+
+[[d1_databases]]
+binding = "soma_feed"
+database_name = "soma-feed"
+database_id = "3841ef52-e849-440e-bf91-0ac1e04e87d1"

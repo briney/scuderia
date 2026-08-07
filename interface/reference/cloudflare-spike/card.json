@@ -1,0 +1,31 @@
+{
+  "card_id": "example-instance/remcycle/review-queue",
+  "instance": "example-instance",
+  "profile": "mnemo",
+  "type": "review",
+  "title": "rem-cycle review queue — 3 pending items",
+  "body": "Typed-edge and entity-merge proposals from the latest rem-cycle run. Approve to apply, reject to drop.",
+  "salience": 0.8,
+  "source_ref": "docs/rem-cycle/QUEUE.md",
+  "actions": ["dismiss"],
+  "items": [
+    {
+      "item_id": "ddcd",
+      "title": "typed-edge: alameh-2021-lnp-adjuvant-mrna-protein-subunit → cites pardi-2018-mrna-vaccines-new-era",
+      "source_ref": "docs/rem-cycle/QUEUE.md#L8",
+      "available_actions": ["approve", "reject", "snooze"]
+    },
+    {
+      "item_id": "de20",
+      "title": "typed-edge: aktories-2017-cdiff-toxin-biology → cites simon-2014-novel-adpr-toxins-structure-function",
+      "source_ref": "docs/rem-cycle/QUEUE.md#L10",
+      "available_actions": ["approve", "reject", "snooze"]
+    },
+    {
+      "item_id": "4757",
+      "title": "typed-edge: alarcon-2025-allosteric-changes-underlie → supports r01-self-reactive-repertoire-mining",
+      "source_ref": "docs/rem-cycle/QUEUE.md#L12",
+      "available_actions": ["approve", "reject", "snooze"]
+    }
+  ]
+}

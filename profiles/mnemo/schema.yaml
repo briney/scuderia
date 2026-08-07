@@ -1,0 +1,111 @@
+# mnemo profile schema — machine-readable form of conventions/frontmatter.md.
+#
+# This file is the profile's declaration of its brain contract: the page kinds,
+# their directories, the shared frontmatter spine, per-kind required fields and
+# enums, link-shaped fields, and the author-ledger contract. The prose source of
+# record is conventions/frontmatter.md; this file is what tools read
+# (core/tools/lint-frontmatter.py, setup/soma doctor).
+#
+# Schema-driven by design: the linter knows nothing about what a "paper" is —
+# it reads this file. A new profile (oiko, …) ships its own schema.yaml.
+
+schema_version: 1
+profile: mnemo
+
+# Fields every page carries regardless of kind (conventions/frontmatter.md §spine).
+spine:
+  required: [kind, slug, title]
+  # importance is validated when present (number in [0,1]); links/tags are
+  # free-form and unchecked beyond link-shape for `links`.
+  validated_optional:
+    importance:
+      type: number
+      range: [0.0, 1.0]
+
+# The twelve page kinds. Directory and `kind` must agree.
+kinds:
+  paper:
+    dir: papers
+    required: [status]
+    enums:
+      status: [published, preprint, unknown]
+  method:
+    dir: methods
+  concept:
+    dir: concepts
+    enums:
+      status: [active, dormant]
+  hypothesis:
+    dir: hypotheses
+    required: [status]
+    enums:
+      status: [open, promoted, killed]
+      origin: [detected, seeded]
+      promise: [Beat, Unlock, Scale, Explain]   # list-valued; each element checked
+    list_enums: [promise]
+    conditional_required:
+      - field: killed_reason
+        when: {status: killed}
+  project:
+    dir: projects
+  grant:
+    dir: grants
+    required: [funder, mechanism, role, status]
+    enums:
+      status: [planned, drafting, shelved, submitted, under-review,
+               scored-not-funded, not-discussed, funded, active, closed]
+  interaction:
+    dir: interactions
+  person:
+    dir: people
+  institution:
+    dir: institutions
+  note:
+    dir: notes
+  task:
+    dir: tasks
+  conversation:
+    dir: conversations
+    required: [mode]
+    enums:
+      mode: [discussion, explainer, fit]
+      status: [open, settled]
+      verdict: [fit, no-fit, undecided]
+    conditional_required:
+      - field: verdict
+        when: {mode: fit}
+
+# Fields whose values are `<kind-dir>/<slug>` link targets — shape-checked on
+# every page, existence-checked (warn-only) in a second pass.
+link_fields: [links, authors, cited_by, cites, supports, refutes,
+              related_concepts, draws_on, rests_on, promoted_from, about]
+
+# Slug shape: lowercase, hyphen-separated, ASCII-only.
+slug_pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+
+# The author ledger (conventions/author-ledger.md): paper authors who do not
+# (yet) earn a people/ page. A `people/<slug>` ref that hits a page OR a
+# ledger entry is not an orphan.
+ledger:
+  path: people/_ledger.yaml
+  ref_prefix: people/
+  entry_required: [slug, name, citations]
+  entry_optional: [orcid, affiliations]
+  citation_prefix: papers/
+
+# Skill frontmatter contract (skills/skill-creator/SKILL.md).
+skills:
+  glob: 'skills/*/SKILL.md'
+  required: [name, description, triggers]
+  allow_extra_fields: false
+  name_matches_dir: true
+
+# Named built-in checks the linter implements; a profile enables them here.
+# Each is warn-only.
+checks:
+  # people slugs are surname-first; warn when a two-token slug's head looks
+  # like a common first name (conventions/page-kinds.md "Slug conventions").
+  people_slug_order: true
+  # a concept with a `## Shifts` section but no `thesis_updated` field leaves
+  # concept-refresh unable to tell when the Thesis was last synthesized.
+  concept_thesis_updated: true

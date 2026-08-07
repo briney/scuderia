@@ -1,0 +1,7 @@
+# soma repo .gitignore
+.DS_Store
+__pycache__/
+*.pyc
+.wrangler/
+.keys
+node_modules/
