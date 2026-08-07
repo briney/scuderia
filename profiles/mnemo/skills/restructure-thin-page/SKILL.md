@@ -16,11 +16,11 @@ Take a brain page that is not yet pulling its weight — a `paper` page that is
 just a pasted abstract, a `concept` stub, a raw-text dump under a `## Content`
 header — and rewrite it as a structured, durable page.
 
-> **Conventions:** `conventions/quality.md` (citations, forward linking,
-> verbatim preservation), `conventions/graph-and-links.md` (the edge forms),
+> **Conventions:** `skills/conventions/quality.md` (citations, forward linking,
+> verbatim preservation), `skills/conventions/graph-and-links.md` (the edge forms),
 > `_brain-filing-rules.md` (file by subject), `_output-rules.md` (no slop),
-> `conventions/test-before-bulk.md` (batches),
-> `conventions/capabilities.md` (the harness contract).
+> `skills/conventions/test-before-bulk.md` (batches),
+> `skills/conventions/capabilities.md` (the harness contract).
 
 ## Capabilities
 
@@ -50,7 +50,7 @@ source that needs to be re-fetched to verify a quote or claim).
 ## The pipeline
 
 1. **Read.** Open the page; parse frontmatter and body. Note its `kind` — the
-   restructure must respect the kind's schema (`conventions/frontmatter.md`).
+   restructure must respect the kind's schema (`skills/conventions/frontmatter.md`).
 2. **Scan.** Confirm it is thin — a raw `## Content` dump, a bare abstract, no
    synthesis. If `needs-enrichment` is already absent or false and the page is
    structured, skip it (idempotency).
@@ -58,7 +58,7 @@ source that needs to be re-fetched to verify a quote or claim).
    `RESEARCH.md` so "Why it matters" rests on real threads, not assumptions.
 4. **Restructure.** Rewrite the body into the structured sections above. Keep
    every verbatim quote exact. Cite every substantive claim or flag it
-   `[needs-citation]` (`conventions/quality.md`).
+   `[needs-citation]` (`skills/conventions/quality.md`).
 5. **Link forward.** Add `[[kind/slug]]` wikilinks in prose and a "See also"
    block; add typed edges in frontmatter where the relationship is queryable
    (`cites:`, `links:`). Never hand-write backlinks — they are derived.
@@ -70,13 +70,13 @@ source that needs to be re-fetched to verify a quote or claim).
 The raw text being restructured is *replaced*, not preserved inline. A brain
 page is a distillation; the primary-source original lives in the raw-source
 archive (R2), and the page carries a `sources:` pointer to it
-(`conventions/raw-source-archive.md`). Do not wrap the raw dump in an inline
+(`skills/conventions/raw-source-archive.md`). Do not wrap the raw dump in an inline
 `<details>` block.
 
 ## Links — forward wikilinks
 
 Intra-brain edges are `[[kind/slug]]` **wikilinks** — the Obsidian-native form
-(`conventions/graph-and-links.md`). Use them freely in prose and in "See also".
+(`skills/conventions/graph-and-links.md`). Use them freely in prose and in "See also".
 A link to a page that does not exist yet is fine; it marks an edge worth filling.
 
 ## Quality bar
@@ -92,7 +92,7 @@ An enriched page passes if it has:
 
 ## Batches
 
-For an enrichment sweep over many pages, follow `conventions/test-before-bulk.md`:
+For an enrichment sweep over many pages, follow `skills/conventions/test-before-bulk.md`:
 restructure 3–5, read the output, fix the approach, then run the rest in
 committed batches. Model routing for the pass is Hermes's call — this skill does
 not select a model.

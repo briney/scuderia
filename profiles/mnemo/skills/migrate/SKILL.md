@@ -15,11 +15,11 @@ Notion, Logseq, Roam, a markdown folder, a CSV — this skill brings that materi
 in: each source page mapped onto one of the page kinds, given proper
 frontmatter, and wired into the graph. It is a one-time, setup-phase job.
 
-> **Conventions:** `conventions/page-kinds.md` (the page kinds and
-> directories), `conventions/frontmatter.md` (the schema each page must follow),
-> `conventions/graph-and-links.md` (wikilinks and typed edges),
-> `conventions/test-before-bulk.md` (sample before bulk), `_brain-filing-rules.md`
-> (file by primary subject), `conventions/capabilities.md` (the harness
+> **Conventions:** `skills/conventions/page-kinds.md` (the page kinds and
+> directories), `skills/conventions/frontmatter.md` (the schema each page must follow),
+> `skills/conventions/graph-and-links.md` (wikilinks and typed edges),
+> `skills/conventions/test-before-bulk.md` (sample before bulk), `_brain-filing-rules.md`
+> (file by primary subject), `skills/conventions/capabilities.md` (the harness
 > contract).
 
 ## Capabilities
@@ -62,12 +62,12 @@ frontmatter, and wired into the graph. It is a one-time, setup-phase job.
    kind directory, write proper frontmatter, convert its links. Hold the commit.
 4. **Check the sample yourself.** Read the converted pages. Right kind? Spine
    fields present? `kind` matching the directory? Links forward-only and
-   resolving? Fix the *approach* — then proceed (`conventions/test-before-bulk.md`).
+   resolving? Fix the *approach* — then proceed (`skills/conventions/test-before-bulk.md`).
 5. **Bulk import.** Convert the rest, committing in batches so a bad run is easy
    to revert.
 6. **Convert cross-references.** Turn every source link into a `[[kind/slug]]`
    wikilink or a typed frontmatter edge — forward only; backlinks are derived
-   (`conventions/graph-and-links.md`).
+   (`skills/conventions/graph-and-links.md`).
 7. **Verify.** Page count roughly matches the source (minus out-of-scope drops).
    Spot-check 5-10 pages. Search the brain for something you know was imported
    and confirm it comes back.

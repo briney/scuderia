@@ -30,7 +30,7 @@ the instance's private `docs/specs/`.
 > cite-or-flag), `_output-rules.md` (verbatim-quote fidelity),
 > `rem-cycle-contract.md` (the `QUEUE.md` propose surface bottom-up candidates
 > land on), `test-before-bulk.md` (test the extraction on a sample first),
-> `capabilities.md`. Character: `SOUL.md` — **ingest with your own hands** (author
+> `skills/conventions/capabilities.md`. Character: `SOUL.md` — **ingest with your own hands** (author
 > concepts yourself; delegate only the ephemeral scan), propose-not-auto,
 > cite-or-flag.
 

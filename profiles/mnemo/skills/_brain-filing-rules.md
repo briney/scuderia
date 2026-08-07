@@ -28,7 +28,7 @@ them. Do not force one page to carry subjects that belong to different kinds.
 
 The raw source itself is **never** a brain page: it goes to the raw-source
 archive, and each page distilled from it carries the git pointer in its
-`sources:` frontmatter. See `conventions/raw-source-archive.md`.
+`sources:` frontmatter. See `skills/conventions/raw-source-archive.md`.
 
 ## Scope boundary
 
@@ -40,5 +40,5 @@ home among the page kinds, that is the structural signal it is out of scope
 ## The notability gate
 
 Filing a page is a commitment. Apply the notability gate in
-`conventions/quality.md` before creating one — a missing page is cheap, a junk
+`skills/conventions/quality.md` before creating one — a missing page is cheap, a junk
 page is not.

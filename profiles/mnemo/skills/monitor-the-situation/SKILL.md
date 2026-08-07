@@ -25,11 +25,11 @@ the item's `significant-means` criterion — "a DOE Genesis FOA already existed 
 is not what we're waiting for; an NIH Bio Genesis RFA is." A diff tool cannot
 make that call; the mind can.
 
-> **Conventions:** `conventions/brain-first.md` (don't re-pitch what the brain
-> already holds), `conventions/quality.md` (every notified item lands with a
-> resolvable citation), `conventions/funding-sources.md` (the shared open-API source
+> **Conventions:** `skills/conventions/brain-first.md` (don't re-pitch what the brain
+> already holds), `skills/conventions/quality.md` (every notified item lands with a
+> resolvable citation), `skills/conventions/funding-sources.md` (the shared open-API source
 > layer — endpoints, query params, diff keys), `_output-rules.md` (deterministic
-> links, no slop), `conventions/capabilities.md` (the harness contract).
+> links, no slop), `skills/conventions/capabilities.md` (the harness contract).
 
 ## Capabilities
 
@@ -118,7 +118,7 @@ unreported hits.
 
 Auth-free JSON APIs, the same discipline as `literature-sweep` — no code, the
 endpoints are the prose. **The source layer is shared with `funding-sweep` and lives
-in `conventions/funding-sources.md`** — the Federal Register, grants.gov, NIH Guide,
+in `skills/conventions/funding-sources.md`** — the Federal Register, grants.gov, NIH Guide,
 and NIH RePORTER endpoints, their query parameters, their stable diff keys, and the
 phrase-matching discipline. Read that convention for the mechanics; this section
 covers only what is specific to a *named watch*.

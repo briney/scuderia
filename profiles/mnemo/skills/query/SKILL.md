@@ -17,9 +17,9 @@ Answer a question using what the brain knows, grounded and cited. The job is not
 to recite a search result — it is to synthesize an answer and trace every claim
 back to a page.
 
-> **Conventions:** `conventions/brain-first.md` (the lookup chain),
-> `conventions/quality.md` (citations), `conventions/graph-and-links.md` (the
-> graph), `conventions/capabilities.md` (the harness contract).
+> **Conventions:** `skills/conventions/brain-first.md` (the lookup chain),
+> `skills/conventions/quality.md` (citations), `skills/conventions/graph-and-links.md` (the
+> graph), `skills/conventions/capabilities.md` (the harness contract).
 
 ## Capabilities
 

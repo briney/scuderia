@@ -24,11 +24,11 @@ review (rather than a keyword search) means the dive begins with expert
 curation, not algorithmic ranking.
 
 > **Conventions:** `_brain-filing-rules.md` (file by subject),
-> `conventions/brain-first.md` (check the brain first),
-> `conventions/quality.md` (citations, forward-only linking),
-> `conventions/capabilities.md` (the harness contract),
-> `conventions/test-before-bulk.md` (validate before scaling),
-> `conventions/preprint-retrieval.md` (bioRxiv full text).
+> `skills/conventions/brain-first.md` (check the brain first),
+> `skills/conventions/quality.md` (citations, forward-only linking),
+> `skills/conventions/capabilities.md` (the harness contract),
+> `skills/conventions/test-before-bulk.md` (validate before scaling),
+> `skills/conventions/preprint-retrieval.md` (bioRxiv full text).
 
 ## Capabilities
 

@@ -20,8 +20,8 @@ pages (`channel: email`) through the notability gate.
 The mind never writes, sends, or drafts email. This is by design — email is
 a source stream, not a communication channel for the brain.
 
-> **Conventions:** `conventions/raw-source-archive.md` (R2 `email/` prefix),
-> `conventions/page-kinds.md` (email scope note), `conventions/quality.md`
+> **Conventions:** `skills/conventions/raw-source-archive.md` (R2 `email/` prefix),
+> `skills/conventions/page-kinds.md` (email scope note), `skills/conventions/quality.md`
 > (the notability gate).
 
 > **Design record:**

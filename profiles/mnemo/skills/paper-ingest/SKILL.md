@@ -211,7 +211,7 @@ workflow and no assembled SKILL.md materializes, reconstruct it:
    incl. the branch-0 OA gate), `paper-ingest-browser-fulltext` (Phase 4 browser
    extraction), `paper-ingest-fallback-patterns` (Phase 1 fallbacks + Phase 7 +
    concurrency), `paper-ingest-doi-pmid-crosscheck` (Phase 1 DOI/PMID cross-check).
-3. Read `conventions/frontmatter.md` (paper-kind schema), `author-ledger.md`
+3. Read `skills/conventions/frontmatter.md` (paper-kind schema), `author-ledger.md`
    (Phase 8), `page-kinds.md` (slug forms), `graph-and-links.md` (typed edges).
 4. Read one recent exemplar (e.g. `papers/carnathan-2020-activin-a-adjuvanticity.md`)
    for body anatomy (Abstract / Context / Approach / Findings / Limitations /

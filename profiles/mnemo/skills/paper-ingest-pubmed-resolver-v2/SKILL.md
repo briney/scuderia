@@ -238,7 +238,7 @@ Paper page created with `doi: null`; full-text URL recorded in Citations.
 ### Frontmatter and ledger handling
 
 - **Frontmatter:** `doi: null` (explicit null, not omitted — the field is
-  first-class per `conventions/frontmatter.md`).
+  first-class per `skills/conventions/frontmatter.md`).
 - **Ledger:** Authors from no-DOI papers are handled identically to DOI'd
   papers — slug from `<LastName>`/`<ForeName>`, affiliation from
   `<AffiliationInfo>` (often only the first author carries one; remaining

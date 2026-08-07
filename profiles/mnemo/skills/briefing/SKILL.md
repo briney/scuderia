@@ -19,10 +19,10 @@ and against Bryan's live calendar and inbox — writes the result to the rolling
 to the terminal on request (`DESIGN.md` §6.3). This skill owns the editorial
 judgment, nothing else.
 
-> **Conventions:** `conventions/brain-first.md` (the lookup chain),
-> `conventions/quality.md` (citations), `conventions/importance-scoring.md` (the
+> **Conventions:** `skills/conventions/brain-first.md` (the lookup chain),
+> `skills/conventions/quality.md` (citations), `skills/conventions/importance-scoring.md` (the
 > salience score the relevance bar leans on),
-> `conventions/capabilities.md` (the harness contract).
+> `skills/conventions/capabilities.md` (the harness contract).
 
 ## Capabilities
 

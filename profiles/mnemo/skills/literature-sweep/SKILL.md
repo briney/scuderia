@@ -25,10 +25,10 @@ because it didn't pass an arbitrary importance filter. A redundant stub
 costs one subagent round in the drain; a missed load-bearing paper costs a
 permanent hole in the knowledge graph. When in doubt, stub.
 
-> **Conventions:** `conventions/brain-first.md` (never stub what the brain
-> already holds — check `papers/` by DOI first), `conventions/quality.md`
+> **Conventions:** `skills/conventions/brain-first.md` (never stub what the brain
+> already holds — check `papers/` by DOI first), `skills/conventions/quality.md`
 > (every stub lands with a resolvable DOI/PMID), `_brain-filing-rules.md`,
-> `conventions/capabilities.md`.
+> `skills/conventions/capabilities.md`.
 
 ## Capabilities
 
@@ -160,7 +160,7 @@ papers missing from a concept that had been deliberately dived).
 ## Stub format
 
 Stubs follow the paper-kind frontmatter schema
-(`conventions/frontmatter.md`) with the sweep additions shown:
+(`skills/conventions/frontmatter.md`) with the sweep additions shown:
 
 ```markdown
 ---

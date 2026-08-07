@@ -34,12 +34,12 @@ The split is producer/consumer:
 Producers and consumer never share a session. The producer writes the queue
 and stops; the consumer drains it later, in a fresh context.
 
-> **Conventions:** `conventions/frontmatter.md` (the `needs-ingest`,
+> **Conventions:** `skills/conventions/frontmatter.md` (the `needs-ingest`,
 > `cited_by`, `ingest_attempts`, `last_ingest_attempt` fields on `paper`),
-> `conventions/brain-first.md` (the consumer is brain-first by construction
+> `skills/conventions/brain-first.md` (the consumer is brain-first by construction
 > — it reads existing pages and updates them),
-> `conventions/preprint-retrieval.md` (bioRxiv/medRxiv full text around the Cloudflare block),
-> `conventions/capabilities.md` (the harness contract).
+> `skills/conventions/preprint-retrieval.md` (bioRxiv/medRxiv full text around the Cloudflare block),
+> `skills/conventions/capabilities.md` (the harness contract).
 
 ## Capabilities
 

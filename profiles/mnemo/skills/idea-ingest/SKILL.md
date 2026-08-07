@@ -16,10 +16,10 @@ page. The job is not to summarize — it is to distill the content and connect i
 to Bryan's research program.
 
 > **Conventions:** `_brain-filing-rules.md` (file by subject),
-> `conventions/quality.md` (citations, forward-only linking, the notability
-> gate), `conventions/raw-source-archive.md` (the R2 archive),
-> `conventions/brain-first.md` (check the brain first),
-> `conventions/capabilities.md` (the harness contract).
+> `skills/conventions/quality.md` (citations, forward-only linking, the notability
+> gate), `skills/conventions/raw-source-archive.md` (the R2 archive),
+> `skills/conventions/brain-first.md` (check the brain first),
+> `skills/conventions/capabilities.md` (the harness contract).
 
 ## Capabilities
 
@@ -49,7 +49,7 @@ to Bryan's research program.
 2. **Check the brain first.** Use `brain-search` for existing coverage before
    writing — the subject, the authors, the methods it names. Ingest adds the
    *delta*; it does not duplicate a page that already exists
-   (`conventions/brain-first.md`).
+   (`skills/conventions/brain-first.md`).
 
 3. **File by primary subject** (`_brain-filing-rules.md`). The format it
    arrived in is irrelevant — the subject sets the kind:
@@ -66,17 +66,17 @@ to Bryan's research program.
 
 4. **Archive a non-markdown original.** If the source is a PDF or other binary,
    route it through the `_drop/` → R2 pipeline and record the git pointer in the
-   page's `sources:` frontmatter (`conventions/raw-source-archive.md`). The
+   page's `sources:` frontmatter (`skills/conventions/raw-source-archive.md`). The
    original is never a brain page.
 
 5. **Link forward.** Add `[[kind/slug]]` wikilinks in the prose and typed edges
    in frontmatter (`cites:`, `supports:`, `refutes:`, `links:`) to every entity
    the content connects to. Never hand-write backlinks — they are derived
-   (`conventions/graph-and-links.md`).
+   (`skills/conventions/graph-and-links.md`).
 
 6. **Enrich notable people and institutions.** An author gets a `person` page
    *only if* their work is notable or recurring in Bryan's field — apply the
-   notability gate (`conventions/quality.md`); it is not unconditional. The same
+   notability gate (`skills/conventions/quality.md`); it is not unconditional. The same
    gate governs labs, universities, consortia, and funders. Chain into
    `skills/enrich/SKILL.md` for each entity that passes the gate.
 
@@ -122,8 +122,8 @@ contradicts. What question it opens.
 
 A `method`, `hypothesis`, or `note` follows the same shape with the
 corresponding `kind:` and the per-kind fields documented in
-`conventions/frontmatter.md`. `sources:` is the R2 pointer per
-`conventions/raw-source-archive.md`; the `r2_key` prefix reflects the source
+`skills/conventions/frontmatter.md`. `sources:` is the R2 pointer per
+`skills/conventions/raw-source-archive.md`; the `r2_key` prefix reflects the source
 format (`media/` for podcasts/videos/non-paper PDFs, etc.) — see the
 archive convention.
 
@@ -132,7 +132,7 @@ archive convention.
 - Summarizing without connecting the content to the research program.
 - Filing by format instead of by primary subject.
 - Creating a `person` page for every author mentioned. For paper
-  authors, the ledger (`conventions/author-ledger.md`) is the
+  authors, the ledger (`skills/conventions/author-ledger.md`) is the
   staging area until the citation threshold fires; do not
   short-circuit it from here.
 - Writing a claim with neither a citation nor a `[needs-citation]` flag.

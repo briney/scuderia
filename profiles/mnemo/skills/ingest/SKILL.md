@@ -15,9 +15,9 @@ into distilled brain pages. This skill is the **router**: it identifies what
 arrived and hands off to the specialist that knows how to distill it.
 
 > **Conventions:** `_brain-filing-rules.md` (file by subject),
-> `conventions/quality.md` (citations, linking), `conventions/raw-source-archive.md`
-> (the `_drop/` pipeline), `conventions/test-before-bulk.md` (batches),
-> `conventions/capabilities.md` (the harness contract).
+> `skills/conventions/quality.md` (citations, linking), `skills/conventions/raw-source-archive.md`
+> (the `_drop/` pipeline), `skills/conventions/test-before-bulk.md` (batches),
+> `skills/conventions/capabilities.md` (the harness contract).
 
 ## Capabilities
 
@@ -34,7 +34,7 @@ needs `schedule-job` (the cron poll) and `raw-source-archive-upload`.
    carries a PDF or DOCX dropped on a laptop to the host; from there it is
    ingested, the original is archived via `raw-source-archive-upload`, a git
    pointer is recorded, and the file is cleared from `_drop/`. The full
-   pipeline is in `conventions/raw-source-archive.md`. The harness does not
+   pipeline is in `skills/conventions/raw-source-archive.md`. The harness does not
    provide a filesystem watcher, so `schedule-job` polls `_drop/` on a cadence
    — this skill is what that job runs.
 
@@ -73,12 +73,12 @@ The specialists differ in extraction; they share this discipline:
 - **File by primary subject.** A paper introducing a method is a `method` page
   as much as a `paper` page; file each facet under its kind and link them
   (`_brain-filing-rules.md`).
-- **Cite every claim** — or flag it `[needs-citation]` (`conventions/quality.md`).
+- **Cite every claim** — or flag it `[needs-citation]` (`skills/conventions/quality.md`).
 - **Link forward.** Wikilink the pages this content connects to; never
-  hand-write backlinks (`conventions/graph-and-links.md`).
+  hand-write backlinks (`skills/conventions/graph-and-links.md`).
 - **Archive the raw source.** Non-markdown originals go to the raw-source archive
   (R2), and each distilled page carries the git pointer in its `sources:`
-  frontmatter (`conventions/raw-source-archive.md`). The original is never a
+  frontmatter (`skills/conventions/raw-source-archive.md`). The original is never a
   brain page.
 - **Chain into `enrich`.** Every notable person or institution the content names
   gets its page created or updated.
@@ -88,7 +88,7 @@ The specialists differ in extraction; they share this discipline:
 ## Batches
 
 For more than a handful of items — a large `_drop/` backlog — follow
-`conventions/test-before-bulk.md`: ingest 3-5, read the output, fix the approach,
+`skills/conventions/test-before-bulk.md`: ingest 3-5, read the output, fix the approach,
 then run the rest in committed batches.
 
 ## Anti-patterns

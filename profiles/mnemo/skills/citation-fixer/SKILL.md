@@ -19,10 +19,10 @@ flag — never a silent gap, never an invented citation. This is the
 cluster" for the scope split — frontmatter shape lives in
 `frontmatter-guard`, broad health lives in `maintain`.
 
-> **Conventions:** `conventions/quality.md` (the canonical citation forms and
-> source precedence), `conventions/test-before-bulk.md` (sweeping many pages),
+> **Conventions:** `skills/conventions/quality.md` (the canonical citation forms and
+> source precedence), `skills/conventions/test-before-bulk.md` (sweeping many pages),
 > `_output-rules.md` (deterministic links — built from data, never composed),
-> `conventions/capabilities.md` (the harness contract).
+> `skills/conventions/capabilities.md` (the harness contract).
 
 ## Capabilities
 
@@ -33,7 +33,7 @@ cluster" for the scope split — frontmatter shape lives in
 
 - Every substantive claim on a scanned page is checked for an inline citation.
 - Claims with no source are flagged at their exact location.
-- Malformed citations are rewritten to match `conventions/quality.md`.
+- Malformed citations are rewritten to match `skills/conventions/quality.md`.
 - A genuinely uncitable claim is flagged `[needs-citation]` — never invented,
   never deleted.
 - Results are reported with counts: pages scanned, citations fixed, gaps
@@ -63,7 +63,7 @@ cluster" for the scope split — frontmatter shape lives in
 
 ## Citation forms
 
-The authoritative list is `conventions/quality.md`. In brief:
+The authoritative list is `skills/conventions/quality.md`. In brief:
 
 - **Paper** — `[Source: papers/<slug>, doi:10.xxxx/...]` (DOI or PMID preferred
   over a URL).
@@ -79,7 +79,7 @@ do not silently pick a winner.
 ## Sweeping many pages
 
 A brain-wide citation audit is a batch operation — follow
-`conventions/test-before-bulk.md`: fix 3-5 pages first, read the output, confirm
+`skills/conventions/test-before-bulk.md`: fix 3-5 pages first, read the output, confirm
 the citation shapes are right, then run the rest in committed batches so a bad
 run is easy to revert.
 

@@ -19,12 +19,12 @@ design as a **go/no-go filter** — then lays out the section plan and creates t
 `grant` page that `grant-section`, `grant-coherence`, and `grant-citations`
 draft into.
 
-> **Conventions:** `conventions/brain-first.md` (search before creating),
-> `conventions/frontmatter.md` (the `grant` schema and status enum),
-> `conventions/raw-source-archive.md` (archiving the NOFO),
-> `conventions/graph-and-links.md` (typed links to projects),
-> `conventions/quality.md` (cite-or-flag, the notability gate),
-> `conventions/capabilities.md` (the harness contract),
+> **Conventions:** `skills/conventions/brain-first.md` (search before creating),
+> `skills/conventions/frontmatter.md` (the `grant` schema and status enum),
+> `skills/conventions/raw-source-archive.md` (archiving the NOFO),
+> `skills/conventions/graph-and-links.md` (typed links to projects),
+> `skills/conventions/quality.md` (cite-or-flag, the notability gate),
+> `skills/conventions/capabilities.md` (the harness contract),
 > `skills/grant-formats/` (R01 / R21 structure and page limits),
 > `skills/ask-user/SKILL.md` (gate scope decisions). Loads `STYLE.md` — the
 > whole cluster does — but the section-by-section prose discipline is
@@ -94,12 +94,12 @@ domain priors inform the Aims pressure-test), `raw-source-archive-upload`
    queryable and revivable; it does not surface as active work.
 
 6. **Create or update the grant page.** `status: drafting` (or `shelved`).
-   Frontmatter per the `grant` schema (`conventions/frontmatter.md`). Body: the
+   Frontmatter per the `grant` schema (`skills/conventions/frontmatter.md`). Body: the
    section plan, an empty `## Draft` working section, a `## Drafting log`, and
    the analysis skeleton. Wire typed links to the `project` pages.
 
 7. **Archive the NOFO.** `_drop/` → R2; one `sources:` entry, `role: nofo`. The
-   binary never enters git (`conventions/raw-source-archive.md`).
+   binary never enters git (`skills/conventions/raw-source-archive.md`).
 
 8. **Hand off to `grant-section`.** The section plan is the handoff. Aims
    first — nothing downstream is stable until the Aims page is locked.
@@ -118,13 +118,13 @@ title: "<working title>"
 funder: institutions/<slug>
 mechanism: "R01"           # R01 | R21 — free text, see grant-formats/
 role: PI                   # PI | co-PI | co-I | consultant
-status: drafting           # full enum in conventions/frontmatter.md
+status: drafting           # full enum in skills/conventions/frontmatter.md
 deadline: YYYY-MM-DD       # submission target — cleared when status: shelved
 importance: 0.0
 links: [projects/<slug>]
 tags: []
 sources:
-  - role: nofo             # the NOFO, per conventions/raw-source-archive.md
+  - role: nofo             # the NOFO, per skills/conventions/raw-source-archive.md
     hash: sha256-...
     r2_key: grants/....pdf
     filename: "..."

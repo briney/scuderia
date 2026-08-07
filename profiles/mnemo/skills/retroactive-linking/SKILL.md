@@ -117,7 +117,7 @@ What gets re-linked in one invocation:
 ## Anti-patterns
 
 - Hand-writing a backlinks section — inbound edges are derived
-  (`conventions/graph-and-links.md`).
+  (`skills/conventions/graph-and-links.md`).
 - Adding an edge with no evidence span from the page — a hallucination with an
   arrow on it.
 - **Linking inside verbatim regions** — grant pages' `## Verbatim` sections,

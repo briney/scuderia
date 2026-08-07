@@ -24,12 +24,12 @@ this skill chains into them when their narrower bug class surfaces. It also
 serves as the `rem-cycle` delegate for **phase 1 (hygiene)** and **phase 7
 (importance recompute)** — see *As a rem-cycle phase* below.
 
-> **Conventions:** `conventions/quality.md` (citations, forward linking, the
-> notability gate), `conventions/graph-and-links.md` (the edge forms, derived
-> backlinks), `conventions/importance-scoring.md` (the salience score),
+> **Conventions:** `skills/conventions/quality.md` (citations, forward linking, the
+> notability gate), `skills/conventions/graph-and-links.md` (the edge forms, derived
+> backlinks), `skills/conventions/importance-scoring.md` (the salience score),
 > `_brain-filing-rules.md` (where a page belongs),
-> `conventions/capabilities.md` (the harness contract),
-> `conventions/rem-cycle-contract.md` (the phase result + commit tiers, when
+> `skills/conventions/capabilities.md` (the harness contract),
+> `skills/conventions/rem-cycle-contract.md` (the phase result + commit tiers, when
 > run as a rem-cycle phase).
 
 ## Capabilities
@@ -37,7 +37,7 @@ serves as the `rem-cycle` delegate for **phase 1 (hygiene)** and **phase 7
 `brain-search`, `brain-read`, `brain-write`, `fetch-url` (for
 citation-existence checks against open APIs). `brain-search` optional.
 This is the skill that owns the importance-recompute LLM pass per
-`conventions/importance-scoring.md`.
+`skills/conventions/importance-scoring.md`.
 
 ## What this guarantees
 
@@ -63,7 +63,7 @@ them.
 A page with no inbound links — nothing in the corpus references it.
 
 - Inbound edges are derived by scanning for `[[kind/slug]]` references and typed
-  frontmatter edges (`conventions/graph-and-links.md`).
+  frontmatter edges (`skills/conventions/graph-and-links.md`).
 - Decide per page: genuinely isolated (a candidate for review), or just
   missing a link that a related page should carry. Prefer adding the forward
   link on the related page over deleting the orphan.
@@ -95,7 +95,7 @@ A page that names another page's subject in prose without linking it.
 Substantive claims with no source.
 
 - Read a sample of recently touched pages; check that load-bearing claims carry
-  `[Source: ...]` (`conventions/quality.md`).
+  `[Source: ...]` (`skills/conventions/quality.md`).
 - Flag an uncited claim with `[needs-citation]` — an honest marker, never a
   silent gap. (`citation-fixer` does the deeper repair pass.)
 
@@ -126,7 +126,7 @@ I/O into an unattended run.
 
 ### Importance recompute
 
-`conventions/importance-scoring.md` defines `importance` as a *recomputed* score,
+`skills/conventions/importance-scoring.md` defines `importance` as a *recomputed* score,
 refreshed by a periodic maintenance pass — and this skill owns that pass.
 
 - It is an LLM pass over the corpus. For each page, read the signals the
@@ -164,7 +164,7 @@ Report findings as a table, one row per dimension:
 ## As a rem-cycle phase
 
 When the `rem-cycle` orchestrator invokes this skill as a phase (not a standalone
-health check), it runs under `conventions/rem-cycle-contract.md` and changes what
+health check), it runs under `skills/conventions/rem-cycle-contract.md` and changes what
 runs, what commits, and what it emits:
 
 - **Scope.** The orchestrator passes `scope` — `hygiene` (phase 1: every

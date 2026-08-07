@@ -20,8 +20,8 @@ the one that holds the *whole* application in view (`VISION.md` §2.2). It
 
 > **Conventions:** `STYLE.md` §3 (the one reader — the smart near-expert),
 > §4 (the machine-writing tells), `SOUL.md` §2 (cite-or-flag — and §3, never
-> suppress a substantive flaw to preserve rapport), `conventions/quality.md`
-> (citation discipline), `conventions/capabilities.md` (the harness contract),
+> suppress a substantive flaw to preserve rapport), `skills/conventions/quality.md`
+> (citation discipline), `skills/conventions/capabilities.md` (the harness contract),
 > `skills/grant-formats/` (page limits, required sections, mechanism fit),
 > `skills/grant-formats/section-style.md` (argument-level criteria for
 > sections). Routes fixes to `skills/grant-section/SKILL.md` and

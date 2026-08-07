@@ -24,12 +24,12 @@ came later, duplicates, stale facts. The rem-cycle is the counterweight: it runs
 when nobody is waiting and spends idle compute to make future retrieval better,
 **without ever destroying information**.
 
-> **Conventions:** `conventions/rem-cycle-contract.md` (**read it first** — the
+> **Conventions:** `skills/conventions/rem-cycle-contract.md` (**read it first** — the
 > phase result file, the two commit tiers, run mode, graduated autonomy, the
 > decision ledger, protected classes, the `docs/rem-cycle/` artifacts),
-> `conventions/graph-and-links.md` (forward-only edges),
-> `conventions/importance-scoring.md` (signal-based salience, never use-decay),
-> `conventions/test-before-bulk.md` (grow phases one at a time), `brain-ops`
+> `skills/conventions/graph-and-links.md` (forward-only edges),
+> `skills/conventions/importance-scoring.md` (signal-based salience, never use-decay),
+> `skills/conventions/test-before-bulk.md` (grow phases one at a time), `brain-ops`
 > (never-blind-overwrite). Character: `SOUL.md`.
 
 ## Architecture — the decomposed dream (Spec B)

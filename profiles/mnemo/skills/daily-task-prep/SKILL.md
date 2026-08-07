@@ -15,9 +15,9 @@ brief: same brain, same attention contract, but the output is what Bryan should
 *do* before and during today — meeting prep cards, unresolved threads to pick
 back up, the tasks that need a decision today.
 
-> **Conventions:** `conventions/brain-first.md` (the lookup chain),
-> `conventions/quality.md` (citations),
-> `conventions/capabilities.md` (the harness contract). This skill extends
+> **Conventions:** `skills/conventions/brain-first.md` (the lookup chain),
+> `skills/conventions/quality.md` (citations),
+> `skills/conventions/capabilities.md` (the harness contract). This skill extends
 > `skills/briefing/SKILL.md` — read it first; the four attention-contract
 > properties apply here too.
 

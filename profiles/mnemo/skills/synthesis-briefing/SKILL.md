@@ -28,7 +28,7 @@ design: the instance's private `docs/specs/`.
 > **Conventions:** `synthesis-layer-pages.md` (the concept `## Shifts` it reads, the
 > hypothesis anatomy it surfaces), `rem-cycle-contract.md` (the `QUEUE.md` proposals
 > it surfaces; the dream report it must **not** duplicate), `_output-rules.md`
-> (deterministic links, no slop, no preamble), `capabilities.md` (`schedule-job` /
+> (deterministic links, no slop, no preamble), `skills/conventions/capabilities.md` (`schedule-job` /
 > `deliver-message` are Hermes-side). Character: `SOUL.md` — **quiet weeks read thin;
 > never manufacture content.**
 

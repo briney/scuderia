@@ -20,7 +20,7 @@ weekly cadence, under a three-tier automation model (agreed with Bryan
 
 > **Conventions:** `brain-ops` (never blind-overwrite; RESEARCH.md is a
 > curated file — patch sections, don't regenerate the document),
-> `conventions/quality.md` (every claim traceable to a brain page),
+> `skills/conventions/quality.md` (every claim traceable to a brain page),
 > `docs/rem-cycle/rem-cycle-contract.md` (the decision ledger, QUEUE.md
 > proposal format).
 

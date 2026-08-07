@@ -19,12 +19,12 @@ artifact, not a contact card — facts are table stakes, the value is the read o
 how the work connects.
 
 > **Conventions:** `_brain-filing-rules.md` (file by subject),
-> `conventions/brain-first.md` (check the brain before going external),
-> `conventions/quality.md` (citations, forward linking, the notability gate),
-> `conventions/graph-and-links.md` (the edge forms),
-> `conventions/importance-scoring.md` (the salience score),
-> `conventions/author-ledger.md` (promotion path from `people/_ledger.yaml`),
-> `conventions/capabilities.md` (the harness contract).
+> `skills/conventions/brain-first.md` (check the brain before going external),
+> `skills/conventions/quality.md` (citations, forward linking, the notability gate),
+> `skills/conventions/graph-and-links.md` (the edge forms),
+> `skills/conventions/importance-scoring.md` (the salience score),
+> `skills/conventions/author-ledger.md` (promotion path from `people/_ledger.yaml`),
+> `skills/conventions/capabilities.md` (the harness contract).
 
 ## Capabilities
 
@@ -51,7 +51,7 @@ how it arrived.
 entry cross the 5-citation threshold, it chains here with the slug and
 the seed data (`name`, `orcid`, `affiliations`, `citations`) from the
 ledger entry. **The gate has already fired** — citation count is the
-operational rule for paper authors (`conventions/author-ledger.md`).
+operational rule for paper authors (`skills/conventions/author-ledger.md`).
 Do not re-apply a judgment-style notability check; create the page,
 write the `author_on:` field from `citations:`, and signal back to
 paper-ingest so it can remove the ledger entry. Effort is the **notable**
@@ -61,7 +61,7 @@ agree).
 **Judgment gate (every other caller).** When `enrich` is invoked
 directly, or chained from a non-paper-ingest source — meeting attendees,
 grant program officers, idea entities, signal-detector mentions,
-institutions — apply the gate in `conventions/quality.md`:
+institutions — apply the gate in `skills/conventions/quality.md`:
 
 - **A person** — a collaborator, student, postdoc, or an author whose
   work recurs on Bryan's threads. Not every name in an acknowledgements
@@ -122,7 +122,7 @@ page already exist?
   staging area for paper authors; circumventing it for one judgment
   call defeats the curation discipline.
 
-Brain-first is not optional (`conventions/brain-first.md`). The brain — and pages
+Brain-first is not optional (`skills/conventions/brain-first.md`). The brain — and pages
 that already mention the entity — is often the richest source.
 
 ### 3. Gather what the tier needs
@@ -140,7 +140,7 @@ Stop as soon as you have enough signal for the entity's tier.
   - **Funders — grants and programs** — NIH RePORTER.
   - **Lab or institution facts** — the institution's own website.
 
-Cite every external fact (`conventions/quality.md`). The brain is the floor;
+Cite every external fact (`skills/conventions/quality.md`). The brain is the floor;
 external research fills the gap.
 
 ### 4. Write the page
@@ -149,13 +149,13 @@ external research fills the gap.
 
 1. File it by kind — `person` → `people/<slug>.md`, `institution` →
    `institutions/<slug>.md` (`_brain-filing-rules.md`). Slug form is
-   canonical per `conventions/page-kinds.md`: `<surname-firstname>` for
+   canonical per `skills/conventions/page-kinds.md`: `<surname-firstname>` for
    people (e.g. `setliff-ian`, `de-carvalho-renan` — particles stay with
    the surname token), readable short form for institutions. Never use
    `<firstname-surname>` for a person; the back-link wiring in
    `paper-ingest` and `grant-ingest` depends on surname-first. For a
    promote-from-ledger call, the slug arrives pre-fixed — use it as-is.
-2. Set the shared frontmatter spine and per-kind fields (`conventions/frontmatter.md`).
+2. Set the shared frontmatter spine and per-kind fields (`skills/conventions/frontmatter.md`).
    Set a reasonable initial `importance`, or leave it for the recompute pass.
    For a promote-from-ledger person page, **populate `author_on:` from
    the ledger entry's `citations:`** — the typed authorship edge
@@ -172,7 +172,7 @@ external research fills the gap.
    successfully, **signal back to paper-ingest** so it can remove the
    source ledger entry. The two writes are paired — a page exists or a
    ledger entry exists for the slug, never both
-   (`conventions/author-ledger.md`).
+   (`skills/conventions/author-ledger.md`).
 
 #### UPDATE path
 
@@ -181,7 +181,7 @@ external research fills the gap.
 2. Add the new signal where it belongs; revise the assessment only if the new
    information materially changes the picture.
 3. **Never overwrite Bryan's own words or assessments** with an external source.
-   His direct statements are the highest-authority source (`conventions/quality.md`).
+   His direct statements are the highest-authority source (`skills/conventions/quality.md`).
 4. When a new fact contradicts what the page holds, record both with their
    citations — do not silently pick one.
 5. Add any new forward links the update implies.
@@ -190,7 +190,7 @@ external research fills the gap.
 
 When enriching a person, update their lab's `institution` page if new signal
 surfaced, and vice versa. Link forward only — never hand-write a backlinks
-section; inbound edges are derived (`conventions/graph-and-links.md`).
+section; inbound edges are derived (`skills/conventions/graph-and-links.md`).
 
 ## Page templates
 

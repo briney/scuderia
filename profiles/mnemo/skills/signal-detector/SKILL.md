@@ -18,10 +18,10 @@ things with **equal priority**:
 Original thinking is at least as valuable as entity extraction. The ideas are
 the intellectual capital; the entities are bookkeeping. Both compound over time.
 
-> **Conventions:** `conventions/quality.md` (the notability gate, citations,
-> forward-only linking), `conventions/graph-and-links.md` (edge forms),
+> **Conventions:** `skills/conventions/quality.md` (the notability gate, citations,
+> forward-only linking), `skills/conventions/graph-and-links.md` (edge forms),
 > `_output-rules.md` (exact-phrasing preservation),
-> `conventions/capabilities.md` (the harness contract).
+> `skills/conventions/capabilities.md` (the harness contract).
 
 ## Capabilities
 
@@ -57,7 +57,7 @@ Capture rules:
 - **Verbatim.** Quote Bryan's words in a quote block. Use his own terminology
   for the slug and title.
 - **Attribute.** `[Source: Bryan, <context>, YYYY-MM-DD]` — his direct
-  statements are the highest-authority source (`conventions/quality.md`).
+  statements are the highest-authority source (`skills/conventions/quality.md`).
 - **Link forward.** Add `[[kind/slug]]` wikilinks to the papers, methods,
   concepts, people, and institutions the thought touches. An unlinked note is
   a thin note.
@@ -68,7 +68,7 @@ For each paper, method, concept, person, or institution the message names:
 
 1. **Search the brain** — does a page already exist? Run the name through
    `brain-search`.
-2. **No page** — apply the notability gate (`conventions/quality.md`). If it is
+2. **No page** — apply the notability gate (`skills/conventions/quality.md`). If it is
    load-bearing for the research program, create the page; if it is a one-off
    mention, do not.
 3. **Thin page** — chain to `enrich` (for a person or institution) or
@@ -81,7 +81,7 @@ are labs, universities, consortia, and funders.
 
 Link forward only — `[[kind/slug]]` wikilinks in prose and typed edges
 (`links:`, `cites:`, `supports:`, `refutes:`) in frontmatter. Never hand-write
-a backlinks section; inbound edges are derived (`conventions/graph-and-links.md`).
+a backlinks section; inbound edges are derived (`skills/conventions/graph-and-links.md`).
 
 ## Phase 3 — log the signal
 

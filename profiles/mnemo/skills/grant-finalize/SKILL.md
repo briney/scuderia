@@ -21,12 +21,12 @@ A submitted cluster-written grant becomes the same high-value graph object that
 distillation, because the prose and analysis are already on the page. The graph
 propagation is therefore **shared with `grant-ingest`**, not reinvented here.
 
-> **Conventions:** `conventions/frontmatter.md` (the `grant` schema and status
-> enum), `conventions/raw-source-archive.md` (archiving the submitted package),
-> `conventions/graph-and-links.md` (the propagation edges),
-> `conventions/importance-scoring.md` (refreshing the salience score),
-> `conventions/quality.md` (the notability gate on new pages),
-> `conventions/capabilities.md` (the harness contract).
+> **Conventions:** `skills/conventions/frontmatter.md` (the `grant` schema and status
+> enum), `skills/conventions/raw-source-archive.md` (archiving the submitted package),
+> `skills/conventions/graph-and-links.md` (the propagation edges),
+> `skills/conventions/importance-scoring.md` (refreshing the salience score),
+> `skills/conventions/quality.md` (the notability gate on new pages),
+> `skills/conventions/capabilities.md` (the harness contract).
 > **Shared procedure:** `skills/grant-ingest/SKILL.md` phase 7 — the graph
 > propagation, referenced not restated. Chains to `skills/enrich/SKILL.md`,
 > `skills/paper-ingest/SKILL.md`.
@@ -75,7 +75,7 @@ as-submitted package).
 
 5. **Archive the as-submitted package.** The final submitted document(s) →
    `_drop/` → R2; one `sources:` entry per document, each tagged with its
-   `role:` (`conventions/raw-source-archive.md`). The NOFO `sources:` entry
+   `role:` (`skills/conventions/raw-source-archive.md`). The NOFO `sources:` entry
    from `grant-plan` stays. No binary enters git.
 
 6. **Propagate into the graph.** Run the propagation of `grant-ingest` phase 7

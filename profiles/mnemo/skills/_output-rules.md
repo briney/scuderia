@@ -9,7 +9,7 @@ LLM. Never guess a URL or path. Build it from the slug, the identifier, the
 commit hash, or the API response.
 
 - Brain page → brain page: a `[[kind/slug]]` wikilink (see
-  `conventions/graph-and-links.md`).
+  `skills/conventions/graph-and-links.md`).
 - A reference in delivered output (chat, a brief): a markdown link, or a
   commit-pinned GitHub permalink — `[abc1234](https://github.com/{owner}/{repo}/commit/abc1234)`.
 - External links: use the actual URL from the source, never reconstruct it.

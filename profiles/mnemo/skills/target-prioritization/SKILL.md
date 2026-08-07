@@ -24,9 +24,9 @@ wikilinks but has no frontmatter edges, no importance score, and is not a
 graph node. Individual viruses that graduate to active grant targets get their
 own `project` pages, which do participate in the graph.
 
-> **Conventions:** `conventions/brain-first.md` (check the brain for existing
-> knowledge before going external), `conventions/quality.md` (cite or flag
-> every substantive claim), `conventions/test-before-bulk.md` (pilot before
+> **Conventions:** `skills/conventions/brain-first.md` (check the brain for existing
+> knowledge before going external), `skills/conventions/quality.md` (cite or flag
+> every substantive claim), `skills/conventions/test-before-bulk.md` (pilot before
 > scaling).
 
 ## Capabilities

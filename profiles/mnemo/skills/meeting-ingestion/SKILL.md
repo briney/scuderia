@@ -15,9 +15,9 @@ is to extract the structure that matters — who, what was decided, what is owed
 and to wire the meeting into the graph.
 
 > **Conventions:** `_brain-filing-rules.md` (file by subject),
-> `conventions/quality.md` (citations, forward-only linking, the notability
-> gate), `conventions/graph-and-links.md` (the edge forms),
-> `conventions/capabilities.md` (the harness contract).
+> `skills/conventions/quality.md` (citations, forward-only linking, the notability
+> gate), `skills/conventions/graph-and-links.md` (the edge forms),
+> `skills/conventions/capabilities.md` (the harness contract).
 
 ## Capabilities
 
@@ -34,7 +34,7 @@ transcript is for spot-checking specific details — not as the primary input.
 For long meetings (study sections, all-day workshops, transcripts >20K chars),
 the summary is the only practical source — the transcript is too large to
 process in a single context window. The raw transcript must still be archived
-to R2 (see `conventions/raw-source-archive.md`) so it can be consulted later
+to R2 (see `skills/conventions/raw-source-archive.md`) so it can be consulted later
 if the summary missed something.
 
 If the transcript is available and short enough (<10K chars), read it to
@@ -92,7 +92,7 @@ the user is the source adapter; you are the distiller and page writer.
    transcript.
 
 3. **Enrich notable attendees.** For each attendee who passes the notability
-   gate (`conventions/quality.md`) — a collaborator, student, postdoc, or
+   gate (`skills/conventions/quality.md`) — a collaborator, student, postdoc, or
    recurring author — chain into `skills/enrich/SKILL.md` to create or update
    their `person` page. A one-off attendee with no research connection does not
    earn a page.
@@ -104,7 +104,7 @@ the user is the source adapter; you are the distiller and page writer.
 5. **Forward-link the meeting page.** Add `[[people/<slug>]]` wikilinks for each
    attendee and `[[institutions/<slug>]]` for each institution, plus typed
    `links:` edges in frontmatter. Never hand-write backlinks — they are derived
-   (`conventions/graph-and-links.md`).
+   (`skills/conventions/graph-and-links.md`).
 
 6. **Promote action items to tasks.** An action item with a real deadline and
    an owner may become a `task` page in `tasks/`, linked from the meeting page.

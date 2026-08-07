@@ -19,10 +19,10 @@ is its own page, so it is searchable, linkable, and visible to the attention
 contract. `briefing` and `daily-task-prep` read these pages' deadlines — keeping
 the frontmatter accurate is what makes the brief trustworthy.
 
-> **Conventions:** `conventions/page-kinds.md` (the `task` kind),
-> `conventions/frontmatter.md` (the schema), `conventions/graph-and-links.md`
+> **Conventions:** `skills/conventions/page-kinds.md` (the `task` kind),
+> `skills/conventions/frontmatter.md` (the schema), `skills/conventions/graph-and-links.md`
 > (forward links), `_brain-filing-rules.md`, `_output-rules.md`,
-> `conventions/capabilities.md` (the harness contract).
+> `skills/conventions/capabilities.md` (the harness contract).
 
 ## Capabilities
 

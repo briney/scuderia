@@ -18,10 +18,10 @@ resolves the `[needs-citation]` flags `grant-section` and `grant-coherence`
 left, verifies that every citation actually supports the sentence it sits on,
 and assembles the Bibliography & References Cited.
 
-> **Conventions:** `SOUL.md` §2 (cite-or-flag — spine), `conventions/quality.md`
+> **Conventions:** `SOUL.md` §2 (cite-or-flag — spine), `skills/conventions/quality.md`
 > (citation discipline, no fabricated citations),
-> `conventions/preprint-retrieval.md` (bioRxiv/medRxiv full text around the Cloudflare block),
-> `conventions/capabilities.md` (the harness contract),
+> `skills/conventions/preprint-retrieval.md` (bioRxiv/medRxiv full text around the Cloudflare block),
+> `skills/conventions/capabilities.md` (the harness contract),
 > `skills/grant-formats/` (the bibliography format and PMCID rule). Chains to
 > `skills/query/SKILL.md` and `skills/literature-research/SKILL.md` to find
 > sources, `skills/academic-verify/SKILL.md` to confirm they hold, and

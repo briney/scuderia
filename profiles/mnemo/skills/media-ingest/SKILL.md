@@ -16,10 +16,10 @@ Turn long-form media into a distilled brain page. The format is just the
 container — what gets filed is the content, distilled.
 
 > **Conventions:** `_brain-filing-rules.md` (file by subject),
-> `conventions/quality.md` (citations, forward-only linking, the notability
-> gate), `conventions/raw-source-archive.md` (the R2 archive),
-> `conventions/brain-first.md` (check the brain first),
-> `conventions/capabilities.md` (the harness contract).
+> `skills/conventions/quality.md` (citations, forward-only linking, the notability
+> gate), `skills/conventions/raw-source-archive.md` (the R2 archive),
+> `skills/conventions/brain-first.md` (check the brain first),
+> `skills/conventions/capabilities.md` (the harness contract).
 
 ## Capabilities
 
@@ -60,7 +60,7 @@ a white paper, a slide deck — alongside video, podcast, book, and repo.
 
 2. **Check the brain first.** Use `brain-search` for existing coverage — the
    subject, the speakers, the methods named — before writing. Ingest adds the
-   *delta* (`conventions/brain-first.md`).
+   *delta* (`skills/conventions/brain-first.md`).
 
 3. **Distill, do not dump.** A brain page is the analysis, the key claims, and
    the connections — never the raw transcript or a chapter-by-chapter retelling.
@@ -74,15 +74,15 @@ a white paper, a slide deck — alongside video, podcast, book, and repo.
 
 5. **Archive the raw original.** The video, audio, PDF, or book goes through the
    `_drop/` → R2 pipeline; the git pointer is recorded in the distilled page's
-   `sources:` frontmatter (`conventions/raw-source-archive.md`). The original is
+   `sources:` frontmatter (`skills/conventions/raw-source-archive.md`). The original is
    never a brain page.
 
 6. **Link forward.** Add `[[kind/slug]]` wikilinks in prose and typed edges in
    frontmatter to every page this content connects to. Never hand-write
-   backlinks — they are derived (`conventions/graph-and-links.md`).
+   backlinks — they are derived (`skills/conventions/graph-and-links.md`).
 
 7. **Enrich notable entities.** For every person or institution the media names
-   that passes the notability gate (`conventions/quality.md`), chain into
+   that passes the notability gate (`skills/conventions/quality.md`), chain into
    `skills/enrich/SKILL.md` — collaborators, students, postdocs, paper authors
    → `people/`; labs, universities, consortia, funders → `institutions/`. A
    media item is not fully ingested until its notable entities are enriched.

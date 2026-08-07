@@ -27,12 +27,12 @@ skill scans the whole firehose and judges *what fits the lab* — a fundamentall
 different, higher-dimensional relevance call. When both would surface the same
 opportunity, this skill **defers** (see Dedupe).
 
-> **Conventions:** `conventions/funding-sources.md` (the shared open-API source
-> layer — the endpoints live there, not here), `conventions/brain-first.md` (don't
-> re-pitch what's already funded/being pursued), `conventions/quality.md` (every
+> **Conventions:** `skills/conventions/funding-sources.md` (the shared open-API source
+> layer — the endpoints live there, not here), `skills/conventions/brain-first.md` (don't
+> re-pitch what's already funded/being pursued), `skills/conventions/quality.md` (every
 > item lands with a resolvable link), `_output-rules.md` (deterministic links, no
-> slop), `conventions/rem-cycle-contract.md` (the QUEUE.md format the gated
-> regeneration writes into), `conventions/capabilities.md` (the harness contract).
+> slop), `skills/conventions/rem-cycle-contract.md` (the QUEUE.md format the gated
+> regeneration writes into), `skills/conventions/capabilities.md` (the harness contract).
 
 ## Capabilities
 
@@ -55,7 +55,7 @@ opportunity, this skill **defers** (see Dedupe).
 - **A flagged call deserves serious consideration.** The relevance bar is high and
   multi-dimensional (below). Clearing it means "worth real writing effort," not "keyword
   matched." Most hits do not clear it. Silence is an acceptable — expected — result.
-- **Stateful dedupe.** Diff on stable opportunity IDs (`conventions/funding-sources.md`).
+- **Stateful dedupe.** Diff on stable opportunity IDs (`skills/conventions/funding-sources.md`).
   A surfaced opportunity is added to `seen-ids` and never re-pitched.
 - **Read-only against the brain.** The sweep writes only `FUNDING-PROFILE.md` state
   (and, on the weekly cadence, proposals into `QUEUE.md`). When a call clears the bar
@@ -103,7 +103,7 @@ Before surfacing a hit:
 ## Source tiers
 
 The federal endpoints and their query/diff discipline live in
-`conventions/funding-sources.md` — read it; do not restate the endpoints here.
+`skills/conventions/funding-sources.md` — read it; do not restate the endpoints here.
 
 **Tier 1 — federal (reliable).** NIH Guide + grants.gov for opportunities; NIH
 RePORTER for fit context ("who already holds funding here"). Build queries from Block
@@ -149,7 +149,7 @@ For any **foundation** hit (Tier 2 or Tier 3), consult Block C before surfacing:
    eligibility facts (B), indirect table (C), negative constraints (D), named
    foundations (E), and `state` (last-swept, seen-ids). Build query terms from Block A.
 
-2. **Sweep the tiers.** Tier 1 (federal APIs, per `conventions/funding-sources.md`),
+2. **Sweep the tiers.** Tier 1 (federal APIs, per `skills/conventions/funding-sources.md`),
    then Tier 2 (named foundations), then Tier 3 (general net). Bound Tier 1 to the
    window since `last-swept`. Collect `{id, title, funder, mechanism, deadline, url,
    tier}` per hit.
@@ -182,7 +182,7 @@ current Block A and **propose** changes:
 - a reframing (a thread whose funder vocabulary has shifted).
 
 Write proposals into `docs/rem-cycle/QUEUE.md` in the standard format
-(`conventions/rem-cycle-contract.md`), so `synthesis-briefing` surfaces them under
+(`skills/conventions/rem-cycle-contract.md`), so `synthesis-briefing` surfaces them under
 "Awaiting your call" and Bryan confirms or declines. **Never auto-apply a Block A
 change** — a silently drifting profile starts flagging junk, and the whole value is
 that a flagged call is trustworthy. Set `last-regenerated` after proposing.
@@ -258,7 +258,7 @@ reliable tier is deliberate.
   engagement is `grant-plan`.
 - Blind-overwriting `FUNDING-PROFILE.md` — re-read before writing; edit only the
   `state` block; never clobber Bryan's hand-edited facts.
-- Restating the federal endpoints here instead of citing `conventions/funding-sources.md`
+- Restating the federal endpoints here instead of citing `skills/conventions/funding-sources.md`
   — the source layer is shared to prevent drift.
 - Running the sweep from both a cron and `briefing` — the double-run consumes new
   hits into `seen-ids` on the first pass and the second returns empty. The cron is

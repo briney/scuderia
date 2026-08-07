@@ -17,11 +17,11 @@ not start from a blank page — it loads the brain's existing knowledge, then
 researches the **delta**: what is new, what is confirmed, what has changed
 since the brain was last updated.
 
-> **Conventions:** `conventions/brain-first.md` (the lookup chain),
-> `conventions/quality.md` (every claim lands with a verifiable citation),
+> **Conventions:** `skills/conventions/brain-first.md` (the lookup chain),
+> `skills/conventions/quality.md` (every claim lands with a verifiable citation),
 > `_brain-filing-rules.md` (file the result by subject),
-> `conventions/preprint-retrieval.md` (bioRxiv/medRxiv full text around the Cloudflare block),
-> `conventions/capabilities.md` (the harness contract).
+> `skills/conventions/preprint-retrieval.md` (bioRxiv/medRxiv full text around the Cloudflare block),
+> `skills/conventions/capabilities.md` (the harness contract).
 
 ## Capabilities
 
@@ -42,7 +42,7 @@ falls back to keyword scan and the skill notes the reduced recall.
 
 ### 1. Pull brain context
 
-Search the brain for the topic (`conventions/brain-first.md`) and read the
+Search the brain for the topic (`skills/conventions/brain-first.md`) and read the
 relevant pages. This is the baseline — the body of fact the research must not
 re-narrate.
 

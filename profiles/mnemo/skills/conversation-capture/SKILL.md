@@ -17,12 +17,12 @@ page (full design lives in the instance's private `docs/specs/`). The
 skill does not run ambiently and must not interrogate; capture with what the
 session gives you, infer the rest, and let Bryan correct.
 
-> **Conventions:** `_brain-filing-rules.md`, `conventions/quality.md`
-> (citations, exact-phrasing preservation), `conventions/graph-and-links.md`
-> (forward-only edges, derived backlinks), `conventions/raw-source-archive.md`
+> **Conventions:** `_brain-filing-rules.md`, `skills/conventions/quality.md`
+> (citations, exact-phrasing preservation), `skills/conventions/graph-and-links.md`
+> (forward-only edges, derived backlinks), `skills/conventions/raw-source-archive.md`
 > (the R2 archive), `_output-rules.md` (exact-phrasing preservation),
-> `conventions/capabilities.md` (the harness contract),
-> `conventions/frontmatter.md` (the `conversation` schema).
+> `skills/conventions/capabilities.md` (the harness contract),
+> `skills/conventions/frontmatter.md` (the `conversation` schema).
 
 ## Capabilities
 
@@ -85,17 +85,17 @@ where they matter and interprets the rest.
 
 4. **Archive the transcript.** Send the raw session transcript through the
    `_drop/` → R2 pipeline; record the git-tracked pointer in the page's
-   `sources:` frontmatter (`conventions/raw-source-archive.md`). The transcript
+   `sources:` frontmatter (`skills/conventions/raw-source-archive.md`). The transcript
    never enters git. If `raw-source-archive-upload` is unavailable, skip the
    upload, write the page anyway, and tag it `needs-archive`.
 
-5. **Write the page.** Frontmatter per `conventions/frontmatter.md`; body shape
+5. **Write the page.** Frontmatter per `skills/conventions/frontmatter.md`; body shape
    by `mode` (below). Set `importance` low by default (~0.3) and raise it for a
    weighty capture (an explainer of a key paper); Bryan can override.
 
 6. **Chain forward.** Add `[[kind/slug]]` wikilinks and typed edges to every page
    the conversation connects to. Never hand-write backlinks — they are derived
-   (`conventions/graph-and-links.md`). Then:
+   (`skills/conventions/graph-and-links.md`). Then:
    - **`discussion`** that moved a concept → chain to `reinforce` (a directed
      Shift) / `concept-synthesis`; a testable claim that fell out → seed a
      `hypotheses/` page.
@@ -143,7 +143,7 @@ sources:
 ## Citation
 
 Attribute Bryan's statements as direct — the highest-authority source
-(`conventions/quality.md`):
+(`skills/conventions/quality.md`):
 
 ```
 [Source: Bryan, conversation, YYYY-MM-DD]

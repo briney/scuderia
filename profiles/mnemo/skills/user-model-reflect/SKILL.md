@@ -27,9 +27,9 @@ Hermes, `/schedule` + `CronCreate` under Claude Code) is possible if
 periodic reflection turns out to be useful, but the skill is fully
 usable on demand without automation.
 
-> **Conventions:** `conventions/capabilities.md` (the harness contract,
+> **Conventions:** `skills/conventions/capabilities.md` (the harness contract,
 > including `read-conversation-history` and `brain-write`),
-> `conventions/quality.md` (citations and honest flagging).
+> `skills/conventions/quality.md` (citations and honest flagging).
 
 ## Capabilities
 

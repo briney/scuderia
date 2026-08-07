@@ -26,7 +26,7 @@ of this whole skill is telling that apart from a genuine conflict.
 > `graph-and-links.md` (the `supports:`/`refutes:` hypothesis evidence graph,
 > forward-only), `frontmatter.md` (the temporal fields — a paper's `status`, a
 > grant's `status`/`deadline`/`decision_date`, a task's due date),
-> `conventions/quality.md` (cite-or-flag). Character: `SOUL.md` — surface the
+> `skills/conventions/quality.md` (cite-or-flag). Character: `SOUL.md` — surface the
 > conflict, never paper over it to keep the graph tidy.
 
 ## Capabilities

@@ -21,8 +21,8 @@ translate Granola's data into the transcript-shaped input that
 `meeting-ingestion` expects.
 
 > **Conventions:** `_brain-filing-rules.md` (file by subject),
-> `conventions/quality.md` (citations, the notability gate),
-> `conventions/graph-and-links.md` (the edge forms).
+> `skills/conventions/quality.md` (citations, the notability gate),
+> `skills/conventions/graph-and-links.md` (the edge forms).
 
 ## Capabilities
 
@@ -179,7 +179,7 @@ transcript has the verbatim discussion.
 ### 5a. Archive the transcript to R2
 
 **Every meeting's raw transcript must be archived to R2** as a raw-source
-document, following `conventions/raw-source-archive.md`. This ensures the
+document, following `skills/conventions/raw-source-archive.md`. This ensures the
 verbatim source is preserved for future reference and for regenerating
 summaries if the models improve.
 

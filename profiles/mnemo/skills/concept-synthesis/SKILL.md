@@ -18,12 +18,12 @@ produces hundreds of stubs — many of them near-duplicates of each other, none
 tiered, none clustered. This skill turns that raw material into a curated map
 of Bryan's recurring research ideas and how they sharpened over time.
 
-> **Conventions:** `conventions/quality.md` (citations, forward-only linking,
-> the notability gate), `conventions/graph-and-links.md` (edge forms),
-> `_output-rules.md` (verbatim-quote fidelity), `conventions/test-before-bulk.md`
+> **Conventions:** `skills/conventions/quality.md` (citations, forward-only linking,
+> the notability gate), `skills/conventions/graph-and-links.md` (edge forms),
+> `_output-rules.md` (verbatim-quote fidelity), `skills/conventions/test-before-bulk.md`
 > (test the dedup pass on a sample before running the corpus),
-> `conventions/capabilities.md` (the harness contract),
-> `conventions/rem-cycle-contract.md` (the phase result + tiers, when run as a
+> `skills/conventions/capabilities.md` (the harness contract),
+> `skills/conventions/rem-cycle-contract.md` (the phase result + tiers, when run as a
 > rem-cycle phase-5 delegate).
 
 ## Capabilities
@@ -55,7 +55,7 @@ Search the brain for the full set of `concept` pages and reduce duplicates:
 Merge each duplicate into one canonical page. Preserve alternate phrasings in
 an `aliases:` frontmatter list so search still finds them. Fold the merged
 page's wikilinks and typed edges into the canonical page; never hand-write a
-backlinks section (`conventions/graph-and-links.md`).
+backlinks section (`skills/conventions/graph-and-links.md`).
 
 ### 2. Score and tier
 
@@ -83,7 +83,7 @@ span; no concept is T4 with a span over ~3 months.
 
 For the T1 and T2 concepts only, read the concept page and its source pages, and
 write the canonical concept body — `Thesis`, `Frontier`, `Open questions`,
-`Shifts` — per `conventions/synthesis-layer-pages.md`. Capture **evolution, not
+`Shifts` — per `skills/conventions/synthesis-layer-pages.md`. Capture **evolution, not
 repetition**: how the idea was first framed and how it sharpened becomes dated
 `Shifts` entries; the current best statement is the `Thesis`. Use Bryan's
 verbatim quotes for the sharpest articulations (`_output-rules.md`) — never
@@ -103,7 +103,7 @@ genealogies (concept A sharpened into concept B). Link forward with
 ### A T1 concept page (post-synthesis)
 
 The body follows the canonical concept anatomy in
-`conventions/synthesis-layer-pages.md` — `Thesis` / `Frontier` / `Open questions`
+`skills/conventions/synthesis-layer-pages.md` — `Thesis` / `Frontier` / `Open questions`
 / `Shifts`. The tiering signals this skill computes ride in frontmatter and a
 header line; the idea's *evolution* is captured as dated `Shifts` entries (the
 old standalone `Evolution` table folds into `Shifts`), and the sharpest verbatim
@@ -174,7 +174,7 @@ Recurring frameworks that span the research program.
 ## As a rem-cycle phase
 
 Invoked by the orchestrator as part of **phase 5 (consolidation)**, under
-`conventions/rem-cycle-contract.md`. The graph is Bryan's to curate, so the dream
+`skills/conventions/rem-cycle-contract.md`. The graph is Bryan's to curate, so the dream
 **proposes** every generative change and auto-commits only the mechanical:
 
 - **Mode.** `dry-run` (report only) or `normal` (auto-commit the mechanical,
@@ -200,7 +200,7 @@ Invoked by the orchestrator as part of **phase 5 (consolidation)**, under
 ## Anti-patterns
 
 - Running the full dedup pass without testing it on a sample first
-  (`conventions/test-before-bulk.md`).
+  (`skills/conventions/test-before-bulk.md`).
 - In phase mode: auto-authoring a T1/T2 synthesis or auto-merging a fuzzy
   duplicate — both are generative / reference-rewriting; propose them.
 - Synthesizing T3/T4 — they may never sharpen; the synthesis effort is wasted.

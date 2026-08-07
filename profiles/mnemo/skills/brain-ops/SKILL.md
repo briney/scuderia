@@ -11,10 +11,10 @@ The brain is not an archive. It is a live context membrane that every
 interaction flows through, in both directions. This skill is the discipline that
 keeps that membrane honest. It runs on every turn — it is not triggered.
 
-> **Conventions:** `conventions/brain-first.md` (the lookup chain),
-> `conventions/quality.md` (citations, linking, the notability gate),
-> `conventions/graph-and-links.md` (the edge forms),
-> `conventions/capabilities.md` (the harness contract).
+> **Conventions:** `skills/conventions/brain-first.md` (the lookup chain),
+> `skills/conventions/quality.md` (citations, linking, the notability gate),
+> `skills/conventions/graph-and-links.md` (the edge forms),
+> `skills/conventions/capabilities.md` (the harness contract).
 
 ## Capabilities
 
@@ -34,7 +34,7 @@ optional with degraded keyword fallback.
 ## Brain-first lookup
 
 Before researching anything externally — a paper, a method, a person, a thread —
-search the brain first. The lookup chain is in `conventions/brain-first.md`:
+search the brain first. The lookup chain is in `skills/conventions/brain-first.md`:
 `brain-search` → read the page → follow the graph → only then go external.
 The brain almost always already holds something; external research fills the
 gap, it does not start from scratch.
@@ -75,16 +75,16 @@ ingest event. When a signal names something worth a page, enrich it — but:
 - **Never block the conversation.** Spawn a sub-agent for anything that would
   slow the response.
 - **Never announce it.** Do not say "I'm updating the brain" — just do it.
-- **Respect the notability gate** (`conventions/quality.md`). A one-off mention
+- **Respect the notability gate** (`skills/conventions/quality.md`). A one-off mention
   is not a page.
 
 ## Writing a page
 
 - **Cite or flag.** Every substantive claim carries a source or `[needs-citation]`
-  — the `SOUL.md` spine, applied to the page (`conventions/quality.md`).
+  — the `SOUL.md` spine, applied to the page (`skills/conventions/quality.md`).
 - **Link forward.** Add `[[kind/slug]]` wikilinks in prose and typed edges in
   frontmatter. Never hand-write a backlinks section — backlinks are derived
-  (`conventions/graph-and-links.md`).
+  (`skills/conventions/graph-and-links.md`).
 - **Never blind-overwrite.** Read the page's current state first. If it was
   edited very recently — Bryan may have just touched it in Obsidian — append or
   hold rather than clobbering (`VISION.md` §4.1, `DESIGN.md` §9.4).

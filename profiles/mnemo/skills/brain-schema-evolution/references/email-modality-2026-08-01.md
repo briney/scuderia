@@ -47,7 +47,7 @@ unit of work are the kind rename only.
    the graph-hub test — a grant-negotiation thread needs inbound edges from
    the grant page, the PO's person page, the institution page. Those become
    `interaction` pages with `channel: email`. Volume is controlled by the
-   existing notability gate (`conventions/quality.md`), not by kind absence.
+   existing notability gate (`skills/conventions/quality.md`), not by kind absence.
 
 ## The rename: `meeting` → `interaction`
 

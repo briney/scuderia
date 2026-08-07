@@ -19,14 +19,14 @@ earns the highest care, the most detail, and the one deliberate exception to
 distill-don't-dump.
 
 > **Conventions:** `_brain-filing-rules.md` (file by subject),
-> `conventions/quality.md` (citations, the notability gate, and especially
+> `skills/conventions/quality.md` (citations, the notability gate, and especially
 > *verbatim where the wording is the information*),
-> `conventions/brain-first.md` (check the brain first),
-> `conventions/frontmatter.md` (the `grant` schema),
-> `conventions/raw-source-archive.md` (the R2 archive and multi-document
-> `sources:`), `conventions/graph-and-links.md` (the edge forms),
-> `conventions/test-before-bulk.md` (a backlog of historical grants),
-> `conventions/capabilities.md` (the harness contract).
+> `skills/conventions/brain-first.md` (check the brain first),
+> `skills/conventions/frontmatter.md` (the `grant` schema),
+> `skills/conventions/raw-source-archive.md` (the R2 archive and multi-document
+> `sources:`), `skills/conventions/graph-and-links.md` (the edge forms),
+> `skills/conventions/test-before-bulk.md` (a backlog of historical grants),
+> `skills/conventions/capabilities.md` (the harness contract).
 
 ## Capabilities
 
@@ -40,7 +40,7 @@ to drain later (the producer/consumer split).
 ## Why verbatim, here
 
 Every other ingest skill distills and discards the source text. This one keeps
-it. Two reasons. A grant is Bryan's own writing, and `conventions/quality.md`
+it. Two reasons. A grant is Bryan's own writing, and `skills/conventions/quality.md`
 forbids paraphrasing his prose — his voice is a source the brain learns from,
 and paraphrase destroys it. And the future grant-writing skills (`RESOLVER.md`,
 deferred) learn that voice from exactly this corpus. The grant page therefore
@@ -117,7 +117,7 @@ role*, never against a required checklist. Roles seen so far:
    using each `sources[].r2_key` from the existing page's frontmatter. If
    `rclone listremotes` returns empty, the agent's HOME is shimmed — export
    `RCLONE_CONFIG=/Users/<user>/.config/rclone/rclone.conf` once. See
-   `conventions/raw-source-archive.md` "Watch the agent's HOME" pitfall.
+   `skills/conventions/raw-source-archive.md` "Watch the agent's HOME" pitfall.
 
 3. **Brain-first dedup.** Run `brain-search` for an existing `grant`
    page — a grant may already be stubbed as planned, or this may be a
@@ -179,7 +179,7 @@ role*, never against a required checklist. Roles seen so far:
      if not, create one via `skills/enrich/SKILL.md`. Person slugs are
      `<surname-firstname>` (e.g. `people/doe-jane`,
      `people/de-carvalho-renan` — particles stay with the surname token), per
-     `conventions/page-kinds.md`. Never `<firstname-surname>`; the brain
+     `skills/conventions/page-kinds.md`. Never `<firstname-surname>`; the brain
      keys back-links on the citation form, which leads with surname — a grant
      doc's "Firstname Lastname" personnel list is "Given Family" order, so the
      **last** token is the surname (`page-kinds.md` "Deriving the slug"). Set
@@ -305,7 +305,7 @@ role*, never against a required checklist. Roles seen so far:
 10. **Archive the package.** Every package document goes through the `_drop/` →
     R2 pipeline; the binary never enters git. The grant page carries one
     `sources:` entry per document, each tagged with its `role:`
-    (`conventions/raw-source-archive.md`).
+    (`skills/conventions/raw-source-archive.md`).
 
 11. **Verify the verbatim — mandatory, mechanical, after writing.** Before
     declaring the ingest complete, byte-check each `### <doc> (verbatim)`
@@ -343,7 +343,7 @@ role*, never against a required checklist. Roles seen so far:
     doesn't need Opus." Do *not* invoke the worker.
 
 Ingesting a backlog of historical submissions is expected. For more than a
-handful, follow `conventions/test-before-bulk.md`: ingest 3-5, read the output,
+handful, follow `skills/conventions/test-before-bulk.md`: ingest 3-5, read the output,
 fix the approach, then run the rest in committed batches.
 
 ## Page shape
@@ -356,7 +356,7 @@ title: "<grant title>"
 funder: institutions/<slug>
 mechanism: "R01"            # or the foundation program — free text, not an enum
 role: PI                    # PI | co-PI | co-I | consultant
-status: scored-not-funded   # full lifecycle enum in conventions/frontmatter.md
+status: scored-not-funded   # full lifecycle enum in skills/conventions/frontmatter.md
 score: 34                   # impact score, if reviewed — else omit
 percentile: 22              # if scored — else omit
 submitted: YYYY-MM-DD

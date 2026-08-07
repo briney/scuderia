@@ -11,6 +11,24 @@ file is the *capability mapping*, not the install procedure. They are
 complements: SETUP.md says how to set up the binding; this doc says what
 each capability resolves to once it's set up.
 
+## The binding (one-liners; SETUP.md has the prose)
+
+- **Character:** `~/.hermes/profiles/<instance>/SOUL.md` symlinks to the
+  instance's SOUL.md. (If that target ever goes missing, the gateway
+  regenerates a default 513-byte stub — stop the gateway before moving
+  character files.)
+- **Skills:** one symlinked category per layer under
+  `~/.hermes/profiles/<instance>/skills/`: template layer →
+  `<soma>/profiles/mnemo/skills`; instance layer → `<instance>/skills`.
+  Instance overrides template by skill name.
+- **Conventions:** reachable as `skills/conventions/…` — the template skills
+  dir carries a `conventions` symlink to the profile's conventions. An
+  optional host overlay (`<instance>/skills/conventions`, git+sync ignored)
+  makes the same path resolve from the brain root as cwd.
+- **cwd:** `terminal.cwd` (config.yaml) and `MESSAGING_CWD` (.env) both
+  point at the brain root. Interactive `hermes chat` inherits the invoking
+  shell's cwd.
+
 ## Capability bindings
 
 | Capability | Bound to | Notes |
@@ -87,12 +105,14 @@ These are runbook nuggets carried forward from the (deleted)
 `template-vault-sync` skill — the contents that survived the brain-merge
 collapse and still matter under Hermes:
 
-- **`vault-auto-push` cron has no merge-marker guard.** The
-  `~/.hermes/profiles/<instance>/scripts/auto_push.sh` cron (every 5m) does
-  `git add -A && commit && push` on whatever is in the working tree,
-  including files containing `<<<<<<<` from a botched merge. **Pause it**
-  before any large multi-file vault edit or any rebase / manual-merge
-  work: `cronjob action=pause job_id=<vault-auto-push>`. Resume after.
+- **`vault-auto-push` cron snapshots content paths only.** The
+  `~/.hermes/profiles/<instance>/scripts/auto_push.sh` cron stages and
+  commits only content paths (page dirs + program state + rem-cycle
+  runtime state); body work is hand-committed. It has no merge-marker
+  guard — if a botched merge leaves `<<<<<<<` inside a *content* file, the
+  snapshot will carry it. Pause it before any rebase / manual-merge work:
+  `cronjob action=pause job_id=<vault-auto-push>`, and always resume
+  after — the rem-cycle gates it via a lock file, not scheduler pauses.
 - **The agent's `HOME` is shimmed.** Inside an agent session, `$HOME`
   points at `~/.hermes/profiles/<instance>/home/`, not the real home. `git`,
   `gh`, `rclone`, and anything else that reads config from `$HOME` will

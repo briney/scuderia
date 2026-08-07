@@ -18,11 +18,11 @@ relevant paper in the brain, pull the claims and the counter-evidence, and
 write a single `concept` or `hypothesis` page that captures what *the brain*
 already knows — cited back to its sources.
 
-> **Conventions:** `conventions/brain-first.md` (the lookup chain),
-> `conventions/quality.md` (citations, the notability gate, forward-only
-> linking), `conventions/graph-and-links.md` (typed edges),
-> `conventions/page-kinds.md` (concept vs hypothesis; readable short-name
-> slug shape), `conventions/capabilities.md` (the harness contract),
+> **Conventions:** `skills/conventions/brain-first.md` (the lookup chain),
+> `skills/conventions/quality.md` (citations, the notability gate, forward-only
+> linking), `skills/conventions/graph-and-links.md` (typed edges),
+> `skills/conventions/page-kinds.md` (concept vs hypothesis; readable short-name
+> slug shape), `skills/conventions/capabilities.md` (the harness contract),
 > `_brain-filing-rules.md` (file by primary subject),
 > `_output-rules.md` (no slop).
 
@@ -130,13 +130,13 @@ without conflict.
 
 6. **File.** Write the page (`brain-write`) at `concepts/<slug>.md` or
    `hypotheses/<slug>.md`. Slug shape: lowercase, hyphen-separated,
-   readable short-name per `conventions/page-kinds.md` "Slug
+   readable short-name per `skills/conventions/page-kinds.md` "Slug
    conventions." Frontmatter follows the spine plus per-kind fields
-   (`conventions/frontmatter.md`). Forward-link to every source paper in
+   (`skills/conventions/frontmatter.md`). Forward-link to every source paper in
    the body (`[[papers/<slug>]]`) and in the `links:` (or `supports:` /
    `refutes:` for a hypothesis) typed edge list. Never hand-write
    backlinks — the `maintain` pass picks up the reverse edges
-   (`conventions/graph-and-links.md`).
+   (`skills/conventions/graph-and-links.md`).
 
    - **Existing page on the topic.** If `brain-search` surfaces an
      existing `concept` or `hypothesis` page for the topic, gate via
@@ -150,7 +150,7 @@ without conflict.
 ## As a rem-cycle phase
 
 Invoked by the orchestrator as part of **phase 5 (consolidation)**, this skill
-does **not author** in an unattended run (`conventions/rem-cycle-contract.md`) —
+does **not author** in an unattended run (`skills/conventions/rem-cycle-contract.md`) —
 authoring a durable page is expensive, quality-sensitive, and the graph is
 Bryan's to curate. It **detects and proposes** instead:
 
@@ -201,6 +201,6 @@ itself is the deliverable; the report is for traceability.
   to expand the brain *first*, not to inject external literature into
   this synthesis pass.
 - **Hand-writing a backlinks section.** Forward-only — the `maintain`
-  pass picks up reverse edges (`conventions/graph-and-links.md`).
+  pass picks up reverse edges (`skills/conventions/graph-and-links.md`).
 - **Blind-overwriting an existing page on the topic.** Gate via
   `ask-user`; honor the never-blind-overwrite rule.

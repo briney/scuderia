@@ -15,10 +15,10 @@ Turn a voice memo into a brain page. The harness transcribes the audio (via
 is the primary source and is sacred; the analysis interprets it.
 
 > **Conventions:** `_brain-filing-rules.md` (file by subject),
-> `conventions/quality.md` (citations, exact-phrasing preservation),
-> `conventions/raw-source-archive.md` (the R2 archive),
+> `skills/conventions/quality.md` (citations, exact-phrasing preservation),
+> `skills/conventions/raw-source-archive.md` (the R2 archive),
 > `_output-rules.md` (exact-phrasing preservation),
-> `conventions/capabilities.md` (the harness contract).
+> `skills/conventions/capabilities.md` (the harness contract).
 
 ## Capabilities
 
@@ -73,11 +73,11 @@ interpretation lives — never edit the transcript to match the analysis.
 
 4. **Archive the audio.** The audio original goes through the `_drop/` → R2
    pipeline; the git pointer is recorded in the page's `sources:` frontmatter
-   (`conventions/raw-source-archive.md`). The binary never enters git.
+   (`skills/conventions/raw-source-archive.md`). The binary never enters git.
 
 5. **Link forward.** Add `[[kind/slug]]` wikilinks and typed frontmatter edges
    to every page the memo connects to. Never hand-write backlinks — they are
-   derived (`conventions/graph-and-links.md`).
+   derived (`skills/conventions/graph-and-links.md`).
 
 This skill handles one voice note at a time; each is its own ingest cycle.
 
@@ -121,7 +121,7 @@ instead lays out a *testable* claim, it files to `hypotheses/` instead.
 ## Citation
 
 Attribute the memo as a direct statement from Bryan — the highest-authority
-source (`conventions/quality.md`):
+source (`skills/conventions/quality.md`):
 
 ```
 [Source: Bryan, voice memo, YYYY-MM-DD]

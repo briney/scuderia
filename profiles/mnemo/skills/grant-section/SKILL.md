@@ -20,9 +20,9 @@ the machine-writing tells.
 
 > **Conventions:** `STYLE.md` (the scientific-writing standard — voice, reader,
 > the tells), `SOUL.md` §2 (cite-or-flag — spine, non-negotiable),
-> `conventions/quality.md` (citations, no paraphrase of Bryan's prose),
-> `conventions/brain-first.md` (pull from the brain before going external),
-> `conventions/capabilities.md` (the harness contract),
+> `skills/conventions/quality.md` (citations, no paraphrase of Bryan's prose),
+> `skills/conventions/brain-first.md` (pull from the brain before going external),
+> `skills/conventions/capabilities.md` (the harness contract),
 > `skills/grant-formats/` (the section's page budget).
 > `skills/grant-formats/section-style.md` carries the argument-level criteria
 > for the section being drafted. Chains to `skills/query/SKILL.md`,
@@ -103,7 +103,7 @@ gaps handed to `grant-coherence` and `grant-citations`.
   model is thin, inventing a mannerism instead of leaning on the `STYLE.md`
   universal standards (`STYLE.md` §2).
 - Paraphrasing prose lifted from an ingested grant's `## Verbatim` — that is
-  Bryan's preserved voice, not a draft source (`conventions/quality.md`).
+  Bryan's preserved voice, not a draft source (`skills/conventions/quality.md`).
 - Reproducing the machine-writing tells of `STYLE.md` §4 — inflated
   significance, copula avoidance, forced triads, hedge stacks.
 - Dropping a claim that needs a citation, or inventing one, instead of leaving

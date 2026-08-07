@@ -22,10 +22,10 @@ the subject of the claim lives.
 claim → publication → methodology → raw-data availability → independent replication
 ```
 
-> **Conventions:** `conventions/brain-first.md` (check the brain before going
-> external), `conventions/quality.md` (every verdict cites the source data,
+> **Conventions:** `skills/conventions/brain-first.md` (check the brain before going
+> external), `skills/conventions/quality.md` (every verdict cites the source data,
 > not the author's claim about it), `_brain-filing-rules.md` (file by subject),
-> `conventions/capabilities.md` (the harness contract).
+> `skills/conventions/capabilities.md` (the harness contract).
 
 ## Capabilities
 
@@ -58,7 +58,7 @@ A vague claim cannot be verified. Sharpen it first.
 ### 2. Brain-first lookup
 
 Search the brain for the paper, the authors, and the claim keywords
-(`conventions/brain-first.md`). If a `paper` page or a prior verification
+(`skills/conventions/brain-first.md`). If a `paper` page or a prior verification
 `note` already records this trace, reuse it — re-verifying settled work is
 wasted effort.
 

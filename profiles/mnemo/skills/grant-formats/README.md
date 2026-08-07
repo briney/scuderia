@@ -41,7 +41,7 @@ vary year to year, and a NOFO can impose its own page limits in its Section IV.
 
 So `grant-plan` always reads the actual announcement Bryan provides, extracts
 its requirements, and archives the NOFO to R2 as a `source:` on the grant page
-(`conventions/raw-source-archive.md`). The format file is the fallback when no
+(`skills/conventions/raw-source-archive.md`). The format file is the fallback when no
 NOFO is in hand yet, and the checklist of things to confirm against the one
 that is.
 

@@ -18,13 +18,13 @@ cluster: it scans frontmatter against the schema and repairs the mechanical
 breakages. See `RESOLVER.md` "Audit cluster" for the scope split — broad
 health lives in `maintain`, citation-claim health lives in `citation-fixer`.
 
-> **Conventions:** `conventions/frontmatter.md` (the schema this validates
-> against), `conventions/page-kinds.md` (kind ↔ directory, plus the
+> **Conventions:** `skills/conventions/frontmatter.md` (the schema this validates
+> against), `skills/conventions/page-kinds.md` (kind ↔ directory, plus the
 > "Slug conventions" section — per-kind slug form),
-> `conventions/quality.md` (citations — separate audit; see
+> `skills/conventions/quality.md` (citations — separate audit; see
 > `skills/citation-fixer/SKILL.md`),
-> `conventions/capabilities.md` (the harness contract),
-> `conventions/rem-cycle-contract.md` (the phase result + commit tiers, when run
+> `skills/conventions/capabilities.md` (the harness contract),
+> `skills/conventions/rem-cycle-contract.md` (the phase result + commit tiers, when run
 > as a rem-cycle phase-1 delegate).
 
 ## Capabilities
@@ -129,7 +129,7 @@ have it open in Obsidian. If it was, hold rather than clobber.
 ## As a rem-cycle phase
 
 Invoked by the orchestrator as part of **phase 1 (hygiene)**, this skill runs
-under `conventions/rem-cycle-contract.md`:
+under `skills/conventions/rem-cycle-contract.md`:
 
 - **Mode.** `dry-run` (report every fix, write nothing) or `normal` (auto-tier
   commits, propose-tier queues). Default `dry-run`.

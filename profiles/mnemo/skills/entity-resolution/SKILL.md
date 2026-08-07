@@ -26,7 +26,7 @@ single node that has silently fused two distinct people.
 > `author-ledger.md` (the ledger schema, ORCID disambiguation, the collision
 > rules this audits), `graph-and-links.md` (folding edges, forward-only, derived
 > backlinks), `frontmatter.md` (the identity keys — `doi`/`pmid`/`orcid`),
-> `conventions/quality.md` (the notability gate). The merge mechanism and the
+> `skills/conventions/quality.md` (the notability gate). The merge mechanism and the
 > MECE line both come from `concept-synthesis` — see *Scope* below.
 
 ## Capabilities
