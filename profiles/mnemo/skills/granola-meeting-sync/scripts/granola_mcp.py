@@ -35,7 +35,7 @@ from pathlib import Path
 
 PROFILE_DIR = Path(os.environ.get(
     "HERMES_HOME", os.environ.get("PROFILE_DIR", os.path.expanduser(
-        "~/.hermes/profiles/atticus"
+        "~/.hermes/profiles/<instance>"  # set HERMES_HOME or PROFILE_DIR
     ))
 ))
 TOKEN_PATH = PROFILE_DIR / "mcp-tokens" / "granola.json"
