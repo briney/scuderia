@@ -168,7 +168,7 @@ updates exist; stale state is worse than no state.
 ## The `concept` kind
 
 A `concept` is a **persistent, cross-cutting research thesis or lens** — one of
-Bryan's living bets, drawn on by several projects and grants and never
+your human's living bets, drawn on by several projects and grants and never
 graduating (it exports crystallized children but does not itself move). Concepts
 are many-to-many with the applied layer and finer-grained than threads (expect
 more concepts than projects). Beyond the spine:
@@ -192,7 +192,7 @@ conversation, and exits by **promotion** to a project/grant or by being
 | Field | Meaning |
 |---|---|
 | `status` | **Required.** `open` (in the proving-ground), `promoted`, or `killed`. |
-| `origin` | `detected` (minted by the synthesis engine) or `seeded` (Bryan initialized it). Optional. |
+| `origin` | `detected` (minted by the synthesis engine) or `seeded` (your human initialized it). Optional. |
 | `promise` | List of the promise criteria it argues, each one of `Beat` / `Unlock` / `Scale` / `Explain`. Optional. |
 | `draws_on` | Typed edge list to the `concepts/<slug>` whose intersection birthed it. |
 | `killed_reason` | One-line cause of death. **Required when `status: killed`** (the graveyard). |
@@ -220,7 +220,7 @@ about, or free-standing. Beyond the spine:
 `about:` is the *central-subject* edge; the spine `links:` carries everything
 else the conversation touches. The raw session transcript is archived to R2 and
 recorded as a `sources:` pointer (`raw-source-archive.md`) — the page is a
-distillation; Bryan's key phrasings are preserved verbatim in quote blocks
+distillation; your human's key phrasings are preserved verbatim in quote blocks
 (`_output-rules.md`). A `no-fit` verdict is retained as a decision record, never
 discarded. Full design lives in the instance's private `docs/specs/`.
 

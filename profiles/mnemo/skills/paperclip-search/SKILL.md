@@ -37,7 +37,7 @@ fi
 ## Auth and install state
 
 - Auth: `PAPERCLIP_API_KEY` env var (documented non-interactive path;
-  sent as `X-API-Key`, never written to disk). Bryan's key lives in
+  sent as `X-API-Key`, never written to disk). your human's key lives in
   `~/.hermes/profiles/<instance>/.env`, loaded at session start. Global
   `--api-key KEY` flag also works but avoids shell history is preferred.
 - Installed 2026-08-05 at `~/.local/bin/paperclip` (wheel extracted to

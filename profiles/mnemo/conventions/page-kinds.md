@@ -48,7 +48,7 @@ Three kinds form a maturation pipeline with different lifetimes (full design liv
 - **`concept`** — persistent, cross-cutting, never graduates. The frontier where
   ideas evolve.
 - **`hypothesis`** — transient proving-ground. When several concepts intersect
-  into something that could **Beat / Unlock / Scale / Explain**, or when Bryan
+  into something that could **Beat / Unlock / Scale / Explain**, or when your human
   seeds a compelling-but-unready idea, a hypothesis is minted. It is worked, then
   **promoted** to a project/grant or **killed** (retained with a reason).
 - **`project` / `grant`** — the crystallized, resourced output.
@@ -105,7 +105,7 @@ filter.
 
 Revised 2026-07-30 (design record:
 `skills/brain-schema-evolution/references/lab-management-expansion-2026-07.md`,
-approved by Bryan): **lab capability knowledge is in scope** — the lab's org
+approved by your human): **lab capability knowledge is in scope** — the lab's org
 structure and mission, member expertise and pillar roles, and project status
 are research-program knowledge, carried by the `person` lab-membership fields
 (`frontmatter.md`), an `institutions/<lab>` anchor page, and status fields on
@@ -114,7 +114,7 @@ it: content about the science is in, managing the cadence is out.
 
 **Email as a source stream (added 2026-08-01 — design record:
 `skills/brain-schema-evolution/references/email-modality-2026-08-01.md`).**
-Bryan's work email is a raw source: archived to R2 under the `email/` prefix
+your human's work email is a raw source: archived to R2 under the `email/` prefix
 (`raw-source-archive.md`), distilled into existing kinds, with notable threads
 becoming `interaction` pages (`channel: email`) through the notability gate.
 Personal mail is excluded upstream (account scoping at the CLI); the boundary

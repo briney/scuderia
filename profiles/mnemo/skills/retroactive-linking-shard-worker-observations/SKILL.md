@@ -120,7 +120,7 @@ mutations across 8 pages.
 ## Grant-identifier shorthand in Analysis sections
 
 Several pages reference grants by identifier shorthand in their Analysis
-sections (e.g. "R01AI180120 grant's Aim 3", "R01AI180120" as a label).
+sections (e.g. "R01AI000000 grant's Aim 3", "R01AI000000" as a label).
 These are NOT verbatim entity names (the page slug is
 `r01ai180120-prepandemic-cov-bnab-west-africa`), so they do not qualify for
 LINK. A `cites:` edge from paper→grant is also invalid direction (the grant
@@ -131,6 +131,6 @@ relationship is already captured in the grant's `cited_by` frontmatter.
 
 The pinto-2021-s2p6 page had NO `[[...]]` body wikilinks at all, despite
 being a rich, mature page. Its Analysis section discusses grants and
-projects by shorthand label ("preexisting-cov-immunity / R01AI180120 Aim 3:")
+projects by shorthand label ("preexisting-cov-immunity / R01AI000000 Aim 3:")
 rather than by wikilink. This is a filing-style variation, not a gap to
 force-fill — the frontmatter `links:` carries the relationships. SKIP.

@@ -46,7 +46,7 @@ the concrete dispatch shape (separate single-task call for overflow).
 
 ### Add to Phase 3 (Tier classification) and the Tier 1 bar
 
-Bryan's explicit filter for large dives (stated 2026-08-04, after the
+your human's explicit filter for large dives (stated 2026-08-04, after the
 bacterial-toxins dive): **"prioritize load-bearing papers that are
 non-duplicative. We want only the highest-value primary literature to be
 ingested. If it doesn't add something new, no need to ingest."**
@@ -62,7 +62,7 @@ step:
 Add to Phase 3, after "Dedup against the brain":
 
 ```markdown
-**Non-duplicative filter (Bryan's explicit preference for large dives).**
+**Non-duplicative filter (your human's explicit preference for large dives).**
 Before ingesting a Tier 1 candidate, ask: does this paper add something
 the brain does not already hold, and does it add something a sibling
 Tier 1 paper in the same dive does not already cover? A review that
@@ -78,7 +78,7 @@ axis over several papers that recapitulate the same axis.
 ```
 
 This is a *preference encoded into the skill*, not a memory-only note:
-Bryan stated it as a standing rule for how dives should select, so the
+your human stated it as a standing rule for how dives should select, so the
 skill that governs Tier 1 selection carries it.
 
 ## Patch 2026-08-04: Ledger read-back race condition (concurrency hazard)

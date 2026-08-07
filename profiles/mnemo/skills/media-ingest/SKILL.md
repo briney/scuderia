@@ -118,7 +118,7 @@ Why this matters, against what the brain already holds.
 The load-bearing claims, each with a citation.
 
 ## Analysis
-How this connects to Bryan's active threads. What is new. What it
+How this connects to your human's active threads. What is new. What it
 contradicts.
 ```
 

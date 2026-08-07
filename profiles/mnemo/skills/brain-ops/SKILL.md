@@ -20,7 +20,7 @@ keeps that membrane honest. It runs on every turn — it is not triggered.
 
 `brain-search`, `brain-read`, `brain-write`, `spawn-subagent` (for
 non-blocking enrichment), `user-model-query` (consulted when a question
-is about Bryan's taste rather than the science). `brain-search` is
+is about your human's taste rather than the science). `brain-search` is
 optional with degraded keyword fallback.
 
 ## What this guarantees
@@ -40,9 +40,9 @@ The brain almost always already holds something; external research fills the
 gap, it does not start from scratch.
 
 One split matters: the **brain** holds the *work* — papers, methods, hypotheses,
-grants, threads. **`user-model-query`** returns the model of *Bryan* — his
+grants, threads. **`user-model-query`** returns the model of *your human* — their
 taste, blind spots, how to engage them — from `USER.md` at the brain root.
-A question about the science goes to the brain; a question about how Bryan
+A question about the science goes to the brain; a question about how your human
 thinks goes to the user-model capability.
 
 ## On every inbound signal: read → enrich → write
@@ -57,8 +57,8 @@ Every message, meeting, or document that touches the research program:
 4. **Write it back** — update the page with the new information and an inline
    citation; create the page if the subject is notable and none exists.
 
-Bryan's direct statements are the highest-authority source. Capture them to the
-page promptly, attributed: `[Source: Bryan, <context>, YYYY-MM-DD]`.
+your human's direct statements are the highest-authority source. Capture them to the
+page promptly, attributed: `[Source: your-human, <context>, YYYY-MM-DD]`.
 
 ## On every outbound response: pull context
 
@@ -69,7 +69,7 @@ answer specific, grounded, and continuous with past conversations.
 
 ## Ambient enrichment
 
-Enrichment is the default, not a mode. Everything Bryan says is a potential
+Enrichment is the default, not a mode. Everything your human says is a potential
 ingest event. When a signal names something worth a page, enrich it — but:
 
 - **Never block the conversation.** Spawn a sub-agent for anything that would
@@ -86,7 +86,7 @@ ingest event. When a signal names something worth a page, enrich it — but:
   frontmatter. Never hand-write a backlinks section — backlinks are derived
   (`skills/conventions/graph-and-links.md`).
 - **Never blind-overwrite.** Read the page's current state first. If it was
-  edited very recently — Bryan may have just touched it in Obsidian — append or
+  edited very recently — your human may have just touched it in Obsidian — append or
   hold rather than clobbering (`VISION.md` §4.1, `DESIGN.md` §9.4).
 - **File by subject.** The primary subject sets the kind, not the format the
   content arrived in (`_brain-filing-rules.md`).
@@ -97,5 +97,5 @@ ingest event. When a signal names something worth a page, enrich it — but:
 - Going external before searching the brain.
 - Writing a fact with neither a citation nor a `[needs-citation]` flag.
 - Blocking the response to enrich, or announcing the enrichment.
-- Overwriting Bryan's own words with a lower-authority source.
+- Overwriting your human's own words with a lower-authority source.
 - Creating a page for a non-notable one-off mention.

@@ -42,7 +42,7 @@ a source stream, not a communication channel for the brain.
    write-once: a re-pull returns the same text, producing the same hash.
    Archive everything the work account returns; triage happens at
    distillation, never at pull time. Both Inbox and Sent are pulled —
-   Bryan's replies contain half the signal.
+   your human's replies contain half the signal.
 
 2. **Triage + distillation (the default path).** A cron-driven distiller
    runs the read → enrich → write loop over new mail, dropping noise and
@@ -81,7 +81,7 @@ A thread earns an `interaction` page if ANY of:
 - Grant score / award notice with discussion / summary statement
 - Decision to start/modify/terminate a collaboration
 - Experimental data exchange with interpretation and next steps
-- A commitment from Bryan with a concrete deadline and deliverable
+- A commitment from your human with a concrete deadline and deliverable
 
 A thread is enrichment-only if it mentions people/projects/grants but is
 logistical or administrative. Everything else is noise — no page, no
@@ -93,7 +93,7 @@ Email encounters far more correspondents than the brain has people pages
 for. A contacts ledger keyed on **email address** (a stable identifier —
 entity resolution is easier than the author-name problem) holds one line per
 correspondent. Promotion to a full `person` page happens at the second
-substantive touch, a named role on a grant/project, or Bryan's flag.
+substantive touch, a named role on a grant/project, or your human's flag.
 Implementation details are deferred (extend `people/_ledger.yaml` vs.
 separate contacts ledger is an open question).
 
@@ -104,7 +104,7 @@ separate contacts ledger is an open question).
   (Inbox + Sent, ~17K messages, ~2700+ unique threads) archived to R2.
 - **Phase 1 — raw-archive cron.** Script-only (`no_agent`) job pulling new
   mail → R2 `email/`, with a sync-state watermark.
-- **Phase 2 — distillation with review.** Daily LLM cron; Bryan reviews
+- **Phase 2 — distillation with review.** Daily LLM cron; your human reviews
   output for a week.
 - **Phase 3 — autonomous**, with thread-page creation gated.
 
@@ -115,7 +115,7 @@ separate contacts ledger is an open question).
 - Creating a page for every thread regardless of notability.
 - Discarding messages at pull time — archive everything, triage at
   distillation.
-- Pulling Inbox only — Sent contains half the signal (Bryan's commitments
+- Pulling Inbox only — Sent contains half the signal (your human's commitments
   and decisions).
 - Relying on `total_pages` from the first listing page — Spark caps at
   "20+"; keep paging until empty (see `references/spark-cli-interface.md`).

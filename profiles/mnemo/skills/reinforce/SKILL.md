@@ -17,7 +17,7 @@ triggers:
 
 A concept's `## Shifts` log is its contestable, weekly-read trust surface. This
 skill keeps it current: as papers are ingested, it decides which concepts each
-one *moves* and records the movement — so when Bryan comes to discuss a concept
+one *moves* and records the movement — so when your human comes to discuss a concept
 days after reading, the shift is already there. It is the autonomous counterpart
 to the directed lane in `paper-ingest`; together they are the reinforce engine.
 Full design lives in the instance's private `docs/specs/`.
@@ -44,7 +44,7 @@ it never fetches.
   do about the concept (the "so what"), not merely to be on-topic. Most papers
   touching a concept produce nothing.
 - **Conservative autonomous bar.** Only *high-confidence* movements auto-append to a
-  concept; everything borderline routes to `QUEUE.md` (Bryan's relevance-triage
+  concept; everything borderline routes to `QUEUE.md` (your human's relevance-triage
   surface). The concept Shifts logs stay high-signal.
 - **Never writes `hypotheses/`.** A bet mature enough to spin out is a QUEUE
   *promotion* proposal; this skill only appends Shifts and adjusts Frontier maturity

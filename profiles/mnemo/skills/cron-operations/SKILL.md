@@ -86,7 +86,7 @@ snapshot — you must edit jobs.json directly, under the scheduler's `.jobs.lock
 flock so you don't tear a concurrent ticker write. See
 `scripts/clear_cron_snapshot.py` for a safe, lock-respecting, idempotent editor.
 
-**Validate incrementally** (Bryan's standing preference): clear + live-fire
+**Validate incrementally** (your human's standing preference): clear + live-fire
 *one* light/idempotent job first (`cronjob action=run <job_id>`; confirm
 `execution_success: true` and — critically — that inference actually ran, vs.
 the earlier "No inference call was made"), then apply to the rest. Do **not**
@@ -100,7 +100,7 @@ the identical guard code path, so a clean run on a light job proves the fix.
 mismatch, certificate is not valid for 'api.telegram.org'`.
 
 **This is not a gateway bug.** If a *prior* alert delivered fine and a later one
-didn't, delivery broke due to a **network-state change on Bryan's machine**, not
+didn't, delivery broke due to a **network-state change on your human's machine**, not
 Hermes. On a filtered institutional network, `api.telegram.org` may be **DNS-sinkholed** to the
 institutional block page: it resolves via CNAME chain to the institution's block hosts
 (e.g. `blocked.<institution>.edu → web02.<institution>.edu → <internal-ip>`), serving a `*.<institution>.edu` cert — hence
@@ -151,7 +151,7 @@ remediation and is the template for any other field edit.
 - Assuming a cron failure is a Hermes/gateway bug before reading the `## Error`
   block — it almost always names the exact cause and fix.
 - Pinning a job to the current backstop model to "fix" a drift-guard skip —
-  that freezes it on the paid model and re-breaks the resilience Bryan asked
+  that freezes it on the paid model and re-breaks the resilience your human asked
   for. Clear the snapshot instead for maintenance jobs.
 - Re-snapshotting to the current default and calling it resilient — it re-fails
   on the next swap in the other direction.

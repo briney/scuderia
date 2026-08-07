@@ -425,7 +425,7 @@ with every full-text route; images add what's only in the pixels.
 **Storage default: ephemeral.** Figures are distillation-time working
 material, not vault artifacts — fetch, read, distill, then let `/tmp`
 clean up. A permanent figure archive in the vault is a separate design
-question (repo growth vs. reuse value) deferred to Bryan.
+question (repo growth vs. reuse value) deferred to your human.
 
 ## Relationship to paper-ingest-browser-fulltext
 

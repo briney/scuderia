@@ -1,6 +1,6 @@
 ---
 name: concept-synthesis
-description: Deduplicate raw concept stubs, tier them (T1 Canon to T4 Riff), synthesize the durable ones, and cluster them into an intellectual map at concepts/README.md. Use to find the patterns across Bryan's recurring research ideas and trace how an idea sharpened over time.
+description: Deduplicate raw concept stubs, tier them (T1 Canon to T4 Riff), synthesize the durable ones, and cluster them into an intellectual map at concepts/README.md. Use to find the patterns across your human's recurring research ideas and trace how an idea sharpened over time.
 triggers:
   - "synthesize my concepts"
   - "find patterns across my notes"
@@ -13,10 +13,10 @@ triggers:
 # concept-synthesis — from raw stubs to an intellectual map
 
 Ambient capture (`signal-detector`, `idea-ingest`, `voice-note-ingest`) files a
-`concept` page for nearly every idea Bryan articulates. Over months that
+`concept` page for nearly every idea your human articulates. Over months that
 produces hundreds of stubs — many of them near-duplicates of each other, none
 tiered, none clustered. This skill turns that raw material into a curated map
-of Bryan's recurring research ideas and how they sharpened over time.
+of your human's recurring research ideas and how they sharpened over time.
 
 > **Conventions:** `skills/conventions/quality.md` (citations, forward-only linking,
 > the notability gate), `skills/conventions/graph-and-links.md` (edge forms),
@@ -66,7 +66,7 @@ Score each canonical concept from signals already present on its page:
 - **Breadth** — the count of distinct months it appears in.
 
 Research ideas carry no engagement signal — do not score on attention or
-popularity. Durability is the signal: an idea Bryan keeps returning to, and
+popularity. Durability is the signal: an idea your human keeps returning to, and
 keeps sharpening, ranks high.
 
 | Tier | Label | Shape |
@@ -85,13 +85,13 @@ For the T1 and T2 concepts only, read the concept page and its source pages, and
 write the canonical concept body — `Thesis`, `Frontier`, `Open questions`,
 `Shifts` — per `skills/conventions/synthesis-layer-pages.md`. Capture **evolution, not
 repetition**: how the idea was first framed and how it sharpened becomes dated
-`Shifts` entries; the current best statement is the `Thesis`. Use Bryan's
+`Shifts` entries; the current best statement is the `Thesis`. Use your human's
 verbatim quotes for the sharpest articulations (`_output-rules.md`) — never
 paraphrase, never invent a quote or a date. T3 and T4 stay as stubs.
 
 ### 4. Cluster and map
 
-Group the tiered concepts into intellectual clusters — domains within Bryan's
+Group the tiered concepts into intellectual clusters — domains within your human's
 research program at the immunology × AI interface. Name each cluster
 concretely; "various topics" means the cluster is not real. Write a master map
 at `concepts/README.md`: the clusters, their member concepts, and the idea
@@ -132,8 +132,8 @@ related_concepts: [concepts/sibling-concept]
 
 ## Thesis
 Two to four paragraphs: the current best statement of the bet, what it means in
-Bryan's program, and what it argues against. Anchor the sharpest point on a
-verbatim quote — `> "…" [Source: Bryan, <context>, YYYY-MM-DD]`.
+your human's program, and what it argues against. Anchor the sharpest point on a
+verbatim quote — `> "…" [Source: your-human, <context>, YYYY-MM-DD]`.
 
 ## Frontier
 Fuzzy, not-yet-applied spurs, each with a maturity marker (*fuzzy* / *sharpening*).
@@ -174,7 +174,7 @@ Recurring frameworks that span the research program.
 ## As a rem-cycle phase
 
 Invoked by the orchestrator as part of **phase 5 (consolidation)**, under
-`skills/conventions/rem-cycle-contract.md`. The graph is Bryan's to curate, so the dream
+`skills/conventions/rem-cycle-contract.md`. The graph is your human's to curate, so the dream
 **proposes** every generative change and auto-commits only the mechanical:
 
 - **Mode.** `dry-run` (report only) or `normal` (auto-commit the mechanical,
@@ -187,7 +187,7 @@ Invoked by the orchestrator as part of **phase 5 (consolidation)**, under
     reference rewrite — the `entity-resolution` rule; a body wikilink and a typed
     edge for one pair stay distinct), and the **synthesis** of a T1/T2 concept
     (authoring durable prose is generative — `category: synthesis`, with a draft
-    outline for Bryan to approve; author on approval, never in the dream).
+    outline for your human to approve; author on approval, never in the dream).
 - **Tiering applies to all concept pages.** Ambient idea-stubs tier on
   frequency/timespan signals; literature-syntheses tier on their own signal
   basis — inbound edge count, shift count, grant/project `rests_on:` usage.

@@ -97,8 +97,8 @@ An entry is: the shift in the heading, a cited trigger, then 2–4 sentences
 separating *shown* from *concluded* and naming the edge.
 
 **The `[unconfirmed]` marker.** A Shift authored *autonomously* — by the
-`reinforce` phase, not directed by Bryan — carries an `[unconfirmed]` tag in its
+`reinforce` phase, not directed by your human — carries an `[unconfirmed]` tag in its
 heading (`### 2026-07-04 — [unconfirmed] diffusion spur: fuzzy → sharpening`) until
-Bryan confirms it (drop the tag) or deletes the entry to reject it. A directed or
+your human confirms it (drop the tag) or deletes the entry to reject it. A directed or
 hand-authored Shift carries no marker. The tag is what lets the log be an
-auto-appended surface Bryan polices in place, not a strictly-approved one.
+auto-appended surface your human polices in place, not a strictly-approved one.

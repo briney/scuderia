@@ -24,7 +24,7 @@ four-layer model and references this file for the capability mapping.
 | `brain-search` | ⚠ **Grep + Glob over the markdown corpus** | No qmd; no semantic ranking; no reranker. Keyword recall is good and case-insensitive is the default. Skills that name `brain-search` as optional fall back to this transparently; skills that name it as required refuse cleanly. |
 | `brain-read` / `brain-write` | Filesystem; `Read` / `Write` / `Edit` on `.md` files | Identical surface to Hermes |
 | `schedule-job` | ⚠ `CronCreate` (when surfaced as a deferred tool) | Not part of the always-on tool set; surfaces conditionally. `ScheduleWakeup` is available for in-conversation pacing in `/loop` mode but does **not** satisfy `schedule-job`'s recurring contract. |
-| `send-notification` | ✗ | The session is the channel; there is no out-of-band push surface. Skills that need to notify Bryan asynchronously refuse cleanly. |
+| `send-notification` | ✗ | The session is the channel; there is no out-of-band push surface. Skills that need to notify your human asynchronously refuse cleanly. |
 | `deliver-message` | ✗ | Depends on `send-notification`. |
 | `pubmed-fetch` / `crossref-fetch` / `biorxiv-fetch` / `arxiv-fetch` / `nih-reporter-fetch` | Skill markdown + `WebFetch` | Same as Hermes — these are skill conveniences over `fetch-url` |
 | `user-model-query` | Filesystem read of `USER.md` | Returns `{declared}` — same shape as Hermes. `USER.md` lives at the brain root and is auto-loaded into context via the `CLAUDE.md` entry point. |

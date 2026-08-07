@@ -2,7 +2,7 @@
 name: intersect
 description: >
   Detect the hypothesis that lives only at the *combination* of two-plus concepts'
-  Frontier bets, and propose it to the queue for Bryan to endorse. The
+  Frontier bets, and propose it to the queue for your human to endorse. The
   "connections made" half of the synthesis engine — rigorous, rare, autonomous.
   Runs as a weekly rem-cycle phase or standalone. Most runs correctly produce
   nothing; that is success, not failure.
@@ -19,8 +19,8 @@ concept, intersect looks for the hypothesis that **no single concept could
 produce** — the bet that lives only at the combination of two-plus concepts'
 Frontier bets. That is the novelty premium exactly: novelty in the *combination*,
 not in either part. When a combination clears the bar it becomes a **proposed
-hypothesis** in the proving-ground funnel, for Bryan to endorse or kill.
-Autonomous-only — the directed case (Bryan naming a combination) is already manual
+hypothesis** in the proving-ground funnel, for your human to endorse or kill.
+Autonomous-only — the directed case (your human naming a combination) is already manual
 hypothesis seeding (Spec 1). Full design:
 the instance's private `docs/specs/`.
 
@@ -54,7 +54,7 @@ Universal; **no external I/O** — intersect combines concepts already in the gr
   open, or killed). A candidate failing any gate is dropped, never softened.
 - **Graveyard-respecting.** A `status: killed` hypothesis is never re-proposed.
 - **Never auto-creates a `hypotheses/` page.** Intersect only proposes to
-  `QUEUE.md`; endorsement and crystallization are Bryan's act.
+  `QUEUE.md`; endorsement and crystallization are your human's act.
 - **Non-destructive, idempotent.** Dedup against `QUEUE.md` **and** `hypotheses/`
   (including killed); `dry-run` until the phase earns trust.
 
@@ -74,7 +74,7 @@ Universal; **no external I/O** — intersect combines concepts already in the gr
    (drop if crystallized / open / killed) → **promise** (a concrete
    Beat/Unlock/Scale/Explain case) → **discriminating test** (nameable, or discard).
    A candidate that fails any gate is dropped, not softened. The discriminating-test
-   gate is the decisive one — the filter Bryan would apply himself; a promising
+   gate is the decisive one — the filter your human would apply himself; a promising
    combination you cannot design a test for is a story, not a hypothesis.
 3. **Propose** — surviving intersections → `QUEUE.md` as `kind: hypothesis`
    proposals (shape in Output).
@@ -117,6 +117,6 @@ and deeper than paper-arrivals, so not nightly. The orchestrator passes `mode`:
   not a hypothesis.
 - Re-proposing a killed hypothesis (graveyard), or one already crystallized / open /
   queued.
-- Auto-writing a `hypotheses/` page — intersect only proposes; Bryan endorses.
+- Auto-writing a `hypotheses/` page — intersect only proposes; your human endorses.
 - Lowering the bar because "nothing was found this run" — the bar is fixed.
 - Reaching outside the vault — intersect combines concepts already in the graph.

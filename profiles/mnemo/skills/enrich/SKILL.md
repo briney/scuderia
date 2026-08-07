@@ -1,6 +1,6 @@
 ---
 name: enrich
-description: Create and update person and institution pages — who someone is, their research focus, the work relevant to Bryan's program, and an honest assessment where it helps. Scale effort to importance.
+description: Create and update person and institution pages — who someone is, their research focus, the work relevant to your human's program, and an honest assessment where it helps. Scale effort to importance.
 triggers:
   - "enrich"
   - "create person page"
@@ -13,7 +13,7 @@ triggers:
 # Enrich — person and institution pages
 
 Turn a name into a useful brain page. A `person` page records who someone is and
-how their work touches Bryan's program; an `institution` page records what a lab,
+how their work touches your human's program; an `institution` page records what a lab,
 university, consortium, or funder is and why it matters. The page is a research
 artifact, not a contact card — facts are table stakes, the value is the read on
 how the work connects.
@@ -38,7 +38,7 @@ lookups when warranted — PubMed for publications, institutional sites).
 - Every substantive fact carries a citation or an honest `[needs-citation]` flag.
 - Effort scales to importance — a key collaborator gets depth, an occasional
   author gets a few lines.
-- Bryan's own assessments are never overwritten with external boilerplate.
+- your human's own assessments are never overwritten with external boilerplate.
 - Links run forward only — wikilinks in prose, typed edges in frontmatter.
 
 ## Two entry paths, two gates
@@ -64,12 +64,12 @@ grant program officers, idea entities, signal-detector mentions,
 institutions — apply the gate in `skills/conventions/quality.md`:
 
 - **A person** — a collaborator, student, postdoc, or an author whose
-  work recurs on Bryan's threads. Not every name in an acknowledgements
+  work recurs on your human's threads. Not every name in an acknowledgements
   list. For paper authors specifically, defer to the ledger threshold
   rather than judging directly; the ledger flow exists so this gate is
   not a hot-path decision.
 - **An institution** — a lab, university, consortium, or funder that
-  sits on the research program: somewhere Bryan collaborates, a funder
+  sits on the research program: somewhere your human collaborates, a funder
   he applies to, a lab whose output he tracks.
 
 When in doubt, do not create. A missing page is cheap; a junk page
@@ -81,8 +81,8 @@ Match effort to how load-bearing the entity is:
 
 | Tier | Who | Effort |
 |---|---|---|
-| Key | Close collaborator, a co-PI, a funder Bryan actively applies to | Full page — research focus, key papers, collaboration context, an assessment |
-| Notable | A recurring author (or a ledger-promoted author), a lab whose work Bryan tracks | Moderate — who they are, the relevant work, a forward link or two |
+| Key | Close collaborator, a co-PI, a funder your human actively applies to | Full page — research focus, key papers, collaboration context, an assessment |
+| Notable | A recurring author (or a ledger-promoted author), a lab whose work your human tracks | Moderate — who they are, the relevant work, a forward link or two |
 
 Two tiers, not three. The old "Light" tier (a few honest lines for an
 occasional author so the graph resolves) is now the **ledger's** job —
@@ -180,7 +180,7 @@ external research fills the gap.
    very recently, append or hold (`brain-ops/SKILL.md`).
 2. Add the new signal where it belongs; revise the assessment only if the new
    information materially changes the picture.
-3. **Never overwrite Bryan's own words or assessments** with an external source.
+3. **Never overwrite your human's own words or assessments** with an external source.
    His direct statements are the highest-authority source (`skills/conventions/quality.md`).
 4. When a new fact contradicts what the page holds, record both with their
    citations — do not silently pick one.
@@ -210,7 +210,7 @@ importance: 0.5
 author_on:                                   # typed authorship edge — papers this person authored
   - papers/some-paper-2024
   - papers/another-paper-2025
-# Lab membership (optional — only for members of Bryan's lab):
+# Lab membership (optional — only for members of your human's lab):
 member_of: institutions/example-lab          # the lab, distinct from affiliation (the university)
 lab_status: current                          # current | alumni — alumni keep pages and edges
 pillar: ai-research-engineering              # lab pillar, free-text token
@@ -226,13 +226,13 @@ tags: []
 # Jane Researcher
 
 > One paragraph: who they are, their research focus, and how their work touches
-> Bryan's program.
+> your human's program.
 
 ## Research focus
 What they work on, in their own scientific terms.
 
 ## Relevance to the program
-Which of Bryan's threads their work bears on, and how (tie to `RESEARCH.md`).
+Which of your human's threads their work bears on, and how (tie to `RESEARCH.md`).
 
 ## Key papers
 Forward links to `paper` pages — `[[papers/<slug>]]`. The narrative
@@ -240,12 +240,12 @@ selection of standout work; the full authorship list lives in
 `author_on:`.
 
 ## Collaboration context
-How Bryan knows them — co-author, lab alum, meeting contact, prospective
+How your human knows them — co-author, lab alum, meeting contact, prospective
 collaborator — and the current state of that relationship.
 
 ## Assessment
 An honest read where one is useful: strengths, where their work is strong or
-thin, how it complements Bryan's. Omit if there is nothing substantive to say.
+thin, how it complements your human's. Omit if there is nothing substantive to say.
 ```
 
 ### Institution page
@@ -273,11 +273,11 @@ Forward links to `person` pages and, for a university or consortium, the
 specific labs that matter — `[[people/<slug>]]`, `[[institutions/<slug>]]`.
 
 ## Funding role
-*Funders only.* Its role in Bryan's funding picture and the relevant programs
+*Funders only.* Its role in your human's funding picture and the relevant programs
 or mechanisms (cite NIH RePORTER or the funder's own pages).
 
 ## Relevance to the program
-Why this institution sits on the research program — collaboration, output Bryan
+Why this institution sits on the research program — collaboration, output your human
 tracks, or a funding relationship.
 ```
 
@@ -303,7 +303,7 @@ tracks, or a funding relationship.
   non-author people, judge the gate and skip if marginal).
 - Going external before searching the brain.
 - Writing a fact with neither a citation nor a `[needs-citation]` flag.
-- Overwriting Bryan's own assessment with external boilerplate.
+- Overwriting your human's own assessment with external boilerplate.
 - Padding a notable-tier entity into a full dossier.
 - Hand-writing a backlinks section instead of linking forward.
 - Creating a page for a non-notable one-off mention.

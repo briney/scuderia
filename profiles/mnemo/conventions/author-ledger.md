@@ -98,15 +98,15 @@ are expensive, and that justification does not apply here.
 
 ### The threshold is the default, not a hard rule
 
-Bryan curates `people/`. The threshold is the **default automatic
+your human curates `people/`. The threshold is the **default automatic
 trigger** for promotion — it fires when the system has no other signal —
 but it is not the only path to a page. Two manual override paths:
 
-- **Promote early.** Bryan writes a `people/<slug>.md` by hand (or asks
+- **Promote early.** your human writes a `people/<slug>.md` by hand (or asks
   the mind to). The next paper-ingest pass sees the page exist, takes
   Branch 1, and the ledger entry (if any) is removed at that point
   rather than at threshold.
-- **Demote.** Bryan deletes a `people/<slug>.md`. The next paper-ingest
+- **Demote.** your human deletes a `people/<slug>.md`. The next paper-ingest
   pass sees no page and no ledger entry (since the slug was a paged
   author when the citation was first written), and Branch 3 fires: a
   fresh ledger entry is created with the paper as the seed citation.
@@ -114,7 +114,7 @@ but it is not the only path to a page. Two manual override paths:
 
 Neither override is automatic. Direct edits to `people/_ledger.yaml`
 (adding entries, removing them, editing citations) are also legal — the
-ledger is a plain file and Bryan owns it the way he owns SOUL.md.
+ledger is a plain file and your human owns it the way they own SOUL.md.
 
 ## ORCID disambiguation
 
@@ -189,7 +189,7 @@ against.
 
 - **Writing a `people/` page directly during paper ingest** to bypass
   the ledger. Page creation goes through `enrich` after the threshold
-  fires, or through a deliberate manual override by Bryan. Direct
+  fires, or through a deliberate manual override by your human. Direct
   writes reintroduce the auto-stub clutter the ledger exists to
   prevent.
 - **Populating a ledger entry from a paper that has not been

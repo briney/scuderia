@@ -14,10 +14,10 @@ triggers:
 The user model has two layers (`DESIGN.md` §7):
 
 - **`USER.md`** — declared, human-authored, always loaded. The
-  authoritative spine. Bryan owns it.
+  authoritative spine. your human owns it.
 - **`USER-OBSERVATIONS.md`** — observed, written by this skill on
   demand. A *staging file*, not always-loaded, not part of
-  `user-model-query`'s return shape. Bryan reads it when he wants to
+  `user-model-query`'s return shape. Your human reads it when they want to
   refresh `USER.md` (likely in response to grant reviewer critiques,
   periodic self-review, etc.).
 
@@ -48,9 +48,9 @@ usable on demand without automation.
   blocks.
 - Observations are *candidate*, not authoritative. Frame them as
   patterns observed, with the sessions that produced them; do not
-  state them as settled facts about Bryan.
+  state them as settled facts about your human.
 - When an observation contradicts something `USER.md` already says,
-  surface the contradiction rather than silently absorbing it — Bryan
+  surface the contradiction rather than silently absorbing it — your human
   is the only one who can resolve it.
 
 ## Phases
@@ -95,7 +95,7 @@ skip to Phase 6 (the no-op stub).
 
 These exist to **prevent duplication**: an observation worth recording
 is something neither file already states. If the spine already says
-"Bryan reaches for mechanism over correlation," do not re-observe
+"your human reaches for mechanism over correlation," do not re-observe
 that he does it.
 
 ### 4. Surface candidate observations
@@ -103,7 +103,7 @@ that he does it.
 Look for material that would help the mind engage your human better in
 future sessions. The categories worth attending to:
 
-- **Recurring patterns** — moves Bryan made repeatedly in the window
+- **Recurring patterns** — moves your human made repeatedly in the window
   (a framing he kept returning to, a critique he kept levying, a
   question he kept asking).
 - **Recent emphases** — what he's been working on most, which projects
@@ -158,7 +158,7 @@ append a stub:
 > reflect skill ran and exited cleanly with no observations.
 ```
 
-This keeps the absence auditable — Bryan sees that the skill ran,
+This keeps the absence auditable — your human sees that the skill ran,
 even if it produced nothing.
 
 ## Output
@@ -176,7 +176,7 @@ even if it produced nothing.
 - Restating something `USER.md` already says. The sidecar exists to
   add to the spine, not echo it.
 - Promoting an observation into a fact. Frame as a pattern observed
-  in a specific window; let Bryan decide whether it generalizes.
+  in a specific window; let your human decide whether it generalizes.
 - Surfacing observations the transcripts do not support. Every entry
   carries grounded evidence.
 - Running ambient or in the background. The skill is explicit and

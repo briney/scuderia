@@ -1,6 +1,6 @@
 # Worked example: lab-management expansion (2026-07-30)
 
-The first live exercise of `brain-schema-evolution`: Bryan proposed adding
+The first live exercise of `brain-schema-evolution`: your human proposed adding
 lab-management capability to the brain — a formal lab org structure, enriched
 lab-member pages, and basic project-management state to feed progress reports.
 This note is the design record: what was decided, why, and what was rejected.
@@ -11,8 +11,8 @@ The proposal crossed a documented exclusion. `VISION.md` §6 and
 `page-kinds.md` ("Scope boundary") excluded *lab-state management* — "student
 1:1 cadence, ongoing student projects, ordering, equipment" — structurally, by
 having no page kind and no skill for it. So the first move was not schema
-design but a north-star conversation with Bryan, held explicitly as one
-(Step 1). Bryan approved the scope revision in conversation on 2026-07-30.
+design but a north-star conversation with your human, held explicitly as one
+(Step 1). your human approved the scope revision in conversation on 2026-07-30.
 
 ## Decomposition against the scope line (Step 2)
 
@@ -79,18 +79,18 @@ the pillar that owns a resource owns its grant-facilities narrative.
 
 ## The org model recorded here
 
-Pillars are **capabilities, not teams** (Bryan, 2026-07-30). Only the leads
+Pillars are **capabilities, not teams** (your human, 2026-07-30). Only the leads
 belong to pillars; trainees run self-led projects that draw on multiple
 pillars, with pillar leads as technical point-people and mentors. Leads manage
-the *platform*, not the people — Bryan keeps the people. This is a
+the *platform*, not the people — your human keeps the people. This is a
 resource/center-of-excellence model, deliberately not a reporting hierarchy.
 
-Three pillars: **AI Research & Engineering** (research: Sarah Burbach —
-model-training research; engineering: Terrence Messmer — compute clusters,
-storage, self-hosted agents), **Applied AI** (Nitesh Mishra, solo lead; a
-co-lead or second-in-command anticipated), **Repertoire-Scale Immunology**
-(Benjamin Nemoz and Jonathan Hurtado, co-leads; division at the project level,
-platform responsibilities held jointly).
+Three pillars (shown as an anonymized example): **AI Research & Engineering**
+(research lead + engineering lead — model-training research on one side,
+compute clusters, storage, self-hosted agents on the other), **Applied AI**
+(solo lead; a co-lead or second-in-command anticipated), **Repertoire-Scale
+Immunology** (co-leads; division at the project level, platform
+responsibilities held jointly).
 
 ## Rollout (Step 4)
 
@@ -110,10 +110,7 @@ platform responsibilities held jointly).
 ## Open items
 
 - Automated project-state maintenance (meeting ingestion first; email/Slack
-  streams later) — unsolved, flagged by Bryan as needed sooner rather than
+  streams later) — unsolved, flagged by your human as needed sooner rather than
   later.
-- Nemoz staff-scientist promotion in progress (Bryan, 2026-07-30) — update
-  `role` when it lands.
-- Which collaborator's group Benjamin joined from (Grenoble IBS / Grenoble
-  Alpes University Hospital) — the collaborator page link is pending Bryan's
-  identification.
+- Instance-specific follow-ups (personnel changes to `role`, collaborator-page
+  links) are tracked in the instance, not in this template record.

@@ -57,7 +57,7 @@ resolution is *proposed*.
   contradiction. Only same-window incompatible claims are conflicts.
 - **Never silently pick a winner.** A genuine conflict goes to the queue with
   **both** evidence spans (`evidence` is a *list* of the two spans —
-  `rem-cycle-contract.md`); the resolution is Bryan's.
+  `rem-cycle-contract.md`); the resolution is your human's.
 - **No external lookups.** A flip that needs the outside world (did this preprint
   publish? was this paper retracted? was this grant funded?) is `detect_only` —
   reported for a waking fetch, never resolved here (`rem-cycle-contract.md`, the
@@ -77,7 +77,7 @@ A `hypothesis` carries `supports:` and `refutes:` edges. Hunt:
 - two hypotheses whose evidence sets conflict (one's support is the other's
   refutation) — propose surfacing the tension.
 - a hypothesis whose net evidence has **flipped** (refutations now outweigh
-  support) — not a conflict; report it as a status signal for Bryan.
+  support) — not a conflict; report it as a status signal for your human.
 
 ### Cross-page attribute conflicts
 

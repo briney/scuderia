@@ -1,10 +1,10 @@
-# Section structure — Bryan's within-section conventions
+# Section structure — your human's within-section conventions
 
-This file holds Bryan's structural conventions for individual grant sections —
+This file holds your human's structural conventions for individual grant sections —
 paragraph-level organization, what each paragraph does, and where the prose has
-flexibility vs. rigidity. It is **Bryan's style**, not an NIH mandate: the
+flexibility vs. rigidity. It is **your human's style**, not an NIH mandate: the
 mechanism files (`nih-r01.md`, `nih-r21.md`) carry package-level requirements
-from the NOFO; this file carries the within-section architecture Bryan uses to
+from the NOFO; this file carries the within-section architecture your human uses to
 satisfy them.
 
 `STYLE.md` §1 is explicit: document structure belongs to the skill side, not
@@ -13,7 +13,7 @@ reads once the structure is set; this file governs what the structure is.
 
 `grant-section` consults this file when drafting. `grant-coherence` consults it
 when checking structural compliance — treating these as strong preferences,
-not hard compliance failures (the NOFO and Bryan's judgment on a specific
+not hard compliance failures (the NOFO and your human's judgment on a specific
 application override them).
 
 ## Evidence base
@@ -203,7 +203,7 @@ Mechanism-dependent. The Significance section shares the Research Strategy
 page budget with Innovation and Approach: ~12 pages for R01, ~6 for R21, ~3 for
 R03. Within that shared budget, Significance typically gets 2–4 pages for an
 R01, 1–2 for an R21, and ~1 for an R03. The proportions are not mandated by the
-NOFO — the division between Significance, Innovation, and Approach is Bryan's
+NOFO — the division between Significance, Innovation, and Approach is your human's
 choice — but they reflect what the corpus shows.
 
 ### Canonical structure (5 zones)
@@ -251,7 +251,7 @@ landscape: "HIV bnAbs.", "Predictive models of Ab sequence and structure.",
 "Traditional vaccine development.", "Strategies for next-generation vaccine
 development.", "Long-lived plasma cells.", "Limitations of existing AbLMs.",
 "Structure-to-sequence models like ProteinMPNN...". The labels name the topic
-of each paragraph, making the section scannable. This is Bryan's signature
+of each paragraph, making the section scannable. This is your human's signature
 structural move in the Significance section — the labeled-topic survey.
 
 **Zone 4 — NIH-mandated paragraphs (present in most, uses fixed labels).**
@@ -281,7 +281,7 @@ into the Significance section:
 
 These paragraphs are not optional content — NIH's review instructions require
 them. Their placement within Significance (as opposed to a separate section)
-is Bryan's convention, and it is the norm for NIH applications: the Research
+is your human's convention, and it is the norm for NIH applications: the Research
 Strategy is a continuous document, and these labeled paragraphs are
 interspersed where they best support the argument.
 
@@ -315,7 +315,7 @@ Ebola, HIV) give more space to the disease/background zone.
 |---|---|---|
 | Disease/background first | **Rigid** | 12/12 grants. Always opens the section. |
 | Named gap statement | **Strong preference** | 10/12. Funded grants both state it explicitly. |
-| Bold-label headers for topics | **Strong preference** | 11/12 grants. The labeled-topic survey is Bryan's signature structure. |
+| Bold-label headers for topics | **Strong preference** | 11/12 grants. The labeled-topic survey is your human's signature structure. |
 | "Rigor of prior research." paragraph | **Required (NIH)** | 10/12. NIH-mandated content; the label is conventional. |
 | "Investigators." paragraph | **Flexible** | 6/12. Present in multi-investigator grants; single-PI grants may omit. |
 | "Preliminary results." teaser | **Flexible** | 5/12. More common in R01s where preliminary data strengthens feasibility. |
@@ -609,7 +609,7 @@ yield 27 aims total (6 funded, 21 not funded).
 Mechanism-dependent. The Approach section gets the largest share of the
 Research Strategy page budget: ~7–9 pages for an R01 (of 12 total), ~3–4 for
 an R21 (of 6 total), ~1–2 for an R03. The division between Significance,
-Innovation, and Approach is Bryan's choice; the corpus shows Approach
+Innovation, and Approach is your human's choice; the corpus shows Approach
 consistently getting 60–75% of the available pages.
 
 ### Canonical per-aim structure (4 labeled subsections)
@@ -867,7 +867,7 @@ optional).**
 
 A closing paragraph labeled "Public Health Relevance." that states the
 public-health impact in plain language. Present in 6/16 grants. This paragraph
-is not NIH-mandated for the Project Summary — it is a convention Bryan
+is not NIH-mandated for the Project Summary — it is a convention your human
 sometimes uses, particularly in pathogen-focused grants. When present, it
 echoes the Project Narrative (see below) but is pitched at the Abstract
 level.

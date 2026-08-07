@@ -27,12 +27,12 @@ Brain pages are not chat output. They are durable knowledge artifacts.
 
 ## Exact Phrasing Preservation
 
-When capturing Bryan's original thinking — a hypothesis, an objection, a framing
+When capturing your human's original thinking — a hypothesis, an objection, a framing
 — use his exact words. Don't paraphrase. Don't clean up grammar. The language IS
 the insight.
 
 - Direct quotes: preserve verbatim in quote blocks
-- Ideas and framings: use Bryan's own terminology for slugs and titles
+- Ideas and framings: use your human's own terminology for slugs and titles
 - Observations: capture the phrasing, not a sanitized version
 
 ## Title Quality

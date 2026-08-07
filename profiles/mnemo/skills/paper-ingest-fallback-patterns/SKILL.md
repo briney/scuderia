@@ -315,7 +315,7 @@ count and delays promotion past the 5-citation threshold.
 Observed 2026-07-24 (Lee 2008): Sibling subagent ingesting Hashiguchi 2015
 had already added `lee-jeffrey-e` (with middle initial) to the ledger. This
 session added `lee-jeffrey` (without middle initial) — a duplicate for the
-same person (Jeffrey E. Lee, Scripps). Fix: merged the Lee 2008 citation
+same person (Jeffrey E. Lee). Fix: merged the Lee 2008 citation
 into the existing `lee-jeffrey-e` entry and removed the duplicate
 `lee-jeffrey` entry. Same issue for `fusco-marnie` (sibling had the entry
 from Hashiguchi 2015; this session created a duplicate).

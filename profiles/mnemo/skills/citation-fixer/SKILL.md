@@ -48,7 +48,7 @@ cluster" for the scope split — frontmatter shape lives in
    - A substantive claim — a result, a number, an attribution — with no inline
      citation at all.
    - A citation missing its date.
-   - A citation missing its source type (paper, Bryan, web, synthesis).
+   - A citation missing its source type (paper, your human, web, synthesis).
    - A citation in the wrong shape — not one of the forms in `quality.md`.
 3. **Fix the malformed citations.** Rewrite each to the canonical form. For a
    claim that rests on a paper, prefer the page's DOI or PMID
@@ -67,7 +67,7 @@ The authoritative list is `skills/conventions/quality.md`. In brief:
 
 - **Paper** — `[Source: papers/<slug>, doi:10.xxxx/...]` (DOI or PMID preferred
   over a URL).
-- **Bryan, directly** — `[Source: Bryan, <context>, YYYY-MM-DD]`. Highest
+- **Your human, directly** — `[Source: your-human, <context>, YYYY-MM-DD]`. Highest
   authority — never overwrite his words with a lower source.
 - **Open web or API** — `[Source: <publication>, <URL>, YYYY-MM-DD]`.
 - **Synthesis across pages** — `[Source: compiled from <slugs>]`.

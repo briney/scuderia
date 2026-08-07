@@ -41,8 +41,8 @@ paragraph:
 >   primary's brain page so the paraphrase is never quoted uncritically
 >   again.
 
-Session evidence: grounding the asthma sentence on the M. pneumoniae
-CARDS toxin R01 Aims page. The clean anchor became Peters 2011 (Chest,
+Session evidence: grounding an epidemiology sentence on a real R01
+Specific Aims page. The clean anchor became Peters 2011 (Chest,
 PMID 21622549 — 52% of refractory-asthma adults positive vs 2.9%
 healthy controls, verified against PMC3148797 full text); Wood 2013
 (PMID 23622002) was filed as a stub with an explicit caution flag

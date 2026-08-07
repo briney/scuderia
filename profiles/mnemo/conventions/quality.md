@@ -15,7 +15,7 @@ Inline citation forms:
 - **A paper** — peer-reviewed or preprint — cite the page and its identifier:
   `[Source: papers/<slug>, doi:10.xxxx/...]`. The DOI/PMID resolves the claim to
   a real-world object.
-- **Bryan, directly** — `[Source: Bryan, <context>, YYYY-MM-DD]`. His direct
+- **Your human, directly** — `[Source: your-human, <context>, YYYY-MM-DD]`. Their direct
   statements are the highest-authority source.
 - **The open web or an API** — `[Source: <publication>, <URL>, YYYY-MM-DD]`.
 - **Synthesis across pages** — `[Source: compiled from <slugs>]`.
@@ -24,7 +24,7 @@ Inline citation forms:
 When two sources conflict, record the contradiction with both citations. Do not
 silently pick one — surfacing the conflict is the point.
 
-Source precedence, highest to lowest: Bryan's direct statements → the primary
+Source precedence, highest to lowest: your human's direct statements → the primary
 literature → a brain page's compiled synthesis → the open web.
 
 ## Quoted figures are verified against the primary source
@@ -34,9 +34,8 @@ number — is verified against the primary source before it is quoted, not
 inherited from a secondary source's paraphrase. Secondary sources paraphrase
 loosely: a review's "approximately 50% of children had detectable CARDS
 toxin" may rest on a primary study reporting 64% organism detection in cases
-against 56% in healthy controls — a different and weaker claim (this exact
-mismatch surfaced in the 2026-08-03 CARDS toxin Aims review, Maselli 2018
-paraphrasing Wood 2013). Where the figure cannot be verified against the
+against 56% in healthy controls — a different and weaker claim (a real
+observed instance: Maselli 2018 paraphrasing Wood 2013). Where the figure cannot be verified against the
 primary text (paywall, abstract-only), either quote the primary source's own
 abstract language, or flag the mismatch and withhold the figure until the
 body text is in hand. A paraphrase mismatch that survives into prose is a
@@ -51,7 +50,7 @@ information and paraphrase would corrupt it:
 
 - **An author's own abstract** — the authors' canonical summary of their own
   work. Preserve it verbatim rather than risk distorting their framing.
-- **Bryan's own writing** — grant prose, his stated reasoning. His voice is a
+- **Your human's own writing** — grant prose, their stated reasoning. Their voice is a
   source the mind learns from; paraphrase destroys it.
 - **A quotable line** worth referencing later — a literal quote, never reworded.
 
@@ -87,7 +86,7 @@ for the research program:
   student, postdoc, or recurring figure earns a page; one-off mentions
   do not.
 - **An institution** — a lab, university, consortium, or funder that sits
-  on the research program: somewhere Bryan collaborates, a funder he
+  on the research program: somewhere your human collaborates, a funder they
   applies to, a lab whose output he tracks.
 - **A hypothesis** — a genuinely testable claim worth tracking evidence on?
 

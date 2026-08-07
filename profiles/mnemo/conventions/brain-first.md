@@ -26,7 +26,7 @@ it does not start from scratch. Check the brain first, every time.
 
 - **The brain answered → use it.** Do not reach for an external API when a brain
   page already covers the question.
-- **The user model is separate from the brain.** For who-Bryan-is questions
+- **The user model is separate from the brain.** For who-your-human-is questions
   (taste, blind spots, how to engage him) use `user-model-query` — returns
   `{declared: USER.md}` on every harness. The brain holds the *work*
   (papers, methods, hypotheses, grants, threads); the user model holds the

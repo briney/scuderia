@@ -1,26 +1,26 @@
 ---
 name: grant-section
-description: Draft or revise one section of a grant in progress — Specific Aims, Significance, Innovation, Approach, Abstract, Narrative, or a resubmission Introduction — in Bryan's voice, cite-or-flag throughout, against the section's page budget.
+description: Draft or revise one section of a grant in progress — Specific Aims, Significance, Innovation, Approach, Abstract, Narrative, or a resubmission Introduction — in your human's voice, cite-or-flag throughout, against the section's page budget.
 triggers:
   - "draft the Significance section"
   - "write the Specific Aims"
   - "revise the Approach"
   - "redo Innovation"
-  - applying Bryan's edits or grant-coherence flags to a section
+  - applying your human's edits or grant-coherence flags to a section
 ---
 
-# Grant section — draft one section in Bryan's voice
+# Grant section — draft one section in your human's voice
 
 The workhorse of the grant-writing cluster. It drafts or revises **one** section
 of a grant already opened by `grant-plan`, writing into that grant's `## Draft`.
 It is invoked many times across a multi-week application — once per section,
 then again for every revision pass. It is where `STYLE.md` does its work: the
-prose must read as Bryan, be pitched at the smart near-expert, and carry none of
+prose must read as your human, be pitched at the smart near-expert, and carry none of
 the machine-writing tells.
 
 > **Conventions:** `STYLE.md` (the scientific-writing standard — voice, reader,
 > the tells), `SOUL.md` §2 (cite-or-flag — spine, non-negotiable),
-> `skills/conventions/quality.md` (citations, no paraphrase of Bryan's prose),
+> `skills/conventions/quality.md` (citations, no paraphrase of your human's prose),
 > `skills/conventions/brain-first.md` (pull from the brain before going external),
 > `skills/conventions/capabilities.md` (the harness contract),
 > `skills/grant-formats/` (the section's page budget).
@@ -31,14 +31,14 @@ the machine-writing tells.
 
 ## Capabilities
 
-`brain-read`, `brain-write`, `user-model-query` (Bryan's voice priors are
+`brain-read`, `brain-write`, `user-model-query` (your human's voice priors are
 loaded into the draft pass).
 
 ## What this guarantees
 
 - One section is drafted or revised per invocation, written into the grant
   page's `## Draft` — never a blind overwrite of the whole page.
-- The prose reads as Bryan: voice matched from the `## Verbatim` sections of
+- The prose reads as your human: voice matched from the `## Verbatim` sections of
   ingested `grant` pages, with the universal `STYLE.md` standards carrying the
   cold start where that model is thin.
 - Every substantive claim carries a verifiable citation or an explicit
@@ -61,14 +61,14 @@ loaded into the draft pass).
    that must be grounded to source.
 
 3. **Draft, or revise.** Load `STYLE.md` and
-   `skills/grant-formats/section-style.md`. Write as Bryan — match sentence
+   `skills/grant-formats/section-style.md`. Write as your human — match sentence
    rhythm, paragraph shape, and claim calibration from the `## Verbatim`
    sections of ingested `grant` pages; where that voice model is thin, lean on
    the universal standards (`STYLE.md` §3–§4), not a guessed mannerism. Delete
    the tells (§4). For a Specific Aims page, build the significance argument
    and Aim architecture against `section-style.md`. Stay inside the page
-   budget. For a **revision**, the input is Bryan's edits or `grant-coherence`
-   flags — Bryan's edits are the highest-value voice signal there is
+   budget. For a **revision**, the input is your human's edits or `grant-coherence`
+   flags — your human's edits are the highest-value voice signal there is
    (`STYLE.md` §2): apply them and carry what they teach into the rest of the
    draft.
 
@@ -94,16 +94,16 @@ any other section, working from the prior grant's `[!critique]` annotations.
 
 The updated `## Draft` subsection on the grant page — finished prose for one
 section, within budget, every claim cited or `[needs-citation]`-flagged, in
-Bryan's voice. A `## Drafting log` entry. A short list of the section's open
+your human's voice. A `## Drafting log` entry. A short list of the section's open
 gaps handed to `grant-coherence` and `grant-citations`.
 
 ## Anti-patterns
 
-- Inventing a voice instead of matching Bryan's corpus — and, where the corpus
+- Inventing a voice instead of matching your human's corpus — and, where the corpus
   model is thin, inventing a mannerism instead of leaning on the `STYLE.md`
   universal standards (`STYLE.md` §2).
 - Paraphrasing prose lifted from an ingested grant's `## Verbatim` — that is
-  Bryan's preserved voice, not a draft source (`skills/conventions/quality.md`).
+  your human's preserved voice, not a draft source (`skills/conventions/quality.md`).
 - Reproducing the machine-writing tells of `STYLE.md` §4 — inflated
   significance, copula avoidance, forced triads, hedge stacks.
 - Dropping a claim that needs a citation, or inventing one, instead of leaving

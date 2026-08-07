@@ -293,7 +293,7 @@ DOI: 10.1165/rcmb.2017-0006OC. PMID: 28915064. PMCID: PMC5805996.
   DJ, Brooks EG, Coalson JJ, Winter VT, Principe M, Cagle MP, Dube PH,
   Peters JI). No person pages.
 - Graph links: `concepts/antibacterial-antibody-discovery`,
-  `grants/r01-mpneumoniae-cards-toxin-mab-discovery` — both pre-existing.
+  the relevant grant page — both pre-existing.
 - Sibling subagent modified `_ledger.yaml` concurrently during the Kannan
   entry update, causing a duplicate `slug:` line. Fixed by re-reading and
   patching the malformed YAML (see `paper-ingest-fallback-patterns` §8).

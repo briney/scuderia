@@ -71,7 +71,7 @@ Tier 1 authors go through the standard three-branch logic in
 ### 1. Review discovery
 
 Search PubMed for recent reviews on the topic, filtered to high-impact
-review journals. Present 3–5 candidates for Bryan's selection.
+review journals. Present 3–5 candidates for your human's selection.
 
 **Journal whitelist:**
 - Nature Reviews family (Immunology, Microbiology, Drug Discovery, etc.)
@@ -94,7 +94,7 @@ Relative Citation Ratio if available, or CrossRef citation count).
 
 Present the candidates with: title, journal, year, first author, a
 one-line description of the review's scope (from the abstract). Let
-Bryan pick 1–3.
+your human pick 1–3.
 
 **Brain-first check.** Before presenting, search the brain for existing
 review pages on the topic. If a relevant review is already ingested, note
@@ -104,7 +104,7 @@ it and offer to use it as a starting point.
 
 Ingest the selected review(s) with `paper-ingest`. When there is only
 one review, ingest it directly (spine — first contact with material
-entering the brain). When there are multiple reviews (Bryan's
+entering the brain). When there are multiple reviews (your human's
 preference is often comprehensive — he chose "all five" when offered
 three), delegate the additional reviews as subagents to keep the
 orchestrator's context window clean.
@@ -112,7 +112,7 @@ orchestrator's context window clean.
 **Delegation vs. direct.** The first review (or the spine review — the
 one the tier classification builds on) is ingested directly. Additional
 reviews can be delegated with read-back verification, because the
-selection decision (Bryan chose them) is the vetted judgment that
+selection decision (your human chose them) is the vetted judgment that
 justifies delegation, just as the review's citation justifies
 delegating Tier 1 papers.
 
@@ -174,7 +174,7 @@ it.
 
 **Output of this phase:** a list of Tier 1 papers (DOI + title +
 one-line reason for tier classification) and confirmation that Tier 2
-stubs are in place. Present the Tier 1 list to Bryan for a quick
+stubs are in place. Present the Tier 1 list to your human for a quick
 sanity check before ingesting — this is the one gate in the process
 where a human glance is cheap and valuable.
 
@@ -188,7 +188,7 @@ identifiers harvested from the review's bibliography (Semantic Scholar
 references API, or LLM transcription of the reference list) are wrong
 at observed rates of ~70% (ebolavirus dive, 2026-08-05: 7 of 10 Tier-1
 task contexts had a wrong PMID, DOI, or both — including one DOI off by
-a single digit). Before presenting the Tier-1 list to Bryan, run the
+a single digit). Before presenting the Tier-1 list to your human, run the
 pre-dispatch validator over every Tier-1 candidate:
 
 ```bash
@@ -198,12 +198,12 @@ python3 skills/paper-ingest/scripts/validate_identifiers.py \
 
 Build the batch JSON from the Tier-1 list: `title`, `author`
 (first-author surname), `year`, plus any `pmid`/`doi`/`pmcid` already
-in hand (~2s per citation). Present Bryan the *validated* list:
+in hand (~2s per citation). Present your human the *validated* list:
 `validated` entries as-is; `recovered` entries with their corrected
 identifiers (recovery replaces wrong identifiers with PubMed-verified
 ones — this is the fix for the ebolavirus failure class); `HOLD`
 entries flagged for manual resolution, never silently dispatched. Any
-entry flagged `retracted: true` is surfaced to Bryan explicitly, not
+entry flagged `retracted: true` is surfaced to your human explicitly, not
 dispatched. Phase 4 dispatches using the validator's `dispatch` list —
 never the raw bibliography identifiers.
 
@@ -344,7 +344,7 @@ place, restructure, or cancel. The dive's synthesis enriches the
 existing page with the newly ingested literature.
 
 **The synthesis is the deliverable.** The individual paper pages are
-the evidence base; the concept page is the output Bryan reads. The
+the evidence base; the concept page is the output your human reads. The
 dive is not complete until the concept page is written.
 
 **Commit before synthesising.** After all Tier 1 papers are written

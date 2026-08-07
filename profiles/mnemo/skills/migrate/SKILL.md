@@ -10,7 +10,7 @@ triggers:
 
 # Migrate — onboard an existing note collection
 
-The vault starts empty. When Bryan already keeps notes somewhere — Obsidian,
+The vault starts empty. When your human already keeps notes somewhere — Obsidian,
 Notion, Logseq, Roam, a markdown folder, a CSV — this skill brings that material
 in: each source page mapped onto one of the page kinds, given proper
 frontmatter, and wired into the graph. It is a one-time, setup-phase job.

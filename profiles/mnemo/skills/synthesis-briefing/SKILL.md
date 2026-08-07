@@ -15,7 +15,7 @@ triggers:
 
 # synthesis-briefing — the weekly PUSH
 
-The delivery surface that closes the concept layer's loop back to Bryan. The
+The delivery surface that closes the concept layer's loop back to your human. The
 synthesis engine — `reinforce` nightly, `intersect` weekly — writes *state* into
 concept `## Shifts` logs and `QUEUE.md`; this composes that week's movement into a
 **reading-shaped** digest. It is deliberately *not* the rem-cycle **dream report**

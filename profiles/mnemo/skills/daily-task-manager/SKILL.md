@@ -45,7 +45,7 @@ importance: 0.7
 due: 2026-06-15
 priority: P1            # P0 urgent · P1 this week · P2 this month · P3 backlog
 status: open            # open · done · deferred
-links: [grants/r01-repertoire-aging]
+links: [grants/<slug>]
 tags: [grant-deadline]
 ---
 ```
@@ -63,7 +63,7 @@ reads; keep them honest.
 2. **Execute the action:**
    - **Add** — create `tasks/<slug>.md`. Set `due`, `priority`, `status: open`.
      Link forward to the `grant`, `project`, or `meeting` the task serves via
-     `links:`. Use Bryan's own phrasing for the title (`_output-rules.md`).
+     `links:`. Use your human's own phrasing for the title (`_output-rules.md`).
    - **Complete** — set `status: done` and add a `completed:` date field. The
      page stays in `tasks/`; it is not moved or deleted. Done state is a
      frontmatter field, queryable like any other.
@@ -74,7 +74,7 @@ reads; keep them honest.
      nothing.
 
 3. **Write the page.** Never blind-overwrite — read current state first; if the
-   page was edited very recently (Bryan may have touched it in Obsidian), append
+   page was edited very recently (your human may have touched it in Obsidian), append
    or hold rather than clobber (`brain-ops`, `VISION.md` §4.1).
 
 ## What a task is for
@@ -97,4 +97,4 @@ new state — no LLM preamble. A review returns the open tasks ordered by deadli
 - Completing a task by deleting the page — set `status: done`, keep the page.
 - Deferring without recording a reason in the body.
 - Creating a task for out-of-scope personal or lab-admin work.
-- Blind-overwriting a `task` page Bryan may have just edited.
+- Blind-overwriting a `task` page your human may have just edited.

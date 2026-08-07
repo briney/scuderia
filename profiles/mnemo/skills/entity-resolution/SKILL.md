@@ -37,7 +37,7 @@ every split is *proposed*, not executed here.
 
 ## Scope — and the line against `concept-synthesis`
 
-`concept-synthesis` dedupes `concept` and `note` pages — Bryan's evolving ideas —
+`concept-synthesis` dedupes `concept` and `note` pages — your human's evolving ideas —
 and owns the merge mechanism: fold the duplicate's wikilinks and typed edges into
 one canonical page, preserve alternate names in an `aliases:` frontmatter list,
 never hand-write a backlink. This skill reuses that mechanism on a different
@@ -58,13 +58,13 @@ paper, author, institution, or ledger entry → here.
   corroboration (affiliation, co-authors). Never auto-merge either; both propose.
 - **A page merge is proposed, never auto-executed — except same-DOI true
   duplicates.** Two `papers/` pages with an identical `doi` (verified pairwise
-  by re-reading both frontmatters) auto-merge per Bryan's standing grant
+  by re-reading both frontmatters) auto-merge per your human's standing grant
   (2026-08-04, `rem-cycle-contract.md` § Graduated autonomy). Everything else —
   name permutations, name-similarity with corroboration, key-conflicts — still
   proposes. Folding N inbound `[[slug]]` references is a corpus-wide rewrite
   (`graph-and-links.md`); for non-same-DOI cases it is a judgment call. Only
   exact-duplicate *ledger* cleanup auto-commits besides.
-- **The ledger is high-risk** (Bryan-owned, corruption-prone). Before any ledger
+- **The ledger is high-risk** (your human-owned, corruption-prone). Before any ledger
   write: round-trip load the YAML (parse → re-serialize; it must stay
   well-formed), run `.github/scripts/lint-frontmatter.py` (it parses the ledger),
   and diff to confirm **only** the intended entries changed. Abort on any surprise.
@@ -143,7 +143,7 @@ past the `≥ 5` threshold (`author-ledger.md`), do **not** promote — that is
 ## Output
 
 - **As a phase:** the fenced-yaml phase result.
-- **Standalone:** the merges and splits proposed inline for Bryan, plus any
+- **Standalone:** the merges and splits proposed inline for your human, plus any
   exact-duplicate ledger cleanup applied — with the diff shown.
 
 ## Anti-patterns

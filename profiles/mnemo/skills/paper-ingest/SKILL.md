@@ -294,7 +294,7 @@ count and delays promotion past the 5-citation threshold.
 Observed 2026-07-24 (Lee 2008): Sibling subagent ingesting Hashiguchi 2015
 had already added `lee-jeffrey-e` (with middle initial) to the ledger. This
 session added `lee-jeffrey` (without middle initial) — a duplicate for the
-same person (Jeffrey E. Lee, Scripps). Fix: merged the Lee 2008 citation
+same person (Jeffrey E. Lee). Fix: merged the Lee 2008 citation
 into the existing `lee-jeffrey-e` entry and removed the duplicate
 `lee-jeffrey` entry. Same issue for `fusco-marnie` (sibling had the entry
 from Hashiguchi 2015; this session created a duplicate).
@@ -660,7 +660,7 @@ folded into the companions** — this entry is the audit trail.
 - OpenAlex: does not index the preprint DOI (404) — aggregators lag fresh
   preprints; they remain useful for published papers.
 
-### What was deliberately NOT built (deferred, awaiting Bryan's call)
+### What was deliberately NOT built (deferred, awaiting your human's call)
 
 - `scripts/fetch_fulltext.py` — an executable ladder walking the whole
   decision tree with retries/backoff and a provenance tag.
@@ -671,7 +671,7 @@ folded into the companions** — this entry is the audit trail.
 
 ## Patch 2026-08-05c: Tier-1 build-out — ladder script, fulltext_source field, embargo sweep, figure retrieval
 
-Bryan approved Tiers 1 + light Tier 2 same-day. Everything below is BUILT
+your human approved Tiers 1 + light Tier 2 same-day. Everything below is BUILT
 and verified — this entry is the audit trail.
 
 ### Built: `skills/paper-ingest/scripts/fetch_fulltext.py`
@@ -728,8 +728,8 @@ read fetched figures into Findings.
 
 ### Deferred: Paperpile MCP as the upstream source
 
-Bryan's call 2026-08-05: when a Paperpile MCP exists, the FIRST full-text
-lookup becomes "search Bryan's Paperpile library by DOI; if present, pull
+your human's call 2026-08-05: when a Paperpile MCP exists, the FIRST full-text
+lookup becomes "search your human's Paperpile library by DOI; if present, pull
 the PDF from there" — his library is already-licensed full text with
 PDFs, better than any scraping ladder. Heavier Tier-2/3 options
 (persistent browser profile, FlareSolverr, computer-use against his
@@ -773,7 +773,7 @@ a subagent is dispatched to ingest it.
 ### Wired into the dispatching skills (2026-08-05)
 
 - `literature-dive` Phase 3.5: validate the Tier-1 list before presenting
-  to Bryan; Phase 4 dispatches from the validator's `dispatch` list, never
+  to your human; Phase 4 dispatches from the validator's `dispatch` list, never
   the raw bibliography identifiers.
 - `ingest-pending-papers` Phase 2.5: validate the whole stub queue in one
   batch before delegating; `recovered` identifiers patched into the stub

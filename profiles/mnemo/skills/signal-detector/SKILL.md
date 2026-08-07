@@ -1,6 +1,6 @@
 ---
 name: signal-detector
-description: Always-on ambient capture — fires on every inbound message to catch Bryan's original research thinking and entity mentions, and file them to the brain. Spawned as a parallel sub-agent; never blocks the response, never announced.
+description: Always-on ambient capture — fires on every inbound message to catch your human's original research thinking and entity mentions, and file them to the brain. Spawned as a parallel sub-agent; never blocks the response, never announced.
 triggers:
   - every inbound message (always-on)
 ---
@@ -10,7 +10,7 @@ triggers:
 A lightweight sub-agent that fires on every inbound message and captures two
 things with **equal priority**:
 
-1. **Bryan's original research thinking** — a thesis, an objection, a framing,
+1. **your human's original research thinking** — a thesis, an objection, a framing,
    a brainstorm aside. Preserved verbatim.
 2. **Entity mentions** — papers, methods, concepts, people, institutions named
    in passing.
@@ -34,14 +34,14 @@ itself runs as a parallel sub-agent, never blocking the main response).
 - Fires on every message — no exception unless the message is purely
   operational ("ok", "thanks", "do it").
 - Runs in parallel — spawned as a sub-agent, never blocks the main response.
-- Captures Bryan's thinking in his **exact phrasing** — no paraphrase, no
+- Captures your human's thinking in their **exact phrasing** — no paraphrase, no
   grammar cleanup. The language *is* the insight (`_output-rules.md`).
 - Detects entity mentions and creates or enriches the right pages.
 - Logs a one-line signal summary so the ambient loop stays debuggable.
 
 ## Phase 1 — capture original thinking (primary)
 
-When Bryan expresses a thought, observation, thesis, or framing that is *his*
+When your human expresses a thought, observation, thesis, or framing that is *theirs*
 — something he generated, not a fact he is relaying — capture it:
 
 - A reflection or brainstorm capture → `notes/<slug>.md` (a `note` page).
@@ -54,9 +54,9 @@ to `concepts/` or `hypotheses/` only when the shape clearly fits.
 
 Capture rules:
 
-- **Verbatim.** Quote Bryan's words in a quote block. Use his own terminology
+- **Verbatim.** Quote your human's words in a quote block. Use his own terminology
   for the slug and title.
-- **Attribute.** `[Source: Bryan, <context>, YYYY-MM-DD]` — his direct
+- **Attribute.** `[Source: your-human, <context>, YYYY-MM-DD]` — his direct
   statements are the highest-authority source (`skills/conventions/quality.md`).
 - **Link forward.** Add `[[kind/slug]]` wikilinks to the papers, methods,
   concepts, people, and institutions the thought touches. An unlinked note is
@@ -92,15 +92,15 @@ Always emit a one-line summary so the ambient loop is debuggable:
 
 ## Output
 
-No visible output to Bryan. The skill runs silently; its product is the brain
+No visible output to your human. The skill runs silently; its product is the brain
 pages it writes and the one-line signal log.
 
 ## Anti-patterns
 
 - Blocking the main response to finish signal capture.
-- Paraphrasing Bryan's thinking instead of preserving exact phrasing.
+- Paraphrasing your human's thinking instead of preserving exact phrasing.
 - Creating a page for a non-notable one-off mention.
 - Announcing the capture ("I've saved that to the brain").
 - Running on a purely operational message.
 - Filing a framework to `notes/` when it is plainly a `concept`, or a research
-  fact Bryan is relaying as if it were his own original thinking.
+  fact your human is relaying as if it were their own original thinking.

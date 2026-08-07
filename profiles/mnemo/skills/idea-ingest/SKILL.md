@@ -1,6 +1,6 @@
 ---
 name: idea-ingest
-description: Ingest a shared link, article, or written-out idea — fetch the content, distill it into a brain page filed by primary subject, link it forward, and connect it to Bryan's active research threads.
+description: Ingest a shared link, article, or written-out idea — fetch the content, distill it into a brain page filed by primary subject, link it forward, and connect it to your human's active research threads.
 triggers:
   - shares a link or URL
   - "read this"
@@ -13,7 +13,7 @@ triggers:
 
 Turn a shared link, an article, or a written-out idea into a distilled brain
 page. The job is not to summarize — it is to distill the content and connect it
-to Bryan's research program.
+to your human's research program.
 
 > **Conventions:** `_brain-filing-rules.md` (file by subject),
 > `skills/conventions/quality.md` (citations, forward-only linking, the notability
@@ -32,7 +32,7 @@ to Bryan's research program.
 - Every ingested item becomes a page with genuine analysis, not a summary.
 - The page is filed by primary subject and forward-linked into the graph.
 - Every claim carries an inline citation or a `[needs-citation]` flag.
-- The analysis connects the content to Bryan's active research threads.
+- The analysis connects the content to your human's active research threads.
 - A non-markdown original is archived to R2; the binary never enters git.
 
 ## Phases
@@ -58,7 +58,7 @@ to Bryan's research program.
    - An experimental or computational technique → `methods/<slug>.md`
    - A scientific principle or framework → `concepts/<slug>.md`
    - A testable claim worth tracking evidence on → `hypotheses/<slug>.md`
-   - Bryan's own first-person reaction or reflection → `notes/<slug>.md`
+   - your human's own first-person reaction or reflection → `notes/<slug>.md`
 
    One source can distill into more than one page (a paper that introduces a
    method *and* supports a hypothesis) — file each facet under its kind and link
@@ -75,14 +75,14 @@ to Bryan's research program.
    (`skills/conventions/graph-and-links.md`).
 
 6. **Enrich notable people and institutions.** An author gets a `person` page
-   *only if* their work is notable or recurring in Bryan's field — apply the
+   *only if* their work is notable or recurring in your human's field — apply the
    notability gate (`skills/conventions/quality.md`); it is not unconditional. The same
    gate governs labs, universities, consortia, and funders. Chain into
    `skills/enrich/SKILL.md` for each entity that passes the gate.
 
 7. **Connect to the research program.** Read `RESEARCH.md` for the active
    threads. The analysis must say where this content lands: does it advance a
-   thread in flight, contradict a brain page, or open a question? Tell Bryan
+   thread in flight, contradict a brain page, or open a question? Tell your human
    what he would not have noticed — not what the article says.
 
 ## Page shape
@@ -116,7 +116,7 @@ Why this matters now, against what the brain already holds.
 The specific findings, numbers, and arguments — each with a citation.
 
 ## Analysis
-How this connects to Bryan's active threads. What is new. What it
+How this connects to your human's active threads. What is new. What it
 contradicts. What question it opens.
 ```
 

@@ -3,7 +3,7 @@ name: concept-seeding
 description: >
   One-time backward distillation that births the concept layer from the existing
   applied corpus (projects, grants, cited papers). Extracts umbrella concepts,
-  proposes a top-down inventory for Bryan's approval, then authors canonical
+  proposes a top-down inventory for your human's approval, then authors canonical
   concept pages and wires the applied layer to them. A bootstrap, run once — not
   a recurring rem-cycle phase.
 triggers:
@@ -50,7 +50,7 @@ in the vault — it fetches nothing.
   are Frontier candidates, never their own concepts; a bare topic with no
   plausible bet inside it is not admitted.
 - **Two-stage, propose-not-auto.** Top-down concepts materialize **only after
-  Bryan approves the inventory**; bottom-up candidates are proposed to `QUEUE.md`
+  your human approves the inventory**; bottom-up candidates are proposed to `QUEUE.md`
   and materialize only on approval. Nothing is auto-authored.
 - **Authoring is never delegated.** Subagents do the Phase-1 scan (ephemeral
   reconnaissance over already-ingested material); the mind authors every durable
@@ -90,9 +90,9 @@ in the vault — it fetches nothing.
    lenses not tied to a project) for the queue.
 
 3. **Inventory checkpoint** *(human-in-the-loop).* Present the top-down inventory
-   for Bryan to **approve / prune / merge / rename** before any page is authored
+   for your human to **approve / prune / merge / rename** before any page is authored
    (format in Output). Route bottom-up umbrellas to `QUEUE.md` as concept
-   proposals (`rem-cycle-contract.md`) — drained only by Bryan. Author nothing
+   proposals (`rem-cycle-contract.md`) — drained only by your human. Author nothing
    until the inventory is approved.
 
 4. **Author approved concepts** *(the mind, own hands).* For each approved
@@ -109,7 +109,7 @@ in the vault — it fetches nothing.
    to the projects/grants that draw on each concept (forward edge on the child).
    Refresh `concepts/README.md` and tier the new set by **calling
    `concept-synthesis`** (its map + tiering machinery — do not reimplement). Then
-   Bryan does one batched page-level review covering the authored concepts *and*
+   your human does one batched page-level review covering the authored concepts *and*
    the `rests_on` edits together.
 
 ## Output
@@ -137,7 +137,7 @@ in the vault — it fetches nothing.
   Frontier bullets until an explicit promotion.
 - Delegating the *authoring* to a subagent — the Phase-1 scan is delegable, the
   concept prose is not (`SOUL.md`).
-- Materializing any concept before Bryan approves the inventory; auto-clearing or
+- Materializing any concept before your human approves the inventory; auto-clearing or
   auto-approving `QUEUE.md`.
 - Duplicating or blind-overwriting the 2 existing concepts instead of folding /
   reformatting them.

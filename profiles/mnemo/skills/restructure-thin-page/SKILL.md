@@ -30,7 +30,7 @@ source that needs to be re-fetched to verify a quote or claim).
 ## What a structured page has
 
 - **Executive summary** — 2–3 sentences, the one thing worth remembering.
-- **Why it matters** — ties the page to Bryan's *actual* research threads. Read
+- **Why it matters** — ties the page to your human's *actual* research threads. Read
   the brain and `RESEARCH.md` for thread context; this section is never generic.
   If you cannot tie it to a real thread, drop the section — do not invent one.
 - **Quotable lines** — 3–5 *verbatim* lines worth referencing later. Literal
@@ -45,7 +45,7 @@ source that needs to be re-fetched to verify a quote or claim).
 - A page lands thin via an ingest skill, carrying `needs-enrichment: true` in
   frontmatter.
 - An existing page is a wall of raw text with no synthesis.
-- Bryan says a page is useless, boring, or a dump.
+- your human says a page is useless, boring, or a dump.
 
 ## The pipeline
 

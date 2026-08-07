@@ -27,7 +27,7 @@ not in response to a trigger.
 | When | Skill |
 |---|---|
 | Every brain read, write, lookup, or citation | `skills/brain-ops/SKILL.md` |
-| Every inbound message — capture Bryan's thinking and entity mentions (spawn in parallel, never block) | `skills/signal-detector/SKILL.md` |
+| Every inbound message — capture your human's thinking and entity mentions (spawn in parallel, never block) | `skills/signal-detector/SKILL.md` |
 
 ## Thought-partner cluster
 
@@ -62,7 +62,7 @@ into one `grant` page and chain heavily — read each skill's phases.
 Format references for R01 and R21 live in `skills/grant-formats/` — not skills
 (no trigger); the cluster consults them. `grant-ingest` (brain-building, below)
 is the *input* side — it builds the `## Verbatim` corpus this cluster learns
-Bryan's voice from.
+your human's voice from.
 
 ## Research-logistics cluster
 
@@ -201,7 +201,7 @@ When multiple skills could match:
    - `literature-research` — scans for *new* external literature on the
      topic; files a `note` with the delta against what the brain holds.
      Use when the question is "what's new about X."
-   - `concept-synthesis` — dedupes and tiers Bryan's *own* `concept` and
+   - `concept-synthesis` — dedupes and tiers your human's *own* `concept` and
      `note` stubs over time. Operates on his intellectual history, not on
      the literature. Use for "synthesize my concepts," "find patterns
      across my notes."
@@ -231,7 +231,7 @@ When multiple skills could match:
     research-program-relevant.
 11. `concept-synthesis` and `entity-resolution` both merge duplicates and share
     the merge mechanism (`aliases:`, fold edges), but split by *kind*:
-    `concept-synthesis` dedupes `concept` / `note` pages (Bryan's ideas);
+    `concept-synthesis` dedupes `concept` / `note` pages (your human's ideas);
     `entity-resolution` dedupes the identity-keyed kinds (`paper`, `person`,
     `institution`, `method`) and the author ledger, and additionally *splits*
     an entry that fused two people. Duplicate concept → `concept-synthesis`;
@@ -266,13 +266,13 @@ When multiple skills could match:
     (`history/<date>.md`) is *audit-shaped* — what a run committed / skipped, budget,
     health — for verifying the machinery; the **synthesis briefing**
     (`briefings/<week>.md`) is *reading-shaped* — the week's precipitated hypotheses
-    and concept movements, for Bryan to act on. "Did the cycle run / what did it do"
+    and concept movements, for your human to act on. "Did the cycle run / what did it do"
     → `rem-cycle`; "what precipitated this week" / "weekly synthesis briefing" →
     `synthesis-briefing`.
 16. `conversation-capture` vs. the ambient/atomic captures. `signal-detector`
     captures the *atoms* of thinking (a thesis, an objection, a framing) to
     `notes/` ambiently on every message, no trigger; `conversation-capture`
-    captures the deliberate *thread-level* artifact on Bryan's trigger, as a
+    captures the deliberate *thread-level* artifact on your human's trigger, as a
     `conversation` page (with a `mode` and often an `about:` anchor) — and links
     the notes `signal-detector` already dropped rather than duplicating them. A
     `note` is first-person thinking filed ambiently; an `interaction` is a

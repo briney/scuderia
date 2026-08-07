@@ -32,7 +32,7 @@ draft into.
 
 ## Capabilities
 
-`brain-search`, `brain-read`, `brain-write`, `user-model-query` (Bryan's
+`brain-search`, `brain-read`, `brain-write`, `user-model-query` (your human's
 domain priors inform the Aims pressure-test), `raw-source-archive-upload`
 (archiving the NOFO PDF). `brain-search` optional.
 
@@ -52,9 +52,9 @@ domain priors inform the Aims pressure-test), `raw-source-archive-upload`
 ## Phases
 
 1. **Identify the application.** Mechanism and funder; new vs. resubmission vs.
-   renewal. Get the NOFO from Bryan and read it — it is authoritative. With no
+   renewal. Get the NOFO from your human and read it — it is authoritative. With no
    NOFO yet, fall back to `grant-formats/nih-r01.md` or `nih-r21.md`. Confirm
-   the mechanism *and* the project(s) the grant serves with Bryan via
+   the mechanism *and* the project(s) the grant serves with your human via
    `skills/ask-user/SKILL.md` — a grant touches several projects and the wrong
    call is expensive to unwind.
 
@@ -71,7 +71,7 @@ domain priors inform the Aims pressure-test), `raw-source-archive-upload`
    The output is an inventory: what the brain already supports, what is thin,
    what is missing.
 
-4. **Design the Specific Aims — the go/no-go filter.** With Bryan, frame the
+4. **Design the Specific Aims — the go/no-go filter.** With your human, frame the
    central hypothesis and two or three aims: the arc, each aim's goal, how the
    aims stay independent yet connected. This is the character running a
    brainstorm, given structure. Pressure-test it honestly (`SOUL.md` — no
@@ -140,7 +140,7 @@ grant-section drafts against this; grant-coherence checks against it.
 
 ## Draft
 The working application prose, section by section — filled by grant-section.
-Fenced from `## Verbatim`: not voice corpus until Bryan approves it and the
+Fenced from `## Verbatim`: not voice corpus until your human approves it and the
 grant is submitted, at which point this section promotes to `## Verbatim` and
 the page becomes what `grant-ingest` produces (see `grant-ingest/SKILL.md`).
 

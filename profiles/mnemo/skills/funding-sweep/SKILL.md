@@ -22,7 +22,7 @@ two standing-scan patterns already in the brain:
   re-pitch every morning.
 
 It is **not** `monitor-the-situation`. That skill watches for *named, specific*
-things Bryan is already waiting on ("tell me when the Bio Genesis RFA drops"). This
+things your human is already waiting on ("tell me when the Bio Genesis RFA drops"). This
 skill scans the whole firehose and judges *what fits the lab* — a fundamentally
 different, higher-dimensional relevance call. When both would surface the same
 opportunity, this skill **defers** (see Dedupe).
@@ -39,7 +39,7 @@ opportunity, this skill **defers** (see Dedupe).
 - **Required:** `read-file`, `edit-file`, `fetch-url`.
 - **Optional:** `brain-search` / `brain-read` (to check whether an opportunity is
   already funded or being pursued, and to justify profile regeneration from brain
-  activity), `user-model-query` (Bryan's priors sharpen the relevance bar),
+  activity), `user-model-query` (your human's priors sharpen the relevance bar),
   `browser-render` (the JS-rendering browser stack — Tier-2 Gates/Grand Challenges
   needs it; degrade to skipping that one source when unavailable).
 - **Hermes-only:** `deliver-message` — folded into `briefing` for delivery. Standalone
@@ -59,7 +59,7 @@ opportunity, this skill **defers** (see Dedupe).
   A surfaced opportunity is added to `seen-ids` and never re-pitched.
 - **Read-only against the brain.** The sweep writes only `FUNDING-PROFILE.md` state
   (and, on the weekly cadence, proposals into `QUEUE.md`). When a call clears the bar
-  it flags "→ worth a grant-plan" and Bryan decides; opening the engagement is
+  it flags "→ worth a grant-plan" and your human decides; opening the engagement is
   `grant-plan`, a separate skill and a separate decision.
 - **Honest source tiers.** Tier 1 (federal APIs) is reliable; Tier 2 (named
   foundations) is best-effort and labeled as such; Tier 3 (general net) is a wide,
@@ -164,7 +164,7 @@ For any **foundation** hit (Tier 2 or Tier 3), consult Block C before surfacing:
    (indirect-verify, geography, Keck-nomination, tight-deadline-but-worth-it).
 
 5. **Update state — carefully.** Re-read `FUNDING-PROFILE.md` immediately before
-   writing (Bryan may have hand-edited during the run — never blind-overwrite,
+   writing (your human may have hand-edited during the run — never blind-overwrite,
    `SOUL.md` §2). Append all surfaced and auto-dropped IDs to `seen-ids`; set
    `last-swept` to today; write the ranked shortlist to `last-surfaced` (date +
    items) so `briefing` can read it without re-running the sweep. On a quiet sweep,
@@ -183,7 +183,7 @@ current Block A and **propose** changes:
 
 Write proposals into `docs/rem-cycle/QUEUE.md` in the standard format
 (`skills/conventions/rem-cycle-contract.md`), so `synthesis-briefing` surfaces them under
-"Awaiting your call" and Bryan confirms or declines. **Never auto-apply a Block A
+"Awaiting your call" and your human confirms or declines. **Never auto-apply a Block A
 change** — a silently drifting profile starts flagging junk, and the whole value is
 that a flagged call is trustworthy. Set `last-regenerated` after proposing.
 
@@ -212,7 +212,7 @@ FUNDING OPPORTUNITIES — sweep {date}
   → worth a grant-plan — your call
 ```
 
-A standout opportunity is flagged "→ worth a grant-plan," not acted on — Bryan
+A standout opportunity is flagged "→ worth a grant-plan," not acted on — your human
 decides, and `grant-plan` reads the NOFO and runs the Aims go/no-go. The sweep itself
 opens no engagement.
 
@@ -257,7 +257,7 @@ reliable tier is deliberate.
 - Auto-creating `grant` pages — the sweep is read-only against the brain; opening an
   engagement is `grant-plan`.
 - Blind-overwriting `FUNDING-PROFILE.md` — re-read before writing; edit only the
-  `state` block; never clobber Bryan's hand-edited facts.
+  `state` block; never clobber your human's hand-edited facts.
 - Restating the federal endpoints here instead of citing `skills/conventions/funding-sources.md`
   — the source layer is shared to prevent drift.
 - Running the sweep from both a cron and `briefing` — the double-run consumes new

@@ -19,7 +19,7 @@ that were overlooked when the concept was built. Both modes write **stubs**
 `ingest-pending-papers` drain fills them. The sweep itself never performs
 full ingestion.
 
-**The lenient bar (Bryan's standing instruction, 2026-08-06):** prefer
+**The lenient bar (your human's standing instruction, 2026-08-06):** prefer
 ingesting some duplicative or redundant papers over missing something key
 because it didn't pass an arbitrary importance filter. A redundant stub
 costs one subagent round in the drain; a missed load-bearing paper costs a
@@ -190,7 +190,7 @@ Query: "<the exact query that surfaced this paper>"
 {Mode 2: load-bearing or supplementary for [[concepts/<concept>]]}
 ```
 
-The `links:` entry and provenance note are how the drain (and Bryan)
+The `links:` entry and provenance note are how the drain (and your human)
 know why the stub exists. `cited_by` stays empty — citation edges
 accumulate from real citing papers later.
 

@@ -24,7 +24,7 @@ its numbers as the baseline to diff future audits against). Spec house style:
 
 > **Conventions:** this skill governs *design evaluation*, not execution.
 > Implementation of what it produces touches vault skills and cron — that is
-> foreground work (vault skills are Bryan-owned; see Pitfalls). The spec file
+> foreground work (vault skills are human-owned; see Pitfalls). The spec file
 > is the durable artifact and lives in the vault.
 
 ## 1. Prime directive
@@ -95,7 +95,7 @@ What the numbers usually mean:
   the machinery runs; zero drains / zero typed edges prove nothing reaches
   the store's structure. Name both halves separately.
 - **The human-attention single point of failure.** Any pipeline that ends in
-  "only Bryan can act" needs a measured drain rate. Zero → the fix is a
+  "only your human can act" needs a measured drain rate. Zero → the fix is a
   drain (visibility inside the attention contract + a one-word approval
   path), not more proposals.
 - **Time-driven rotation vs. bursty ingest.** Fixed nightly windows over a
@@ -135,7 +135,7 @@ House style (`templates/spec-skeleton.md`): file
 `docs/specs/<YYYY-MM-DD>-<name>-design.md`; header block with Date / Status /
 Builds-on; motivation carrying the **measured numbers** (a spec without
 measurements is an opinion); numbered design sections; an **Open questions**
-section for Bryan's calls; a rollout/migration order; an explicit
+section for your human's calls; a rollout/migration order; an explicit
 out-of-scope section naming the follow-on specs.
 
 **Commit the spec immediately** with a descriptive message — never leave it
@@ -152,6 +152,6 @@ for the auto-push snapshotter.
 - Proposing throughput increases before the drain exists.
 - Implementing vault-side changes from an audit session. Vault skills
   (`skills/`) are human-owned; the audit's deliverable is the spec +
-  a flagged implementation order. Edits happen in foreground with Bryan.
+  a flagged implementation order. Edits happen in foreground with your human.
 - Letting the spec sit uncommitted — the snapshotter will bury it under a
   generic message.

@@ -1,6 +1,6 @@
 ---
 name: refresh-research-topics
-description: Keeps RESEARCH.md synchronized with the brain — auto-adds Bryan's explicit artifacts, auto-enriches existing entries, proposes derived topics to QUEUE.md. Weekly scheduled run plus on request.
+description: Keeps RESEARCH.md synchronized with the brain — auto-adds your human's explicit artifacts, auto-enriches existing entries, proposes derived topics to QUEUE.md. Weekly scheduled run plus on request.
 triggers:
   - "refresh research topics"
   - "update RESEARCH.md"
@@ -15,7 +15,7 @@ thread context, `literature-sweep` builds its query profile from it, the
 attention contract reads its funding context. It decays by default — the
 brain moves every day; a hand-maintained summary does not. This skill is
 the standing refresh: it reconciles RESEARCH.md against the brain on a
-weekly cadence, under a three-tier automation model (agreed with Bryan
+weekly cadence, under a three-tier automation model (agreed with your human
 2026-08-06).
 
 > **Conventions:** `brain-ops` (never blind-overwrite; RESEARCH.md is a
@@ -28,7 +28,7 @@ weekly cadence, under a three-tier automation model (agreed with Bryan
 
 | Tier | What | Action | Approval |
 |---|---|---|---|
-| **1 — Explicit artifacts** | New `grants/` or `projects/` pages Bryan created (grant-ingest, direct request) | Add to RESEARCH.md automatically | None — Bryan's own artifact |
+| **1 — Explicit artifacts** | New `grants/` or `projects/` pages your human created (grant-ingest, direct request) | Add to RESEARCH.md automatically | None — your human's own artifact |
 | **2 — Enrichment of existing entries** | Open questions, thread status, funding status, publication pipeline — driven by ingestions and page updates | Rewrite in place automatically | None — logged in the decision ledger |
 | **3 — Derived topics** | New topics *inferred* by maintenance/synthesis (a concept cluster with no RESEARCH.md home, an emerging thread in ingestion patterns) | Propose to `docs/rem-cycle/QUEUE.md` | **Required** — never written directly |
 
@@ -55,7 +55,7 @@ decision ledger). No external I/O.
    framing + current open question for domains; funder / status / amount
    / deadline for funding context). Skip pages whose status is `dropped`
    or `dormant`. Provenance test: `grants/` pages are always
-   Bryan-explicit (grant-ingest is Bryan-initiated). `projects/` pages
+   human-explicit (grant-ingest is human-initiated). `projects/` pages
    created by a *synthesis* process are NOT tier 1 — they are tier 3;
    check the page's creation context (its ingest log / Shift trail)
    before treating a project page as explicit.
@@ -78,9 +78,9 @@ decision ledger). No external I/O.
    whose deadline passed, a `submitted` grant with a decision the page
    doesn't record — do NOT resolve it. Add an inline `> **Flag
    (date):**` blockquote stating the contradiction. Flags are the
-   refresh's way of asking Bryan a question in writing. (Exemplar: the
+   refresh's way of asking your human a question in writing. (Exemplar: the
    GCGH diagnostics grant, flagged 2026-08-06 backfill, resolved by
-   Bryan same-day as dropped.)
+   your human same-day as dropped.)
 
 4. **Tier 3 — propose derived topics.** Look for research activity with
    no RESEARCH.md home:
@@ -111,7 +111,7 @@ decision ledger). No external I/O.
 - RESEARCH.md never silently drifts from the brain — tier 1 and tier 2
   keep it synchronized with explicit activity.
 - No inferred topic enters the research program's state file without
-  Bryan's explicit approval — tier 3 proposals are visible in QUEUE.md
+  your human's explicit approval — tier 3 proposals are visible in QUEUE.md
   with evidence attached.
 - Every automatic write is logged and revertible (decision ledger +
   commit history).
@@ -120,7 +120,7 @@ decision ledger). No external I/O.
 ## Anti-patterns
 
 - **Regenerating RESEARCH.md wholesale.** The file carries curated
-  framing (Bryan's voice in entry text). Patch sections; preserve
+  framing (your human's voice in entry text). Patch sections; preserve
   hand-written lines that are still accurate.
 - **Treating synthesis-created pages as tier 1.** A project page born
   from topic-synthesis is an inference, not an explicit artifact —

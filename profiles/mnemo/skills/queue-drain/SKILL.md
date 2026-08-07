@@ -37,7 +37,7 @@ intent into an executed graph change, exactly as proposed, with an audit trail.
   and marked in QUEUE.md in place (`[x]` approved, `[~]` rejected, with a
   decision line). The queue file stays the audit trail; lines are never deleted.
 - An item whose target no longer exists or whose change no longer applies is
-  reported as `stale` and left for Bryan — never force-applied.
+  reported as `stale` and left for your human — never force-applied.
 - Auto-executions (phase-0 mode) additionally satisfy all four graduated-autonomy
   gates and carry the revert banner. This skill never widens the whitelist
   itself.
@@ -70,7 +70,7 @@ The orchestrator (or, post-decomposition, the `rem-drain` cron job) passes
   (`_state.yaml → autonomy`; grant-armed classes skip the age/track-record
   gates). Cap 20/run for grant-armed classes. **Synthesis items (concepts,
   hypotheses) never auto-execute regardless of mode** — they are always left
-  for Bryan (standing grant, 2026-08-04).
+  for your human (standing grant, 2026-08-04).
 
 Returns the fenced-yaml phase result: `committed[]` (category `auto-approved`),
 `metrics` (`items_examined`, `auto_executed`, `would_auto_run`,
@@ -83,8 +83,8 @@ Returns the fenced-yaml phase result: `committed[]` (category `auto-approved`),
 - Deleting queue lines, or rewriting unchecked ones — mark in place, never erase.
 - Force-applying a stale item — report it instead.
 - Executing anything outside the whitelist in phase-0 mode — the gates are
-  conjunctive; when in doubt, leave it for Bryan.
+  conjunctive; when in doubt, leave it for your human.
 - Skipping the ledger entry — an unrecorded execution is indistinguishable from
   a rogue write.
 - Widening the whitelist, shortening the age gate, or raising the cap without
-  Bryan — those are spec changes, not runtime decisions.
+  your human — those are spec changes, not runtime decisions.

@@ -1,6 +1,6 @@
 ---
 name: monitor-the-situation
-description: Standing change-detection watch — maintains MONITORS.md, a hand-editable watchlist of specific things Bryan is waiting on (a funding call that will drop, a policy that will publish), and on a daily cadence checks each active item against structured open-API sources, judges whether anything genuinely changed, and notifies only on a significant new hit. Stateful by design; silence is the default.
+description: Standing change-detection watch — maintains MONITORS.md, a hand-editable watchlist of specific things your human is waiting on (a funding call that will drop, a policy that will publish), and on a daily cadence checks each active item against structured open-API sources, judges whether anything genuinely changed, and notifies only on a significant new hit. Stateful by design; silence is the default.
 triggers:
   - "monitor the situation"
   - "watch for X"
@@ -57,13 +57,13 @@ make that call; the mind can.
 - **Every notification carries a resolvable link** — the FR document URL, the
   grants.gov opportunity, the NIH Guide notice. Never a reconstructed guess.
 - **The file is the only thing this skill writes.** It does not create brain
-  pages. When a hit is worth a `grant` or `paper` page, it flags it for Bryan;
+  pages. When a hit is worth a `grant` or `paper` page, it flags it for your human;
   ingestion is a separate skill and a separate decision.
 
 ## The watchlist — MONITORS.md
 
 One markdown file at vault root, one `##` block per monitored item. The fields
-above `state:` are Bryan's (hand-editable); everything under `state:` is
+above `state:` are your human's (hand-editable); everything under `state:` is
 Mind-maintained.
 
 ```markdown
@@ -100,7 +100,7 @@ reading the file knows exactly what would trip the wire.
     a one-shot event ("the paper posts").
   - `until-cancelled` — notify, keep watching. Use when the event has a
     *staggered rollout* — one announcement is not the last, so the watch stays
-    live until Bryan sets `status: cancelled`. (The Bio Genesis Mission is this:
+    live until your human sets `status: cancelled`. (The Bio Genesis Mission is this:
     funding calls will drop over time, not all at once.)
   - `indefinite` — never self-terminates; a standing watch with no expected
     end.
@@ -166,7 +166,7 @@ baseline so they never fire; the target is an NIH/HHS "Bio Genesis" solicitation
 6. **Update state — carefully.** For every item swept (fired or not), append all
    new IDs to `seen-ids` and set `last-checked` to today. **Never blind-overwrite
    `MONITORS.md`** (`SOUL.md` §2): re-read it immediately before writing in case
-   Bryan hand-edited it during the run, and apply targeted edits to the state
+   your human hand-edited it during the run, and apply targeted edits to the state
    blocks only — never rewrite his fields. On a quiet sweep, the only change is
    `last-checked`.
 
@@ -191,7 +191,7 @@ message; the absence is the signal.
 
 ## Adding or changing a monitor
 
-When Bryan asks to watch something new, add a `##` block to `MONITORS.md`.
+When your human asks to watch something new, add a `##` block to `MONITORS.md`.
 Pin down, with him, the fields that need judgment:
 
 - **The sources and queries** — which of the three APIs, and the exact terms.
@@ -213,13 +213,13 @@ Pin down, with him, the fields that need judgment:
 - Diffing on page text or HTML instead of stable IDs — guarantees false
   positives on trivial churn.
 - Sending an "all quiet / nothing new" message — silence is the signal; a daily
-  no-op ping trains Bryan to ignore the channel.
+  no-op ping trains your human to ignore the channel.
 - Blind-overwriting `MONITORS.md` — re-read before writing; edit only the state
-  blocks; never clobber Bryan's hand-edited fields.
+  blocks; never clobber your human's hand-edited fields.
 - Not seeding `seen-ids` — the first sweep then fires on everything that already
   exists.
 - Inventing an interest the watchlist does not hold, or auto-creating brain
   pages — the sweep writes only `MONITORS.md` and flags page-worthy hits for
-  Bryan.
+  your human.
 - Treating `MONITORS.md` as a brain page — it is operational state, same tier as
   `TODOS.md` / `BRIEFING.md`, excluded from the graph.

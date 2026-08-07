@@ -159,7 +159,7 @@ metadata operations, 10s connect is a sane default.
 
 ## Email sources
 
-Raw email (Bryan's work account only — personal accounts are excluded at the
+Raw email (your human's work account only — personal accounts are excluded at the
 CLI) is archived **one object per message**: threads grow, and the archive is
 write-once, so a thread is assembled at distill time, never stored as a
 mutable whole. Key shape: `email/<sha256>.<ext>`, hashed from the raw message

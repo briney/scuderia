@@ -1,6 +1,6 @@
 ---
 name: grant-ingest
-description: Ingest a grant — a whole application package, in any format — distill it against grant structure, preserve Bryan's verbatim prose, annotate it with reviewer critiques, and file it as one grant page wired into the research graph.
+description: Ingest a grant — a whole application package, in any format — distill it against grant structure, preserve your human's verbatim prose, annotate it with reviewer critiques, and file it as one grant page wired into the research graph.
 triggers:
   - "ingest this grant"
   - "process this grant"
@@ -12,7 +12,7 @@ triggers:
 
 Turn a grant — a funded or unfunded application, a renewal, a resubmission —
 into one `grant` page that is distilled against grant structure *and* carries
-Bryan's verbatim prose intact. A grant is the richest source the brain ingests:
+your human's verbatim prose intact. A grant is the richest source the brain ingests:
 an explicit statement of the lab's current research direction, often holding
 bleeding-edge preliminary data that has not been published anywhere else. It
 earns the highest care, the most detail, and the one deliberate exception to
@@ -32,7 +32,7 @@ distill-don't-dump.
 
 `brain-search`, `brain-read`, `brain-write`, `raw-source-archive-upload`
 (the application package — research strategy, summary statement, etc.),
-`user-model-query` (Bryan's blind spots inform what the analysis section
+`user-model-query` (your human's blind spots inform what the analysis section
 should call out). Does **not** delegate paper-ingest inline; instead,
 sets `needs-ingest: true` on cited paper stubs for `ingest-pending-papers`
 to drain later (the producer/consumer split).
@@ -40,7 +40,7 @@ to drain later (the producer/consumer split).
 ## Why verbatim, here
 
 Every other ingest skill distills and discards the source text. This one keeps
-it. Two reasons. A grant is Bryan's own writing, and `skills/conventions/quality.md`
+it. Two reasons. A grant is your human's own writing, and `skills/conventions/quality.md`
 forbids paraphrasing his prose — his voice is a source the brain learns from,
 and paraphrase destroys it. And the future grant-writing skills (`RESOLVER.md`,
 deferred) learn that voice from exactly this corpus. The grant page therefore
@@ -75,7 +75,7 @@ Research Strategy, Project Narrative / Summary, budget, budget justification,
 biosketches, and — for a resubmission or an awarded grant — the summary
 statement or reviewer critiques. Foundation grants vary widely from the rigid
 NIH package, so this skill stays **non-rigid**: a package is whatever documents
-Bryan dropped for one grant, and each document is classified by its *evident
+your human dropped for one grant, and each document is classified by its *evident
 role*, never against a required checklist. Roles seen so far:
 
 `specific-aims`, `research-strategy`, `project-narrative`, `project-summary`,
@@ -87,7 +87,7 @@ role*, never against a required checklist. Roles seen so far:
 1. **Group the package and confirm.** Detect which dropped documents belong to
    one grant — shared title, PI, agency, aims. Classify each by role. A summary
    statement or critique is paired to its grant by matching project title and
-   agency. Then confirm the grouping *and* the primary project(s) with Bryan
+   agency. Then confirm the grouping *and* the primary project(s) with your human
    via `skills/ask-user/SKILL.md` before writing — grants touch several projects
    and the wrong call is expensive to unwind.
 
@@ -129,7 +129,7 @@ role*, never against a required checklist. Roles seen so far:
    ingest attempt earlier in the same conversation) because the page is not
    yet indexed. **Also do a filesystem grep before writing**:
    `search_files target=content pattern="<grant-number>"` (e.g.
-   `R21AI194140`) across `grants/`, `projects/`, `RESEARCH.md`,
+   `R21AI000000`) across `grants/`, `projects/`, `RESEARCH.md`,
    `people/`, and `institutions/`. If a near-identical page exists,
    consolidate: keep the most complete one (verbatim section closest to
    100% of source bytes; per-passage critique pairings present), delete
@@ -188,7 +188,7 @@ role*, never against a required checklist. Roles seen so far:
      personnel slug to the grant page's own `links:` block, so the typed
      edge is symmetric. A grant whose co-Is were silently skipped is a
      graph hole the cross-grant collaborator view depends on, and it is
-     the failure mode this bullet exists to prevent (ENDURE R01AI192456,
+     the failure mode this bullet exists to prevent (ENDURE R01AI000000,
      2026-05).
 
      **Where to find personnel — in priority order.** Body prose is the
@@ -207,11 +207,11 @@ role*, never against a required checklist. Roles seen so far:
      4. **Research Strategy prose** — only as a sanity check that the list
         from (1)–(3) is complete. A name that appears in the Approach
         narrative but is missing from the facepage and biosketches is
-        worth confirming with Bryan before paging.
+        worth confirming with your human before paging.
 
      If none of (1)–(3) are present in the dropped package — common for
      foundation grants and for re-ingests where only the science documents
-     were preserved — stop and ask Bryan for the facepage or biosketches
+     were preserved — stop and ask your human for the facepage or biosketches
      before guessing personnel from prose. A name mentioned in the
      Approach ("the Irvine lab has developed…") is not by itself
      sufficient evidence that the person is Key Personnel on this grant;
@@ -256,7 +256,7 @@ role*, never against a required checklist. Roles seen so far:
    ```
 
    If both checks fail, the references are not in the document. Stop and
-   ask Bryan for a standalone bibliography file — it almost certainly
+   ask your human for a standalone bibliography file — it almost certainly
    exists as a separate doc in the original NIH submission. Drop it into
    `_drop/`, archive it to R2 with `role: bibliography`, and append the new
    `sources:` entry to the grant page frontmatter retroactively (use
@@ -337,7 +337,7 @@ role*, never against a required checklist. Roles seen so far:
     silent regressions.
 
 12. **Hand off to `ingest-pending-papers`.** As the closing line of the
-    ingest, tell Bryan: "N stubs created, M existing pages updated. Run
+    ingest, tell your human: "N stubs created, M existing pages updated. Run
     `ingest-pending-papers` in a fresh session to fill them in — optionally
     switch the TUI to a cheaper/faster model first; routine paper ingest
     doesn't need Opus." Do *not* invoke the worker.
@@ -406,8 +406,8 @@ Scores, percentile, outcome. Critique themes paraphrased. Actionable
 resubmission concerns called out separately. Omit the section if unreviewed.
 
 ## Analysis
-Where this lands on Bryan's active threads — what it advances, what it
-contradicts, what it opens. What Bryan would not have noticed.
+Where this lands on your human's active threads — what it advances, what it
+contradicts, what it opens. What your human would not have noticed.
 
 ## Key citations
 One bullet per key citation. Each bullet has three pieces: the wikilink to the
@@ -419,7 +419,7 @@ verbatim citation entry as a blockquote child.
   > doi:<doi-if-present>
 
 ## Verbatim
-Bryan's preserved prose — the corpus the grant-writing skills learn his voice
+your human's preserved prose — the corpus the grant-writing skills learn their voice
 from. One subsection per science document, intact, figure captions kept.
 
 ### Specific Aims (verbatim)
@@ -472,7 +472,7 @@ sources: []                # no R2 source yet — paper-ingest pulls the PDF
 - Shelling out to pandoc or ImageMagick — text extraction is Hermes's job.
 - Extracting or normalizing figure images instead of discarding them; dropping
   the figure captions, which are text and carry the result.
-- Paraphrasing the verbatim science prose — Bryan's grant voice is preserved
+- Paraphrasing the verbatim science prose — your human's grant voice is preserved
   intact or it is lost.
 - Creating `hypothesis` pages from grant content — hypotheses derive from
   brainstorming and literature review, not grant restatement.

@@ -1,7 +1,7 @@
 # NIH R21 — Exploratory/Developmental Research Grant (no clinical trials)
 
 The R21 funds early-stage, exploratory, or developmental work — a novel idea or
-a new model system that would not yet survive R01 review. Bryan's usual route
+a new model system that would not yet survive R01 review. your human's usual route
 is the parent announcement **PA-25-304** (Exploratory/Developmental Research
 Grant, Clinical Trial Not Allowed), reissued periodically under a new PA
 number. Confirm the live number and read its Section IV — the NOFO overrides

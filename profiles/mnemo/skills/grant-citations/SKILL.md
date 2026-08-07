@@ -35,7 +35,7 @@ and assembles the Bibliography & References Cited.
 ## What this guarantees
 
 - Every `[needs-citation]` flag in the grant's `## Draft` is resolved — to a
-  real, verified source, or escalated to Bryan as a claim that cannot stand.
+  real, verified source, or escalated to your human as a claim that cannot stand.
 - Every citation already in the draft is verified: a real work that actually
   supports the claim it is attached to. No fabricated or misattributed
   citations.
@@ -54,7 +54,7 @@ and assembles the Bibliography & References Cited.
    brain (`skills/query/SKILL.md`), or externally
    (`skills/literature-research/SKILL.md`). If no real source supports the
    claim, that is not a citation problem — it is a claim problem: surface it to
-   Bryan and route it to `grant-section`. Never invent or guess a citation to
+   your human and route it to `grant-section`. Never invent or guess a citation to
    clear a flag.
 
 3. **Verify.** Each citation — the one already in the draft and each one just
@@ -70,7 +70,7 @@ and assembles the Bibliography & References Cited.
 
 5. **Write back and report.** Update the in-text citations and the bibliography
    in the grant's `## Draft`; log the pass in `## Drafting log`. Report every
-   claim that could not be sourced — those go to Bryan and `grant-section`, and
+   claim that could not be sourced — those go to your human and `grant-section`, and
    they block submission until resolved.
 
 A foundational reference the grant leans on that is not yet a brain page can
@@ -95,4 +95,4 @@ claims that could not be sourced.
 - Imposing a citation style the NOFO or funder does not require — match what
   the announcement asks for, then hold it consistent.
 - Treating a claim with no real source as a formatting problem instead of
-  escalating it to Bryan.
+  escalating it to your human.

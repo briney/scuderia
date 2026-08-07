@@ -1,6 +1,6 @@
 ---
 name: voice-note-ingest
-description: Ingest a voice memo — preserve Bryan's exact phrasing verbatim in a block-quoted transcript, then distill it into the right page kind and archive the audio to R2.
+description: Ingest a voice memo — preserve your human's exact phrasing verbatim in a block-quoted transcript, then distill it into the right page kind and archive the audio to R2.
 triggers:
   - "voice note"
   - "ingest this voice memo"
@@ -31,7 +31,7 @@ is the primary source and is sacred; the analysis interprets it.
 
 ## What this guarantees
 
-- Bryan's exact words are preserved verbatim in a block-quoted transcript
+- your human's exact words are preserved verbatim in a block-quoted transcript
   section — never paraphrased, never cleaned up.
 - The content is filed by primary subject into the right page kind.
 - The audio original is archived to R2; the binary never enters git.
@@ -39,13 +39,13 @@ is the primary source and is sacred; the analysis interprets it.
 
 ## The transcript is sacred
 
-Preserve Bryan's phrasing **verbatim** — every hesitation, every false start,
+Preserve your human's phrasing **verbatim** — every hesitation, every false start,
 every offhand word. The unpolished, stream-of-consciousness phrasing carries
 something a cleaned-up paraphrase loses; the language *is* the insight
 (`_output-rules.md`).
 
 - Keep: `"the masking ablation only helps if the drift is non-stationary, which I'm not sure we've actually shown"`
-- Not: `Bryan questioned whether the masking ablation result holds`
+- Not: `your human questioned whether the masking ablation result holds`
 
 The transcript section is the primary source. The Analysis section is where
 interpretation lives — never edit the transcript to match the analysis.
@@ -59,7 +59,7 @@ interpretation lives — never edit the transcript to match the analysis.
    (`_brain-filing-rules.md`):
    - First-person thinking, a reflection, a reaction — **the common case** →
      `notes/<slug>.md`
-   - A scientific principle or framework Bryan is articulating →
+   - A scientific principle or framework your human is articulating →
      `concepts/<slug>.md`
    - A testable claim worth tracking evidence on → `hypotheses/<slug>.md`
    - New information or an assessment of a person → `people/<slug>.md`
@@ -103,7 +103,7 @@ sources:
 
 ## Transcript
 
-> Bryan's exact words, verbatim — every hesitation and false start
+> your human's exact words, verbatim — every hesitation and false start
 > preserved. This is the primary source. Do not edit it.
 
 ## Analysis
@@ -112,7 +112,7 @@ What this means, how it connects to the active research threads, what
 question it opens — the interpretation, kept separate from the transcript.
 ```
 
-**Example.** A voice memo where Bryan thinks aloud about whether a preferential
+**Example.** A voice memo where your human thinks aloud about whether a preferential
 masking result generalizes files to `notes/` as first-person thinking; the
 transcript is preserved verbatim, and the Analysis forward-links to
 `[[methods/preferential-masking]]` and any hypothesis it bears on. If the memo
@@ -120,11 +120,11 @@ instead lays out a *testable* claim, it files to `hypotheses/` instead.
 
 ## Citation
 
-Attribute the memo as a direct statement from Bryan — the highest-authority
+Attribute the memo as a direct statement from your human — the highest-authority
 source (`skills/conventions/quality.md`):
 
 ```
-[Source: Bryan, voice memo, YYYY-MM-DD]
+[Source: your-human, voice memo, YYYY-MM-DD]
 ```
 
 ## Anti-patterns

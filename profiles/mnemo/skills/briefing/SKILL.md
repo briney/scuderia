@@ -12,9 +12,9 @@ triggers:
 # Briefing — the attention contract in action
 
 The brief is not a list-printer. It is the **attention contract** (`VISION.md`
-§5, `DESIGN.md` §4.5) made concrete: a filter on Bryan's attention that surfaces
+§5, `DESIGN.md` §4.5) made concrete: a filter on your human's attention that surfaces
 signal and silences noise. The skill *composes* the brief — against the brain,
-and against Bryan's live calendar and inbox — writes the result to the rolling
+and against your human's live calendar and inbox — writes the result to the rolling
 `BRIEFING.md`, and Hermes *delivers* it — to Telegram at the scheduled hour, or
 to the terminal on request (`DESIGN.md` §6.3). This skill owns the editorial
 judgment, nothing else.
@@ -39,11 +39,11 @@ judgment, nothing else.
 ## The attention contract — four properties
 
 Every brief honors all four. They are the difference between a trusted filter
-and one more thing pinging Bryan.
+and one more thing pinging your human.
 
 1. **A relevance bar drawn from the user model.** What matters is what matters
    *to your human specifically* — read from `USER.md` via `user-model-query`, not
-   a global heuristic. Consult Bryan's declared priorities, taste, and what
+   a global heuristic. Consult your human's declared priorities, taste, and what
    he has named as in- vs. out-of-scope; weight the brief against that,
    alongside page `importance`.
 2. **A default of silence.** Nothing surfaces unless it clears the bar. A quiet
@@ -56,13 +56,13 @@ and one more thing pinging Bryan.
    renewals, and review obligations.
 4. **An auditable ignore-report.** Close every brief with a short, explicit
    "here is what I decided you could ignore" — the items that did not clear the
-   bar and why. The filter must be *legible* so Bryan can correct it; a
+   bar and why. The filter must be *legible* so your human can correct it; a
    black-box filter cannot earn trust.
 
 ## Phases
 
 1. **Set the relevance bar.** Read `USER.md` via `user-model-query` for
-   Bryan's declared priorities, domain priors, and what he has named as in-
+   your human's declared priorities, domain priors, and what they have named as in-
    vs. out-of-scope. This is what separates signal from noise for the rest of
    the brief — do it first.
 
@@ -77,7 +77,7 @@ and one more thing pinging Bryan.
 
 3. **Today's meetings.** For each event on today's calendar, find its `meeting`
    page if one exists, then read the `people` pages of each attendee for
-   context — who they are, the thread that connects them to Bryan, the last
+   context — who they are, the thread that connects them to your human, the last
    interaction. When an attendee has no `people` page, name the gap ("no page
    for J. Okafor — consider enrich").
 
@@ -133,7 +133,7 @@ and one more thing pinging Bryan.
     by `queue-drain`.
 
 8. **Today's focus.** Two or three bullets — no more — naming the highest-stakes
-   things Bryan should be thinking about or working on today. This is a
+   things your human should be thinking about or working on today. This is a
    synthesis of the loudest items from phases 4–7, not a task list:
    `daily-task-prep` owns the detailed, actionable version. If nothing rises to
    the top, say so rather than manufacturing focus items.
@@ -165,7 +165,7 @@ delivery artifact, overwritten every run; git history is the archive of past
 briefs. Hermes delivers the same text to Telegram. `BRIEFING.md` is *not* a
 brain page: it has no `kind`, it lives in no page directory, and it is excluded
 from the knowledge graph. Composing the brief is otherwise **read-only** — it
-never creates or edits brain pages unless Bryan explicitly asks. Writing
+never creates or edits brain pages unless your human explicitly asks. Writing
 `BRIEFING.md` is the one exception, and it is a delivery artifact, not knowledge.
 
 When a weekly **synthesis briefing** newer than the last daily brief exists
@@ -211,8 +211,8 @@ DECIDED YOU COULD IGNORE
 - {item} — {why it did not clear the bar}
 ```
 
-Cite facts inline so Bryan can trace and judge freshness:
-"co-PI on [[grants/r01-repertoire-aging]] [Source: people/j-okafor, updated
+Cite facts inline so your human can trace and judge freshness:
+"co-PI on [[grants/<slug>]] [Source: people/j-okafor, updated
 2026-05-02]". When a page is stale (untouched 30+ days), say so rather than
 presenting it as current.
 

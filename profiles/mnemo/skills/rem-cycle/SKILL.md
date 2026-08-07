@@ -84,7 +84,7 @@ monthly monoliths unchanged. Peels proceed one phase per week per the plan.
   untouched data is a no-op.
 - **Non-destructive, dry-run by default** until a phase earns trust.
 - **One report per tier; one commit per phase job.** Proposals accumulate in
-  `QUEUE.md`, drained by Bryan directly or via `queue-drain` — never auto-cleared.
+  `QUEUE.md`, drained by your human directly or via `queue-drain` — never auto-cleared.
 
 ## Cadence tiers
 
@@ -171,7 +171,7 @@ metrics:                       # canonical health counters, for the delta
 Any phase can be run standalone in conversation ("re-link the brain", "reinforce
 the concepts") — the delegate skills handle that path and report
 conversationally. The contract governs the scheduled path. A standalone run does
-**not** write to `runs/` — it is off the audit pipeline by design (Bryan asked;
+**not** write to `runs/` — it is off the audit pipeline by design (your human asked;
 the answer is immediate).
 
 ## Anti-patterns
@@ -181,7 +181,7 @@ the answer is immediate).
 - Applying a phase result without re-asserting the invariants first.
 - Running a not-yet-wired phase's job by hand to "fill the gap" — skip it and
   log it; a run must not claim work it did not do.
-- Auto-clearing or rewriting `QUEUE.md` — only Bryan drains it (directly or via
+- Auto-clearing or rewriting `QUEUE.md` — only your human drains it (directly or via
   `queue-drain`). On a re-run, **prepend and dedup**; never re-queue a proposal
   already there or already rejected (`decisions.yaml`).
 - Double-counting a change two phases both surfaced — dedup on `(target,

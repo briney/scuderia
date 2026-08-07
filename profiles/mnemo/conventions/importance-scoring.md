@@ -14,7 +14,7 @@ hand-set opinion field:
   `novel-finding`, `methods-paper`, `seminal`, `contradicts-existing`,
   `key-citation`, `under-review`, `replication-target`. A page carrying these
   tags scores higher.
-- **Annotation density and weight** — how much of Bryan's own thinking is on the
+- **Annotation density and weight** — how much of your human's own thinking is on the
   page. A page he has argued with is more salient than a bare stub.
 - **Graph centrality** — how connected the page is in the link graph
   (see `graph-and-links.md`). A hub page outranks a leaf.

@@ -1,6 +1,6 @@
 ---
 name: conversation-capture
-description: Capture a discussion — on Bryan's one-line trigger, distill the current session into a durable `conversation` page (discussion / explainer / fit), preserve his key phrasings verbatim, archive the raw transcript to R2, and chain forward into the graph.
+description: Capture a discussion — on your human's one-line trigger, distill the current session into a durable `conversation` page (discussion / explainer / fit), preserve his key phrasings verbatim, archive the raw transcript to R2, and chain forward into the graph.
 triggers:
   - "capture this convo"
   - "record what we just discussed"
@@ -12,10 +12,10 @@ triggers:
 # Conversation capture — the deliberate thread-level artifact
 
 Turn the discussion that just happened into a `conversation` page. This fires on
-a **manual trigger** from Bryan — his judgment is the gate for what deserves a
+a **manual trigger** from your human — their judgment is the gate for what deserves a
 page (full design lives in the instance's private `docs/specs/`). The
 skill does not run ambiently and must not interrogate; capture with what the
-session gives you, infer the rest, and let Bryan correct.
+session gives you, infer the rest, and let your human correct.
 
 > **Conventions:** `_brain-filing-rules.md`, `skills/conventions/quality.md`
 > (citations, exact-phrasing preservation), `skills/conventions/graph-and-links.md`
@@ -39,7 +39,7 @@ session gives you, infer the rest, and let Bryan correct.
 
 ## What this guarantees
 
-- Fires only on Bryan's trigger — never ambiently (that is `signal-detector`'s
+- Fires only on your human's trigger — never ambiently (that is `signal-detector`'s
   job; this skill captures the *thread*, not the *atoms*).
 - Your human's key phrasings are preserved **verbatim** in quote blocks; the mind's
   side is distilled.
@@ -50,17 +50,17 @@ session gives you, infer the rest, and let Bryan correct.
 
 ## The split: verbatim human, distilled mind
 
-Preserve Bryan's load-bearing phrasing **verbatim** — the exact words carry
+Preserve your human's load-bearing phrasing **verbatim** — the exact words carry
 signal a paraphrase loses (`_output-rules.md`). The archived transcript (Phase 4)
 is the full raw record; the page is a distillation that keeps his exact words
 where they matter and interprets the rest.
 
 - Keep: `"I don't think a per-token masking objective even sees the pairing signal"`
-- Not: `Bryan doubted that masking captures pairing`
+- Not: `your human doubted that masking captures pairing`
 
 ## Phases
 
-1. **Receive the trigger.** Bryan may name the mode ("...as a fit assessment")
+1. **Receive the trigger.** your human may name the mode ("...as a fit assessment")
    or an anchor — honor it. Otherwise infer both. Never block on a question the
    session already answers.
 
@@ -91,7 +91,7 @@ where they matter and interprets the rest.
 
 5. **Write the page.** Frontmatter per `skills/conventions/frontmatter.md`; body shape
    by `mode` (below). Set `importance` low by default (~0.3) and raise it for a
-   weighty capture (an explainer of a key paper); Bryan can override.
+   weighty capture (an explainer of a key paper); your human can override.
 
 6. **Chain forward.** Add `[[kind/slug]]` wikilinks and typed edges to every page
    the conversation connects to. Never hand-write backlinks — they are derived
@@ -133,7 +133,7 @@ sources:
 ```
 
 - **`discussion`** — a distilled **arc** of the exchange (what was proposed, the
-  objection, where it landed), Bryan's load-bearing phrasings quoted verbatim,
+  objection, where it landed), your human's load-bearing phrasings quoted verbatim,
   and an **## Outcome** line: what moved, what stayed open.
 - **`explainer`** — the distilled **explanation** of the paper, standalone.
 - **`fit`** — **## Question** (what, for what use case) → **## Considerations**
@@ -142,18 +142,18 @@ sources:
 
 ## Citation
 
-Attribute Bryan's statements as direct — the highest-authority source
+Attribute your human's statements as direct — the highest-authority source
 (`skills/conventions/quality.md`):
 
 ```
-[Source: Bryan, conversation, YYYY-MM-DD]
+[Source: your-human, conversation, YYYY-MM-DD]
 ```
 
 ## Anti-patterns
 
 - Running ambiently or on a non-trigger message — this is manual; atoms are
   `signal-detector`'s job.
-- Interrogating Bryan for mode/anchor the session already answers.
+- Interrogating your human for mode/anchor the session already answers.
 - Paraphrasing his load-bearing phrasing instead of quoting it verbatim.
 - Dropping a `fit`'s verdict, or discarding a `no-fit` — the negative decision
   is the value.

@@ -1,6 +1,6 @@
 ---
 name: query
-description: Answer a question from the brain's knowledge — search, read, synthesize, cite. Use when Bryan asks what the brain knows about a topic, a paper, a person, or how pages connect.
+description: Answer a question from the brain's knowledge — search, read, synthesize, cite. Use when your human asks what the brain knows about a topic, a paper, a person, or how pages connect.
 triggers:
   - "what do we know about"
   - "tell me about"
@@ -57,7 +57,7 @@ ranking).
 
 ## Source precedence
 
-When sources conflict, weight them: Bryan's direct statements → the primary
+When sources conflict, weight them: your human's direct statements → the primary
 literature → a brain page's compiled synthesis → the open web. Surface the
 contradiction with both citations; do not silently pick a winner.
 

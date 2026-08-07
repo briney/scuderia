@@ -15,19 +15,16 @@ session can fold them in. Same pattern as the `paper-ingest` pointer.
 
 ## Patch 2026-08-03: Specific Aims page construction principles
 
-Source: Bryan's critique-and-rewrite decisions on the M. pneumoniae
-CARDS toxin R01 Aims page
-(`grants/r01-mpneumoniae-cards-toxin-mab-discovery.md` `## Draft`),
-2026-08-03. All six are user decisions, not suggestions. Add as a
+Source: your human's critique-and-rewrite decisions on a real R01
+Specific Aims page, 2026-08-03. All six are user decisions, not suggestions. Add as a
 "Specific Aims page — construction principles" section in the vault
 SKILL.md.
 
 1. **Significance is carried by logic; statistics are ballast.** The
    Aims-page significance argument must not be a statistics pile
-   (Bryan: it "needs to be much more sophisticated than just vomiting
-   up a bunch of statistics"). Working structure: disease burden →
+   (your human: on the record as rejecting a statistics pile in favor of a logical argument). Working structure: disease burden →
    therapeutic bind framed as logic (e.g., resistance is monogenic —
-   A2063G ≈97% of resistant isolates — so resistance arrives all at
+   one mutation accounts for ≈97% of resistant isolates — so resistance arrives all at
    once; the therapeutic gap is widest exactly where burden is
    greatest) → target biology plus the clinically validated precedent
    → the motivating scientific puzzle → overall goal. The puzzle (e.g.,
@@ -47,7 +44,7 @@ SKILL.md.
    whole antibacterial-antibody program.
 
 3. **Feasibility fallbacks belong in the Approach, never the Aims
-   page.** Bryan: including a design fallback at the Aim level "plants
+   page.** your human: including a design fallback at the Aim level "plants
    feasibility doubt in the reviewer's mind right from the start."
    Alternative approaches go in that Aim's Approach section.
 

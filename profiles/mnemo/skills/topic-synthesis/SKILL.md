@@ -53,13 +53,13 @@ lower-recall caveat carried into the output.
 This skill is one of four ways to interrogate the brain. Pick the right one:
 
 - **`query`** — answers a one-shot question, conversationally. Does not
-  file a page. Use when Bryan wants the answer right now.
+  file a page. Use when your human wants the answer right now.
 - **`literature-research`** — scans for *new* external literature on a
   topic and files a `note` with the delta. Use when the question is
   "what's new about X" — the brain is the baseline, the lit is the
   target.
 - **`concept-synthesis`** — dedupes and tiers `concept`/`note` stubs
-  capturing Bryan's *own* recurring thinking. Operates on Bryan's
+  capturing your human's *own* recurring thinking. Operates on your human's
   intellectual history, not on the literature. Use when "synthesize my
   concepts" or "find patterns across my notes."
 - **`topic-synthesis` (this skill)** — consolidates *paper* pages into a
@@ -68,12 +68,12 @@ This skill is one of four ways to interrogate the brain. Pick the right one:
   permanent page, not just a conversational answer.
 
 A topic-synthesis output may later become an input to `concept-synthesis`
-if Bryan riffs on the same idea in notes — that is fine; the two layer
+if your human riffs on the same idea in notes — that is fine; the two layer
 without conflict.
 
 ## Phases
 
-1. **Resolve the topic to a query.** Get a tight phrasing from Bryan if
+1. **Resolve the topic to a query.** Get a tight phrasing from your human if
    the request is vague ("what does the brain know about HIV bnAb
    germline targeting" is a topic; "antibodies" is not). The query is the
    axis the synthesis is organized around.
@@ -85,7 +85,7 @@ without conflict.
    30+.
 
    - **Refuse cleanly below threshold.** Fewer than 3 relevant papers
-     means there isn't enough in the brain to synthesize. Tell Bryan
+     means there isn't enough in the brain to synthesize. Tell your human
      plainly; offer `literature-research` to expand the brain first, or
      `query` if the question is conversational.
    - **Flag stubs.** A `paper` page with `needs-ingest: true` is a stub —
@@ -118,7 +118,7 @@ without conflict.
      useful frequencies"). Hypothesis pages carry typed `supports:` /
      `refutes:` edges to the source papers.
    - **If genuinely ambiguous** — the topic could honestly be either —
-     gate on Bryan via `skills/ask-user/SKILL.md`. Do not silently pick;
+     gate on your human via `skills/ask-user/SKILL.md`. Do not silently pick;
      the choice is load-bearing for how the page reads.
 
 5. **Draft.** Write the page in the documentary register the brain uses
@@ -152,7 +152,7 @@ without conflict.
 Invoked by the orchestrator as part of **phase 5 (consolidation)**, this skill
 does **not author** in an unattended run (`skills/conventions/rem-cycle-contract.md`) —
 authoring a durable page is expensive, quality-sensitive, and the graph is
-Bryan's to curate. It **detects and proposes** instead:
+your human's to curate. It **detects and proposes** instead:
 
 - **Mode.** `dry-run` (report only) or `normal` (queue the proposals).
 - **Detect ripe topics.** Cluster `paper` pages by the ripe signals —
@@ -166,8 +166,8 @@ Bryan's to curate. It **detects and proposes** instead:
   (`rem-cycle-contract.md`): `kind` (recommended `concept` vs `hypothesis`) and
   `kind_ambiguous: true` when the pro/con test can't settle it — uniform support
   with an unresolved-*future* "con" is not literature disagreement; flag it and
-  Bryan picks the kind on approval. Plus `sources`, `outline`, `coherence`
-  (`tight` = a real draft head-start / `loose` = a strawman Bryan will re-scope),
+  your human picks the kind on approval. Plus `sources`, `outline`, `coherence`
+  (`tight` = a real draft head-start / `loose` = a strawman your human will re-scope),
   and `related_proposals` for topics sharing sources (so two half-overlapping
   pages aren't both authored). `target_exists: false`. Authoring happens on
   approval (a waking `topic-synthesis` run), never in the dream.
@@ -178,7 +178,7 @@ Bryan's to curate. It **detects and proposes** instead:
 ## Output
 
 A single new (or updated) `concept` or `hypothesis` page, plus a short
-report to Bryan: the topic, the page kind chosen and why, the count of
+report to your human: the topic, the page kind chosen and why, the count of
 source papers, any stubs flagged, the path to the new page. The page
 itself is the deliverable; the report is for traceability.
 

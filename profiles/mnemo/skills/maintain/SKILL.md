@@ -131,7 +131,7 @@ refreshed by a periodic maintenance pass — and this skill owns that pass.
 
 - It is an LLM pass over the corpus. For each page, read the signals the
   convention names — tag boost over the research-relevant tag set, annotation
-  density (how much of Bryan's own thinking is on the page), and graph
+  density (how much of your human's own thinking is on the page), and graph
   centrality (how connected the page is) — and write a refreshed `importance`
   value to frontmatter.
 - Treat the existing value as the last pass's output, not ground truth.
@@ -158,7 +158,7 @@ Report findings as a table, one row per dimension:
 [Per-dimension: the specific pages and the action taken on each.]
 
 ### Needs confirmation
-[Anything that requires Bryan's decision — deletions, ambiguous re-filings.]
+[Anything that requires your human's decision — deletions, ambiguous re-filings.]
 ```
 
 ## As a rem-cycle phase
@@ -191,7 +191,7 @@ runs, what commits, and what it emits:
   - **Any *downward* recompute of a page tagged `seminal` / `key-citation` (or
     pinned / identity) → propose, never auto, regardless of size** — a
     signal-based recompute can legitimately want to decay a globally-seminal
-    paper the corpus has not yet linked; that call is Bryan's, not the pass's.
+    paper the corpus has not yet linked; that call is your human's, not the pass's.
   - `|Δ|` that rounds to the same 2-decimal value → **no-op**: don't write, omit
     from `committed[]`, count only in `metrics.recomputed`. This keeps the pass
     idempotent.

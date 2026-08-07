@@ -58,20 +58,20 @@ reference. Expect ~1-3 per mature page with analytical prose.
 ## Patch 10 — Grant pages as valid LINK targets (shard 37)
 
 The observations skill documented that grant-identifier shorthand
-("R01AI180120") should be SKIP. Shard 37 refines this: grants referenced
+("R01AI000000") should be SKIP. Shard 37 refines this: grants referenced
 by **full vault path** in analytical prose ARE valid LINK targets.
 
 **LINK (body wikilink):** When prose references a grant by full path AND
 the sentence's argument depends on the grant — e.g. "The Ono Pharma
-antibody hit-expansion grant (grants/ono-pharma-ab-hit-expansion) and the
-R01 data-driven antibody models grant (grants/r01ai193616-data-driven-ab-models)
+antibody hit-expansion grant (grants/<example-collab>) and the
+R01 data-driven antibody models grant (grants/<r01-example>)
 both propose ML-guided affinity optimization." The sentence is about the
 grants' specific aims. Convert to `[[grants/<slug>]]` and mirror into
 frontmatter `links:`.
 
-**SKIP:** Grant-identifier shorthand ("R01AI180120", "R01 AI171438") without
+**SKIP:** Grant-identifier shorthand ("R01AI000000", "R01 AI171438") without
 a full path — these are labels, not verbatim entity names. The page slug
-is `r01ai180120-prepandemic-cov-bnab-west-africa`, not `R01AI180120`.
+is `r01ai180120-prepandemic-cov-bnab-west-africa`, not `R01AI000000`.
 
 **Directionality note:** A `cites:` edge from paper→grant is always wrong
 direction — grants cite papers via `cited_by`, not vice versa. But a body

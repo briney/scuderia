@@ -2,7 +2,7 @@
 
 The R01 is NIH's standard research grant: a defined, hypothesis-driven project
 led by an investigator with the preliminary data and track record to carry it.
-Bryan's usual route is the parent announcement **PA-25-301** (Research Project
+your human's usual route is the parent announcement **PA-25-301** (Research Project
 Grant, Clinical Trial Not Allowed), reissued every few cycles under a new PA
 number. Confirm the live number and read its Section IV — the NOFO overrides
 this file (`README.md`).

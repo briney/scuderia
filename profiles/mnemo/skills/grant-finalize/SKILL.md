@@ -11,7 +11,7 @@ triggers:
 # Grant finalize — close out a submitted grant
 
 The post-submission endpoint of the grant-writing cluster. `grant-coherence`
-clears the pre-submission gate, Bryan submits, and this skill takes the `grant`
+clears the pre-submission gate, your human submits, and this skill takes the `grant`
 page from `drafting` to a fully-integrated `submitted` page: the draft becomes
 voice corpus, the lifecycle transitions, the submitted package is archived, and
 the grant propagates across the brain.
@@ -41,8 +41,8 @@ as-submitted package).
 - A submitted cluster-written grant becomes a fully-integrated `grant` page —
   `status: submitted`, indistinguishable in shape from a `grant-ingest` output.
 - `## Draft` is promoted to `## Verbatim`: the submitted prose joins the voice
-  corpus, with **no provenance segregation** — every grant submitted in Bryan's
-  name is Bryan's voice, and counts equally for `grant-section`.
+  corpus, with **no provenance segregation** — every grant submitted in your human's
+  name is your human's voice, and counts equally for `grant-section`.
 - The as-submitted package is archived to R2; no binary enters git.
 - The grant propagates across the brain exactly as an ingested grant does.
 - Cross-grant synthesis and new `hypothesis` pages are deliberately not done
@@ -50,13 +50,13 @@ as-submitted package).
 
 ## Phases
 
-1. **Confirm submission.** Bryan confirms the grant was submitted. Identify the
+1. **Confirm submission.** your human confirms the grant was submitted. Identify the
    `grant` page (`status: drafting`). This skill is the submission moment only:
    anything that comes *back* — a summary statement, reviewer critiques — is
    `grant-ingest`'s job, and a resubmission re-enters at `grant-plan`.
 
 2. **Promote the draft to corpus.** `## Draft` → `## Verbatim`. The submitted
-   prose is Bryan's voice — no authorship marker, no segregation of
+   prose is your human's voice — no authorship marker, no segregation of
    cluster-written from pre-brain grants (`grant-section` weights all
    `## Verbatim` equally; the post-brain voice is the refined target, not a
    diluted one). Figure captions are kept. The page now matches the
@@ -85,7 +85,7 @@ as-submitted package).
    → `person` via `skills/enrich/SKILL.md`. Follow that procedure; do not
    restate it here.
 
-7. **Surface the program-state delta.** Offer Bryan a suggested `RESEARCH.md`
+7. **Surface the program-state delta.** Offer your human a suggested `RESEARCH.md`
    funding-context update (e.g. "R01 — submitted, awaiting review"). Do not
    auto-edit `RESEARCH.md` — it is hand-curated program state. Note that the
    grant is now available for cross-grant `skills/concept-synthesis/SKILL.md`;
@@ -97,7 +97,7 @@ A `grant` page in `status: submitted`, indistinguishable in shape from a
 `grant-ingest` output and fully wired into the graph; the as-submitted package
 archived to R2; the brain's `project`, `concept`, and `method` pages updated
 with the grant's contributions; a proposed `RESEARCH.md` funding-context delta
-handed to Bryan.
+handed to your human.
 
 ## Anti-patterns
 
@@ -106,10 +106,10 @@ handed to Bryan.
 - Restating `grant-ingest`'s propagation procedure instead of referencing its
   phase 7.
 - Marking or segregating the promoted `## Verbatim` by authorship — every
-  submitted grant is Bryan's voice corpus, full stop.
+  submitted grant is your human's voice corpus, full stop.
 - Doing cross-grant synthesis, or creating `hypothesis` pages from grant
   content — the same boundaries `grant-ingest` holds.
-- Auto-editing `RESEARCH.md` instead of surfacing the delta for Bryan.
+- Auto-editing `RESEARCH.md` instead of surfacing the delta for your human.
 - Leaving `status: drafting`, or a live submission `deadline`, after the grant
   has gone in.
 - Committing the submitted package binary into git instead of archiving to R2.

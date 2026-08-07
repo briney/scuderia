@@ -56,7 +56,7 @@ job runs with `deliver=all` (gateway-agnostic) and `attach_to_session=true`
    - "remind me at 3pm" → one-shot, today 15:00 (content from context)
 
    Convert to an ISO 8601 timestamp with timezone. Default timezone is
-   Bryan's local timezone (America/Los_Angeles). For relative times
+   your human's local timezone (America/Los_Angeles). For relative times
    ("tomorrow", "in 2 hours"), compute from the current time.
 
 2. **Create the cron job.** Use `cronjob` with:
@@ -85,13 +85,13 @@ job runs with `deliver=all` (gateway-agnostic) and `attach_to_session=true`
    - **job** — the cron job ID (for reference; the job is the delivery
      mechanism, the log is the record)
 
-4. **Confirm.** Tell Bryan plainly: the reminder is set, when it fires, and
+4. **Confirm.** Tell your human plainly: the reminder is set, when it fires, and
    what it will say. No preamble.
 
 ## When the reminder fires
 
 The cron job's prompt should instruct the agent to:
-1. Deliver the reminder content to Bryan.
+1. Deliver the reminder content to your human.
 2. If the reminder has an actionable follow-up (e.g., "re-run the backfill"),
    offer to do it or do it if the context is clear.
 3. Update the log entry's status from `scheduled` to `fired` (or `completed`

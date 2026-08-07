@@ -1,6 +1,6 @@
 ---
 name: ask-user
-description: The choice-gate pattern — present 2-4 options, stop the turn, and branch on the user's response. Used by other skills when a decision point genuinely needs Bryan's input before proceeding.
+description: The choice-gate pattern — present 2-4 options, stop the turn, and branch on the user's response. Used by other skills when a decision point genuinely needs your human's input before proceeding.
 triggers:
   - "present options"
   - "ask before proceeding"
@@ -11,7 +11,7 @@ triggers:
 # Ask user — the choice-gate pattern
 
 The canonical way to gate on a decision: present a small set of options, stop,
-and let Bryan choose. This is not async/await — in a conversational agent,
+and let your human choose. This is not async/await — in a conversational agent,
 "gating" means presenting the choices and ending the turn so the next message is
 the answer.
 
@@ -32,7 +32,7 @@ None beyond conversational output. Universal — works under any harness.
 
 1. Present the choices — numbered options.
 2. Stop the turn. No more tool calls, no further messages.
-3. Bryan's response begins the next turn.
+3. your human's response begins the next turn.
 4. Read the response, acknowledge briefly, branch.
 
 ## When to use it
@@ -75,7 +75,7 @@ question carry the same content as the numbered form.
 - Branch and execute the chosen path.
 - Map loose text gracefully: "the first one" / "A" / "1" → option 1; a partial
   word → fuzzy-match the labels; "none of those" → offer alternatives; an
-  unrelated message → Bryan moved on, drop the gate.
+  unrelated message → your human moved on, drop the gate.
 
 ## Examples
 

@@ -10,7 +10,7 @@ triggers:
 
 # Granola meeting sync — source adapter for Granola meetings
 
-Granola is Bryan's meeting recorder. This skill is the **source adapter**: it
+Granola is your human's meeting recorder. This skill is the **source adapter**: it
 pulls meeting data from Granola via the Granola MCP server, deduplicates against
 existing `interactions/` pages, and feeds each new meeting into
 `skills/meeting-ingestion/SKILL.md` for distillation.
@@ -113,7 +113,7 @@ Granola), but **required** on any meeting page created by this skill.
   `~/.hermes/profiles/<instance>/.granola-sync-state.json` (a small JSON file with
   `{"last_sync": "YYYY-MM-DD"}`). Pull meetings since that date. If the file
   does not exist, default to the last 7 days.
-- **On-demand sync:** Use the date range Bryan specifies, or default to the last
+- **On-demand sync:** Use the date range your human specifies, or default to the last
   7 days if none given.
 
 ### 2. Verify the MCP connection
@@ -250,7 +250,7 @@ with the meeting title and the error.
 
 ## On-demand usage
 
-Bryan can request specific meetings or date ranges:
+your human can request specific meetings or date ranges:
 - "Pull my meetings from last week" → sync the last 7 days.
 - "Pull meetings from June" → sync a specific date range.
 - "Pull the meeting with Sam about X" → use the bridge script's `query` command

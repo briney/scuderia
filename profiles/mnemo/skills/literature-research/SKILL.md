@@ -34,7 +34,7 @@ falls back to keyword scan and the skill notes the reduced recall.
 - Brain context is loaded *first* and sent into the query — the research
   targets the gap, not the settled core.
 - Every claim in the output carries a verifiable citation.
-- Output is structured so Bryan can see at a glance what is new versus what
+- Output is structured so your human can see at a glance what is new versus what
   merely confirms what the brain already holds.
 - Contradictions with the brain are surfaced, never quietly absorbed.
 
@@ -94,7 +94,7 @@ ingestion. This skill records the *delta*; a new paper page is a paper ingest.
 
 Either way, link forward — `[[kind/slug]]` wikilinks and typed edges — and
 chain to `enrich` for any notable author or lab the scan surfaces. Carry out
-the recommended brain updates, or hand them to Bryan if a judgment call is
+the recommended brain updates, or hand them to your human if a judgment call is
 involved.
 
 ## Output format

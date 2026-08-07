@@ -31,7 +31,7 @@ two separate retrievals through two different hosts.
       fetch it; `https://europepmc.org/article/PPR/{id}` is the HTML form.
       Note: `…/{PPR}/{id}/fullTextXML` usually **404s for preprints** — use the
       PDF / HTML route, not the XML one.
-   3. **PDF in hand via `_drop/`.** Bryan can open the paper in a browser
+   3. **PDF in hand via `_drop/`.** your human can open the paper in a browser
       (which solves the captcha) and drop the PDF. A PDF in `_drop/` follows
       the normal source path and `conventions/raw-source-archive.md`.
 

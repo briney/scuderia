@@ -18,7 +18,7 @@ There are three files of guidance in this directory:
 - **Mechanism files** (`nih-r01.md`, `nih-r21.md`) — package-level structure:
   required sections, page limits, section order, review framework. One file
   per grant mechanism.
-- **`section-structure.md`** — within-section structure: Bryan's
+- **`section-structure.md`** — within-section structure: your human's
   paragraph-level conventions for individual sections (how the Specific Aims
   page is organized, what each paragraph does). Mechanism-independent where
   the section envelope is fixed (Specific Aims is 1 page regardless of
@@ -28,18 +28,18 @@ There are three files of guidance in this directory:
   becoming interdependent, page economy, calibrated impact. The companion to
   `section-structure.md` — structure says what each paragraph does, style
   says how the argument inside it is constructed. Session-derived (the
-  2026-08-03 CARDS toxin Aims review); to be tested and refined on
+  2026-08-03 Aims-page review); to be tested and refined on
   subsequent pages.
 
 ## The load-bearing rule: the NOFO wins
 
 A format file is a **generic scaffold**. The specific funding announcement
-Bryan is applying to — the NOFO / FOA / RFP, with its own number — is
+your human is applying to — the NOFO / FOA / RFP, with its own number — is
 **authoritative and overrides this file** wherever they differ. NIH reissues a
 parent announcement every few years under a new PA number, foundation calls
 vary year to year, and a NOFO can impose its own page limits in its Section IV.
 
-So `grant-plan` always reads the actual announcement Bryan provides, extracts
+So `grant-plan` always reads the actual announcement your human provides, extracts
 its requirements, and archives the NOFO to R2 as a `source:` on the grant page
 (`skills/conventions/raw-source-archive.md`). The format file is the fallback when no
 NOFO is in hand yet, and the checklist of things to confirm against the one
@@ -49,12 +49,12 @@ that is.
 
 | File | What it covers |
 |---|---|
-| `section-structure.md` | Within-section conventions (Bryan's paragraph-level structure for Specific Aims, and future sections) |
+| `section-structure.md` | Within-section conventions (your human's paragraph-level structure for Specific Aims, and future sections) |
 | `section-style.md` | Argument-level criteria for sections (significance architecture, Aim integration, page economy, calibrated impact) |
 | `nih-r01.md` | NIH R01 — Research Project Grant, no clinical trials (PA-25-301) |
 | `nih-r21.md` | NIH R21 — Exploratory/Developmental, no clinical trials (PA-25-304) |
 
-R01 and R21 are the mechanisms Bryan writes most. Other mechanisms get a file
+R01 and R21 are the mechanisms your human writes most. Other mechanisms get a file
 when one is first needed — not pre-built.
 
 ## Page limits are NIH-wide and dated
@@ -72,6 +72,6 @@ NIAID publishes high-scoring sample applications with their summary statements:
 
 These are **structural exemplars** — what a funded Aims page or Approach
 section looks like — and useful test material for `grant-coherence`. They are
-**not** voice corpus. `STYLE.md` §2 is strict: Bryan's voice is learned only
-from Bryan's own writing. `grant-section` learns voice from the `## Verbatim`
+**not** voice corpus. `STYLE.md` §2 is strict: your human's voice is learned only
+from your human's own writing. `grant-section` learns voice from the `## Verbatim`
 sections of ingested `grant` pages — never from another PI's application.

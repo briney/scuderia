@@ -73,8 +73,8 @@ name.
 
 | Capability | Contract |
 |---|---|
-| `gmail-read` | Read Bryan's research mail. Hermes: Spark IPC bridge. Not provided under Claude Code. |
-| `calendar-read` | Read Bryan's calendar. Hermes: Spark IPC. Not provided under Claude Code. |
+| `gmail-read` | Read your human's research mail. Hermes: Spark IPC bridge. Not provided under Claude Code. |
+| `calendar-read` | Read your human's calendar. Hermes: Spark IPC. Not provided under Claude Code. |
 | `messaging-send` | Send a Telegram/Discord/etc. message. Hermes: messaging gateway. Not provided under Claude Code. |
 | `raw-source-archive-upload` | Upload a binary to R2 and return a content-addressed pointer (`conventions/raw-source-archive.md`). Hermes: `rclone copyto` to the configured R2 remote. Claude Code: requires rclone + R2 creds on the host; available via Bash, configured per host. |
 | `voice-transcribe` | Transcribe an audio file. Hermes: native voice pipeline. Not provided under Claude Code. |

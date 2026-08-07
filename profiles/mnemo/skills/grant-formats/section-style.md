@@ -9,15 +9,15 @@ argument. Neither repeats the other.
 
 `grant-section` consults this file when drafting or revising. `grant-coherence`
 consults it during the reviewer read — treating these as strong preferences
-that the NOFO and Bryan's judgment on a specific application can override.
+that the NOFO and your human's judgment on a specific application can override.
 
 ## Evidence base
 
 Unlike `section-structure.md`, whose conventions are corpus-derived (16
 ingested grants), the criteria below are session-derived: they were distilled
-from the 2026-08-03 critical review and rewrite of the CARDS toxin R01
-Specific Aims page ([[grants/r01-mpneumoniae-cards-toxin-mab-discovery]]),
-one application and one rewrite that Bryan judged to have worked. They are a
+from the 2026-08-03 critical review and rewrite of a real R01
+Specific Aims page (a real instance's Aims page),
+one application and one rewrite that your human judged to have worked. They are a
 starting hypothesis — the strongest current statement of what a good Aims
 page looks like — to be tested and refined on subsequent pages, not yet a
 pattern observed across the corpus. When a subsequent Aims page breaks one of

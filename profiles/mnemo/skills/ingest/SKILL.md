@@ -28,7 +28,7 @@ needs `schedule-job` (the cron poll) and `raw-source-archive-upload`.
 
 ## The two entry points
 
-1. **Bryan hands you something directly** — a URL, a file, pasted text. Route it
+1. **your human hands you something directly** — a URL, a file, pasted text. Route it
    by type using the table below.
 2. **A file appears in `_drop/`** — the raw-source ingest channel. Syncthing
    carries a PDF or DOCX dropped on a laptop to the host; from there it is

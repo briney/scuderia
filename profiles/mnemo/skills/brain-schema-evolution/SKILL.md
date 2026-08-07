@@ -21,7 +21,7 @@ request. Worked example: `references/lab-management-expansion-2026-07.md`.
 Exclusions there are deliberate and *structural* — the brain excludes material
 by having nowhere to file it, not by filtering it. If the proposal crosses a
 documented exclusion, say so explicitly: this is a north-star revision, and
-Bryan should approve it as one. Never let a scope change slide in sideways as
+your human should approve it as one. Never let a scope change slide in sideways as
 a schema tweak.
 
 ## Step 2 — Decompose mixed proposals against the scope line
@@ -57,7 +57,7 @@ Three rules, in order:
 
 Design note → conventions (`page-kinds.md`, `frontmatter.md`) → linter
 (`.github/scripts/lint-frontmatter.py`) → skill templates (`enrich`, ingests)
-→ pilot on 3–5 real pages → Bryan reviews the shape → full pass. Never
+→ pilot on 3–5 real pages → your human reviews the shape → full pass. Never
 full-scale without the pilot. Schema before skills: a template that writes
 fields the linter doesn't know produces failing pages.
 
@@ -77,5 +77,5 @@ file material that a stale boundary still calls out of scope.
   yet.
 - Treating "no page kind exists for X" as an oversight rather than a
   deliberate exclusion — check `VISION.md` §6 first.
-- Declaring the pilot done without Bryan reviewing the shape of the pilot
+- Declaring the pilot done without your human reviewing the shape of the pilot
   pages.

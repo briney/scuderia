@@ -1,6 +1,6 @@
 # Worked example: email modality + the `meeting` → `interaction` rename (2026-08-01)
 
-The second live exercise of `brain-schema-evolution`: Bryan proposed adding
+The second live exercise of `brain-schema-evolution`: your human proposed adding
 email as a brain modality — his work email is exposed to a read-only CLI
 (Spark), making cron-driven ingestion straightforward. The design conversation
 produced one scope ruling, one new source stream, and the highest-blast-radius
@@ -18,7 +18,7 @@ it. Two things make email comfortable under the existing line:
   project-state maintenance — meeting ingestion first, email/Slack streams
   later" as a known unsolved problem. Email ingestion is the named
   implementation of an already-approved open item, not a scope expansion.
-- Personal mail is excluded **upstream**: only Bryan's work account is exposed
+- Personal mail is excluded **upstream**: only your human's work account is exposed
   to the Spark CLI. The raw archive never contains personal mail, and
   non-research-program work mail (HR, admin, listserv churn) simply produces
   no pages — the structural exclusion operates at the page layer as usual.
@@ -51,7 +51,7 @@ unit of work are the kind rename only.
 
 ## The rename: `meeting` → `interaction`
 
-The naive design was a `channel:` field on `meeting`. Bryan rejected it as
+The naive design was a `channel:` field on `meeting`. your human rejected it as
 clunkier than renaming the kind — and he was right. The kind already covered
 conference talks, which are not meetings; `interaction` is what it always
 meant, and email threads (plus future Slack / phone / hallway modalities)
@@ -95,7 +95,7 @@ lives in a ledger, pages are created through the notability gate. A contacts
 ledger keyed on **email address** (a stable identifier — entity resolution
 gets *easier* than the author-name problem, not harder) holds one line per
 correspondent; promotion to a full `person` page happens at the second
-substantive touch, a named role on a grant/project, or Bryan's flag. One-off
+substantive touch, a named role on a grant/project, or your human's flag. One-off
 correspondents are named in prose on thread/project pages. Ledger mechanics
 are deferred to the email-ingest skill design (extend `people/_ledger.yaml`
 vs. a separate contacts ledger is an open question there).
@@ -112,7 +112,7 @@ vs. a separate contacts ledger is an open question there).
 5. Migration: `git mv meetings interactions`; `kind:` and `attendees:` sed
    across the 63 pages; `colton-consortium.md` wikilinks fixed;
    `auto_push.sh` `CONTENT_PATHS` updated. Verified by linter + residual
-   greps. Bryan reviewed the shape in conversation before execution.
+   greps. your human reviewed the shape in conversation before execution.
 
 ## Open items — the email build-out (Phase 0 onward)
 
@@ -123,7 +123,7 @@ vs. a separate contacts ledger is an open question there).
 - **Phase 1 — raw-archive cron.** Script-only (`no_agent`) job pulling new
   mail → R2 `email/`, with a sync-state watermark (the
   `.granola-sync-state.json` pattern).
-- **Phase 2 — distillation with review.** Daily LLM cron; Bryan reviews
+- **Phase 2 — distillation with review.** Daily LLM cron; your human reviews
   output for a week before autonomous operation.
 - **Phase 3 — autonomous**, with thread-page creation gated.
 - **New skills to write:** an email source adapter (the `granola-meeting-sync`

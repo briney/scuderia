@@ -39,7 +39,7 @@ touch importance, centrality, or backlinks, yet stay readable in Obsidian.
 | Path | Lifecycle | Holds |
 |---|---|---|
 | `docs/rem-cycle/history/<YYYY-MM-DD>.md` | write-once per run | the dream report — the run's audit record |
-| `docs/rem-cycle/QUEUE.md` | rolling; **drained only by Bryan** | the review queue — proposals accumulate across runs, never auto-cleared |
+| `docs/rem-cycle/QUEUE.md` | rolling; **drained only by your human** | the review queue — proposals accumulate across runs, never auto-cleared |
 | `docs/rem-cycle/_state.yaml` | mutable | per-phase cursor watermarks, budgets, and last-run metrics for the health delta |
 | `docs/rem-cycle/decisions.yaml` | append-only | the drain decision ledger (see § The decision ledger) |
 | `docs/rem-cycle/runs/<YYYY-MM-DD>/<phase>.yaml` | write-once per phase-run | the machine-readable phase result — the aggregator's input |
@@ -73,7 +73,7 @@ proposed:                           # judgment calls → appended to QUEUE.md
     qid: a3f2                       # stable 4-hex id: sha1(category+target+change)[:4];
                                     # computed by the proposing phase; extend to 6 on collision
     detect_only: false             # true → reported but needs an external check
-                                   #   (a status flip, a retraction) Bryan can't do from the queue —
+                                   #   (a status flip, a retraction) your human can't do from the queue —
                                    #   not a plain approve/reject
 metrics:                            # counters this phase moved (aggregator routes
   edges_added: 4                    #   canonical ones to the delta, the rest to
@@ -101,7 +101,7 @@ An entry may carry **phase-specific fields** beyond the base shape when a single
 `target` cannot express the change: an `entity-merge` carries `canonical` /
 `duplicate` (or `sources: [...]`) and `rewrite_refs: N` (the inbound-reference
 blast radius); an `entity-split` carries `into: [slugA, slugB]`; a `synthesis`
-carries `kind` (`concept` | `hypothesis`), `kind_ambiguous` (true → Bryan picks
+carries `kind` (`concept` | `hypothesis`), `kind_ambiguous` (true → your human picks
 the kind on approval), `sources: [...]`, `outline: [...]`, `coherence`
 (`tight` → approve-and-author / `loose` → re-scope first), and
 `related_proposals: [...]` (other proposals sharing sources, so two half-overlapping
@@ -176,14 +176,14 @@ to every phase:
 
 Phase 0 (`queue-drain` delegate) runs first in every tier. For an **armed**
 class, it auto-executes a conforming unchecked item at the next run. A class is
-armed either by Bryan's explicit grant or by track record (≥ 5 human approvals
+armed either by your human's explicit grant or by track record (≥ 5 human approvals
 and 0 reversions in `decisions.yaml`, plus ≥ 14 days unactioned queue age).
-Any reversion of an auto-approved item disables its class until Bryan
+Any reversion of an auto-approved item disables its class until your human
 re-enables it (a `class-reenabled` decision). Nightly cap: 20 auto-executions
 per run for grant-armed classes (anti-pathology), 3 for track-record-armed
 classes, oldest first.
 
-**Standing grant (Bryan, 2026-08-04):** edges, links, and importance updates at
+**Standing grant (your human, 2026-08-04):** edges, links, and importance updates at
 conf ≥ 0.9 auto-commit without approval. **Synthesis — new concepts and
 hypotheses — is different: always proposes, never auto-executes.** The
 concept-materialization class that was in the original whitelist is removed at
@@ -263,7 +263,7 @@ sections via `git diff` on the phase's commit.
 One checkbox line per proposal. The newest run's heading is **prepended**
 (newest first), carrying its tier; proposals within a heading run
 highest-confidence first, and are **deduped against items already queued** — a
-re-run never re-adds an identical proposal. Bryan acts by checking (approve) or
+re-run never re-adds an identical proposal. your human acts by checking (approve) or
 deleting (reject); the next run leaves unchecked items in place.
 
 ```markdown

@@ -115,7 +115,7 @@ for the author.
   unquoted colon, a bad indent). When the parse failure could mean several
   things, flag it for a human instead of guessing.
 
-Before any repair, confirm the page was not edited very recently — Bryan may
+Before any repair, confirm the page was not edited very recently — your human may
 have it open in Obsidian. If it was, hold rather than clobber.
 
 ## Output

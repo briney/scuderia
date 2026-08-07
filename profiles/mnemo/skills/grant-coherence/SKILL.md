@@ -74,7 +74,7 @@ the diagnosis log).
    (`grant-formats/section-style.md`), where a reviewer will find a gap and
    punish it. Consult the
    `[!critique]` annotations on prior `grant` pages — what study sections
-   punished Bryan's earlier applications for is direct evidence here.
+   punished your human's earlier applications for is direct evidence here.
 
 6. **Report and route.** A prioritized issue list, each item tagged with its
    section and routed: prose, contradiction, and framing → `grant-section`;

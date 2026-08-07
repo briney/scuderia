@@ -17,8 +17,8 @@ triggers:
 them into the Thesis. A concept with ten shifts still carries the Thesis it was
 seeded with — the cortical rewrite step is missing. This skill is that step:
 when a concept's log has outrun its prose, draft the refreshed Thesis/Frontier
-**grounded in those shifts**, and queue it for Bryan. Propose-tier only — the
-rewrite is generative, so Bryan owns landing it (via `queue-drain`).
+**grounded in those shifts**, and queue it for your human. Propose-tier only — the
+rewrite is generative, so your human owns landing it (via `queue-drain`).
 
 > **Conventions:** `synthesis-layer-pages.md` (concept anatomy, the Shifts
 > format), `frontmatter.md` (`thesis_updated:`), `rem-cycle-contract.md` (the
@@ -38,12 +38,12 @@ I/O — the draft is grounded in pages already in the graph.
   the shifts don't support a sentence, the sentence doesn't ship.
 - **Propose-tier always.** The concept page is never written by this skill —
   the draft rides in `QUEUE.md` as a `thesis-refresh` proposal carrying the
-  full replacement text and the shift list. Bryan approves via `queue-drain`;
+  full replacement text and the shift list. your human approves via `queue-drain`;
   execution is a queue-drain work order like any other.
 - **Selective.** Only concepts with ≥3 shifts dated after `thesis_updated:` are
   candidates. A shift-poor concept produces nothing — silence is correct.
 - **`[unconfirmed]` shifts count but are flagged** — the draft marks which of
-  its load-bearing movements are still unconfirmed, so Bryan sees the trust
+  its load-bearing movements are still unconfirmed, so your human sees the trust
   surface he's approving.
 
 ## Phases
@@ -54,7 +54,7 @@ I/O — the draft is grounded in pages already in the graph.
 2. **Draft.** For each candidate, rewrite `## Thesis` and `## Frontier`
    integrating the shifts: the current best statement now reflects what the
    shifts moved; Frontier maturity markers advance where the shifts warrant.
-   Preserve Bryan's verbatim quotes exactly (`_output-rules.md`). Every claim
+   Preserve your human's verbatim quotes exactly (`_output-rules.md`). Every claim
    cites its shift's trigger page. Name what the shifts collectively moved —
    and what they did *not* establish (the edge).
 3. **Propose.** Emit one `proposed[]` entry per candidate
@@ -77,8 +77,8 @@ No cursor — the scan is cheap (frontmatter + heading dates).
 
 - Manufacturing a refresh for a shift-poor concept — the ≥3-shift gate is the
   whole select step.
-- Paraphrasing or inventing Bryan's quotes — verbatim only, or omit.
-- Writing the concept page — propose-tier always; landing is Bryan's act.
+- Paraphrasing or inventing your human's quotes — verbatim only, or omit.
+- Writing the concept page — propose-tier always; landing is your human's act.
 - A draft sentence with no shift citation — grounded or gone.
 - Dropping the `[unconfirmed]` flag on a shift the draft leans on — the trust
   surface must survive into the proposal.
