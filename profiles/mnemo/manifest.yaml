@@ -38,6 +38,10 @@ files:
     strip_header: true
   - template: USER.md
     target: USER.md
+  - template: AGENTS.md
+    target: AGENTS.md
+  - template: CLAUDE.md
+    target: CLAUDE.md
 
 placeholders:
   INSTANCE_NAME: the instance's name (minds are named)
