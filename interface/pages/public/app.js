@@ -30,6 +30,7 @@
         .replace(/`([^`]+)`/g, "<code>$1</code>")
         .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
         .replace(/\*([^*]+)\*/g, "<i>$1</i>")
+        .replace(/_([^_]+)_/g, "<i>$1</i>")
         .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
                  '<a href="$2" target="_blank" rel="noopener">$1</a>');
     const lines = esc.split("\n");
