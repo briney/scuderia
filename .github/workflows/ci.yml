@@ -1,0 +1,35 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  platform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Python syntax check
+        run: python -m py_compile setup/soma core/tools/*.py
+
+      - name: Skill governance — name collisions and patch-skill sprawl
+        # Enforces the AGENTS.md invariants: no duplicate frontmatter names
+        # across skills roots, no patch-marker skills (--strict).
+        run: python3 setup/soma skill-check --strict
+
+      - name: Instance contract — scaffold and doctor
+        run: |
+          python3 setup/soma init --profile mnemo --name ci-test --path /tmp/ci-brain
+          python3 setup/soma doctor --path /tmp/ci-brain
+
+      - name: Frontmatter lint — example brain against profile schema
+        run: python3 core/tools/lint-frontmatter.py --brain profiles/mnemo/example-brain --schema profiles/mnemo/schema.yaml

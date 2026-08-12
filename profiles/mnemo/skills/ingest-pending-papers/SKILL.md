@@ -123,13 +123,28 @@ is safe for paper distillation just because the API supports it.
 
 ## Phases
 
-1. **Find the queue.** Use `search_files target=content` against `papers/`
-   for `needs-ingest: true`. (Also acceptable: `tags: [stub]` as a
-   secondary signal, but `needs-ingest: true` is canonical.) List every
-   stub page along with its `title`, `cited_by`, `ingest_attempts`, and
-   `last_ingest_attempt`. Order the queue by `len(cited_by)` descending —
-   high-edge stubs first, since they have the most evidence of being
-   worth the time.
+1. **Find the queue.** The canonical method is an `execute_code` script
+   that reads each `papers/*.md` file, parses the YAML frontmatter with
+   `yaml.safe_load`, and filters on `fm.get('needs-ingest') is True`.
+   This yields the true stub set in one pass — and also extracts
+   `cited_by`, `ingest_attempts`, `last_ingest_attempt`, and `title` for
+   sorting. Order by `len(cited_by)` descending — high-edge stubs first,
+   since they have the most evidence of being worth the time.
+
+   Do **not** use `search_files target=content` for `needs-ingest: true`
+   as the primary method. It has two known bugs observed on 2026-08-05:
+
+   - **False positives:** the content search matches `needs-ingest: true`
+     appearing *inside body text* — particularly in `## Ingest log`
+     entries that quote the field name. A 2026-08-05 drain found 121
+     content matches but only 84 YAML-verified stubs.
+   - **Silent truncation:** the default `limit=100` silently truncates
+     queues over 100 stubs. A 2026-08-05 queue of 121 was read as 100,
+     hiding 21 stubs from the orchestrator. Always specify `limit=500`
+     if you do use `search_files` as a secondary check.
+
+   The `execute_code` approach avoids both bugs because it parses the
+   actual YAML frontmatter (not body text) and has no artificial limit.
 
 2. **Read each stub's `## Ingest log`.** A stub may have failed previous
    attempts. If the log shows a terminal-looking diagnostic ("DOI
@@ -179,7 +194,16 @@ is safe for paper distillation just because the API supports it.
    - `context`: the stub's absolute path, the citation entry from its
      `## Citation` section (as the identity-resolution seed), any DOI/PMID
      already on the page, and the current `cited_by` list (so the subagent
-     can verify it preserved them).
+     can verify it preserved them). Always append the frontmatter
+     field-name warning: subagents sometimes resolve the journal name
+     correctly from PubMed but write it to a `journal:` YAML key instead
+     of the schema-required `venue:` key — the Phase 4 invariant check
+     catches it, but the fix should be preventive, not reactive
+     (observed 2026-08-05: two subagents wrote `journal:` instead of
+     `venue:`). Include in every batch's context:
+
+     > IMPORTANT: use the frontmatter field name 'venue' (not 'journal')
+     > for the journal name, and include 'year'.
    - `toolsets`: `['file', 'web', 'terminal']`.
    - Return contract: one of `SUCCESS`, `FAILURE: <phase> — <diagnostic>`,
      or `SKIP: <reason>`. Nothing else.
@@ -192,6 +216,18 @@ is safe for paper distillation just because the API supports it.
    return summaries are self-reports, not ground truth. For every stub
    the subagent claimed `SUCCESS` on, the orchestrator must:
 
+   - First, check whether the stub file still exists. If it does NOT,
+     the subagent discovered the stub was a duplicate of an
+     already-ingested canonical page, deleted the stub, and merged
+     `cited_by` into the canonical page (the paper-ingest stub-rename
+     path). That is the expected duplicate-merge outcome, NOT a failure
+     — verify the canonical page instead: identify it from the
+     subagent's return summary, read it, confirm `needs-ingest: false`,
+     confirm the stub's `cited_by` entries (the ones the orchestrator
+     passed in) all appear in the canonical page's `cited_by`, and
+     confirm body sections are present. Only report failure if the
+     canonical page is also missing or the merge didn't land. Observed
+     2026-08-05: 4 stubs in one drain were duplicates verified this way.
    - `read_file` the page;
    - confirm `needs-ingest: false` in frontmatter;
    - confirm the `stub` tag is gone;

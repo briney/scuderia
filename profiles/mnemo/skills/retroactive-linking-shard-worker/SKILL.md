@@ -39,6 +39,16 @@ Read body + frontmatter in one pass. No partial reads — the adjudication
 needs the whole page. A recently-edited page is held (re-read before any
 overwrite per `brain-ops` never-blind-overwrite).
 
+**Shard path prefix strip.** Shard files list paths with a vault-scope
+prefix (e.g. `<vault>/papers/chang-2011-....md`). That prefix is the repo
+name, not a vault subdirectory — the file lives at
+`<vault-root>/papers/chang-2011-...md`, NOT `<vault-root>/<vault>/papers/...`.
+Strip the vault-scope prefix (and the `.md` suffix for result `target`
+fields) before constructing read paths. If a read returns "File not found"
+for the naively joined path, strip and retry; a quick
+`find <vault-root> -maxdepth 3 -name "<slug>*"` confirms the real path.
+(Observed shards 14 and 37 — wasted reads both times.)
+
 ### 2. Candidate generation (CHEAP — no exhaustive reading)
 Shortlist ≤8 candidate link targets per page. Sources, cheapest first:
 - **Exact title/alias mentions** of other vault pages in the prose (Grep the
@@ -51,6 +61,13 @@ Shortlist ≤8 candidate link targets per page. Sources, cheapest first:
 
 Do NOT read every candidate page. Existence is checked by filename match
 against the vault dir listing, not by reading.
+
+**Existence-check mechanics (shard 36).** `search_files target='files'`
+uses glob patterns (`file_glob`), NOT regex — a regex alternation in the
+`pattern` field returns 0 results even when files exist. For batch
+existence checks, use one `terminal` call:
+`ls papers/ methods/ concepts/ grants/ projects/ hypotheses/ | grep -iE 'slug1|slug2|...'`,
+then confirm each hit with `ls <dir>/<slug>.md` before LINKing.
 
 ### 3. Adjudicate (expensive, shortlist only)
 For each candidate, three dispositions:
@@ -75,7 +92,10 @@ a person only if the mention is clearly about the person as an entity AND not
 already in the page's `authors:` list.
 
 ### 4. Apply LINKs (write step)
-Insert `[[target|surface]]` at the FIRST unlinked mention in the body. Frozen
+Insert `[[target|surface]]` at the FIRST unlinked mention in the body. The
+surface is human-readable display text — the entity's common name or the
+exact prose token (`[[papers/watson-2023-rfdiffusion|RFdiffusion]]`), NOT
+the raw path (`[[papers/foo|papers/foo]]`). Frozen
 zones — never edit inside these:
 - `## Verbatim` sections
 - blockquoted `>` lines
@@ -93,6 +113,13 @@ frontmatter `links:` list. Many pages — especially stubs — carry body
 wikilinks (often inside `> [!info] Stub` callouts) that were never mirrored into
 `links: []`. Populating `links:` is part of the write step, not an afterthought.
 If no body wikilinks exist and none were added, leave `links:` as-is.
+
+**Frontmatter links may be forward references (shard 36).** Many pages carry
+`links:` pointing to concept/method pages not yet created. Do NOT assume a
+target exists because it appears in another page's frontmatter — verify via
+the dir listing before LINKing. And do NOT remove existing links to
+non-existent pages: they are forward references placed by the ingest process
+(forward-only linking), not errors.
 
 ## Result schema
 
@@ -128,6 +155,10 @@ skipped: []
 - `proposed[]` records typed-edge `cites:` proposals only.
 - `skipped[]` lists pages processed but with no changes, with a one-line
   reason (e.g. "pure stub, citation-only, no linkable prose").
+- `anomalies[]` (optional, informational): entity-resolution flags, e.g.
+  two pages in the shard sharing one PMID under different slugs (see
+  Pitfalls). The aggregator treats these as informational — not committed
+  or proposed edges — and safely ignores the field if it does not expect it.
 
 ## Hard constraints
 
@@ -195,6 +226,84 @@ skipped: []
   macOS. If a batched call fails with EMFILE, retry it individually — the
   retry always succeeds. To avoid it, batch ≤2–3 file operations at a time
   when processing a shard of mature, full-length paper pages (each ~5–20 KB).
+- **EMFILE total lockout under parallel burst-wave workers (shard 31).** A
+  more severe variant: with many shard workers running concurrently, the
+  host fd table saturates so completely that EVERY file/shell/process tool
+  returns `[Errno 24]` for minutes. `skill_view` and `session_search`
+  keep working (persistent connections / already-open handles) — that
+  distinguishes fd exhaustion from total system failure. Recovery: retry a
+  trivial `terminal` command (`true`) every ~30–60 s; `terminal` recovers
+  first and the rest follow within seconds. Do NOT abandon the shard —
+  wait it out, then run strictly sequential file ops. If `write_file`
+  still fails after `terminal` recovers, write the result file via
+  `cat > <path> << 'EOF' ... EOF` through `terminal` (fewer fds; observed
+  working in shard 31).
+- **`cites:` edge directionality — successors ≠ predecessors (shard 14).**
+  `cites:` runs FROM the page TO a predecessor it builds on. When prose
+  names a successor ("concept used in He et al. 2025"), the successor
+  cites THIS page — already captured in this page's `cited_by` (populated
+  by the successor at its ingest). A `cites:` from this page to the
+  successor is a reversed edge; never propose it. Test: does the named
+  paper build on / motivate / refute THIS page, or does THIS page build
+  on the named paper? Only the latter is a `cites:`.
+- **Duplicate-PMID pages within a shard (shard 14).** Two pages may share
+  a PMID (and near-identical title) under different slugs — the same
+  paper ingested twice. Detect by comparing `pmid:` fields while reading.
+  Do NOT merge or deduplicate — `entity-resolution` owns that, outside
+  shard scope. Record the pair in the result `anomalies:` list and
+  process each page on its own merits.
+- **Abstract blockquotes are the most common frozen zone (shard 36).**
+  The `## Abstract` section is a `>` blockquote of the paper's verbatim
+  abstract — the first place entity names appear, and tempting to link.
+  Do NOT: it is frozen source text. Link the entity in a non-blockquoted
+  section (Context, Approach, Findings, Analysis, Limitations). If the
+  only mention is in the Abstract blockquote, SKIP the body link.
+- **Parenthetical full-path references → LINK (shard 37).** Mature pages
+  frequently name an entity followed by its full vault path in
+  parentheses with no wikilink markup: "connects to ProteinEBM
+  (papers/roney-2025-proteinebm)." These are strong LINK candidates —
+  verbatim entity name + explicit path; the sentence WOULD change meaning
+  if the target didn't exist. Convert at the entity name:
+  `[[papers/roney-2025-proteinebm|ProteinEBM]]`. When a markdown link to
+  the same page follows separately (`([Pacesa et al., 2025](papers/...))`),
+  wikilink the entity name and leave the markdown link intact. Distinct
+  from citation shorthand ("Author Year" → PROPOSE) and external-URL
+  markdown links (→ SKIP). Frequency: ~1–3 per mature analytical page.
+- **Grant pages as LINK targets — full path vs identifier shorthand.**
+  SKIP grant-identifier shorthand ("R01AI000000", "R01 AI171438") — those
+  are labels, not verbatim entity names (the page slug is
+  `r01ai180120-...`, not the identifier). But grants referenced by FULL
+  VAULT PATH in analytical prose ARE valid LINK targets when the
+  sentence's argument depends on the grant — convert to `[[grants/<slug>]]`
+  and mirror into frontmatter. A `cites:` edge paper→grant is always the
+  wrong direction (grants cite papers via `cited_by`), but a body
+  wikilink paper→grant is a navigational link, not a citation edge.
+- **Mature-page frontmatter sync: scan the whole body; methods/projects
+  count too (shards 31, 37).** The shard-28 pattern (~0 new body LINKs,
+  ~2–5 frontmatter-sync entries per mature page) held at scale — and the
+  high end is real: pages with rich Analysis sections had 4–5 pre-existing
+  body wikilinks unmirrored in `links:`. Scan the ENTIRE body for
+  `[[...]]` markup, not just the sections you edited. `methods/` and
+  `projects/` targets are valid frontmatter `links:` entries, not just
+  `papers/` and `concepts/`.
+- **All-stub shard pattern (shard 15).** If the first 2–3 pages are all
+  stubs (`needs-ingest: true`, only Citation/Stub/Ingest-log sections),
+  the rest of the shard is likely the same. Expected outcome: 0 new body
+  LINKs, 0 PROPOSEs, 1–3 frontmatter-sync entries from `> [!info] Stub`
+  callout wikilinks. Accelerate by skipping deep candidate generation —
+  scan for pre-existing body wikilinks and sync `links:`.
+- **Ingest-log citation shorthand ≠ analytical mention (shard 15).** An
+  "Author Year" mention inside an `## Ingest log` is bibliographic
+  metadata (provenance of why the stub was created), not an analytical
+  claim — SKIP for both LINK and PROPOSE, even when the target exists and
+  the relationship is real. The same mention in a Findings/Analysis
+  section arguing something would be a PROPOSE candidate. Same reasoning
+  for antibody-name mentions in ingest logs (the name denotes the
+  molecule in a trial description, not the paper).
+- **Pages with zero body wikilinks are not gaps to force-fill.** A rich,
+  mature page may carry NO `[[...]]` markup — discussing grants and
+  projects by shorthand label with relationships living in frontmatter
+  `links:`. That is a filing-style variation, not a defect. SKIP.
 
 ## Relationship to `retroactive-linking`
 
@@ -204,9 +313,3 @@ execution contract* — the input/output schema, the per-page loop sequence, the
 budget, and the burst-precision adjudication rules a parallel worker needs to
 run autonomously. Load `retroactive-linking` for the why and the conventions;
 load this for the how when handed a shard file.
-
-## References
-
-- `references/shard-28-observations.md` — session-specific detail from shard 28
-  (mature-page pattern, result schema violations, citation shorthand
-  adjudication, EMFILE batching issue).

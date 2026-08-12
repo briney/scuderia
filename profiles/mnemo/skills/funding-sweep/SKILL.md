@@ -133,6 +133,19 @@ agencies (NSF, DOD, DOE, other) plus any smaller foundations not named in Block 
 Looser matching, so precision is lower — every Tier-3 hit is explicitly flagged
 "wider net — verify eligibility and fit yourself."
 
+## Fetching funder pages behind bot protection
+
+Funder and program pages increasingly sit behind Cloudflare-style bot walls
+(challenge page in the browser stack, 403 to curl even with a browser UA;
+search engines captcha-wall too). The working fallback — confirmed 2026-08-10
+on a Cloudflare-gated national-lab WordPress site — is the **jina reader
+proxy**: `curl -sL "https://r.jina.ai/<url>"` returns clean markdown of the
+rendered page, no API key needed. Crawl subpages (apply/forms, about, FAQ)
+the same way. The companion search endpoint (`https://s.jina.ai/<query>`)
+requires an API key (401 without one) — do not rely on it for discovery. When
+even the reader fails, say so per the honest-source-tiers rule rather than
+returning empty silently. Case detail: `references/fetching-bot-protected-pages.md`.
+
 ## The indirect-cost check (foundations only)
 
 For any **foundation** hit (Tier 2 or Tier 3), consult Block C before surfacing:
@@ -237,6 +250,25 @@ run only on explicit manual invocation until their extraction is trusted, at whi
 point the cron scope widens. A cron-driven sweep that hits an untrusted tier and
 returns junk would poison the attention contract; keeping the scheduled path to the
 reliable tier is deliberate.
+
+## Manual funding-opportunity ingest (on request)
+
+The sweep itself is read-only, but when your human hands you a specific
+opportunity ("ingest this as a funding opportunity"), the ingest pattern is:
+
+1. Fetch the opportunity page and its subpages (application form, about, FAQ)
+   plus any official announcements from the same funding source — use the
+   bot-protection fetch fallback above when the site is gated.
+2. Create a `grant` page: `role: considering`, `status: planned`, `deadline`
+   = next actionable deadline. If the deadline is *inferred* (e.g. from a
+   stated rolling cadence), mark it INFERRED in the body. Record non-monetary
+   mechanics (contribution programs, nomination windows) in `mechanism`, and
+   say plainly in the body when no funding is attached.
+3. Create or update the funder's `institution` page, linking the new grant
+   page; fold the funding source's announcement timeline there.
+4. Add the opportunity ID to `seen-ids` in `FUNDING-PROFILE.md` with a
+   comment pointing at the grant page, so the sweep never re-pitches it.
+5. Run the frontmatter linter and commit.
 
 ## Anti-patterns
 
