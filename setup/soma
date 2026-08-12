@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """soma — the platform CLI (skeleton).
 
-Three commands over one declarative core (the profile's manifest.yaml):
+Commands over one declarative core (the profile's manifest.yaml):
 
   soma init   --profile mnemo --name <name> --path <dir>
       Scaffold a new instance: create the manifest's dirs, copy its templated
@@ -13,6 +13,13 @@ Three commands over one declarative core (the profile's manifest.yaml):
       by the profile's schema.yaml exists; skills/ exists; version pins are
       satisfiable. Exits nonzero with one complaint per failure. Idempotent;
       the shared definition of done.
+
+  soma skill-check [--root <checkout>] [--strict]
+      Platform-level skill hygiene: fails on frontmatter `name:` collisions
+      across skills roots (shared skills/ + profiles/*/skills/), warns on
+      patch-marker skills ("patch pending", "should be folded into", ...).
+      A name collision is how resolver deadlocks and patch-skill sprawl
+      start; run in CI or before committing skill changes.
 
   soma adopt  --path <existing vault> [--name <name>] [--profile mnemo]
       Generate brain.yaml for a pre-existing brain and validate it. Refuses to
@@ -171,6 +178,98 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     return 0
 
 
+PATCH_MARKERS = (
+    "patch pending",
+    "should absorb this patch",
+    "should absorb these patches",
+    "should be folded into",
+    "fold into the vault-side",
+)
+
+
+def skill_roots(root: Path) -> list[tuple[str, Path]]:
+    """Every skills root in a soma checkout: the shared set (if it ever
+    exists) plus each profile's scoped set."""
+    roots: list[tuple[str, Path]] = []
+    shared = root / "skills"
+    if shared.is_dir():
+        roots.append(("shared", shared))
+    profiles = root / "profiles"
+    if profiles.is_dir():
+        for p in sorted(profiles.iterdir()):
+            sk = p / "skills"
+            if sk.is_dir():
+                roots.append((f"profile:{p.name}", sk))
+    return roots
+
+
+def skill_name(skill_md: Path) -> str | None:
+    """Frontmatter `name:` of a SKILL.md, or None if unreadable."""
+    try:
+        text = skill_md.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    if not text.startswith("---"):
+        return None
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return None
+    try:
+        fm = yaml.safe_load(parts[1])
+    except yaml.YAMLError:
+        return None
+    return fm.get("name") if isinstance(fm, dict) else None
+
+
+def cmd_skill_check(args: argparse.Namespace) -> int:
+    root = (args.root.expanduser().resolve() if args.root else SOMA_ROOT)
+    roots = skill_roots(root)
+    if not roots:
+        print(f"soma skill-check: no skills roots found under {root}")
+        return 0
+
+    seen: dict[str, list[str]] = {}
+    warnings: list[str] = []
+    count = 0
+    for label, sroot in roots:
+        for skill_md in sorted(sroot.rglob("SKILL.md")):
+            count += 1
+            name = skill_name(skill_md)
+            rel = skill_md.relative_to(root)
+            if name is None:
+                warnings.append(f"{rel}: no frontmatter `name:` (unreadable)")
+                continue
+            seen.setdefault(name, []).append(f"{rel} [{label}]")
+            try:
+                body = skill_md.read_text(encoding="utf-8").lower()
+            except OSError:
+                continue
+            for marker in PATCH_MARKERS:
+                if marker in body:
+                    warnings.append(
+                        f"{rel}: patch-marker '{marker}' — patch skills are "
+                        f"not a pattern; fold into the target skill")
+                    break
+
+    duplicates = {n: locs for n, locs in seen.items() if len(locs) > 1}
+    for w in warnings:
+        print(f"  warning: {w}")
+    if duplicates:
+        print("soma skill-check: FAIL — skill-name collisions across sources")
+        for name, locs in sorted(duplicates.items()):
+            print(f"  - {name}:")
+            for loc in locs:
+                print(f"      {loc}")
+        return 1
+    if warnings and args.strict:
+        print("soma skill-check: FAIL (--strict: warnings treated as failures)")
+        return 1
+    print(f"soma skill-check: OK — {count} skills across {len(roots)} root(s), "
+          f"no name collisions" + (f", {len(warnings)} warning(s)" if warnings else ""))
+    return 0
+
+
+
 def cmd_adopt(args: argparse.Namespace) -> int:
     path = args.path.expanduser().resolve()
     if not path.is_dir():
@@ -220,6 +319,16 @@ def main() -> int:
     p_doc.add_argument("--path", type=Path, default=Path.cwd())
     p_doc.add_argument("--profile", default=None)
     p_doc.set_defaults(fn=cmd_doctor)
+
+    p_check = sub.add_parser(
+        "skill-check",
+        help="fail on skill-name collisions across skills roots (shared + "
+             "profile-scoped); warn on patch-marker skills")
+    p_check.add_argument("--root", type=Path, default=None,
+                         help="soma checkout to scan (default: this one)")
+    p_check.add_argument("--strict", action="store_true",
+                         help="treat patch-marker warnings as failures")
+    p_check.set_defaults(fn=cmd_skill_check)
 
     p_adopt = sub.add_parser("adopt", help="generate brain.yaml for an existing brain")
     p_adopt.add_argument("--path", type=Path, required=True)
