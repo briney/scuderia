@@ -64,8 +64,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-UA = "mnemo-validate-identifiers/1.1 (mailto:you@example.com)"  # set your contact
-MAILTO = "you@example.com"  # set your contact — NCBI asks for a real mailto
+UA = "mnemo-validate-identifiers/1.1 (mailto:bryan.briney@gmail.com)"  # set your contact
+MAILTO = "bryan.briney@gmail.com"  # set your contact — NCBI asks for a real mailto
 TIMEOUT = 30
 
 STOP = set("the a an of in on for and or to with by from at as is are was were be been its their we our".split())

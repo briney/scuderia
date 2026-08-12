@@ -15,7 +15,7 @@ triggers:
 
 # PMC XML entity-fixing and body-text extraction
 
-Reference companion to `paper-ingest-pubmed-resolver` and the `paper-ingest`
+Reference companion to the `paper-ingest`
 vault skill. Covers the **recurring PMC XML parse failure** and the reusable
 parser script that handles it.
 
