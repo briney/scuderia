@@ -196,10 +196,6 @@ accumulate from real citing papers later.
 
 ## Output
 
-**All output — stubs, reports, and narrative — must be in English. No
-Chinese or other non-English text anywhere.** The current model stack may
-default to Chinese for prose; this is a hard override.
-
 Returned to the caller (the scheduled job delivers it; a direct request
 gets it as text):
 
