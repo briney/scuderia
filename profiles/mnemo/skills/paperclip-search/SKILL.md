@@ -106,10 +106,21 @@ paperclip cat /papers/PMC6104738/content.lines        # whole body
 
 - `meta.json` is clean structured JSON (~20ms). `content.lines` is the
   complete article text with line numbers and section headings.
-- This is a **supplementary full-text branch** for PMC/preprint papers
-  in the `paper-ingest` ladder — it does not cover paywalled journals
-  (Nature Reviews, Annual Reviews), so jina/Wayback remain necessary.
-  Not yet wired into `fetch_fulltext.py`; candidate for a future branch.
+- This is a **proven third-tier full-text fallback** for PMC/preprint
+  papers in the `paper-ingest` ladder — it does not cover paywalled
+  journals (Nature Reviews, Annual Reviews), so jina/Wayback remain
+  necessary. Across three literature dives on 2026-08-10 (~120 papers
+  total), `content.lines` rescued ~15+ ingests where `fetch_fulltext.py`
+  failed (Cloudflare blocks, jina misses, new bioRxiv 10.64898 DOI
+  prefix, arXiv HTML not rendered). Use `fulltext_source:
+  paperclip-biorxiv` (for bioRxiv) or `paperclip-arxiv` (for arXiv) in
+  the paper page's frontmatter. Not yet auto-wired into
+  `fetch_fulltext.py` but reliably callable as a manual fallback:
+
+```bash
+# After fetch_fulltext.py returns provenance: none
+paperclip cat --full /papers/<paperclip_id>/content.lines > /tmp/paper.txt
+```
 
 ### Corpus-wide grep
 
@@ -165,16 +176,19 @@ other result.
 
 ## Where it plugs into mnemo workflows
 
-1. **literature-dive Phase 5 (wired 2026-08-05).** Semantic searches
-   for the review's named open questions and thin-evidence areas —
-   queries that are awkward as PubMed keyword strings.
+1. **literature-dive Phases 1, 5, and 6 (wired 2026-08-05).** Primary
+   discovery for fast-moving fields (Phase 1), semantic searches for the
+   review's named open questions and thin-evidence areas (Phase 5), and
+   the supplementary pass's gap queries + jargon-upgraded queries
+   (Phase 6) — queries that are awkward as PubMed keyword strings.
 2. **literature-sweep (candidate, not yet wired).** Semantic queries
    alongside the keyword templates for watched topics. Wire after
    result quality is confirmed on real sweep topics.
 3. **Targeted recall.** Corpus-wide grep for named entities during
    brainstorming ("every paper mentioning <antibody>").
-4. **paper-ingest supplements (not wired).** `lookup doi` as a recovery
-   aid; `content.lines` as a full-text branch for PMC/preprint papers.
+4. **paper-ingest full-text fallback (proven, manually invoked).**
+   `lookup doi` as a recovery aid; `content.lines` as a third-tier
+   full-text source for PMC/preprint papers (see above).
 
 ## Pitfalls
 
