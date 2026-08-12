@@ -41,6 +41,24 @@ content into a file here, stop: templates say "the brain", "your human", and
   `brain.yaml`.
 - **Half-real templates rot.** Ship a profile stub (see `profiles/oiko/`)
   rather than an unexercised template.
+- **No skill-name collisions across sources.** A profile-scoped skill must
+  never reuse the frontmatter `name:` of a skill visible from another
+  layer (a shared skill set, another profile, or harness built-ins). To
+  change shared behavior, edit the shared skill; intentional
+  profile-specific variants get a distinct name (e.g. `<name>-<profile>`).
+  Skill resolvers refuse ambiguous names — and refusal means nobody can
+  patch anything, which is how the 2026-08 patch-skill sprawl happened.
+  `setup/soma skill-check` enforces this mechanically.
+- **Patch skills are not a pattern.** Never create a skill whose purpose
+  is to annotate another skill; patch the target directly. If a patch
+  genuinely cannot be applied immediately (an interrupted session, a
+  cross-profile guard), the finding goes in a working document with a
+  TODO, not in the skill index. `setup/soma skill-check` flags
+  patch-marker skills as warnings.
+- **One canonical home per skill.** When a profile's skills are bound
+  into a harness by symlink, no real skill directories may sit alongside
+  the symlink — a real dir plus a symlinked dir with the same skill name
+  is the collision that deadlocks resolvers.
 - The linter is schema-driven: `core/tools/lint-frontmatter.py --brain
   <instance> [--schema profiles/<name>/schema.yaml]`. Changes to a profile's
   frontmatter contract land in *both* its `schema.yaml` and its
