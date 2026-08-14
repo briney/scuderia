@@ -79,11 +79,17 @@ inference axis value actually changes** (`inference_fields_changed`).
   permanently opt out of the spend guard.
 
 **Recommended for internal maintenance/standing jobs** (rem-cycle, granola-sync,
-monitor, funding-sweep): clear the snapshots. They are upkeep you always want
-running regardless of which model backs them, and the spend guard buys little on
-jobs you never intend to gate. There is **no cronjob tool flag** to null a
-snapshot — you must edit jobs.json directly, under the scheduler's `.jobs.lock`
-flock so you don't tear a concurrent ticker write. See
+monitor, funding-sweep): re-glue to the stable zero-cost anchor — pin
+`provider`/`model` explicitly (e.g. `provider: local, model: deepseek-v4-pro`)
+AND null both `*_snapshot` fields. This survives default swaps *and* keeps the
+spend guard off dead name-glue. Your human's stated intent (2026-08-14): "glue
+to any model from the local provider — all zero cost, we may change the default
+every few months." There is **no cronjob tool flag** to set model/provider or null
+a snapshot — you must edit jobs.json directly, under the scheduler's `.jobs.lock`
+flock so you don't tear a concurrent ticker write. If you pin to a `local` model,
+first confirm the `local` provider entry in config.yaml actually declares that model
+(it was stale — `model: glm-5.2` — after the default swap); `curl` the local
+endpoint's `/v1/models` to see what it currently serves. See
 `scripts/clear_cron_snapshot.py` for a safe, lock-respecting, idempotent editor.
 
 **Validate incrementally** (your human's standing preference): clear + live-fire
