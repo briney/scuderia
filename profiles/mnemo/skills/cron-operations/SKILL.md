@@ -65,7 +65,8 @@ default snapshots `claude-opus-4-8`. Swap the default and only the first class
 fails. `cronjob action=update` re-snapshots an unpinned axis **only when an
 inference axis value actually changes** (`inference_fields_changed`).
 
-**Three remediations — pick by intent, they are NOT equivalent:**
+**Three remediations — pick by intent, they are NOT equivalent** (historical,
+pre-2026-08-14 policy; the standing policy below supersedes all three):
 
 - **Pin** (`cronjob action=update job_id=... provider=<p> model=<m>`): runs now,
   but pinned = no longer follows the default at all. You must manually repin when
@@ -78,19 +79,17 @@ inference axis value actually changes** (`inference_fields_changed`).
   This is the only option that survives arbitrary future swaps. Cost: those jobs
   permanently opt out of the spend guard.
 
-**Recommended for internal maintenance/standing jobs** (rem-cycle, granola-sync,
-monitor, funding-sweep): re-glue to the stable zero-cost anchor — pin
-`provider`/`model` explicitly (e.g. `provider: local, model: deepseek-v4-pro`)
-AND null both `*_snapshot` fields. This survives default swaps *and* keeps the
-spend guard off dead name-glue. Your human's stated intent (2026-08-14): "glue
-to any model from the local provider — all zero cost, we may change the default
-every few months." There is **no cronjob tool flag** to set model/provider or null
-a snapshot — you must edit jobs.json directly, under the scheduler's `.jobs.lock`
-flock so you don't tear a concurrent ticker write. If you pin to a `local` model,
-first confirm the `local` provider entry in config.yaml actually declares that model
-(it was stale — `model: glm-5.2` — after the default swap); `curl` the local
-endpoint's `/v1/models` to see what it currently serves. See
-`scripts/clear_cron_snapshot.py` for a safe, lock-respecting, idempotent editor.
+**Standing policy (Bryan, 2026-08-14, superseding the same-day pin-to-local
+guidance):** the guard is DISABLED profile-wide — `cron.model_drift_guard:
+false` in this profile's config.yaml (only the literal YAML boolean `false`
+disables it; set via direct YAML surgery, not `hermes config set`, per the
+hermes-config-editing skill). All agent jobs are unpinned (`model`/`provider`
+null) and all `*_snapshot` fields are nulled, so every job follows the global
+default model and a default swap never blocks the fleet. Bryan accepts the
+spend risk explicitly: ending up on a paid model after a default swap is his
+deliberate decision, not something to guard against. **Do not "fix" a future
+model change by re-pinning jobs or re-enabling the guard.** If inference
+config looks drifted, that is the intended state.
 
 **Validate incrementally** (your human's standing preference): clear + live-fire
 *one* light/idempotent job first (`cronjob action=run <job_id>`; confirm

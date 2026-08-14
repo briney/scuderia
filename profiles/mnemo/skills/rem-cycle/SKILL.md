@@ -65,19 +65,22 @@ prepends QUEUE.md (qid'd, deduped against decisions.yaml), updates `_state.yaml`
 (`last_run`, canonical metrics, health delta), commits, delivers.
 
 Delivery routing (live config is the source of truth; this documents intent):
-- **Report jobs** (`rem-report-nightly`, and the weekly/monthly report jobs)
+- **Report jobs** (`rem-report-nightly`, `rem-report-weekly`, `rem-report-monthly`)
   deliver the trimmed dream report to the Reports channel **and** the Buzz DM —
   the glanceable surface your human reads.
-- **The nightly phase-runner** (`rem-cycle-nightly`) delivers its phase-run status
-  to the **System** channel — noisy, operational, kept off the Reports channel so
-  the trimmed report stays glanceable.
-- **Individual phase jobs** (drain, retro, coalesce, …) deliver `local` — no
-  gateway delivery at all.
+- **Individual phase jobs** (drain, hygiene, retro, reinforce, intersect,
+  entity-resolution, consistency, consolidation, concept-refresh, coalesce,
+  importance, full-sweep) deliver `local` — no gateway delivery at all.
 
-**Current state (2026-08-03):** `rem-drain` and `rem-report-nightly` (comparison
-mode) are live. Nightly phases 1/2/6 still run inside the `rem-cycle-nightly`
-monolith, which writes phase-result files for the aggregator (shim). Weekly and
-monthly monoliths unchanged. Peels proceed one phase per week per the plan.
+**Current state (2026-08-14): full cutover — the monoliths are gone.** All three
+`rem-cycle-{nightly,weekly,monthly}` monolith jobs were removed 2026-08-14
+(bandaid cutover; see the plan addendum). Every phase in the table above runs
+as its own cron job; the three `rem-report-*` aggregators own the reports.
+`rem-concept-refresh` (5b) and `rem-coalesce` (5c) are wired and armed. Model
+policy: all jobs are unpinned and follow the global default model; the
+model-drift spend guard is disabled profile-wide (`cron.model_drift_guard:
+false` in config.yaml) per Bryan's standing call — a default-model swap must
+never block the fleet.
 
 ## What this guarantees
 
@@ -119,8 +122,8 @@ without any single run exploding in cost.
 | 3 | Entity resolution | `entity-resolution` | **yes** | — |
 | 4 | Consistency & staleness | `consistency-check` | **yes** | — |
 | 5 | Consolidation | `concept-synthesis` + `topic-synthesis` (generative → **propose**; tiering / `concepts/README.md` map auto) | **yes** | — |
-| 5b | Thesis refresh | `concept-refresh` (≥3 shifts since `thesis_updated` → propose rewrite) | — | — |
-| 5c | **Concept-coalesce** | `concept-coalesce` — aggregate coalesced concept-stub clusters into a `concept` (≥3 independent signals + "so what"; auto-commit; never a hypothesis) | — | — |
+| 5b | Thesis refresh | `concept-refresh` (≥3 shifts since `thesis_updated` → propose rewrite) | **yes** | — |
+| 5c | **Concept-coalesce** | `concept-coalesce` — aggregate coalesced concept-stub clusters into a `concept` (≥3 independent signals + "so what"; auto-commit; never a hypothesis) | **yes** | — |
 | 6 | **Reinforce** | `reinforce` — facts-only `## Shifts` appends from recent papers (auto-commit; no opinion, no propose lane) | **yes** | **yes** (2026-07-08) |
 | 7 | Importance recompute | `maintain` (scope `importance`) | **yes** | — |
 | 8 | **Intersect** | `intersect` — the single-item ranker: one highest-value cross-cutting attention target into the report's "One thing" section (nightly; surface-only, never a page) | **yes** | — |
