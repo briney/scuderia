@@ -101,6 +101,7 @@ Filling the knowledge graph, and keeping it healthy.
 | Bootstrap the concept layer — one-time backward distillation of umbrella concepts from the existing projects/grants/papers ("seed the concept layer", "distill concepts from the grants") — distinct from `concept-synthesis` (which dedups/tiers/maps ambient idea-stubs) | `skills/concept-seeding/SKILL.md` |
 | Update concepts from recent papers — the autonomous reinforce pass over concept `## Shifts` ("reinforce the concepts", "what recent papers moved our concepts"); runs as rem-cycle phase 6 or standalone. The directed lane (an explicit concept call-out at ingest) lives in `paper-ingest` | `skills/reinforce/SKILL.md` |
 | Cross-concept hypothesis detection — the weekly intersect pass; propose a hypothesis from a Frontier-bet intersection of ≥2 concepts that clears Beat/Unlock/Scale/Explain + a discriminating test ("find concept intersections", "any new cross-concept hypotheses"); rem-cycle phase 8 or standalone | `skills/intersect/SKILL.md` |
+| Concept-stub coalescence — the weekly pass that reads `is_concept_stub: true` notes and proposes promoting a coalesced cluster to a real concept/hypothesis ("coalesce the concepts", "which stubs should become concepts"); rem-cycle phase 5c or standalone. Distinct from `intersect` (below) | `skills/concept-coalesce/SKILL.md` |
 | Scheduled offline consolidation — "run a rem cycle", "dream", the nightly/weekly maintenance job that runs phases as subagents and writes a dream report | `skills/rem-cycle/SKILL.md` |
 | Duplicate/merge/split of the identity-keyed kinds + the author ledger — "find duplicate pages", "dedupe the brain", "audit the author ledger", "are these two the same" | `skills/entity-resolution/SKILL.md` |
 | Contradictions + expired facts — "find contradictions", "check consistency", "conflicting claims", "stale facts", "audit the hypothesis graph" | `skills/consistency-check/SKILL.md` |
@@ -168,6 +169,7 @@ two audit skills.
 - `skills/conventions/rem-cycle-contract.md` — the rem-cycle phase interface: structured phase result, the two commit tiers, run mode, protected classes
 - `skills/conventions/test-before-bulk.md` — never batch without testing one first
 - `skills/conventions/skill-hygiene.md` — the eval contract, the no-regression law, the scheduled-run gate; governs every edit to a skill
+- `skills/conventions/concept-stub-capture.md` — capture-cheap/decide-later: file transient ideas as `is_concept_stub: true` notes, defer the concept/hypothesis judgment to `concept-coalesce`
 - `skills/_brain-filing-rules.md` — where a new page goes
 - `skills/_output-rules.md` — output quality standards
 
@@ -281,3 +283,13 @@ When multiple skills could match:
     participants; a `conversation` is a human↔mind
     discussion captured on request. Passing mention / single framing →
     `signal-detector`; considered whole on request → `conversation-capture`.
+17. `concept-coalesce` vs. `intersect` vs. `concept-synthesis` — the three
+    concept-layer *producers* split by source. `concept-coalesce` promotes a
+    **coalesced concept-stub cluster** (`is_concept_stub: true` notes) into a
+    `concept` or single-idea `hypothesis` — bottom-up, from captured transients.
+    `intersect` proposes a **cross-concept hypothesis** from a Frontier-bet
+    intersection of ≥2 *existing* concepts — top-down, from the curated layer.
+    `concept-synthesis` dedups/tiers/maps **ambient idea-stubs** across the whole
+    corpus. A stub cluster that points at one idea → `concept-coalesce`; a
+    bet × bet intersection of two concepts → `intersect`; organic
+    dedup/tier/map over `concept`+`note` stubs → `concept-synthesis`.

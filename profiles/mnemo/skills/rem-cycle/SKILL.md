@@ -49,6 +49,7 @@ the instance's private `docs/specs/` and `docs/plans/`.
 | rem-consistency | 4 | Mon 04:25 | consistency-check |
 | rem-consolidation | 5 | Mon 04:50 | concept-synthesis + topic-synthesis |
 | rem-concept-refresh | 5b | Mon 05:00 | concept-refresh |
+| rem-coalesce | 5c | Mon 05:05 | concept-coalesce |
 | rem-importance | 7 | Mon 05:15 | maintain (importance) |
 | rem-intersect | 8 | Mon 05:40 | intersect |
 | rem-report-weekly | 9 Report | Mon 06:15 | this skill (aggregator) |
@@ -93,7 +94,7 @@ The tier selects the phase set; the job table above is the schedule.
 | Cadence | Phases | Scope |
 |---|---|---|
 | Nightly | 0, 1, 2, 6, 9 | Queue drain + hygiene + retroactive slice + reinforce on new papers + report |
-| Weekly | + 3, 4, 5, 5b, 7, 8 | Entity resolution, consistency, consolidation, Thesis refresh, importance, intersect |
+| Weekly | + 3, 4, 5, 5b, 5c, 7, 8 | Entity resolution, consistency, consolidation, Thesis refresh, concept-coalesce, importance, intersect |
 | Monthly | full sweep | Cursor completion + schema/eval review |
 
 The rotating slice (phase 2) is the scaling trick: a cursor over the whole
@@ -111,6 +112,7 @@ without any single run exploding in cost.
 | 4 | Consistency & staleness | `consistency-check` | **yes** | — |
 | 5 | Consolidation | `concept-synthesis` + `topic-synthesis` (generative → **propose**; tiering / `concepts/README.md` map auto) | **yes** | — |
 | 5b | Thesis refresh | `concept-refresh` (≥3 shifts since `thesis_updated` → propose rewrite) | — | — |
+| 5c | **Concept-coalesce** | `concept-coalesce` — propose promoting a coalesced concept-stub cluster to a `concept`/`hypothesis` (capture-cheap/decide-later; propose-only, never auto) | — | — |
 | 6 | **Reinforce** | `reinforce` — concept `## Shifts` from recent papers; auto-append high-confidence, propose borderline / promote / contradict | **yes** | **yes** (2026-07-08) |
 | 7 | Importance recompute | `maintain` (scope `importance`) | **yes** | — |
 | 8 | **Intersect** | `intersect` — cross-concept hypotheses (weekly); propose bet × bet intersections that clear the promise + discriminating-test + novelty gates | **yes** | — |

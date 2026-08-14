@@ -73,6 +73,23 @@ Other kinds carry the fields their job needs — a `hypothesis` carries its
 evidence edges, a `task` carries a due date. When adding a field, prefer an
 existing name over a synonym, and record new per-kind fields here.
 
+## The `note` kind — concept stubs
+
+A `note` is first-person thinking (`page-kinds.md`). Most notes need no fields
+beyond the spine. The one exception is the **concept stub** — a note that is a
+candidate future `concept`, filed cheap and judged later
+(`conventions/concept-stub-capture.md`):
+
+| Field | Meaning |
+|---|---|
+| `is_concept_stub` | `true` if the note is a concept candidate (a lens / framing / bet), scanned by `concept-coalesce` for promotion. Absent on a plain note. |
+| `status` | For a stub: `open` (candidate, not yet coalesced) \| `promoted` (a coalesce run proposed it and your human authorized the concept) \| `dormant` (surfaced, declined). Set by `concept-coalesce` / the drain; never hand-flipped to `promoted`. |
+
+A stub carries **no** synthesis fields — `thesis_updated`, `## Thesis`, `## Shifts`
+are `concept` anatomy, not `note` anatomy. The stub is provenance + a forward
+edge + a verbatim trigger. If it is promoted, the *new* `concept` page carries
+the anatomy; the stub's `status` flips and its `links:` fold onto the new page.
+
 ## The `person` kind
 
 A `people/` page is a curated profile of an author or collaborator. The

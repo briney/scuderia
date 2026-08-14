@@ -49,8 +49,17 @@ When your human expresses a thought, observation, thesis, or framing that is *th
 - A testable claim worth tracking evidence on → `hypotheses/<slug>.md` (a
   `hypothesis` page).
 
-Default to `notes/` when in doubt — first-person thinking lives there. Promote
-to `concepts/` or `hypotheses/` only when the shape clearly fits.
+Default to `notes/` when in doubt — first-person thinking lives there.
+
+**Concept stubs: capture cheap, defer the judgment** (`conventions/concept-stub-capture.md`).
+When the idea is a *candidate lens* — a recurring way of thinking, a framing, a
+persistent bet — but it is not yet obviously a full `concept`, do **not** force
+the triage at capture. File it as a `note` with `is_concept_stub: true` and a
+forward link, verbatim, no synthesis. Do not decide here whether it is a
+"reusable framework" vs "testable claim" vs "riff" — that is
+`concept-coalesce`'s job, later, once you can see whether it recurred. Only
+promote to `concepts/` or `hypotheses/` when the shape clearly fits *right now*;
+everything candidate-shaped becomes a stub.
 
 Capture rules:
 
