@@ -167,6 +167,7 @@ two audit skills.
 - `skills/conventions/author-ledger.md` — `people/_ledger.yaml`; paper-author page creation is threshold-gated, not judgment-gated
 - `skills/conventions/rem-cycle-contract.md` — the rem-cycle phase interface: structured phase result, the two commit tiers, run mode, protected classes
 - `skills/conventions/test-before-bulk.md` — never batch without testing one first
+- `skills/conventions/skill-hygiene.md` — the eval contract, the no-regression law, the scheduled-run gate; governs every edit to a skill
 - `skills/_brain-filing-rules.md` — where a new page goes
 - `skills/_output-rules.md` — output quality standards
 
