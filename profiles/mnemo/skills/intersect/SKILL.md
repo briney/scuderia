@@ -83,7 +83,7 @@ holds.
 
 ## As a rem-cycle phase
 
-The **weekly** phase (phase 8; `rem-cycle-contract.md`). The orchestrator passes
+The **nightly** phase (phase 8; `rem-cycle-contract.md`). The orchestrator passes
 
 `mode`; intersect is surface-only, so `dry-run` and `normal` are equivalent —
 it writes no page, only the phase result:

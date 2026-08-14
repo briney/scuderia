@@ -44,6 +44,7 @@ the instance's private `docs/specs/` and `docs/plans/`.
 | rem-hygiene | 1 Hygiene | nightly 03:00 | frontmatter-guard + maintain |
 | rem-retro | 2 Retroactive-linking | nightly 03:25 | retroactive-linking |
 | rem-reinforce | 6 Reinforce | nightly 03:50 | reinforce |
+| rem-intersect | 8 Intersect | nightly 04:05 | intersect |
 | rem-report-nightly | 9 Report | nightly 04:30 | this skill (aggregator) |
 | rem-entity-resolution | 3 | Mon 04:00 | entity-resolution |
 | rem-consistency | 4 | Mon 04:25 | consistency-check |
@@ -51,7 +52,6 @@ the instance's private `docs/specs/` and `docs/plans/`.
 | rem-concept-refresh | 5b | Mon 05:00 | concept-refresh |
 | rem-coalesce | 5c | Mon 05:05 | concept-coalesce |
 | rem-importance | 7 | Mon 05:15 | maintain (importance) |
-| rem-intersect | 8 | Mon 05:40 | intersect |
 | rem-report-weekly | 9 Report | Mon 06:15 | this skill (aggregator) |
 | rem-full-sweep | monthly sweep | 1st 05:00 | cursor completion + schema review |
 | rem-report-monthly | 9 Report | 1st 06:30 | this skill (aggregator) |
@@ -93,8 +93,8 @@ The tier selects the phase set; the job table above is the schedule.
 
 | Cadence | Phases | Scope |
 |---|---|---|
-| Nightly | 0, 1, 2, 6, 9 | Queue drain + hygiene + retroactive slice + reinforce on new papers + report |
-| Weekly | + 3, 4, 5, 5b, 5c, 7, 8 | Entity resolution, consistency, consolidation, Thesis refresh, concept-coalesce, importance, intersect |
+| Nightly | 0, 1, 2, 6, 8, 9 | Queue drain + hygiene + retroactive slice + reinforce on new papers + intersect + report |
+| Weekly | + 3, 4, 5, 5b, 5c, 7 | Entity resolution, consistency, consolidation, Thesis refresh, concept-coalesce, importance |
 | Monthly | full sweep | Cursor completion + schema/eval review |
 
 The rotating slice (phase 2) is the scaling trick: a cursor over the whole
@@ -115,7 +115,7 @@ without any single run exploding in cost.
 | 5c | **Concept-coalesce** | `concept-coalesce` — aggregate coalesced concept-stub clusters into a `concept` (≥3 independent signals + "so what"; auto-commit; never a hypothesis) | — | — |
 | 6 | **Reinforce** | `reinforce` — facts-only `## Shifts` appends from recent papers (auto-commit; no opinion, no propose lane) | **yes** | **yes** (2026-07-08) |
 | 7 | Importance recompute | `maintain` (scope `importance`) | **yes** | — |
-| 8 | **Intersect** | `intersect` — the single-item ranker: one highest-value cross-cutting attention target into the report's "One thing" section (weekly; surface-only, never a page) | **yes** | — |
+| 8 | **Intersect** | `intersect` — the single-item ranker: one highest-value cross-cutting attention target into the report's "One thing" section (nightly; surface-only, never a page) | **yes** | — |
 | 9 | Report + commit | this skill (aggregator) | **yes** | — |
 
 **No external I/O.** Phases consolidate what is already in the graph. Fetching,

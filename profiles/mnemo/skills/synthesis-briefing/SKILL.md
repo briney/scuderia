@@ -16,7 +16,7 @@ triggers:
 # synthesis-briefing — the weekly PUSH
 
 The delivery surface that closes the concept layer's loop back to your human. The
-synthesis engine — `reinforce` nightly, `intersect` weekly — writes *state* into
+synthesis engine — `reinforce` nightly, `intersect` nightly — writes *state* into
 concept `## Shifts` logs and `QUEUE.md`; this composes that week's movement into a
 **reading-shaped** digest. It is deliberately *not* the rem-cycle **dream report**
 (audit-shaped: committed / skipped / budget) and *not* the daily **`briefing`**
