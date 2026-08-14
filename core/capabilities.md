@@ -66,7 +66,7 @@ name.
 
 | Capability | Contract |
 |---|---|
-| `user-model-query` | Returns the mind's model of its human: `{declared: USER.md}`. Same shape on every harness — `USER.md` lives at the brain root and is read off disk. See `DESIGN.md` §7. |
+| `user-model-query` | Returns the mind's model of its human: `{declared: USER/<name>.md}`. Same shape on every harness — `USER/<name>.md` lives in the brain's `USER/` directory and is read off disk. See `DESIGN.md` §7. |
 | `read-conversation-history` | Returns recent session transcripts (windowed by the caller). Consumed by `user-model-reflect` on manual invocation. Hermes: native session store. Claude Code: transcript files under `~/.claude/projects/<encoded-cwd>/*.jsonl` (one JSONL per session; user/assistant records carry `message.content` plus `timestamp` and `sessionId`). Skills that name it as required refuse cleanly on harnesses that don't expose conversation history. |
 
 ### Authenticated / infrastructural — Hermes-only unless the harness wires equivalents
@@ -125,7 +125,7 @@ The standard substitutions:
 - `read-conversation-history` → none. A skill that requires it refuses
   cleanly under harnesses that don't expose conversation history.
   `user-model-reflect` writes a dated no-op stub to
-  `USER-OBSERVATIONS.md` so the absence is auditable rather than
+  `USER/OBSERVATIONS.md` so the absence is auditable rather than
   silent.
 
 ## How a skill names its capabilities

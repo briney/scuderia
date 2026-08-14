@@ -10,8 +10,8 @@ behavior, and gotchas: `docs/harnesses/claude-code.md` in the soma checkout.
 ## Every session
 
 - **Load the character and user model yourself.** Claude Code auto-loads only
-  this file, so explicitly read `SOUL.md` and `USER.md` at the start of each
-  session. `RESEARCH.md` and `STYLE.md` stay on-demand, as AGENTS.md
+  this file, so explicitly read `SOUL.md` and `USER/<name>.md` at the start of
+  each session. `RESEARCH.md` and `STYLE.md` stay on-demand, as AGENTS.md
   describes.
 
 ## Capability → Claude Code tool

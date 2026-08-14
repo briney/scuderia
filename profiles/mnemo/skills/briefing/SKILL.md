@@ -42,7 +42,7 @@ Every brief honors all four. They are the difference between a trusted filter
 and one more thing pinging your human.
 
 1. **A relevance bar drawn from the user model.** What matters is what matters
-   *to your human specifically* — read from `USER.md` via `user-model-query`, not
+   *to your human specifically* — read from `USER/<name>.md` via `user-model-query`, not
    a global heuristic. Consult your human's declared priorities, taste, and what
    he has named as in- vs. out-of-scope; weight the brief against that,
    alongside page `importance`.
@@ -61,7 +61,7 @@ and one more thing pinging your human.
 
 ## Phases
 
-1. **Set the relevance bar.** Read `USER.md` via `user-model-query` for
+1. **Set the relevance bar.** Read `USER/<name>.md` via `user-model-query` for
    your human's declared priorities, domain priors, and what they have named as in-
    vs. out-of-scope. This is what separates signal from noise for the rest of
    the brief — do it first.
@@ -152,8 +152,8 @@ and one more thing pinging your human.
 ## Source precedence
 
 When the brain and the user-model bar point different ways, neither overrides
-the other — `USER.md` sets *what your human cares about*, the brain holds *what
-is true and what is due*. Surface a real deadline even if `USER.md` does not
+the other — `USER/<name>.md` sets *what your human cares about*, the brain holds *what
+is true and what is due*. Surface a real deadline even if `USER/<name>.md` does not
 flag the topic; let the user-model bar govern the softer, judgment-call
 items.
 

@@ -274,8 +274,8 @@ sections via `git diff` on the phase's commit.
 - **Forward-only linking.** Add the forward edge on the page that mentions the
   target; **never hand-write a backlink** (`graph-and-links.md`). Retroactive
   linking on an old page adds the edge *on the old page* — that is still forward.
-- **Protected from mutation.** `USER.md` is human-owned — never write it;
-  route observations to `USER-OBSERVATIONS.md` via `user-model-reflect`.
+- **Protected from mutation.** `USER/<name>.md` is human-owned — never write it;
+  route observations to `USER/OBSERVATIONS.md` via `user-model-reflect`.
   `SOUL.md` / `STYLE.md` / `RESEARCH.md` are not graph pages and are out of
   scope. `people/_ledger.yaml` is high-risk (corruption history) — validate the
   YAML and diff before committing any ledger write.

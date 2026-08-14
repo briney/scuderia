@@ -17,7 +17,7 @@ that day comes, an oiko profile needs the same five things mnemo ships:
    order?) and their frontmatter contract.
 2. `skills/` — the oiko job set (procurement tracking, compliance calendars,
    budget cards for the feed).
-3. `SOUL.md` / `STYLE.md` / `USER.md` templates — the lab-manager character is
+3. `SOUL.md` / `STYLE.md` / `USER/` templates — the lab-manager character is
    a different voice from the research thought partner.
 4. `manifest.yaml` + `example-brain/` — the install contract.
 5. Card types for the feed (budget/protocol cards), declared in the schema.

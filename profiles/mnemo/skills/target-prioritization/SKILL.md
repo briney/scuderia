@@ -199,7 +199,7 @@ for key literature on top candidates.
 
 ### 6. Grant-fit assessment
 
-Cross-reference against USER.md, FUNDING-PROFILE.md, and reviewer critique
+Cross-reference against USER/<name>.md, FUNDING-PROFILE.md, and reviewer critique
 lessons. Top candidates get `project` pages in the brain.
 
 ## Where the artifact lives

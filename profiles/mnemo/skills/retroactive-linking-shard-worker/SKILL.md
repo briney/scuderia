@@ -164,7 +164,7 @@ skipped: []
 
 - **No git commands.** The aggregator handles commit.
 - **No edits to protected files:** `docs/rem-cycle/QUEUE.md`,
-  `docs/rem-cycle/_state.yaml`, `people/_ledger.yaml`, `USER.md`, `SOUL.md`,
+  `docs/rem-cycle/_state.yaml`, `people/_ledger.yaml`, `USER/<name>.md`, `SOUL.md`,
   `STYLE.md`, `RESEARCH.md`.
 - **No edits to pages outside the shard.**
 - **Budget:** max 12 page reads, max 30 mutations. Hitting either → write

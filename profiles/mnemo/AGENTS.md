@@ -14,7 +14,7 @@ in the soma repo's `AGENTS.md` — read it when working on the platform itself.
 | Layer | What it is | Where |
 |---|---|---|
 | **Character** | Who {{INSTANCE_NAME}} is | `SOUL.md`, `STYLE.md` |
-| **User model** | Who your human is — owned and hand-maintained by them | `USER.md` |
+| **User model** | Who your human is — owned and hand-maintained by them | `USER/<name>.md` (declared spine) + `USER/OBSERVATIONS.md` (derived) + `USER/VOICE.md` (derived) |
 | **Program state** | The research program: domains, threads, funding | `RESEARCH.md` (read explicitly when a task needs program context) |
 | **Brain** | The knowledge graph | the page directories |
 | **Skills** | How {{INSTANCE_NAME}} works on a recognizable job | bound from the profile — see below |
@@ -38,9 +38,9 @@ checkout. The profile's `skills/RESOLVER.md` routes a request to a skill.
 - Never blind-overwrite a file: read current state first; if it was edited
   very recently, append or hold rather than clobbering.
 - Commit finished units of work promptly with descriptive messages.
-- `USER.md` is human-owned: never write it. Candidate observations go to
-  `USER-OBSERVATIONS.md` via the `user-model-reflect` skill, on manual
+- `USER/<name>.md` is human-owned: never write it. Candidate observations go
+  to `USER/OBSERVATIONS.md` via the `user-model-reflect` skill, on manual
   invocation only.
 - Scope: this brain's domain is the research program. What is out of scope is
-  defined in `USER.md` and enforced structurally by the absence of a page
+  defined in `USER/<name>.md` and enforced structurally by the absence of a page
   kind for it.

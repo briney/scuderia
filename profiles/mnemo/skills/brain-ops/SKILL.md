@@ -41,7 +41,7 @@ gap, it does not start from scratch.
 
 One split matters: the **brain** holds the *work* — papers, methods, hypotheses,
 grants, threads. **`user-model-query`** returns the model of *your human* — their
-taste, blind spots, how to engage them — from `USER.md` at the brain root.
+taste, blind spots, how to engage them — from `USER/<name>.md` at the brain root.
 A question about the science goes to the brain; a question about how your human
 thinks goes to the user-model capability.
 

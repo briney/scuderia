@@ -28,7 +28,7 @@ it does not start from scratch. Check the brain first, every time.
   page already covers the question.
 - **The user model is separate from the brain.** For who-your-human-is questions
   (taste, blind spots, how to engage him) use `user-model-query` — returns
-  `{declared: USER.md}` on every harness. The brain holds the *work*
+  `{declared: USER/<name>.md}` on every harness. The brain holds the *work*
   (papers, methods, hypotheses, grants, threads); the user model holds the
   *person*. See `DESIGN.md` §7.
 - **Cite what you find.** A fact carried out of the brain keeps its citation back

@@ -23,6 +23,7 @@ dirs:
   - tasks
   - conversations
   - skills
+  - user
 
 # Files copied into the instance at scaffold time. `template` is relative to
 # the profile root; `target` is relative to the instance root. Placeholders
@@ -36,8 +37,12 @@ files:
   - template: STYLE.md
     target: STYLE.md
     strip_header: true
-  - template: USER.md
-    target: USER.md
+  - template: USER/SKELETON.md
+    target: USER/SKELETON.md
+  - template: USER/OBSERVATIONS.md
+    target: USER/OBSERVATIONS.md
+  - template: USER/VOICE.md
+    target: USER/VOICE.md
   - template: AGENTS.md
     target: AGENTS.md
   - template: CLAUDE.md
@@ -53,7 +58,7 @@ placeholders:
 # agent-guided install knows what to perform and doctor knows what to check.
 bindings:
   - id: harness-character
-    description: harness loads the instance SOUL.md (and USER.md) at session start
+    description: harness loads the instance SOUL.md (and the user model, USER/<name>.md) at session start
     verify: harness-specific; see the adapter doc
   - id: harness-skills
     description: harness skill path exposes the layered skill set

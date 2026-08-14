@@ -42,7 +42,7 @@ each capability resolves to once it's set up.
 | `send-notification` | Telegram gateway | Other channels (Discord, Signal, email, voice) also available |
 | `deliver-message` | `schedule-job` + `send-notification` | The standard pattern for the morning brief, deadline nudges |
 | `pubmed-fetch` / `crossref-fetch` / `biorxiv-fetch` / `arxiv-fetch` / `nih-reporter-fetch` | Skill markdown + `fetch-url` | No SDKs; API knowledge lives in skill prose |
-| `user-model-query` | Filesystem read of `USER.md` | Returns `{declared}`; `USER.md` is the entire user model the mind consults in conversation |
+| `user-model-query` | Filesystem read of `USER/<name>.md` | Returns `{declared}`; `USER/<name>.md` is the entire user model the mind consults in conversation |
 | `read-conversation-history` | Hermes session store | Returns windowed transcripts; consumed by `user-model-reflect` on manual invocation |
 | `gmail-read` / `calendar-read` | Spark IPC bridge (`spark-cli`) | Read-only; Spark Desktop runs on the host; no OAuth against Google directly |
 | `messaging-send` | Telegram (or whichever gateway is configured) | The reverse of `send-notification` for outbound from skills |
@@ -76,7 +76,7 @@ summary:
 |---|---|
 | `brain-search` | qmd installed; `qmd embed` run; HTTP MCP daemon (LaunchAgent or systemd) |
 | `raw-source-archive-upload` | `rclone` installed; R2 remote configured (object-scoped token, `no_check_bucket = true`); `bucket = <instance>-drops` (or your equivalent) |
-| `user-model-query` | Nothing — filesystem read of `USER.md` at the brain root |
+| `user-model-query` | Nothing — filesystem read of `USER/<name>.md` in the brain's `USER/` dir |
 | `gmail-read` / `calendar-read` | Spark Desktop running on the host; `spark-cli` shim available |
 | `send-notification` / `messaging-send` | Bot token + `TELEGRAM_ALLOWED_USERS` in `.env`; `hermes gateway` running as a service |
 | `voice-transcribe` | Whatever voice provider is configured in `.env` |

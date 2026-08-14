@@ -16,7 +16,7 @@ core/            capability contract, schema-driven tools
 interface/       feed renderer + card contract (publisher-agnostic)
 profiles/
   mnemo/         research-brain template (flagship): conventions + schema.yaml,
-                 skills/, SOUL.md / STYLE.md / USER.md templates, example brain
+                 skills/, SOUL.md / STYLE.md / USER/ templates, example brain
   oiko/          lab-manager template (stub)
 docs/
   north-star/    what soma is for (VISION) and how it is built (DESIGN)

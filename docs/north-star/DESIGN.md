@@ -61,9 +61,11 @@ The substrate is **two harness-independent stores**, neither tied to any
 particular harness:
 
 1. **The markdown brain** — your human's work and knowledge (§2). The model of
-   your human lives in `USER.md` at the root of the brain (§7); a
-   sidecar `USER-OBSERVATIONS.md` exists as staging for the
-   `user-model-reflect` skill but is not consulted in conversation.
+   your human lives in the `USER/` directory at the root of the brain (§7) —
+   a declared spine (`USER/<name>.md`) plus derived siblings
+   (`USER/OBSERVATIONS.md`, `USER/VOICE.md`) for the `user-model-reflect`
+   skill and the writing fingerprint; only the spine is consulted in
+   conversation.
 2. **The raw-source archive** — the original documents the brain is distilled
    from, in object storage (§8).
 
@@ -99,7 +101,11 @@ brain/
 ├── AGENTS.md            # orientation for any agent/human entering the vault
 ├── SOUL.md              # character — who the mind is (§3.1)
 ├── STYLE.md             # scientific-writing voice (§3.2)
-├── USER.md              # declared model of your human — the user (§7.2)
+├── USER/                # the user model — spine + derived siblings (§7)
+│   ├── <name>.md          #   declared spine (§7.1)
+│   ├── SKELETON.md        #   template skeleton (never loaded)
+│   ├── OBSERVATIONS.md    #   observed layer
+│   └── VOICE.md           #   derived writing fingerprint
 ├── RESEARCH.md          # state of the research program (§2.6)
 ├── skills/              # instance-private skill layer (template skills are
 │                        #   bound from the profile — §4.3)
@@ -228,7 +234,7 @@ the attention contract (§4.5).
 `RESEARCH.md` is a single root file holding the **state of the research
 program** — the active domains, the threads in flight, the funding context, the
 publication pipeline. It is the *work*, not a model of the person (that is
-`USER.md`, §7) and not a model of the mind (that is `SOUL.md`, §3). Skills
+`USER/<name>.md`, §7) and not a model of the mind (that is `SOUL.md`, §3). Skills
 read it for thread context: a grant drafter resolves domain references
 against it; the attention contract reads its funding context for deadline
 awareness.
@@ -368,7 +374,7 @@ The research-logistics job is an **editorial mandate**, not a list-printer
 (`VISION.md` §5). It is implemented as a cluster of skills with four properties:
 
 - **A relevance bar drawn from the user model.** What matters *to your human
-  specifically* comes from `USER.md` (§7), not a global heuristic.
+  specifically* comes from `USER/<name>.md` (§7), not a global heuristic.
 - **A default of silence.** Nothing surfaces unless it clears the bar. The
   filter suppresses noise as actively as it surfaces signal.
 - **Escalation that scales with stakes and proximity.** A grant deadline at
@@ -440,12 +446,12 @@ Per-harness adapter docs in `docs/harnesses/` map each capability
 cron vs scheduled-wakeup for `schedule-job`, and so on — and call out the
 skills that depend on capabilities a given harness does not provide.
 `user-model-query` is the same on every harness (§7); it always returns
-`{declared: USER.md}`.
+`{declared: USER/<name>.md}`.
 
 ### 6.2 How a harness becomes the mind
 
 The harness points at the brain directory. It loads `SOUL.md`, `STYLE.md`,
-`USER.md`, and `AGENTS.md` as the always-on layer, discovers the layered
+`USER/<name>.md`, and `AGENTS.md` as the always-on layer, discovers the layered
 `skills/`, reads `skills/RESOLVER.md` for routing, and builds (or borrows) a
 search index over the page tree. With those loaded, the running harness
 process *is* the mind. The **brain side of the seam contract** is exactly
@@ -474,41 +480,52 @@ disposable — a cache over the markdown, not a component of the brain.
 
 ---
 
-## 7. The model of your human — `USER.md`
+## 7. The model of your human — the `USER/` directory
 
 *Implements `VISION.md` §3.3, and the theory-of-your-human in §2.1 and §5.*
 
-### 7.1 The user model is `USER.md`
+### 7.1 The user model is a directory of siblings
 
 A *Power of Two* partnership needs a theory of your human — their taste,
 intellectual style, recurring blind spots, what excites or bores them. That
-theory lives in one markdown file at the root of the brain (alongside
-`SOUL.md`), always loaded, harness-independent by nature:
+theory lives in a small **`USER/` directory** at the root of the brain
+(alongside `SOUL.md` and `STYLE.md`), always loaded for the declared spine,
+harness-independent by nature. Three files, three roles:
 
-- **`USER.md`** holds what your human says about themselves — research priors,
-  working style, named blind spots, how they want to be engaged, what's in
-  and out of scope. Your human owns it; the mind may propose edits in
-  conversation but does not auto-write to it. Your human refreshes it by hand,
-  typically in response to discrete forcing functions (a grant reviewer
-  critique, a periodic review, a stretch of work that shifted their thinking).
+- **`USER/<name>.md`** — the **declared** spine. Holds what your human
+  says about themselves — research priors, working style, named blind spots,
+  how they want to be engaged, what's in and out of scope, and a "writing
+  voice" section of argument-level judgment. Named for the person, not the
+  role; the root `SOUL.md` is named for the role (the mind). Your human
+  owns it; the mind may propose edits in conversation but does not
+  auto-write to it. Your human refreshes it by hand, typically in
+  response to discrete forcing functions (a grant reviewer critique, a
+  periodic review, a stretch of work that shifted their thinking).
+- **`USER/OBSERVATIONS.md`** — the **observed** layer. A staging surface
+  for the `user-model-reflect` skill (§7.3): candidate observations about
+  how your human works. Not always loaded; not consulted in conversation.
+- **`USER/VOICE.md`** — the **derived** layer. A measured writing
+  fingerprint (sentence length, tell-frequency, signature moves) computed
+  from your human's own preserved prose. Consulted only when producing
+  documents in your human's voice, never in conversation.
 
-A sibling file, **`USER-OBSERVATIONS.md`**, exists as a *staging surface*
-for the `user-model-reflect` skill (§7.3). It is:
+The generic `USER/SKELETON.md` ships with the template and is **never
+loaded**; at setup it is copied to `USER/<name>.md`, filled in, and left
+pristine for reference. This splits the user model by *mode* — declared vs.
+observed vs. derived — while keeping it one directory and keeping the
+declared spine the only layer always loaded.
 
-- **Not always loaded.** The mind does not consult it in conversation.
-- **Not part of `user-model-query`'s return shape** (§7.2).
-- A working notes file your human reads when they want to refresh `USER.md`.
-
-The reason `USER.md` is the only consulted layer is parity: every harness
-gets the same user model, because the user model is just one file. An earlier
-design used a third-party inferred layer, which made harness parity
-structurally impossible; it was removed in favor of this single human-owned
-file.
+The reason `USER/<name>.md` is the only always-consulted layer is parity:
+every harness gets the same user model, because the user model is files on
+disk. An earlier design used a third-party inferred layer, which made
+harness parity structurally impossible; it was removed in favor of these
+human-owned/derived files.
 
 This produces a clean tetrad — four subjects, four homes, no overlap:
 
-- **`USER.md` models your human** — the person and thinker, as they declare
-  themselves (§7.2).
+- **The `USER/` directory models your human** — the person and thinker, as
+  they declare themselves (spine) and as their work measures (derived)
+  (§7.2).
 - **The markdown brain holds the work** — papers, methods, hypotheses,
   grants, `RESEARCH.md` (§2.6).
 - **`SOUL.md` models the mind** — who the mind is being (§3.1).
@@ -517,27 +534,30 @@ This produces a clean tetrad — four subjects, four homes, no overlap:
 ### 7.2 How the mind uses the user-model layer
 
 `user-model-query` is the named capability skills depend on (§5.1). It
-returns the same shape on every harness:
+returns the declared spine on every harness:
 
 ```
-{ declared: USER.md }
+{ declared: USER/<name>.md }
 ```
 
-The thought partner consults the layer to know how to engage your human and
-where their blind spots lie; the attention contract (§4.5) consults it for the
-relevance bar.
+The derived files (`OBSERVATIONS.md`, `VOICE.md`) are read directly by
+the skills that produce or consume them, not routed through this
+capability. The thought partner consults the spine to know how to engage
+your human and where their blind spots lie; the attention contract (§4.5)
+consults it for the relevance bar; document-producing skills consult
+`VOICE.md` for the measured fingerprint.
 
 ### 7.3 Enrichment — manual, on demand
 
-`USER.md` is always loaded and current by definition: your human owns it and
-edits it directly, and that is the rhythm by which the user model evolves.
-A skill — **`user-model-reflect`** — exists to help your human see what would
-be worth adding. It reads recent session transcripts via
+`USER/<name>.md` is always loaded and current by definition: your human owns
+it and edits it directly, and that is the rhythm by which the user model
+evolves. A skill — **`user-model-reflect`** — exists to help your human see
+what would be worth adding. It reads recent session transcripts via
 `read-conversation-history` and appends a dated block of candidate
-observations to `USER-OBSERVATIONS.md`. The skill never writes to
-`USER.md` and never duplicates content already there. If the harness does
-not expose conversational history, the skill writes a no-op stub for the
-date and surfaces the missing capability cleanly.
+observations to `USER/OBSERVATIONS.md`. The skill never writes to
+`USER/<name>.md` and never duplicates content already there. If the harness
+does not expose conversational history, the skill writes a no-op stub for
+the date and surfaces the missing capability cleanly.
 
 **No schedule is wired by default.** The skill is invokable on demand
 ("run user-model-reflect", "reflect on what I've been working on"). Running
@@ -546,10 +566,17 @@ on a cadence is possible — `cron` under Hermes, the `schedule` skill /
 periodic reflection proves useful enough to be worth automating. The skill
 is fully usable without it.
 
-Promotion stays with your human: they read `USER-OBSERVATIONS.md` when they
-want to refresh the spine, edit the relevant section of `USER.md` to absorb
-what is durable, and prune the promoted entry from the sidecar. There is
-no skill that promotes for them — the spine of the user model stays under
+`USER/VOICE.md` is produced by its own producer on demand, not on a
+schedule: it re-measures your human's `## Verbatim` prose (the preserved
+submitted corpus in ingested grants and papers) into a fingerprint, and
+writes only to the derived file — never to the spine. Where a measured
+fact in `VOICE.md` conflicts with a generic default in `STYLE.md`, the
+measured fact wins.
+
+Promotion stays with your human: they read `USER/OBSERVATIONS.md` when they
+want to refresh the spine, edit the relevant section of `USER/<name>.md` to
+absorb what is durable, and prune the promoted entry from the sidecar. There
+is no skill that promotes for them — the spine of the user model stays under
 your human's hand, the same way `SOUL.md` does.
 
 ---

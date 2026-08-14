@@ -12,7 +12,7 @@ The minimal valid mnemo instance, per the instance contract (soma spec §5):
 
 `soma init --profile mnemo --name <name> --path <dir>` scaffolds exactly this
 tree, templating `{{INSTANCE_NAME}}` and `{{CREATED}}` in `brain.yaml` and
-copying the character templates (`SOUL.md`, `STYLE.md`, `USER.md`) from the
+copying the character templates (`SOUL.md`, `STYLE.md`, `USER/` (the user model)) from the
 profile root with the instance name substituted.
 
 What is deliberately NOT here: page content, program state (`RESEARCH.md`),

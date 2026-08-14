@@ -21,7 +21,7 @@ content into a file here, stop: templates say "the brain", "your human", and
 | Path | What it is |
 |---|---|
 | `core/` | The capability contract (`capabilities.md`) and schema-driven tools (`tools/`) |
-| `profiles/<name>/` | A profile template: `schema.yaml`, `conventions/`, `skills/`, `SOUL.md` / `STYLE.md` / `USER.md` / `AGENTS.md` templates, `manifest.yaml`, `example-brain/` |
+| `profiles/<name>/` | A profile template: `schema.yaml`, `conventions/`, `skills/`, `SOUL.md` / `STYLE.md` / `USER/` / `AGENTS.md` templates, `manifest.yaml`, `example-brain/` |
 | `docs/north-star/` | What soma is for (`VISION.md`) and how it is built (`DESIGN.md`) |
 | `docs/harnesses/` | Per-harness capability bindings — the adapter docs |
 | `interface/` | The feed layer: card renderer + contract, publisher-agnostic |

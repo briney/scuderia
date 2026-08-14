@@ -84,7 +84,7 @@ What gets re-linked in one invocation:
 ## Phases
 
 1. **Select the frontier.** Resolve the page set from the trigger above. Skip
-   protected pages (`rem-cycle-contract.md` — `USER.md`, `SOUL.md`, etc.).
+   protected pages (`rem-cycle-contract.md` — `USER/<name>.md`, `SOUL.md`, etc.).
 2. **Candidate generation (cheap).** For each page, gather likely targets
    *without* an LLM: exact name/alias and `people/` slug matches,
    `brain-search` semantic neighbours, shared-neighbour pairs in the link graph
@@ -131,5 +131,5 @@ What gets re-linked in one invocation:
 - Running LLM adjudication over every page pair instead of the cheap
   candidate shortlist — exhaust `brain-search` and graph traversal first.
 - Editing a page without reading it in full, or overwriting a just-edited page.
-- Re-linking `USER.md` or other protected pages.
+- Re-linking `USER/<name>.md` or other protected pages.
 - Inventing an alias to force a match — normalize real aliases, never fabricate.

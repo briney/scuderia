@@ -1,6 +1,6 @@
 ---
 name: user-model-reflect
-description: Read recent session transcripts and append a dated block of candidate observations about how your human is working — recurring patterns, recent emphases, inferred blind spots, things they reached for, things they dismissed. Writes to USER-OBSERVATIONS.md at the brain root. Never edits USER.md. Manual invocation only; no schedule is wired.
+description: Read recent session transcripts and append a dated block of candidate observations about how your human is working — recurring patterns, recent emphases, inferred blind spots, things they reached for, things they dismissed. Writes to USER/OBSERVATIONS.md. Never edits USER/<name>.md. Manual invocation only; no schedule is wired.
 triggers:
   - "run user-model-reflect"
   - "reflect on what I've been working on"
@@ -11,15 +11,17 @@ triggers:
 
 # User-model reflect — append candidate observations to the sidecar
 
-The user model has two layers (`DESIGN.md` §7):
+The user model is a directory of siblings (`USER/`):
 
-- **`USER.md`** — declared, human-authored, always loaded. The
+- **`USER/<name>.md`** — declared, human-authored, always loaded. The
   authoritative spine. your human owns it.
-- **`USER-OBSERVATIONS.md`** — observed, written by this skill on
+- **`USER/OBSERVATIONS.md`** — observed, written by this skill on
   demand. A *staging file*, not always-loaded, not part of
   `user-model-query`'s return shape. Your human reads it when they want to
-  refresh `USER.md` (likely in response to grant reviewer critiques,
+  refresh `USER/<name>.md` (likely in response to grant reviewer critiques,
   periodic self-review, etc.).
+- **`USER/VOICE.md`** — derived, the measured writing fingerprint. Written
+  by its own producer, not this skill.
 
 This skill is what produces the sidecar's content. It is invoked
 manually. **No schedule is wired** — running on a cadence (cron under
@@ -34,22 +36,22 @@ usable on demand without automation.
 ## Capabilities
 
 - **Required:** `read-conversation-history`, `brain-read`, `brain-write`
-  (only on `USER-OBSERVATIONS.md`), `user-model-query`.
+  (only on `USER/OBSERVATIONS.md`), `user-model-query`.
 - The skill refuses cleanly if `read-conversation-history` is
-  unavailable — it writes a dated no-op stub to `USER-OBSERVATIONS.md`
+  unavailable — it writes a dated no-op stub to `USER/OBSERVATIONS.md`
   so the absence is auditable rather than silent.
 
 ## What this guarantees
 
-- Never edits `USER.md`. The declared spine stays under your human's hand.
-- Never duplicates content already in `USER.md` or in an earlier
-  observation block in `USER-OBSERVATIONS.md`.
+- Never edits `USER/<name>.md`. The declared spine stays under your human's hand.
+- Never duplicates content already in `USER/<name>.md` or in an earlier
+  observation block in `USER/OBSERVATIONS.md`.
 - Appends a single dated block per invocation; never rewrites prior
   blocks.
 - Observations are *candidate*, not authoritative. Frame them as
   patterns observed, with the sessions that produced them; do not
   state them as settled facts about your human.
-- When an observation contradicts something `USER.md` already says,
+- When an observation contradicts something `USER/<name>.md` already says,
   surface the contradiction rather than silently absorbing it — your human
   is the only one who can resolve it.
 
@@ -58,7 +60,7 @@ usable on demand without automation.
 ### 1. Determine the window
 
 Default: observations since the last dated block in
-`USER-OBSERVATIONS.md`. If the file is empty (no prior block) or
+`USER/OBSERVATIONS.md`. If the file is empty (no prior block) or
 has only the initial preface, default to the last 14 days of
 transcripts.
 
@@ -89,8 +91,8 @@ skip to Phase 6 (the no-op stub).
 
 ### 3. Read the existing user model
 
-- Read `USER.md` in full (via `user-model-query` — declared layer).
-- Read the existing dated blocks in `USER-OBSERVATIONS.md` (via
+- Read `USER/<name>.md` in full (via `user-model-query` — declared layer).
+- Read the existing dated blocks in `USER/OBSERVATIONS.md` (via
   `brain-read`).
 
 These exist to **prevent duplication**: an observation worth recording
@@ -129,7 +131,7 @@ or two observations, write only one or two.
 
 ### 5. Write the dated block
 
-Append a block at the bottom of `USER-OBSERVATIONS.md` in this shape:
+Append a block at the bottom of `USER/OBSERVATIONS.md` in this shape:
 
 ```markdown
 ## YYYY-MM-DD — <one-line summary of the window>
@@ -144,7 +146,7 @@ Append a block at the bottom of `USER-OBSERVATIONS.md` in this shape:
 ```
 
 Use `brain-write` to append; do not rewrite prior blocks; do not
-touch `USER.md`.
+touch `USER/<name>.md`.
 
 ### 6. The no-op stub (when transcripts are unavailable)
 
@@ -164,16 +166,16 @@ even if it produced nothing.
 ## Output
 
 - A short, terse confirmation in the session: "Appended N
-  observations to `USER-OBSERVATIONS.md` (window: …). Top theme: …."
+  observations to `USER/OBSERVATIONS.md` (window: …). Top theme: …."
 - If the skill ran but found no novel observations (everything was
-  already in `USER.md` or earlier blocks), say so plainly and skip
+  already in `USER/<name>.md` or earlier blocks), say so plainly and skip
   the append.
 
 ## Anti-patterns
 
-- Writing to `USER.md`. The spine is your human's. This skill never
+- Writing to `USER/<name>.md`. The spine is your human's. This skill never
   touches it.
-- Restating something `USER.md` already says. The sidecar exists to
+- Restating something `USER/<name>.md` already says. The sidecar exists to
   add to the spine, not echo it.
 - Promoting an observation into a fact. Frame as a pattern observed
   in a specific window; let your human decide whether it generalizes.

@@ -11,7 +11,7 @@ Cross-cutting rules live in `skills/conventions/`.
 profile-root-relative: they resolve in the soma checkout
 (`profiles/mnemo/skills/…`) and through the harness skills binding (on
 Hermes, the category symlink under `~/.hermes/profiles/<instance>/skills/`).
-Brain paths (`papers/`, `docs/rem-cycle/`, `USER.md`, …) resolve from the
+Brain paths (`papers/`, `docs/rem-cycle/`, `USER/<name>.md`, …) resolve from the
 brain root — the session cwd.
 
 ## The shape of the skill set
@@ -145,7 +145,7 @@ two audit skills.
 | "Create a skill", "improve this skill" | `skills/skill-creator/SKILL.md` |
 | Present options, gate on a user decision | `skills/ask-user/SKILL.md` |
 | "Migrate from Obsidian / Notion / Logseq", import an existing vault | `skills/migrate/SKILL.md` |
-| "Run user-model-reflect", "reflect on what I've been working on", "update the observations sidecar" — append a dated block of candidate observations about how your human is working to `USER-OBSERVATIONS.md`. Manual invocation only; no schedule wired. | `skills/user-model-reflect/SKILL.md` |
+| "Run user-model-reflect", "reflect on what I've been working on", "update the observations sidecar" — append a dated block of candidate observations about how your human is working to `USER/OBSERVATIONS.md`. Manual invocation only; no schedule wired. | `skills/user-model-reflect/SKILL.md` |
 
 ## Identity and context
 

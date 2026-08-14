@@ -6,7 +6,7 @@ via Read/Write/Edit, and is excellent for thought-partner and grant-writing
 work. It does **not** provide the integrations that the research-logistics
 cluster depends on (Gmail, Calendar, messaging gateway, voice transcription);
 those skills are unavailable or refuse cleanly under Claude Code. The
-user-model layer is at full parity with Hermes — `USER.md` is a markdown
+user-model layer is at full parity with Hermes — `USER/<name>.md` is a markdown
 read off the brain root and is the entire user model the mind consults in
 conversation.
 
@@ -27,7 +27,7 @@ four-layer model and references this file for the capability mapping.
 | `send-notification` | ✗ | The session is the channel; there is no out-of-band push surface. Skills that need to notify your human asynchronously refuse cleanly. |
 | `deliver-message` | ✗ | Depends on `send-notification`. |
 | `pubmed-fetch` / `crossref-fetch` / `biorxiv-fetch` / `arxiv-fetch` / `nih-reporter-fetch` | Skill markdown + `WebFetch` | Same as Hermes — these are skill conveniences over `fetch-url` |
-| `user-model-query` | Filesystem read of `USER.md` | Returns `{declared}` — same shape as Hermes. `USER.md` lives at the brain root and is auto-loaded into context via the `CLAUDE.md` entry point. |
+| `user-model-query` | Filesystem read of `USER/<name>.md` | Returns `{declared}` — same shape as Hermes. `USER/<name>.md` lives in the brain's `USER/` directory and is auto-loaded into context via the `CLAUDE.md` entry point. |
 | `read-conversation-history` | Transcript files under `~/.claude/projects/<encoded-cwd>/*.jsonl` | One JSONL per session; each record carries `type`, `timestamp`, `sessionId`, and (for user/assistant turns) `message.content`. Consumed by `user-model-reflect` on manual invocation. |
 | `gmail-read` / `calendar-read` | ✗ | No native Gmail/Calendar integration. The research-logistics cluster (`briefing`, `daily-task-prep`, `daily-task-manager`) is unavailable. |
 | `messaging-send` | ✗ | No outbound channel from the session. |

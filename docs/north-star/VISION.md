@@ -83,7 +83,7 @@ Three commitments make this real, and each is a design constraint:
    taste, your recurring blind spots, what you over- and under-rate, the kind
    of idea that excites you versus the kind that should. It is what lets the
    mind say "you reach for this framing first — here's the version of this
-   that doesn't follow from it." This model lives in `USER.md` at the brain
+   that doesn't follow from it. This model lives in `USER/<name>.md` at the brain
    root, authored and maintained by your human. See §3.3.
 
 3. **Build-with, not verdict.** The mind refines ideas *with* your human; it
@@ -325,33 +325,39 @@ A rule of thumb for the live seam: **the mind generates, the harness
 delivers.** The morning brief is composed by a skill against the brain; the
 harness is what pushes it to Telegram at 7am.
 
-### 3.3 The model of your human lives in `USER.md`
+### 3.3 The model of your human lives in the `USER/` directory
 
 The thought partner needs a *theory of your human* (§2.1); the attention
 contract needs a notion of *what matters to your human specifically* (§5).
 These are the same thing — a model of your human as a person and a thinker —
-and the mind carries it in one markdown file:
+and the mind carries it in a small **`USER/` directory** at the brain root:
 
-- **`USER.md`** — at the brain root, authored by your human, loaded on every
-  session. Holds what your human states about themselves: who they are, how
-  they think, how to engage with them, the technical priors they hold, what is
-  out of scope. Your human owns the file; the mind may propose edits in
-  conversation but does not auto-write to it. Your human refreshes it by hand,
-  typically in response to discrete forcing functions (a grant reviewer
-  critique, a periodic review, a stretch of work that shifted their thinking).
+- **`USER/<name>.md`** — the declared spine, authored by your human, loaded
+  on every session. Holds what your human states about themselves: who they
+  are, how they think, how to engage with them, the technical priors they
+  hold, what is out of scope, and an argument-level writing voice. Named
+  for the person, not the role. Your human owns the file; the mind may
+  propose edits in conversation but does not auto-write to it. Your human
+  refreshes it by hand, typically in response to discrete forcing
+  functions (a grant reviewer critique, a periodic review, a stretch of
+  work that shifted their thinking).
+- **`USER/OBSERVATIONS.md`** — the observed layer, a *staging surface* for
+  the `user-model-reflect` skill: candidate observations your human can pull
+  from when refreshing the spine. **Not always loaded**, **not part of
+  `user-model-query`'s return shape**, and the mind does not consult it in
+  conversation.
+- **`USER/VOICE.md`** — the derived layer, a measured writing fingerprint
+  computed from your human's own preserved prose. Consulted only when
+  producing documents in your human's voice.
 
-A sibling file, `USER-OBSERVATIONS.md`, exists as a *staging surface* for
-the `user-model-reflect` skill — candidate observations your human can pull
-from when refreshing the spine. It is **not always loaded**, **not part of
-`user-model-query`'s return shape**, and the mind does not consult it in
-conversation. It is your human's working notes file, written on demand by the
-skill, read by your human when they want to refresh `USER.md`. See
+At setup, the generic `USER/SKELETON.md` template is copied to
+`USER/<name>.md` and filled in; the skeleton is never loaded. See
 `DESIGN.md` §7 for the full design.
 
 This produces a clean tetrad — four subjects, four homes, no overlap:
 
-- **`USER.md` models your human** — the person and thinker, as they declare
-  themselves.
+- **The `USER/` directory models your human** — the person and thinker, as
+  they declare themselves (spine) and as their work measures (derived).
 - **The markdown brain holds the work** — papers, methods, concepts,
   hypotheses, grants, the literature graph, project threads. `RESEARCH.md`
   belongs here: it is the state of the research *program*, not a model of the
@@ -359,20 +365,21 @@ This produces a clean tetrad — four subjects, four homes, no overlap:
 - **`SOUL.md` models the mind** — who the mind is being.
 - **`STYLE.md` models the page** — how the mind writes finished prose.
 
-The thought partner consults `USER.md` to know how to engage your human and
-where their blind spots lie, the brain to know what is actually true about
-the science, the character to know who it is being. The earlier
+The thought partner consults `USER/<name>.md` to know how to engage your
+human and where their blind spots lie, the brain to know what is actually
+true about the science, the character to know who it is being. The earlier
 inferred-layer infrastructure (a third-party user-model service) was removed:
 it made harness parity structurally impossible, and one human-owned markdown
-file replaced it.
+directory replaced it.
 
-**Enrichment.** `USER.md` is current by definition — your human owns it and
-edits it directly. The `user-model-reflect` skill exists and is invokable
-manually; it reads recent session transcripts and appends candidate
-observations to `USER-OBSERVATIONS.md`. The skill never writes to
-`USER.md`. No schedule is wired by default — running on a cadence is possible
-if periodic reflection turns out to be useful, but the skill is fully
-usable on demand without it.
+**Enrichment.** `USER/<name>.md` is current by definition — your human owns
+it and edits it directly. The `user-model-reflect` skill exists and is
+invokable manually; it reads recent session transcripts and appends candidate
+observations to `USER/OBSERVATIONS.md`. The skill never writes to
+`USER/<name>.md`. The `VOICE.md` producer re-measures the `## Verbatim`
+corpus on demand into the derived fingerprint. No schedule is wired by
+default — running on a cadence is possible if periodic reflection turns out
+to be useful, but the skills are fully usable on demand without it.
 
 ---
 
@@ -577,8 +584,9 @@ better at each part for seeing the others.
    internalized disposition over a thin inviolable spine, not by script.
 3. **Mind / harness division of labor.** ✓ Resolved (§3): the brain = brain +
    character + skills, pure markdown; the harness = all mechanics; the model
-   of your human lives in `USER.md` at the brain root, authored and maintained
-   by your human (a sidecar `USER-OBSERVATIONS.md` exists as staging for the
+   of your human lives in the `USER/` directory at the brain root, authored
+   and maintained by your human (the `USER/OBSERVATIONS.md` and
+   `USER/VOICE.md` siblings exist as staging for the
    `user-model-reflect` skill but is not consulted in conversation).
 4. **The writing environment.** ✓ Resolved (§4.1): Obsidian over the brain
    directory; Syncthing for laptop↔host sync; host-side git pushed to a private

@@ -1,17 +1,23 @@
-# USER.md — template stub
+# SKELETON.md — user-model template
 
-> This file is the **user model**: who your human is, how they think, how to
-> engage with them, the technical priors they hold, what is out of scope. It is
-> loaded on every session alongside `SOUL.md`, and it is what lets the mind be
-> a partner to *this* person rather than a generic assistant.
+> This is the **generic skeleton** for the user model. It is **not** the
+> user model itself. At setup, copy this file to `USER/<name>.md` (the
+> name is the human's given name, e.g. `USER/bryan.md`), fill it in, and
+> leave the skeleton pristine for reference. The mind loads `USER/<name>.md`
+> on every session alongside `SOUL.md`; the skeleton is never loaded.
 >
-> **Your human owns this file and maintains it by hand.** The mind may propose
-> edits but never auto-writes to it. A sidecar, `USER-OBSERVATIONS.md`, is a
-> staging surface the `user-model-reflect` skill appends dated candidate
-> observations to on manual invocation — pull from it when you refresh this
-> file, then prune what you absorb.
+> The `USER/` directory is the user model's stable home. Three files:
 >
-> Fill this in over the first weeks of use. A thin USER.md is fine at the
+> - `USER/<name>.md` — the **declared** spine. Human-owned and
+>   hand-maintained. The mind may propose edits, never auto-write.
+> - `USER/OBSERVATIONS.md` — the **observed** layer. The
+>   `user-model-reflect` skill appends dated candidate observations on manual
+>   invocation; the human promotes what is durable into `<name>.md`.
+> - `USER/VOICE.md` — the **derived** writing fingerprint, built by a
+>   producer skill from the human's own writing. Consulted only when
+>   producing documents in the human's voice.
+>
+> Fill this in over the first weeks of use. A thin spine is fine at the
 > start; an invented one is not. Write what you know to be true.
 
 ## Who they are
