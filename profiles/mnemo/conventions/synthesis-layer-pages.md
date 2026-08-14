@@ -31,8 +31,8 @@ The fuzzy, not-yet-applied spurs, each with an inline maturity marker.
 The discriminating, mechanism-hungry questions.
 
 ## Shifts
-Dated, append-only. Where the synthesis engine writes; the weekly-read trust
-surface. Entry format below.
+Dated, append-only. The concept's **evidence log** — sourced facts, no opinion.
+Where the synthesis engine reports what a source *showed*. Entry format below.
 ```
 
 `Thesis`, `Frontier`, `Open questions`, `Shifts` are the core four. A concept's
@@ -76,29 +76,38 @@ On exit: `status: promoted` (the crystallized project/grant carries
 `promoted_from:` back to this page — no `promoted_to:` here), or `status: killed`
 plus a one-line `killed_reason` in frontmatter (retained, never deleted).
 
-## The `Shifts` entry format
+## The `Shifts` entry format — facts only, no opinion
 
-A shift must be **contestable** — the reasoning separates what the source *showed*
-from what the mind *concluded for this concept*, and names the **edge** (what it
-does not yet establish). The trigger is always cited (cite-or-flag).
+Since 2026-08-13 the `## Shifts` log is a **fact ledger**, not an opinion log.
+The governing rule is the fact/opinion line (`rem-cycle-contract.md`): an entry
+reports what a source **showed**, with a citation, and says nothing about what it
+*means* — that interpretation is deferred to the moment a grant, a paper, or a
+conversation actually uses the concept. Reporting a fact is not a judgment call,
+so the log is fully autonomous-writable.
 
 ```markdown
-### 2026-07-04 — diffusion spur: fuzzy → sharpening
-**Trigger:** [[papers/ni-2025-diffusion-super-data-learners]]
-**Reasoning:** Shows DLMs extract >3× value per *unique* token vs. AR — but on
-text, measured by perplexity + downstream NLP. Our paired-antibody corpus is the
-prototypical data-constrained regime, so the efficiency argument plausibly
-transfers → enough to justify a discriminating test, so the spur graduates from
-hunch to bet. Does **not** yet establish the gain survives on antibody
-sequences; the cross-seam analogy is untested.
+### 2026-07-04 — DLM per-token efficiency
+**Source:** [[papers/ni-2025-diffusion-super-data-learners]]
+**Shown:** DLMs extract >3× value per *unique* token vs. AR, on text
+(perplexity + downstream NLP).
 ```
 
-An entry is: the shift in the heading, a cited trigger, then 2–4 sentences
-separating *shown* from *concluded* and naming the edge.
+An entry is:
+- **Dated** and **append-only** — never edited, never removed; dedup on
+  `(concept, source)`.
+- **Factual** — the "Shown" line states what the source demonstrated, in the
+  source's own terms where possible. No "this establishes", no "this overturns",
+  no "this challenges", no maturity-marker bumps, no "enough to justify a test".
+- **Cited** — every entry carries its source (cite-or-flag, `SOUL.md`).
 
-**The `[unconfirmed]` marker.** A Shift authored *autonomously* — by the
-`reinforce` phase, not directed by your human — carries an `[unconfirmed]` tag in its
-heading (`### 2026-07-04 — [unconfirmed] diffusion spur: fuzzy → sharpening`) until
-your human confirms it (drop the tag) or deletes the entry to reject it. A directed or
-hand-authored Shift carries no marker. The tag is what lets the log be an
-auto-appended surface your human polices in place, not a strictly-approved one.
+**What does NOT go in `## Shifts` anymore:** the `[unconfirmed]` hedge, the
+"shown vs. concluded" split, the "mature-to-promote" / "contradict-thesis"
+classification, the Frontier maturity-marker bump. All of that was *opinion*, and
+it has moved: interpretation belongs in the grant draft, the brainstorm, or the
+conversation — where "does this new evidence change anything" has the context to
+be asked properly. Entries written before 2026-08-13 in the old hedged format
+remain as historical record; new entries are facts-only.
+
+The one guardrail is factual accuracy: the "Shown" line must be true to the
+source. A claim that cannot be grounded in the source is simply not written
+(cite-or-flag).

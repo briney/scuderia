@@ -1,12 +1,11 @@
 ---
 name: concept-coalesce
 description: >
-  Read the concept-stub notes and the existing concept layer together, cluster
-  the stubs that point at the same idea, and propose promoting a coalesced
-  cluster to a real concept (or hypothesis) page. The promotion-shaped,
-  non-culling counterpart to GBrain's concept-synthesis — capture cheap, decide
-  later. Runs as a rem-cycle phase (weekly) or standalone ("coalesce the
-  concepts").
+  The mechanical half of concept capture. Reads the concept-stub notes, clusters
+  the stubs that point at one idea, and — when ≥3 independent sourced signals
+  coalesce AND the idea clears a "so what" gate — auto-aggregates them into a
+  `concept` page (facts, no opinion). Never creates a hypothesis. Runs as a
+  rem-cycle phase (weekly) or standalone.
 triggers:
   - "coalesce the concepts"
   - "coalesce concept stubs"
@@ -14,110 +13,106 @@ triggers:
   - "promote my concept stubs"
 ---
 
-# concept-coalesce — from stubs to durable concepts
+# concept-coalesce — from stubs to sourced concepts
 
 The concept-stub pipeline (`conventions/concept-stub-capture.md`) files cheap,
-verbatim `note` pages for transient ideas — a lens, a framing, a bet — that may
-later coalesce. This skill is the **decide later** half: it reads the stubs
-alongside the concept layer and *proposes* (never auto-executes) promoting a
-stub cluster into a real page, now that the recurrence is visible.
+verbatim `note` pages for transient ideas that may coalesce. This skill is the
+**decide later** half: it reads the stubs and, when enough independent signals
+point at one idea, **aggregates** them into a `concept` page. It is mechanical
+and fact-only — the opinion (is this *important* enough to shape a research
+thread?) is deferred to `intersect`'s single-item surfacing and to conversation.
 
-It is promotion-shaped, not culling-shaped: a stub that never coalesces is left
-in `notes/`, untouched. There is no reaping pass, no delete, no merge tax. The
-wager is that Deferring judgment until the recurrence is visible produces better
-concepts than judging a single mention at capture — and that a cheap stub that
-goes nowhere deserves no cleanup cost.
+The division of labor with `intersect` is exact: **coalesce does routine
+fact-aggregation** (low floor, no value-ranking); **intersect does singular
+value-ranking** (one item). Coalesce never asks "is this the thing to think
+about" — it only asks "has this idea recurred enough, independently, that
+aggregating its sourced facts makes future retrieval and drafting better."
 
 > **Conventions:** `concept-stub-capture.md` (what a stub is, the
-> `is_concept_stub: true` marker, the homes), `rem-cycle-contract.md` (the
-> phase result, propose-tier — synthesis always proposes, never auto-executes),
-> `synthesis-layer-pages.md` (the concept/hypothesis anatomy the promotion
-> promises to author), `graph-and-links.md` (forward-only edges),
-> `quality.md` (the notability/"so what" gate). Character: `SOUL.md` — no
-> fabricated confidence; a cluster with no real recurrence is reported as such,
-> not dressed up.
+> `is_concept_stub: true` marker), `rem-cycle-contract.md` (the fact/opinion
+> line — concept aggregation is fact and auto-commits; hypothesis creation is
+> forbidden here), `synthesis-layer-pages.md` (the concept anatomy), `quality.md`
+> (the "so what" gate). Character: `SOUL.md` — no fabricated confidence.
 
 ## Capabilities
 
-`brain-read`, `brain-search` (semantic + keyword clustering), `brain-write` —
-but only to propose, never to author a page. Universal; no external I/O.
+`brain-read`, `brain-search` (semantic + keyword clustering), `brain-write`.
+Universal; no external I/O.
 
 ## What this guarantees
 
-- **Read-only against `concepts/` and `notes/`.** This skill proposes
-  promotions; it never authors a `concept` or `hypothesis` page in-place. The
-  standing grant (`rem-cycle-contract.md`) is explicit: synthesis always
-  proposes, never auto-executes.
-- **Recurrence is the bar.** A stub is promoted only when it *coalesces* — at
-  least two independently-generated signals point at the same idea (two stubs,
-  or a stub + an existing under-developed concept, or a stub cluster + a paper
-  with no concept edge). A lone stub is reported, never promoted.
-- **Honest no-op.** Most runs correctly produce nothing. That is success, not
-  failure (`intersect` shares this posture).
-- **Distinct from `intersect`.** `intersect` proposes a *hypothesis* from a
-  cross-concept Frontier-bet intersection; this skill proposes a *concept* (or
-  single-idea hypothesis) from a stub cluster. They sit adjacent in the weekly
-  schedule and never claim the same target.
+- **Facts only.** The aggregated `concept` carries sourced claims pulled from the
+  stubs and their source pages — no synthesis, no thesis, no frontier bet. The
+  "so what" is a filter (does it earn a page), not a prose section.
+- **Fully autonomous when the bar clears.** ≥3 independent sourced signals + a "so
+  what" pass → auto-create the concept (`concept-create` class, armed 2026-08-13).
+  Below the bar → the stub stays; nothing is proposed.
+- **Never creates a `hypothesis`.** Testable claims are conversation-only
+  (`rem-cycle-contract.md`). A cluster whose natural output would be a hypothesis
+  is simply left un-aggregated — it is not this skill's lane.
+- **The "so what" gate is real, not a formality.** Recurrence alone is not
+  enough; the idea must clear the notability test (`quality.md`): will the mind or
+  your human reference this again, does it sit on a `RESEARCH.md` thread, would a
+  grant draft actually draw on it. A recurring-but-inert idea stays a stub.
+- **Non-destructive, idempotent.** Dedup on idea identity; re-run over unchanged
+  stubs is a no-op.
+
+## The dual gate
+
+1. **Recurrence floor (programmatic):** ≥3 **independent** signals for one idea —
+   distinct stubs / source pages / an under-developed existing concept. Two stubs
+   that both quote the same conversation are one signal, not two.
+2. **"So what" (judgment, but bounded):** does aggregating this idea into a
+   `concept` page improve future retrieval or drafting? If it would only add a
+   page nobody references, it stays a stub.
+
+Only when **both** clear does coalesce auto-create. The floor is deliberately low
+(so cheap ideas coalesce); the "so what" gate is what keeps it from flooding
+`concepts/` with mediocre pages.
 
 ## Phases
 
-1. **Select.** Enumerate every `notes/*.md` with `is_concept_stub: true` plus
-   every `concepts/*.md` (to check overlap and under-developed nodes). The
-   stub set is the input; the concept layer is the reference. Grep the corpus —
-   this is a cheap scan, unbudgeted.
-2. **Cluster.** Group stubs by the idea they point at. Use forward-link
-   proximity (stubs linking the same `papers/` or `concepts/` page), title /
-   verbatim-trigger overlap, and one `brain-search` pass for semantic
-   neighbours. A cluster is ≥2 signals for one idea.
-3. **Classify each cluster.**
-   - **Promote-to-concept** — a lens/framing with real recurrence and a
-     "so what": will the mind or your human reference this again, does it sit on a
-     `RESEARCH.md` thread. Propose authoring a `concept`.
-   - **Promote-to-hypothesis** — a testable claim, not just a lens. Propose a
-     `hypothesis` (with a discriminating test in the outline).
-   - **Under-developed-concept** — the cluster points at a `concept` that
-     already exists but is thin; propose a `restructure-thin-page` enrichment,
-     not a new page.
-   - **No-coalescence** — a lone stub, or a cluster that fails the "so what".
-     Report in `metrics.no_ops`; leave the stub in place.
-4. **Propose.** For each promote cluster, write a `QUEUE.md` proposal
-   (`rem-cycle-contract.md`): `category: synthesis`, `kind: concept |
-   hypothesis`, `sources: [<stub slugs + source pages>]`, an `outline:`,
-   `coherence: tight | loose`, and dedup against `QUEUE.md` and `decisions.yaml`.
-   Fold-links are recorded in the proposal so approval can wire the promotion
-   (stub → `status: promoted`, `links:` onto the new page).
+1. **Select.** Enumerate every `notes/*.md` with `is_concept_stub: true`, plus
+   the existing `concepts/` (to check overlap and under-developed nodes). Grep —
+   a cheap scan, unbudgeted.
+2. **Cluster.** Group stubs by the idea they point at, using forward-link
+   proximity, title/verbatim-trigger overlap, and one `brain-search` pass. Count
+   **independent** signals per cluster.
+3. **Gate.** Apply the dual gate: ≥3 independent signals, then "so what". A
+   cluster that fails either is left as stubs (`metrics.no_ops`).
+4. **Aggregate.** For each clearing cluster, author the `concept`: the sourced
+   facts from the stubs (verbatim where that's the information), forward `links:`
+   onto the source pages and stub notes, `status: active`, `origin: detected`.
+   Flip the contributing stubs to `status: promoted`. No `## Thesis` synthesis —
+   the facts stand; the lens is authored later, if at all, in conversation.
 5. **Return** the phase result (below) or, standalone, a conversational summary.
 
 ## As a rem-cycle phase
 
-A weekly phase (5c). The orchestrator passes `mode`; this skill returns the
-fenced-yaml phase result:
+The weekly phase (5c; `rem-cycle-contract.md`). The orchestrator passes `mode`;
+this skill returns the fenced-yaml phase result:
 
-- **Mode:** this skill is propose-only — `dry-run` and `normal` are identical
-  for it (nothing is ever auto-committed). It writes `proposed[]`, never
-  `committed[]`.
-- **`proposed[]`** — the QUEUE items (`category: synthesis`), highest-salience
-  first, each with `sources`, `outline`, `coherence`, and the fold-links.
-- **`metrics`** — `stubs_scanned`, `clusters_found`, `promotions_proposed`,
-  `under_developed_proposed`, `no_ops`.
-- **No cursor** — this phase scans the current stub set each week; it is
-  stateless and idempotent (a cluster already queued is deduped away).
+- **Mode:** `normal` (auto-create clearing clusters) or `dry-run` (report
+  intended creations in `committed[]`, write nothing). `proposed[]` is empty —
+  there is no propose lane for a mechanical aggregation.
+- **`committed[]`** — the creations (`category: concept-create`), each with the
+  `sources:` (stub + source page slugs) and the "so what" justification span.
+- **`metrics`** — `stubs_scanned`, `clusters_found`, `concepts_created`,
+  `no_ops` (below-floor or failing "so what").
 
 ## Output
 
-- **QUEUE proposal** — one checkbox line per `rem-cycle-contract.md`, e.g.
-  `- [ ] \`a3f2\` **synthesis** · concepts/<slug> ← notes/a + notes/b + papers/c
-  · conf 0.7 · outline …`
-- **Standalone** — a conversational summary: clusters found, what each promotes
-  to, what stayed a lone stub.
+- **Auto-created `concept` page** — sourced facts, forward edges, no synthesis.
+- **Standalone** — a conversational summary: what coalesced, what stayed a stub.
 
 ## Anti-patterns
 
-- Authoring a `concept`/`hypothesis` page in-place — synthesis always proposes.
-- Promoting a lone stub with no second signal — recurrence is the bar.
-- Running a cull/merge-reap over stubs — leave the un-coalesced ones alone.
-- Overlapping `intersect` — this skill is concept-from-stubs; `intersect` is
-  hypothesis-from-concept-intersections.
-- Dressing a thin cluster up as "real recurrence" to justify a promotion — the
-  no-op is honest.
-- Fetching anything — this skill consolidates the graph, it never reaches outside.
+- Aggregating below the recurrence floor, or with non-independent signals (two
+  stubs quoting one conversation).
+- Skipping the "so what" gate — recurrence alone creates a junk page.
+- Writing a `## Thesis` / `## Frontier` / `## Shifts` opinion into the new
+  concept — that is conversation's job, not aggregation's.
+- Creating a `hypothesis` — conversation-only, never here.
+- Re-ranking clusters (asking "which is most important") — that is `intersect`'s
+  single-item job, not this skill's.
+- Fetching anything — coalesce consolidates the graph, it never reaches outside.

@@ -86,12 +86,14 @@ is a side effect of capture, not a campaign.
 ## Promotion
 
 `concept-coalesce` (the rem-cycle phase) reads every `is_concept_stub: true`
-`note`, clusters them with the existing concept layer, and **proposes** (never
-auto-executes — synthesis is propose-tier, `rem-cycle-contract.md`) promotions:
-a stub cluster that clears a proximity + salience gate becomes a QUEUE proposal
-to author a real `concept` (or `hypothesis`) page, folding the stub into it. A
-stub that never coalesces is simply left in `notes/` — there is no cull, no
-reaping pass. A cheap stub that goes nowhere deserves no cleanup cost.
+`note` and clusters them with the existing concept layer. When a cluster clears the
+dual gate — **≥3 independent sourced signals** for one idea **and** the "so what"
+pass (`quality.md`: will it be referenced again, does it sit on a `RESEARCH.md`
+thread) — coalesce **auto-aggregates** the cluster into a `concept` page (facts
+only, never a hypothesis; `rem-cycle-contract.md`). A cluster below the bar, or
+one whose natural output would be a *hypothesis*, stays a stub — there is no
+reaping pass, no cull. A cheap stub that goes nowhere deserves no cleanup cost,
+and a testable claim is conversation's to make, not coalesce's.
 
 ## Anti-patterns
 

@@ -112,10 +112,10 @@ without any single run exploding in cost.
 | 4 | Consistency & staleness | `consistency-check` | **yes** | — |
 | 5 | Consolidation | `concept-synthesis` + `topic-synthesis` (generative → **propose**; tiering / `concepts/README.md` map auto) | **yes** | — |
 | 5b | Thesis refresh | `concept-refresh` (≥3 shifts since `thesis_updated` → propose rewrite) | — | — |
-| 5c | **Concept-coalesce** | `concept-coalesce` — propose promoting a coalesced concept-stub cluster to a `concept`/`hypothesis` (capture-cheap/decide-later; propose-only, never auto) | — | — |
-| 6 | **Reinforce** | `reinforce` — concept `## Shifts` from recent papers; auto-append high-confidence, propose borderline / promote / contradict | **yes** | **yes** (2026-07-08) |
+| 5c | **Concept-coalesce** | `concept-coalesce` — aggregate coalesced concept-stub clusters into a `concept` (≥3 independent signals + "so what"; auto-commit; never a hypothesis) | — | — |
+| 6 | **Reinforce** | `reinforce` — facts-only `## Shifts` appends from recent papers (auto-commit; no opinion, no propose lane) | **yes** | **yes** (2026-07-08) |
 | 7 | Importance recompute | `maintain` (scope `importance`) | **yes** | — |
-| 8 | **Intersect** | `intersect` — cross-concept hypotheses (weekly); propose bet × bet intersections that clear the promise + discriminating-test + novelty gates | **yes** | — |
+| 8 | **Intersect** | `intersect` — the single-item ranker: one highest-value cross-cutting attention target into the report's "One thing" section (weekly; surface-only, never a page) | **yes** | — |
 | 9 | Report + commit | this skill (aggregator) | **yes** | — |
 
 **No external I/O.** Phases consolidate what is already in the graph. Fetching,
@@ -151,8 +151,9 @@ cursors:
 briefing:
   last_surfaced: []            # qids shown in recent briefs
 autonomy:
-  mode: detect-and-log         # detect-and-log | armed
-  whitelist: []
+  mode: armed                 # armed | detect-and-log (facts are always-armed since 2026-08-13)
+  # no per-class whitelist — the fact/opinion line replaces it:
+  # facts (Pool A/B + mechanical concept-create) auto-commit; opinion is never committed
 budgets:
   by_phase: { <phase>: { max_pages, max_mutations }, ... }
 last_run:

@@ -1,122 +1,121 @@
 ---
 name: intersect
 description: >
-  Detect the hypothesis that lives only at the *combination* of two-plus concepts'
-  Frontier bets, and propose it to the queue for your human to endorse. The
-  "connections made" half of the synthesis engine — rigorous, rare, autonomous.
-  Runs as a weekly rem-cycle phase or standalone. Most runs correctly produce
-  nothing; that is success, not failure.
+  The single-item ranker. Scans the whole brain — concepts, notes, grants,
+  papers, everything — and surfaces THE one highest-value cross-cutting attention
+  target into the dream report, labeled as opinion. A hypothesis to consider, a
+  grant idea, a topic ripe for a deep dive. One item, every run, never a page.
+  The "perfect home page": show one thing and you act on it.
 triggers:
   - "find concept intersections"
-  - "any new cross-concept hypotheses"
+  - "what's the one thing I should look at"
+  - "surface the highest-value idea"
   - "intersect the concepts"
 ---
 
-# intersect — the hypothesis that lives between concepts
+# intersect — the one thing worth your attention
 
-The counterpart to `reinforce`: where reinforce records how a paper moves *one*
-concept, intersect looks for the hypothesis that **no single concept could
-produce** — the bet that lives only at the combination of two-plus concepts'
-Frontier bets. That is the novelty premium exactly: novelty in the *combination*,
-not in either part. When a combination clears the bar it becomes a **proposed
-hypothesis** in the proving-ground funnel, for your human to endorse or kill.
-Autonomous-only — the directed case (your human naming a combination) is already manual
-hypothesis seeding (Spec 1). Full design:
-the instance's private `docs/specs/`.
+Where `reinforce` reports facts and `concept-coalesce` aggregates them, intersect
+does the one thing only judgment can: it asks, **across the entire corpus, what
+is the single highest-value thing for your human to look at right now.** It reads
+everything — concepts, notes, hypotheses, grants, papers, projects — and emits
+**one** candidate into the dream report. Not a page, not a QUEUE proposal: an
+attention target, explicitly labeled as opinion.
 
-> **Conventions:** `synthesis-layer-pages.md` (the concept `## Frontier` bets it
-> reads, the hypothesis anatomy it proposes), `frontmatter.md` (hypothesis fields —
-> `draws_on`, `promise`, `status`; the graveyard `killed_reason`),
-> `rem-cycle-contract.md` (the `synthesis` proposal shape, `dry-run`, dedup),
-> `graph-and-links.md` (the `related_concepts` edges it seeds on), `quality.md`
-> (the notability gate, cite-or-flag). Character: `SOUL.md` — **no fabricated
-> confidence: never manufacture an intersection to produce output.**
+The standard is the *perfect-home-page* ideal: a page so well-tuned it shows one
+item, and you buy it immediately. intersect's goal is to be that right — the one
+thing, so clearly worth 10 minutes of your thinking that you act on it. It does
+**not** dilute that with a ranked list; the runners-up live in the report's audit
+section, not the Summary line.
+
+> **Conventions:** `rem-cycle-contract.md` (the fact/opinion line — this is
+> *opinion*, so it surfaces labeled and never auto-writes a page; the dream
+> report's "One thing" section), `frontmatter.md` (kinds it scans),
+> `quality.md`. Character: `SOUL.md` — **honesty about confidence**: a weak
+> candidate is labeled weak; a strong one is argued, not asserted.
 
 ## Capabilities
 
-- **Required:** `brain-read`, `brain-write` (the QUEUE proposal only).
-- **Optional:** `brain-search` (the semantic latent-pair scan; degrades to keyword
-  under Claude Code — narrower recall, which the rarity principle already accepts).
+- **Required:** `brain-read`, `brain-search` (whole-corpus scan).
+- **Optional:** none.
 
-Universal; **no external I/O** — intersect combines concepts already in the graph.
+Universal; **no external I/O** — intersect synthesizes what the graph already
+holds.
 
 ## What this guarantees
 
-- **Silence is success.** A true cross-disciplinary hypothesis is uncommon; **most
-  runs produce zero candidates, and that is the correct outcome.** The phase never
-  lowers the bar or manufactures a candidate to avoid an empty run — a forced
-  intersection fails the spine. High precision over recall.
-- **Bet-level, novelty-first.** Candidates are Frontier-bet × Frontier-bet, never
-  umbrella × umbrella (that yields truisms). A proposal names the specific bets and
-  argues the combination exceeds either part.
-- **Rigorous three-gate bar.** promise (a concrete Beat / Unlock / Scale / Explain
-  case) **and** a nameable discriminating test **and** novelty (not crystallized,
-  open, or killed). A candidate failing any gate is dropped, never softened.
-- **Graveyard-respecting.** A `status: killed` hypothesis is never re-proposed.
-- **Never auto-creates a `hypotheses/` page.** Intersect only proposes to
-  `QUEUE.md`; endorsement and crystallization are your human's act.
-- **Non-destructive, idempotent.** Dedup against `QUEUE.md` **and** `hypotheses/`
-  (including killed); `dry-run` until the phase earns trust.
+- **One item, every run.** Never zero (silence would defeat the purpose), never
+  more than one. The discipline is ranking before surfacing, not generating.
+- **Labeled as opinion.** Every surfaced item is explicitly a judgment — "I think
+  this is worth your attention" — never dressed as a fact. It may propose a
+  hypothesis (without writing a page), an idea, or a next-action, but always as
+  opinion for your human to take or leave.
+- **Honesty about confidence.** A target backed by convergent sources is argued
+  with those sources; a thin one says "this is a hunch", not "this is the
+  answer".
+- **Never writes a page.** intersect surfaces to the report only. It creates no
+  `hypothesis`, no `concept`, no `note`.
+- **Scans broadly, ranks narrowly.** It reads the whole corpus but emits one thing
+  — breadth in, singularity out.
 
 ## Phases
 
-1. **Generate candidates** (bet × bet). Three sources, all used:
-   - **Seeded** — pairs that already co-occur: shared `related_concepts` edges,
-     shared source papers, and the concept map's flagged **tensions** (a tension is
-     a first-class candidate — a hypothesis about which side wins).
-   - **Semantic** — a bounded scan (rotating cursor over concept-pairs) for *latent*
-     bet-pairs that don't already co-occur — the non-obvious connections.
-   - **Reinforce hand-off** — a new Frontier spur opened by `reinforce` since the
-     last run gets priority screening against existing bets elsewhere.
-
-   Pairs primary; triples only when a bet genuinely needs three concepts.
-2. **Gate** — apply the three gates cheapest-fail-first: **novelty + graveyard**
-   (drop if crystallized / open / killed) → **promise** (a concrete
-   Beat/Unlock/Scale/Explain case) → **discriminating test** (nameable, or discard).
-   A candidate that fails any gate is dropped, not softened. The discriminating-test
-   gate is the decisive one — the filter your human would apply himself; a promising
-   combination you cannot design a test for is a story, not a hypothesis.
-3. **Propose** — surviving intersections → `QUEUE.md` as `kind: hypothesis`
-   proposals (shape in Output).
-4. **Return** the phase result — or, standalone, a conversational summary, including
-   an explicit **"no genuine intersection this run"** when that is the (common)
-   answer.
+1. **Scan.** Enumerate candidate attention targets across the corpus, without
+   restricting to the synthesis layer. Sources of a candidate:
+   - a concept whose `## Shifts` log has accumulated new facts that, read
+     together, point somewhere (a tension, a convergence, a gap),
+   - two-plus concepts whose frontiers have drifted toward one another,
+   - a cluster of `note` stubs `intersect`-style coalescence that `concept-coalesce`
+     passed over (below floor, but still interesting),
+   - a `grant` aim that recent papers now make feasible (or obsolete),
+   - a topic we keep "dipping our toes in" — repeated shallow mentions in notes
+     and grants — that now warrants a deep dive,
+   - an open `hypothesis` whose evidence has quietly accumulated enough to resolve.
+2. **Rank.** Score each candidate on **value to your human right now** (would
+   acting on it change a decision, a grant, an experiment) × **timeliness** (is
+   the evidence newly assembled, or has it been sitting unnoticed) ×
+   **grounding** (can it be argued from the graph, not from a vibe). Pick the
+   single highest.
+3. **Surface.** Write the one item into the phase result (below) for the report's
+   "One thing" section. Argue it: what it is, why now, the proposed next action,
+   and the confidence — honestly.
+4. **Return** the phase result or, standalone, a conversational one-item summary.
 
 ## As a rem-cycle phase
 
-The **weekly** phase (phase 8; `rem-cycle-contract.md`) — intersections are rarer
-and deeper than paper-arrivals, so not nightly. The orchestrator passes `mode`:
+The **weekly** phase (phase 8; `rem-cycle-contract.md`). The orchestrator passes
 
-- **`proposed[]` only** — `category: synthesis`, `kind: hypothesis`, deduped against
-  `QUEUE.md` **and** `hypotheses/` (including `status: killed`). `committed[]` is
-  normally empty (intersect writes nothing but the proposal).
-- **Cursor** — a rotating cursor over concept-pairs (the semantic scan doesn't judge
-  every pair every run); seeded + reinforce-handoff candidates are screened each run
-  regardless.
-- **Budget** — bounded `read` (candidates judged) and `mutations` (QUEUE appends).
-- **`metrics`** — `pairs_screened`, `candidates_gated`, `hypotheses_proposed`,
-  `graveyard_skips`.
-- **`dry-run` default** until the phase earns trust.
+`mode`; intersect is surface-only, so `dry-run` and `normal` are equivalent —
+it writes no page, only the phase result:
+
+- **`committed[]`** — empty (intersect writes nothing to the graph).
+- **`proposed[]`** — empty (it does not queue; it reports).
+- **Phase-specific field** — the surfacing itself rides in the result file as a
+  `surfacing:` block (see below), which the aggregator lifts into the report's
+  "One thing" section.
+- **`metrics`** — `candidates_scanned`, `candidates_ranked`, `surfaced` (1).
+
+```yaml
+surfacing:
+  what: "<one sentence — the target>"
+  why_now: "<the evidence assembled from the graph, cited>"
+  next_action: "<what your human might do: draft an aim, commission a dive, start a conversation>"
+  confidence: "<high | medium | low — honest>"
+  runners_up: [ "<2-4 one-line runners-up, for the report's audit section>" ]
+```
 
 ## Output
 
-- **QUEUE proposal** — one entry per surviving intersection
-  (`rem-cycle-contract.md`): `**synthesis** · hypotheses/<slug> ← concepts/<a> ×
-  concepts/<b>` carrying the **claim**, the **specific bets** combined, the
-  **promise** tag(s) + case, the **discriminating test**, a **novelty note**, and
-  the sources grounding the promise case.
-- **Standalone** — a conversational summary, or a plain "no genuine intersection
-  this run" when nothing clears the bar.
+The surfaced item is the **standalone conversational answer** or the dream
+report's **"One thing"** section. No page is written.
 
 ## Anti-patterns
 
-- Manufacturing an intersection to avoid an empty run — silence is the correct
-  common outcome (`SOUL.md`). Recall is expendable; the bar is not.
-- Umbrella-level "these two concepts are related" truisms — the unit is bet × bet.
-- Proposing an intersection with no nameable discriminating test — that is a story,
-  not a hypothesis.
-- Re-proposing a killed hypothesis (graveyard), or one already crystallized / open /
-  queued.
-- Auto-writing a `hypotheses/` page — intersect only proposes; your human endorses.
-- Lowering the bar because "nothing was found this run" — the bar is fixed.
-- Reaching outside the vault — intersect combines concepts already in the graph.
+- Emitting more than one item, or a ranked list as the headline — the whole point
+  is singularity.
+- Manufacturing a candidate for a thin corpus — argue it honestly, or say the
+  corpus is too sparse to rank.
+- Writing a `hypothesis` or `concept` page — intersect surfaces opinion, it never
+  authors.
+- Asserting an opinion as fact — the label is non-negotiable.
+- Reaching outside the vault — intersect synthesizes the graph, it never fetches.

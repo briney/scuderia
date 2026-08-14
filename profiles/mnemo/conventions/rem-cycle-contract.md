@@ -39,7 +39,7 @@ touch importance, centrality, or backlinks, yet stay readable in Obsidian.
 | Path | Lifecycle | Holds |
 |---|---|---|
 | `docs/rem-cycle/history/<YYYY-MM-DD>.md` | write-once per run | the dream report — the run's audit record |
-| `docs/rem-cycle/QUEUE.md` | rolling; **drained only by your human** | the review queue — proposals accumulate across runs, never auto-cleared |
+| `docs/rem-cycle/QUEUE.md` | rolling; **audit record, not an approval inbox** (since 2026-08-13) | the residual human-gated + rejected/reverted items — a log of what auto-committed and what still awaits a judgment call, never a wall of approvals |
 | `docs/rem-cycle/_state.yaml` | mutable | per-phase cursor watermarks, budgets, and last-run metrics for the health delta |
 | `docs/rem-cycle/decisions.yaml` | append-only | the drain decision ledger (see § The decision ledger) |
 | `docs/rem-cycle/runs/<YYYY-MM-DD>/<phase>.yaml` | write-once per phase-run | the machine-readable phase result — the aggregator's input |
@@ -123,31 +123,35 @@ surfaces.
 
 ## The two commit tiers
 
-Every change a phase makes falls into exactly one tier. **When in doubt,
-propose** — a wrong auto-commit is far more expensive than a deferred proposal.
+Every change a phase makes falls into exactly one tier. Since the 2026-08-13
+autonomy graduation, **the default for a fact is auto-commit** — "when in doubt,
+propose" now applies only to the genuinely-judgment items (a fuzzy entity merge, a
+protected-page change) and to opinion, which is never committed at all.
 
-- **Auto-commit** — high-confidence and evidence-backed: dead-link repair,
-  exact-duplicate merge, frontmatter normalization, and a forward wikilink to a
-  page whose subject is named **verbatim** in the prose. A canonical
-  abbreviation or alias counts as verbatim — "AF-Multimer" →
-  `evans-2021-alphafold-multimer` — when the evidence span makes the referent
-  unambiguous and the target page exists. (High-confidence, not a literal
-  string match — the evidence span and the existence check are the guardrails.)
-  Written directly; recorded in `committed[]`.
-- **Propose** — every judgment call: a *typed* relationship edge (`cites`,
-  `supports`, `refutes`), a fuzzy entity merge, a contradiction, any deletion,
-  an importance recompute past its ±0.3 boundary (or any downward recompute of a
-  seminal / pinned page — see the importance delegate), and **any edge whose
-  target page does not exist** (`target_exists: false` — the referent can't be
-  confirmed and the slug is a guess). Recorded in `proposed[]`, never written.
+- **Auto-commit** — a **fact**: dead-link repair, exact-duplicate merge,
+  frontmatter normalization, a forward wikilink to a page named verbatim in the
+  prose, a facts-only `## Shifts` append, an importance recompute within its
+  ±0.3 / non-protected bound, a concept aggregated from ≥3 sourced signals.
+  Written directly; recorded in `committed[]`. A canonical abbreviation or alias
+  counts as verbatim — "AF-Multimer" → `evans-2021-alphafold-multimer` — when
+  the evidence span makes the referent unambiguous and the target page exists.
+- **Propose** — a **judgment call that is still a fact-adjacent decision**: a
+  fuzzy entity merge, a name-similarity or key-conflict merge, a contradiction,
+  any deletion, an importance recompute past its ±0.3 boundary (or any downward
+  recompute of a seminal / pinned page), and **any edge whose target page does not
+  exist** (`target_exists: false` — the referent can't be confirmed and the slug
+  is a guess). Recorded in `proposed[]`, never written.
+- **Never commit** — **opinion**: a hypothesis, a Thesis/Frontier rewrite, any
+  interpretive claim. Opinion is produced only in conversation (your human) or
+  surfaced labeled in the dream report (`intersect`).
 
 **Citations.** A verbatim author-year citation is dual-eligible — both a
-navigable mention (auto wikilink) and a `cites:` edge (propose). Resolve it so:
-the body wikilink is **auto**; propose a `cites:` edge **only when the citation
-is analytically load-bearing** — a predecessor, a motivating result, something
-the page builds on or refutes — **never** for a benchmark or incidental mention.
-This keeps `QUEUE.md` free of citation-graph noise while still capturing the
-edges that carry an argument.
+navigable mention (auto wikilink) and a `cites:` edge (now auto, since it is a
+fact — the citation exists in the prose). Keep the distinction in *what you cite*:
+a `cites:` edge is added **only when the citation is analytically load-bearing** —
+a predecessor, a motivating result, something the page builds on or refutes —
+**never** for a benchmark or incidental mention. A mere mention gets the wikilink
+only.
 
 **Stub vs. real page.** When one entity has both an absent stub edge
 (`methods/alphafold`, no page) and a real page for the same thing
@@ -172,46 +176,86 @@ to every phase:
   `committed[]` but not written. This is the default until the cycle earns trust
   (`DESIGN.md` — automate periodic reflection only once it proves useful).
 
-## Graduated autonomy (phase 0)
+## The decision boundary — the fact/opinion line
 
-Phase 0 (`queue-drain` delegate) runs first in every tier. For an **armed**
-class, it auto-executes a conforming unchecked item at the next run. A class is
-armed either by your human's explicit grant or by track record (≥ 5 human approvals
-and 0 reversions in `decisions.yaml`, plus ≥ 14 days unactioned queue age).
-Any reversion of an auto-approved item disables its class until your human
-re-enables it (a `class-reenabled` decision). Nightly cap: 20 auto-executions
-per run for grant-armed classes (anti-pathology), 3 for track-record-armed
-classes, oldest first.
+Autonomy is granted by **what kind of artifact** the phase produces, not by a
+per-item trust dial. The governing distinction, adopted 2026-08-13, is the
+**fact/opinion line**:
 
-**Standing grant (your human, 2026-08-04):** edges, links, and importance updates at
-conf ≥ 0.9 auto-commit without approval. **Synthesis — new concepts and
-hypotheses — is different: always proposes, never auto-executes.** The
-concept-materialization class that was in the original whitelist is removed at
-his direction.
+- **Facts carry citations, not opinions.** A forward link, a dead-link repair, a
+  tag merge, a sourced `## Shifts`-log entry ("the source showed X") — these
+  *report*; they do not *opine*. Reporting a fact with a citation is not a
+  judgment call, so it rides autonomously.
+- **Opinions must be labeled as opinions.** Anything that interprets, ranks,
+  argues, or proposes "what this means going forward" is opinion. It is either
+  (a) written *only ever* by your human, in conversation, or (b) surfaced
+  labeled as opinion, in the dream report, for your human to take or leave — never
+  auto-written onto a durable page, never posed as fact.
+
+This one line replaces the old per-class arming lists almost entirely: it says
+*which* of the three autonomy pools a change belongs to, and the pool decides
+whether it commits silently, surfaces, or is forbidden.
+
+## The three autonomy pools
+
+| Pool | What | Rule |
+|---|---|---|
+| **A — graph mechanics** | forward wikilinks (verbatim, existing target), dead-link repair, exact-duplicate merge, tag merge, frontmatter normalization, importance recompute within ±0.3 / non-protected | **auto-commit** (fact) |
+| **B — evidence appends** | sourced facts appended to a concept's evidence log (the facts-only `## Shifts` format, `synthesis-layer-pages.md`) | **auto-commit** (fact) |
+| **C — creation** | a new `concept` aggregated from ≥3 independent sourced signals (`concept-coalesce`) | **auto-commit** (fact aggregation, with a "so what" gate) |
+| | a new `hypothesis` | **forbidden** — never auto, never proposed; hypotheses fall out of conversation with your human only |
+| | the single-item cross-cutting attention target | **surface** — labeled opinion in the dream report (`intersect`), never a page |
+
+**The opinion lanes are closed to the dream.** Interpretation, ranking, and
+argument live in conversation (the brainstorm, the grant draft) or in the labeled
+`intersect` surfacing — nowhere else. This is what keeps a fully-autonomous
+rem-cycle *factually safe*: it may write facts freely precisely because it may
+not write opinions at all.
+
+## Autonomy, graduated but now nearly closed
+
+Autonomy is granted by **class**, and the standing grant (below) has expanded the
+armed set to cover Pools A and B (and mechanical C-concept) fully. A class is
+always-armed for the fact pools; the only residual human-gated items are the
+exceptions listed in "Never auto-executes." There is no per-item trust dial for
+facts — the distinction is fact (auto) vs opinion (forbidden / surfaced), not
+"confident fact" vs "shaky fact."
+
+**Standing grant (your human, 2026-08-13):** all of Pool A and Pool B
+auto-commit without approval. Pool C concept-creation auto-commits when the
+coalesce bar (≥3 independent sourced signals + a "so what" gate) clears.
+**Hypothesis creation — and every opinion-bearing artifact — never auto-executes
+and is never proposed.** The synthetic artifacts this produces (`committed[]`
+entries) are reversible via `git revert <sha>`, so autonomy does not mean
+irreversibility.
 
 **Whitelist:**
 
 | Class | Shape | Status |
 |---|---|---|
-| `typed-edge` (cites, existing target) | `cites:` edge, `target_exists: true`, conf ≥ 0.9, verbatim citation in evidence | **armed 2026-08-04** (standing grant) |
-| `forward-link` (wikilink, existing target) | `target_exists: true`, conf ≥ 0.9, verbatim mention | **armed 2026-08-04** (standing grant) |
-| `importance` | \|Δ\| ≤ 0.3, not seminal/key-citation/pinned, no downward recompute of a protected page | **armed 2026-08-04** (standing grant) |
-| `entity-merge` (same-DOI true duplicate) | two `papers/` pages sharing an identical `doi` — **verified pairwise by re-reading both frontmatters before merging**; canonical = fuller/more-inbound-linked node; fold aliases+edges, rewrite inbound refs, remove duplicate | **armed 2026-08-04** (standing grant extension) |
-| `synthesis` (concepts, hypotheses) | any | **never auto-executes** |
+| `forward-link` (wikilink, existing target) | verbatim mention, target exists | **auto** (fact) |
+| `typed-edge` (cites, existing target) | verbatim citation in evidence, target exists | **auto** (fact) |
+| `importance` | \|Δ\| ≤ 0.3, not seminal/key-citation/pinned | **auto** (fact) |
+| `entity-merge` (same-DOI true duplicate) | two `papers/` sharing an identical `doi`, verified pairwise before merge | **auto** (fact) |
+| `shift` / `evidence-append` (facts-only log entry) | sourced claim + citation, no opinion | **auto** (fact) |
+| `concept-create` (aggregated from stubs) | ≥3 independent sourced signals + "so what" cleared | **auto** (fact aggregation) |
+| `synthesis` (hypothesis, or any opinion-bearing page) | any | **never** |
 
-**Never auto-executes (regardless of class arming):** hypothesis creation,
-deletions, importance changes on seminal/key-citation/pinned pages,
-Thesis/Frontier rewrites, protected pages, `detect_only` items, any
-`target_exists: false` item, and **every synthesis item**. Entity merges are
-auto **only** for verified same-DOI true duplicates (above) — name-similarity
-and key-conflict merges stay propose-tier.
+**Never auto-executes (regardless of pool):** hypothesis creation, deletions,
+importance changes on seminal/key-citation/pinned pages, Thesis/Frontier
+rewrites, protected pages, `detect_only` items, any `target_exists: false`
+item, and **every opinion-bearing artifact**. Entity merges auto **only** for
+verified same-DOI true duplicates — name-similarity and key-conflict merges stay
+propose-tier. Concept-creation auto **only** when the coalesce bar clears;
+otherwise it stays a stub.
 
 Every auto-execution: `[auto-approved YYYY-MM-DD · qid <qid> · revert: git
-revert <sha>]` banner at the edit site, `[x]` + decision line in QUEUE.md, a
-`decisions.yaml` entry (`by: <instance>`), and a lead item in the next morning's
-brief. The phase also runs in **detect-and-log mode** (whitelist empty): it
-reports what *would* auto-run without executing — the rollout default. The live
-mode and armed whitelist ride in `_state.yaml → autonomy`.
+revert <sha>]` banner at the edit site, `[x]` + decision line in QUEUE.md
+(now an *audit record*, not an approval inbox), a `decisions.yaml` entry
+(`by: <instance>`), and a lead item in the next morning's brief. The phase also
+runs in **detect-and-log mode** (whitelist empty): it reports what *would*
+auto-run without executing — the rollout default. The live mode and armed
+whitelist ride in `_state.yaml → autonomy`.
 
 ## Invariants every phase honors
 
@@ -258,26 +302,33 @@ sections via `git diff` on the phase's commit.
   itself and writes a phase-result file with `status: skipped` and
   `skipped: ["lock held by <job>"]` — the aggregator reports it.
 
-## QUEUE.md format
+## QUEUE.md format (audit record, not an approval inbox)
 
-One checkbox line per proposal. The newest run's heading is **prepended**
-(newest first), carrying its tier; proposals within a heading run
-highest-confidence first, and are **deduped against items already queued** — a
-re-run never re-adds an identical proposal. your human acts by checking (approve) or
-deleting (reject); the next run leaves unchecked items in place.
+Since 2026-08-13 QUEUE.md is an **audit record**, not a wall of approvals. Its
+two roles, in order:
+
+1. **A log of what auto-committed.** Every auto-commit writes an `[x]` line here
+   (and a `decisions.yaml` entry) so the full autonomous history is inspectable in
+   one place. These are already applied — the checkbox is pre-checked, the revert
+   handle is on the line.
+2. **The residual human-gated items.** The small remainder of genuine judgment
+   calls (fuzzy merges, protected-page changes, contradiction flags) that still
+   await a human decision. These use `[ ]`.
+
+The newest run's heading is **prepended** (newest first). Auto-committed lines
+run first under their heading; then the open `[ ]` judgment items. All lines are
+**deduped against items already recorded** — a re-run never re-adds an identical
+entry, and a rejected qid is suppressed forever (`decisions.yaml`).
 
 ```markdown
 ## <YYYY-MM-DD> (<tier>)
-- [ ] **typed-edge** · papers/foo-2021-bar → add `cites: papers/baz-2019-method`
+- [x] `a3f2` **forward-link** · papers/foo-2021-bar → [[concepts/repertoire-drift]]
+      · auto · revert: `git revert <sha>` · _"…evidence span…"_
+- [ ] `b7e1` **entity-merge** · people/crotty-shane vs people/crotty-shane-2
       · conf 0.6 · _"…evidence span…"_
 ```
 
-Every line carries its qid immediately after the checkbox:
-
-```markdown
-- [ ] `a3f2` **typed-edge** · papers/foo-2021-bar → add `cites: papers/baz-2019-method`
-      · conf 0.6 · _"…evidence span…"_
-```
+Every line carries its qid immediately after the checkbox.
 
 ## The decision ledger
 
@@ -313,15 +364,20 @@ under a minute:
 # Dream Report — <YYYY-MM-DD> (<tier>)
 ## Summary     — 2–3 sentences; led by the connectivity headline (backlog age,
                  rotation period, concept coverage, queue depth/age, inbox depth)
+## One thing   — the intersect surfacing: THE single highest-value cross-cutting
+                 target, one paragraph (what / why-now / next action / confidence
+                 as opinion). One item, every run. The "perfect home page" — show
+                 one thing and you act on it.
 ## Connectivity — target-vs-actual for every `quality_targets` key, ✓/✗ each;
                  trend vs the 30-day `connectivity:` history in _state.yaml.
                  rotation_period_days = corpus pages ÷ 7-night rolling mean of
                  retro pages_read (not tonight's slice size), so a sparse-slice
                  night doesn't fake a year-to-drain headline
 ## Committed   — grouped by category (links / tags / importance / merges /
-                 auto-approved) — the shapes don't share one table; a change two
-                 phases surfaced is counted once (dedup on target+category)
-## Proposed    — pointer to QUEUE.md, with the highest-confidence items inline
+                 evidence-appends / concept-creates / auto-approved) — the shapes
+                 don't share one table; a change two phases surfaced is counted
+                 once (dedup on target+category)
+## Proposed    — pointer to QUEUE.md (the residual judgment items, if any)
 ## Conflicts   — contradictions + mis-assigned keys, incl. any a merge flagged,
                  plus any entry demoted from Committed by evidence verification
 ## Health      — plumbing metrics vs. last run (from _state.yaml); budget used;

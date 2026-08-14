@@ -99,9 +99,9 @@ Filling the knowledge graph, and keeping it healthy.
 | Restructure a raw-text or stub page into a useful one | `skills/restructure-thin-page/SKILL.md` |
 | Deep semantic re-linking — re-read pages against the current graph and add forward edges that weren't possible at ingest ("link this page", "re-link the brain") | `skills/retroactive-linking/SKILL.md` |
 | Bootstrap the concept layer — one-time backward distillation of umbrella concepts from the existing projects/grants/papers ("seed the concept layer", "distill concepts from the grants") — distinct from `concept-synthesis` (which dedups/tiers/maps ambient idea-stubs) | `skills/concept-seeding/SKILL.md` |
-| Update concepts from recent papers — the autonomous reinforce pass over concept `## Shifts` ("reinforce the concepts", "what recent papers moved our concepts"); runs as rem-cycle phase 6 or standalone. The directed lane (an explicit concept call-out at ingest) lives in `paper-ingest` | `skills/reinforce/SKILL.md` |
-| Cross-concept hypothesis detection — the weekly intersect pass; propose a hypothesis from a Frontier-bet intersection of ≥2 concepts that clears Beat/Unlock/Scale/Explain + a discriminating test ("find concept intersections", "any new cross-concept hypotheses"); rem-cycle phase 8 or standalone | `skills/intersect/SKILL.md` |
-| Concept-stub coalescence — the weekly pass that reads `is_concept_stub: true` notes and proposes promoting a coalesced cluster to a real concept/hypothesis ("coalesce the concepts", "which stubs should become concepts"); rem-cycle phase 5c or standalone. Distinct from `intersect` (below) | `skills/concept-coalesce/SKILL.md` |
+| Update concepts from recent papers — the autonomous reinforce pass that appends **facts-only** `## Shifts` evidence entries (what a source showed, cited; no opinion) ("reinforce the concepts", "what recent papers moved our concepts"); runs as rem-cycle phase 6 or standalone. The directed lane (an explicit concept call-out at ingest) lives in `paper-ingest` | `skills/reinforce/SKILL.md` |
+| Single highest-value attention target — the weekly intersect pass; scans the whole brain and surfaces ONE cross-cutting thing (a hypothesis to consider, a grant idea, a dive-trigger) into the dream report's "One thing" section, labeled opinion, never a page ("find concept intersections", "what's the one thing I should look at", "surface the highest-value idea"); rem-cycle phase 8 or standalone | `skills/intersect/SKILL.md` |
+| Concept-stub coalescence — the weekly pass that reads `is_concept_stub: true` notes and (≥3 independent signals + "so what") auto-aggregates a cluster into a `concept` page — facts only, never a hypothesis ("coalesce the concepts", "which stubs should become concepts"); rem-cycle phase 5c or standalone. Distinct from `intersect` (below) | `skills/concept-coalesce/SKILL.md` |
 | Scheduled offline consolidation — "run a rem cycle", "dream", the nightly/weekly maintenance job that runs phases as subagents and writes a dream report | `skills/rem-cycle/SKILL.md` |
 | Duplicate/merge/split of the identity-keyed kinds + the author ledger — "find duplicate pages", "dedupe the brain", "audit the author ledger", "are these two the same" | `skills/entity-resolution/SKILL.md` |
 | Contradictions + expired facts — "find contradictions", "check consistency", "conflicting claims", "stale facts", "audit the hypothesis graph" | `skills/consistency-check/SKILL.md` |
@@ -258,12 +258,14 @@ When multiple skills could match:
 14. The concept-layer skills split by *what they do to a concept*: `concept-seeding`
     **creates** the layer (one-time bootstrap); `concept-synthesis` **curates**
     ambient stubs (dedup / tier / map); `reinforce` **updates** existing concepts'
-    `## Shifts` from new papers (routes a recent paper to the concepts it moves);
-    `intersect` **connects** concepts — proposes a hypothesis from a cross-concept
-    Frontier-bet intersection; `topic-synthesis` builds a durable synthesis **page**
-    on a named topic. "What recent papers moved our concepts" / "reinforce the
-    concepts" → `reinforce`; "find concept intersections" / "cross-concept
-    hypotheses" → `intersect`; otherwise per rules 11 and 13.
+    `## Shifts` from new papers (appends facts-only evidence entries); `intersect`
+    **ranks** — surfaces the single highest-value cross-cutting attention target (as
+    labeled opinion, never a page); `topic-synthesis` builds a durable synthesis
+    **page** on a named topic. Note that **no autonomous skill creates a
+    hypothesis** — hypotheses fall out of conversation with your human only.
+    "What recent papers moved our concepts" / "reinforce the concepts" →
+    `reinforce`; "what's the one thing I should look at" / "surface the
+    highest-value idea" → `intersect`; otherwise per rules 11 and 13.
 15. `synthesis-briefing` and `rem-cycle`'s dream report both live under
     `docs/rem-cycle/` and read like "the weekly report", but split by audience: the **dream report**
     (`history/<date>.md`) is *audit-shaped* — what a run committed / skipped, budget,
@@ -284,12 +286,14 @@ When multiple skills could match:
     discussion captured on request. Passing mention / single framing →
     `signal-detector`; considered whole on request → `conversation-capture`.
 17. `concept-coalesce` vs. `intersect` vs. `concept-synthesis` — the three
-    concept-layer *producers* split by source. `concept-coalesce` promotes a
-    **coalesced concept-stub cluster** (`is_concept_stub: true` notes) into a
-    `concept` or single-idea `hypothesis` — bottom-up, from captured transients.
-    `intersect` proposes a **cross-concept hypothesis** from a Frontier-bet
-    intersection of ≥2 *existing* concepts — top-down, from the curated layer.
-    `concept-synthesis` dedups/tiers/maps **ambient idea-stubs** across the whole
-    corpus. A stub cluster that points at one idea → `concept-coalesce`; a
-    bet × bet intersection of two concepts → `intersect`; organic
-    dedup/tier/map over `concept`+`note` stubs → `concept-synthesis`.
+    concept-layer *producers* split by **job, not source**. `concept-coalesce`
+    **fact-aggregates** a coalesced concept-stub cluster (`is_concept_stub: true`
+    notes, ≥3 independent signals + "so what") into a `concept` page — routine,
+    mechanical, facts-only, never a hypothesis. `intersect` **ranks** — the single
+    highest-value cross-cutting attention target across the whole brain, surfaced as
+    labeled opinion into the report, never a page. `concept-synthesis`
+    **dedups/tiers/maps** ambient idea-stubs across the whole corpus. A stub
+    cluster pointing at one recurring idea → `concept-coalesce`; "what's the one
+    thing I should look at" → `intersect`; organic dedup/tier/map over
+    `concept`+`note` stubs → `concept-synthesis`. And note: **no skill creates a
+    hypothesis** — hypotheses fall out of conversation with your human only.
