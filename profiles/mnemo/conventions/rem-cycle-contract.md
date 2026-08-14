@@ -314,7 +314,10 @@ under a minute:
 ## Summary     — 2–3 sentences; led by the connectivity headline (backlog age,
                  rotation period, concept coverage, queue depth/age, inbox depth)
 ## Connectivity — target-vs-actual for every `quality_targets` key, ✓/✗ each;
-                 trend vs the 30-day `connectivity:` history in _state.yaml
+                 trend vs the 30-day `connectivity:` history in _state.yaml.
+                 rotation_period_days = corpus pages ÷ 7-night rolling mean of
+                 retro pages_read (not tonight's slice size), so a sparse-slice
+                 night doesn't fake a year-to-drain headline
 ## Committed   — grouped by category (links / tags / importance / merges /
                  auto-approved) — the shapes don't share one table; a change two
                  phases surfaced is counted once (dedup on target+category)

@@ -132,6 +132,15 @@ Ratchets are a monthly-review decision (see the overhaul plan, Phase IV) — a
 quality target missed twice running gets +50% budget, capped at 2× the trial
 value; one met with <50% consumption twice running gets trimmed.
 
+`rotation_period_days` (the retroactive-linking backlog projection) is computed
+as **corpus pages ÷ 7-night rolling mean of retro `pages_read`** — never
+tonight's single-run slice size. The per-night slice is volatile (a low-link-
+density region reads 4 pages, a dense one reads 10), and dividing a stable
+corpus total by that single-night number makes the headline bounce between ~6
+months and ~14 months with no change in the actual backlog. The rolling mean
+over the last 7 `connectivity:` entries (or as many as exist) damps that noise
+and gives a projection that tracks the real drain rate.
+
 `_state.yaml` shape (current):
 
 ```yaml
