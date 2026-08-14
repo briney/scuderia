@@ -21,7 +21,7 @@ The user model is a directory of siblings (`USER/`):
   refresh `USER/<name>.md` (likely in response to grant reviewer critiques,
   periodic self-review, etc.).
 - **`USER/VOICE.md`** — derived, the measured writing fingerprint. Written
-  by its own producer, not this skill.
+  by the `user-voice-measure` skill, not this one.
 
 This skill is what produces the sidecar's content. It is invoked
 manually. **No schedule is wired** — running on a cadence (cron under

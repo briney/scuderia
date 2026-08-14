@@ -146,6 +146,7 @@ two audit skills.
 | Present options, gate on a user decision | `skills/ask-user/SKILL.md` |
 | "Migrate from Obsidian / Notion / Logseq", import an existing vault | `skills/migrate/SKILL.md` |
 | "Run user-model-reflect", "reflect on what I've been working on", "update the observations sidecar" — append a dated block of candidate observations about how your human is working to `USER/OBSERVATIONS.md`. Manual invocation only; no schedule wired. | `skills/user-model-reflect/SKILL.md` |
+| "Measure my writing voice", "build a voice profile", "update VOICE.md" — extract the writing fingerprint (sentence length, tell-frequency) from the `## Verbatim` corpus into `USER/VOICE.md`, then run a blind validation check. Manual invocation only; no schedule wired. | `skills/user-voice-measure/SKILL.md` |
 
 ## Identity and context
 
