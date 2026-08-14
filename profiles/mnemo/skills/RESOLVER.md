@@ -268,8 +268,9 @@ When multiple skills could match:
     highest-value idea" → `intersect`; otherwise per rules 11 and 13.
 15. `synthesis-briefing` and `rem-cycle`'s dream report both live under
     `docs/rem-cycle/` and read like "the weekly report", but split by audience: the **dream report**
-    (`history/<date>.md`) is *audit-shaped* — what a run committed / skipped, budget,
-    health — for verifying the machinery; the **synthesis briefing**
+    (`history/<date>.md`) is *a ten-second glance* — One thing + Done + Flags —
+    for confirming the dream ran and spending your attention on the one thing; the
+    **synthesis briefing**
     (`briefings/<week>.md`) is *reading-shaped* — the week's precipitated hypotheses
     and concept movements, for your human to act on. "Did the cycle run / what did it do"
     → `rem-cycle`; "what precipitated this week" / "weekly synthesis briefing" →

@@ -19,7 +19,7 @@ The delivery surface that closes the concept layer's loop back to your human. Th
 synthesis engine — `reinforce` nightly, `intersect` nightly — writes *state* into
 concept `## Shifts` logs and `QUEUE.md`; this composes that week's movement into a
 **reading-shaped** digest. It is deliberately *not* the rem-cycle **dream report**
-(audit-shaped: committed / skipped / budget) and *not* the daily **`briefing`**
+(a ten-second nightly glance: One thing + Done + Flags) and *not* the daily **`briefing`**
 (logistics: deadlines, meetings). It is **not a rem-cycle phase** either — it
 aggregates the *week's accumulation* across many runs, not any one run's output, so
 it is standalone and is **never registered in the rem-cycle phase pipeline**. Full

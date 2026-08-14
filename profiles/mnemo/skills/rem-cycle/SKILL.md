@@ -169,9 +169,12 @@ metrics:                       # canonical health counters, for the delta
 ## Output
 
 - `docs/rem-cycle/history/<date>-<tier>.md` — the dream report, skimmable in
-  under a minute, connectivity health up top, proposals highest-impact first.
-- `docs/rem-cycle/QUEUE.md` — the review queue, this run's proposals prepended
-  (qid'd, deduped against the queue **and** `decisions.yaml`).
+  under ten seconds: **One thing** (the intersect surfacing) up top, then a
+  one-line **Done** (auto-committed counts), then **Flags** only when something
+  needs you. Full detail stays in `runs/` + git history (`rem-cycle-contract.md`).
+- `docs/rem-cycle/QUEUE.md` — the audit record: `[x]` lines for what
+  auto-committed, `[ ]` for the residual human-gated items (qid'd, deduped
+  against `decisions.yaml`).
 - `docs/rem-cycle/_state.yaml` — advanced cursors, refreshed canonical +
   per-phase metrics.
 - `docs/rem-cycle/runs/<date>/<phase>.yaml` — the machine-readable phase results

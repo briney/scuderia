@@ -358,33 +358,32 @@ Written by the **aggregator** (the report cron job), assembled from the night's
 
 `docs/rem-cycle/history/<YYYY-MM-DD>-<tier>.md` (the tier suffix keeps two runs
 the same day from colliding; add `-<n>` if one tier runs twice), skimmable in
-under a minute:
+**under ten seconds**:
 
 ```markdown
 # Dream Report — <YYYY-MM-DD> (<tier>)
-## Summary     — 2–3 sentences; led by the connectivity headline (backlog age,
-                 rotation period, concept coverage, queue depth/age, inbox depth)
-## One thing   — the intersect surfacing: THE single highest-value cross-cutting
-                 target, one paragraph (what / why-now / next action / confidence
-                 as opinion). One item, every run. The "perfect home page" — show
-                 one thing and you act on it.
-## Connectivity — target-vs-actual for every `quality_targets` key, ✓/✗ each;
-                 trend vs the 30-day `connectivity:` history in _state.yaml.
-                 rotation_period_days = corpus pages ÷ 7-night rolling mean of
-                 retro pages_read (not tonight's slice size), so a sparse-slice
-                 night doesn't fake a year-to-drain headline
-## Committed   — grouped by category (links / tags / importance / merges /
-                 evidence-appends / concept-creates / auto-approved) — the shapes
-                 don't share one table; a change two phases surfaced is counted
-                 once (dedup on target+category)
-## Proposed    — pointer to QUEUE.md (the residual judgment items, if any)
-## Conflicts   — contradictions + mis-assigned keys, incl. any a merge flagged,
-                 plus any entry demoted from Committed by evidence verification
-## Health      — plumbing metrics vs. last run (from _state.yaml); budget used;
-                 "Evidence verified: N/M" line
-## Skipped     — where each cursor stopped, what the budget cut, phases `missing`
-                 or `skipped` (named, never papered over)
+## One thing — <the intersect surfacing, THE headline>
+                 THE single highest-value cross-cutting target, one paragraph —
+                 what / why-now / next action / confidence (as opinion). This is
+                 the only thing that asks for your judgment. It stands alone; the
+                 rest of the report is confirmatory noise around it.
+## Done       — one line. "<N> links, <N> facts logged, <N> concepts created,
+                 <N> merges" — the dream's auto-committed work, compressed to
+                 counts. Nothing here needs you.
+## Flags      — emitted ONLY when non-empty: the residual human-gated items (fuzzy
+                 merges, protected-page changes, contradiction flags). A pointer to
+                 QUEUE.md. A clean night has no Flags section.
 ```
+
+**Everything else is in the machine-readable record, not the report.** The
+`committed[]` detail (every edge with its verbatim evidence span), the
+connectivity trend, the "Evidence verified: N/M" line, the budget-against-
+actuals, the conflicts, and the `missing`/`skipped` phase notes all live in
+`docs/rem-cycle/runs/<date>/*.yaml`, `_state.yaml`, and the git history — where
+they are verifiable when something looks wrong, but never crowding the ten-second
+glance. The report's contract changed with autonomy (2026-08-13): it confirms
+what was done, it does not solicit judgment on it. The one exception is the
+intersect surfacing, which is the entire point of reading the report.
 
 The connectivity counters live in `_state.yaml → connectivity` (a rolling
 30-day history of the headline numbers), maintained by the aggregator.
