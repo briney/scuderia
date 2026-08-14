@@ -64,7 +64,15 @@ dedupes across phases on `(target, category)`, writes the dream report,
 prepends QUEUE.md (qid'd, deduped against decisions.yaml), updates `_state.yaml`
 (`last_run`, canonical metrics, health delta), commits, delivers.
 
-Phase jobs deliver `local`; only report jobs deliver to the rem-cycle topic.
+Delivery routing (live config is the source of truth; this documents intent):
+- **Report jobs** (`rem-report-nightly`, and the weekly/monthly report jobs)
+  deliver the trimmed dream report to the Reports channel **and** the Buzz DM —
+  the glanceable surface your human reads.
+- **The nightly phase-runner** (`rem-cycle-nightly`) delivers its phase-run status
+  to the **System** channel — noisy, operational, kept off the Reports channel so
+  the trimmed report stays glanceable.
+- **Individual phase jobs** (drain, retro, coalesce, …) deliver `local` — no
+  gateway delivery at all.
 
 **Current state (2026-08-03):** `rem-drain` and `rem-report-nightly` (comparison
 mode) are live. Nightly phases 1/2/6 still run inside the `rem-cycle-nightly`
