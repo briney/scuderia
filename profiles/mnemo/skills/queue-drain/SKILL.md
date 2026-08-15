@@ -1,11 +1,10 @@
 ---
 name: queue-drain
 description: >
-  Drain the rem-cycle review queue — approve, reject, or auto-execute QUEUE.md
-  proposals by qid. Runs conversationally ("approve a3f2", "reject the cites
-  edges", "drain the queue"), as the rem-cycle phase-0 delegate (graduated
-  autonomy), and from brief replies ("approve 1-2"). Executed changes are
-  recorded in the decision ledger.
+  RETIRED 2026-08-15 — the rem-cycle review queue is frozen and the drain
+  job is deleted; the rem-cycle runs a binary commit gate (phases commit or
+  drop; no proposals). Kept as the historical record of queue semantics.
+  If asked "what's in the review queue": nothing, ever again.
 triggers:
   - "approve queue item"
   - "reject queue item"

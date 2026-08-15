@@ -78,11 +78,10 @@ vocabulary. The sense-check: **"If the target page didn't exist, would the
 sentence still make sense unchanged?"** → if yes, SKIP. Generic terms (BLI,
 FACS, cryo-EM, "the grant") are not links even if a page shares the name.
 
-**PROPOSE (typed edge `cites:`):** the citation is analytically load-bearing —
+**TYPED-EDGE CANDIDATE (`cites:`):** the citation is analytically load-bearing —
 a predecessor, motivating result, something the page builds on or refutes —
-AND confidence ≥ 0.9 AND the target page EXISTS. Below 0.9 or target missing →
-leave it out entirely (burst precision mode). A benchmark or incidental
-citation is never a `cites:` edge.
+AND the target page EXISTS. Otherwise leave it out entirely (burst precision
+mode). A benchmark or incidental citation is never a `cites:` edge.
 
 **SKIP everything ambiguous** — precision over recall.
 
@@ -134,17 +133,15 @@ committed:
     target_exists: true
     change: "added [[<target>|<surface>]] in <section>"
     evidence: "<post-edit verbatim span>"
-proposed:
+candidates:
   - target: papers/<page>
     category: typed-edge
-    target_exists: true
     change: "add cites: <target>"
     evidence: "<verbatim span>"
-    confidence: 0.9
 metrics:
   pages_read: <n>
   edges_committed: <n>
-  edges_proposed: <n>
+  edge_candidates: <n>
   candidates_examined: <n>
 skipped: []
 ```
@@ -152,7 +149,8 @@ skipped: []
 - `committed[]` records every mutation: body wikilinks (category
   `forward-link`) AND frontmatter `links:` population (category
   `frontmatter-links-populated`).
-- `proposed[]` records typed-edge `cites:` proposals only.
+- Typed-edge `cites:` candidates are returned for the primary to validate and
+  write (load-bearing + target exists), never written by the shard worker.
 - `skipped[]` lists pages processed but with no changes, with a one-line
   reason (e.g. "pure stub, citation-only, no linkable prose").
 - `anomalies[]` (optional, informational): entity-resolution flags, e.g.
@@ -191,10 +189,10 @@ skipped: []
   even if a `bli`-ish page existed. Apply the sense-check: does the sentence
   still make sense if the target page didn't exist?
 - **`cites:` precision.** The direct structural predecessor a paper extends
-  (e.g. zhao-2023 builds on yuan-2020's CR3022 structure) is a high-confidence
+  (e.g. zhao-2023 builds on yuan-2020's CR3022 structure) is a load-bearing
   `cites:`. A paper merely listed in a limitations section ("later studies by
   Barnes et al. 2020…") is not — no page exists, and even if it did, it's
-  incidental. Propose only when load-bearing AND target exists AND conf ≥ 0.9.
+  incidental. Return a candidate only when load-bearing AND the target exists.
 - **Mature paper pages arrive already body-wikilinked (shard 28).**
   Well-established pages (importance 0.65–0.85, full Context/Approach/
   Findings/Limitations/Analysis sections) typically already carry body
@@ -210,16 +208,16 @@ skipped: []
   frontmatter-links-populated`, a `target` (the page edited), `change`
   describing what was added, and `evidence` (the frontmatter span). Do NOT
   bury frontmatter updates in a `notes` field or `metrics` prose — the
-  aggregator parses `committed[]`, not free text. Similarly, `proposed[]`
+  aggregator parses `committed[]`, not free text. Similarly, any candidate
   entries must follow the exact field schema (`target`, `category`,
-  `target_exists`, `change`, `evidence`, `confidence`) — not ad-hoc field
+  `change`, `evidence`) — not ad-hoc field
   names like `page`, `reason`, `evidence_span`, `adjudication`.
-- **Citation shorthand → PROPOSE, not LINK (shard 28).** An "Author Year"
+- **Citation shorthand → candidate, not LINK (shard 28).** An "Author Year"
   citation shorthand in body prose (e.g. "Jardine 2016" referring to
   `papers/jardine-2016-vrc01-precursor-germline-targeting`) is NOT a verbatim
   entity name and thus not a LINK. But if it is load-bearing (provides
-  context the argument depends on) AND the target page EXISTS AND conf ≥ 0.9,
-  it is a valid `proposed[]` entry with `category: typed-edge` and `change:
+  context the argument depends on) AND the target page EXISTS,
+  return it as a typed-edge candidate with `category: typed-edge` and `change:
   "add cites: <target>"`. Apply the same standard as any `cites:` edge.
 - **EMFILE on batched file operations (shard 28).** Batching 3+ parallel
   `read_file` or `patch` calls can hit `[Errno 24] Too many open files` on

@@ -55,6 +55,9 @@ clear backlog or complete one rotation. A rotation period longer than the
 corpus doubling time is a structural finding, not a tuning issue.
 
 **Drain rate of human-in-the-loop queues — the single most diagnostic check.**
+(Historical: the rem-cycle review queue was frozen 2026-08-15 after exactly
+this check found a zero drain rate. The recipe stands for any future
+human-gated surface.)
 ```bash
 # how many queue items were EVER checked off, across all history
 git log -p --follow -- docs/rem-cycle/QUEUE.md | grep -c "^+- \[x\]"

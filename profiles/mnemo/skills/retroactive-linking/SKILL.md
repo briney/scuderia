@@ -60,10 +60,11 @@ ones inline and **chains here** for the deep pass, the same way it chains into
   the aggregator's verbatim check (observed 2026-08-04: 4/4 committed spans
   failed this way).
 - The two commit tiers follow `rem-cycle-contract.md`: an evidence-backed
-  verbatim mention (canonical abbreviations count) → **auto** wikilink; a
-  *typed* relationship edge, and any edge to a page that does not exist yet, →
-  **proposed**. A `cites:` edge is proposed only when the citation is
-  analytically load-bearing, never for a benchmark or incidental mention.
+  verbatim mention (canonical abbreviations count) → wikilink committed; a
+  *typed* relationship edge commits when the citation is analytically
+  load-bearing, never for a benchmark or incidental mention. An edge to a
+  page that does not exist yet, and any edge whose referent is uncertain, →
+  **dropped** (counted, never queued).
 - A page is read in full before it is edited; a recently-edited page is held.
 - The cursor advances; a re-run over an already-linked slice is a no-op.
 
@@ -94,25 +95,24 @@ What gets re-linked in one invocation:
    page's prose and decide: is a link justified, and is it a plain mention
    (wikilink) or a *typed* relationship (frontmatter edge, and which type)?
    Require a verbatim evidence span for every kept candidate. Discard the rest.
-4. **Write / propose.** Sort each kept edge into its tier per
-   `rem-cycle-contract.md`. Auto-tier — an evidence-backed verbatim mention of a
-   page that **exists** — gets a `[[kind/slug]]` wikilink in the body where the
-   mention sits. Typed relationship edges, and edges to a page that does not
-   exist yet, go to the propose queue with evidence, confidence, and
-   `target_exists`. An edge to a missing page is *valid* (it marks work to do),
-   but it is proposed, not auto-written — the slug is a guess until the page
-   exists. Where an entity has both an absent `methods/` (or other) stub and a
-   real page, link the real page and flag the pair for entity resolution.
+4. **Write / drop.** The binary gate (`rem-cycle-contract.md`, 2026-08-15): an
+   evidence-backed verbatim mention of a page that **exists** gets a
+   `[[kind/slug]]` wikilink in the body where the mention sits; a typed
+   relationship edge (`cites:`) is written when the citation is analytically
+   load-bearing. An edge to a page that does not exist yet, or whose referent
+   is uncertain, **drops** — the slug is a guess until the page exists; a dead
+   edge left in place is a demand signal, not damage. Where an entity has both
+   an absent `methods/` (or other) stub and a real page, link the real page and
+   emit a `notable:` entry for the pair.
 5. **Emit the result.** Report per `rem-cycle-contract.md` when run as a phase;
-   otherwise report conversationally — what was linked, what is proposed.
+   otherwise report conversationally — what was linked, what was dropped.
 
 ## Output
 
 - **As a rem-cycle phase:** the fenced-yaml phase result
-  (`rem-cycle-contract.md`) — `committed[]` wikilinks, `proposed[]` typed edges
-  with evidence, `metrics.edges_added`, and the advanced `cursor`.
-- **Standalone:** the auto-tier links committed, and a short list of proposed
-  typed edges surfaced inline for the human to accept or reject.
+  (`rem-cycle-contract.md`) — `committed[]` edges with post-edit evidence,
+  `notable[]` observations, `metrics.edges_added`, and the advanced `cursor`.
+- **Standalone:** the links committed, and a short count of what dropped.
 
 ## Anti-patterns
 
@@ -124,10 +124,10 @@ What gets re-linked in one invocation:
   blockquoted text, and numbered reference lists are frozen source text. A
   paper title there is a citation *record*, not a mention to link (observed
   2026-08-04: 47 such links had to be reverted). Link prose, never quotation.
-- Auto-committing a *typed* relationship edge, or a wikilink to a page that
-  does not exist — both are judgment calls; propose them.
-- Flooding the queue with `cites:` edges for benchmark or incidental citations —
-  propose a citation edge only when it is analytically load-bearing.
+- Writing a wikilink to a page that does not exist — the slug is a guess; drop
+  it and let the dead-mention demand signal accumulate instead.
+- Adding `cites:` edges for benchmark or incidental citations — a typed edge
+  only when the citation is analytically load-bearing.
 - Running LLM adjudication over every page pair instead of the cheap
   candidate shortlist — exhaust `brain-search` and graph traversal first.
 - Editing a page without reading it in full, or overwriting a just-edited page.

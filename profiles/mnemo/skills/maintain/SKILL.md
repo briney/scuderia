@@ -171,33 +171,25 @@ runs, what commits, and what it emits:
   dimension above *except* importance) or `importance` (phase 7: the recompute
   pass only). Cadence drives it — hygiene runs nightly, importance weekly — so
   run **only** the requested dimensions, not the whole sweep.
-- **Mode.** `dry-run` (report every change, write nothing) or `normal` (auto-tier
-  commits, propose-tier queues). Default `dry-run` until the cycle earns trust.
-- **Tiers** (`rem-cycle-contract.md`):
-  - *Auto* → `committed[]`: mechanical, high-confidence fixes — a
-    missing-forward-link wikilink to an existing page (`category: forward-link`),
-    a dead-link **retarget** to an existing page (`dead-link-fix`), filing
-    normalization, a tag merge whose synonymy is certain (`tag-merge`; its
-    `target` is the tag, not a page).
-  - *Propose* → `proposed[]`: every judgment call — any page deletion, an
-    ambiguous re-file, a tag merge whose synonymy is uncertain, a stale-page
-    restructure. Each carries an evidence basis.
-- **Importance recompute is graduated by swing** (the ±0.3 delta is the
-  auto/propose boundary, absolute in `[0, 1]`):
-  - `|Δ| ≤ 0.3` → **auto-write** the refreshed value (`committed[]`,
-    `category: importance`); in `dry-run` it is reported, not written.
-  - `|Δ| > 0.3` → **propose only** — record the recompute in `proposed[]` and do
-    **not** write it; a large swing is a judgment call.
-  - **Any *downward* recompute of a page tagged `seminal` / `key-citation` (or
-    pinned / identity) → propose, never auto, regardless of size** — a
-    signal-based recompute can legitimately want to decay a globally-seminal
-    paper the corpus has not yet linked; that call is your human's, not the pass's.
-  - `|Δ|` that rounds to the same 2-decimal value → **no-op**: don't write, omit
-    from `committed[]`, count only in `metrics.recomputed`. This keeps the pass
-    idempotent.
-  The recompute is a holistic judgment over the three signals
-  (`importance-scoring.md`), not a formula; the ±0.3 boundary bounds the
-  subjectivity by routing big moves to review.
+- **Binary gate (2026-08-15).** Every change either **commits** (`committed[]`)
+  or **drops** (counted in `metrics.dropped`). No propose lane, no queue.
+- **Commit** — mechanical, evidence-backed fixes: a missing-forward-link
+  wikilink to an existing page (`category: forward-link`), a dead-link
+  **retarget** to an existing page (`dead-link-fix`), filing normalization, a
+  tag merge whose synonymy is certain (`tag-merge`; its `target` is the tag,
+  not a page), a staleness note appended to a stale page (`stale-note` —
+  append, never delete; this phase never deletes anything).
+- **Drop** — an ambiguous re-file, a tag merge whose synonymy is uncertain, an
+  uncertain retarget. Counted, never queued.
+- **Importance recompute (binary):** commit every recompute regardless of swing
+  size, EXCEPT a *downward* recompute of a page tagged `seminal` /
+  `key-citation` (or pinned / identity) — skip the write and count it in
+  `metrics.protected_skips`; a signal-based recompute can legitimately want to
+  decay a globally-seminal paper the corpus has not yet linked, and the
+  protection rule simply refuses. A recompute rounding to the same 2-decimal
+  value is a **no-op**: don't write, count only in `metrics.recomputed`. The
+  recompute is a holistic judgment over the three signals
+  (`importance-scoring.md`), not a formula.
 - **Output.** Emit the fenced-yaml phase result (`rem-cycle-contract.md`) — not
   the health-report table. Populate `metrics` with the counts the health delta
   needs: for `hygiene`, `orphans` / `dead_links` / `pending_stubs` /
@@ -205,9 +197,9 @@ runs, what commits, and what it emits:
   `importance`, `recomputed` / `moved_up` / `moved_down` / `swings_over_0.3` /
   `max_abs_delta` (a distribution, not a bare mean — an up/down wash hides in a
   mean). No `cursor` (this phase is not cursor-driven).
-- **No chaining.** The orchestrator owns phase composition — do **not** spawn
+- **No chaining.** Each phase is its own cron job — do **not** spawn
   `frontmatter-guard`, `citation-fixer`, or `restructure-thin-page` here.
-  Surface their bug classes in `proposed[]` and let the orchestrator route them.
+  Surface their bug classes as `notable:` entries and move on.
 
 ## Anti-patterns
 

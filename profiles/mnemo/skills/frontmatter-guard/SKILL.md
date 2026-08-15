@@ -131,31 +131,31 @@ have it open in Obsidian. If it was, hold rather than clobber.
 Invoked by the orchestrator as part of **phase 1 (hygiene)**, this skill runs
 under `skills/conventions/rem-cycle-contract.md`:
 
-- **Mode.** `dry-run` (report every fix, write nothing) or `normal` (auto-tier
-  commits, propose-tier queues). Default `dry-run`.
-- **Tiers** (mapping the validation classes):
-  - *Auto* → `committed[]` (`category: frontmatter-fix`): the mechanical repairs
-    — `MISSING_CLOSE`, `NULL_BYTES`, `NESTED_QUOTES`, `KIND_MISMATCH` (set the
-    field to match the directory), a tractable `YAML_PARSE`, and a missing spine
-    field whose value the page content makes obvious.
-  - *Propose* → `proposed[]`: every judgment call — `MISSING_OPEN`,
-    `EMPTY_FRONTMATTER`, an ambiguous `YAML_PARSE`, a filing **move** (a page in
-    the wrong directory — moving and re-slugging rewrites inbound refs), and a
-    **slug-form correction** (renaming a slug rewrites every inbound `[[slug]]`,
-    so it is never auto; a same-name permutation also feeds `entity-resolution`'s
-    dedup — flag the pair).
-- **Output.** Emit the fenced-yaml phase result — `committed[]`, `proposed[]`
-  (with evidence + `target_exists`), `metrics` (`pages_scanned`, counts per
-  validation class, `fixes_applied`); no `cursor`. No chaining — the orchestrator
-  routes; surface a slug/identity duplicate for `entity-resolution` rather than
-  acting on it.
+- **Binary gate (2026-08-15).** Every repair either **commits** (`committed[]`,
+  `category: frontmatter-fix`) or **drops** (counted in `metrics.dropped`).
+  There is no propose lane and no queue.
+- **Commit** — every mechanical repair: `MISSING_CLOSE`, `NULL_BYTES`,
+  `NESTED_QUOTES`, `KIND_MISMATCH` (set the field to match the directory), a
+  tractable `YAML_PARSE`, a missing spine field whose value is mechanically
+  derivable (kind from directory, slug from filename, title from first
+  heading), a filing **move** (`git mv` to the correct page-kind directory,
+  rewriting inbound refs in the same commit), and a **slug-form correction**
+  (same — rewrite every inbound `[[slug]]` in the same commit). All are
+  git-reversible.
+- **Drop** — anything whose correct value is not mechanically derivable: an
+  ambiguous `YAML_PARSE`, a `MISSING_OPEN` / `EMPTY_FRONTMATTER` page whose
+  content yields no spine values. Counted in `metrics.dropped`, never queued.
+- **Output.** Emit the fenced-yaml phase result — `committed[]`, `notable[]`,
+  `metrics` (`pages_scanned`, counts per validation class, `fixes_applied`,
+  `dropped`); no `cursor`. No chaining — surface a slug/identity duplicate as a
+  `notable:` entry for `entity-resolution` rather than acting on it.
 
 ## Anti-patterns
 
-- Auto-fixing `MISSING_OPEN` or `EMPTY_FRONTMATTER` — these need a human; the
-  page is an unfinished draft, not corruption.
-- In phase mode: auto-fixing a slug rename or a filing move — both rewrite
-  inbound references, so both are proposed, never committed.
+- `MISSING_OPEN` / `EMPTY_FRONTMATTER` with no derivable spine values — drop and
+  count; never invent page content to fill them.
+- A filing move or slug rename WITHOUT rewriting inbound references in the same
+  commit — the rewrite is part of the repair.
 - Rewriting `kind` to silence a `KIND_MISMATCH` when the page is actually in the
   wrong directory — that is a filing move, not a field edit.
 - Leaving `.bak` files behind. Git history is the safety net.

@@ -28,8 +28,10 @@ the instance's private `docs/specs/`.
 > this authors), `frontmatter.md` + `graph-and-links.md` (concept fields,
 > forward-only child→parent edges), `quality.md` (the notability gate,
 > cite-or-flag), `_output-rules.md` (verbatim-quote fidelity),
-> `rem-cycle-contract.md` (the `QUEUE.md` propose surface bottom-up candidates
-> land on), `test-before-bulk.md` (test the extraction on a sample first),
+> `rem-cycle-contract.md` (the binary gate — this skill is a waking,
+> conversational bootstrap, so its candidates land in the inventory for
+> your human's approval, not in any queue), `test-before-bulk.md` (test the
+> extraction on a sample first),
 > `skills/conventions/capabilities.md`. Character: `SOUL.md` — **ingest with your own hands** (author
 > concepts yourself; delegate only the ephemeral scan), propose-not-auto,
 > cite-or-flag.
@@ -49,9 +51,10 @@ in the vault — it fetches nothing.
   **≥1 legitimately plausible candidate hypothesis** marinates in it. Sharp bets
   are Frontier candidates, never their own concepts; a bare topic with no
   plausible bet inside it is not admitted.
-- **Two-stage, propose-not-auto.** Top-down concepts materialize **only after
-  your human approves the inventory**; bottom-up candidates are proposed to `QUEUE.md`
-  and materialize only on approval. Nothing is auto-authored.
+- **Two-stage, approve-first.** Top-down concepts materialize **only after
+  your human approves the inventory**; bottom-up candidates ride in the same
+  inventory (clearly marked) and materialize only on approval. Nothing is
+  auto-authored.
 - **Authoring is never delegated.** Subagents do the Phase-1 scan (ephemeral
   reconnaissance over already-ingested material); the mind authors every durable
   concept page itself (`SOUL.md`).
@@ -91,8 +94,8 @@ in the vault — it fetches nothing.
 
 3. **Inventory checkpoint** *(human-in-the-loop).* Present the top-down inventory
    for your human to **approve / prune / merge / rename** before any page is authored
-   (format in Output). Route bottom-up umbrellas to `QUEUE.md` as concept
-   proposals (`rem-cycle-contract.md`) — drained only by your human. Author nothing
+   (format in Output). Bottom-up umbrellas ride in the same inventory, marked as
+   bottom-up — approved or pruned in the same conversation. Author nothing
    until the inventory is approved.
 
 4. **Author approved concepts** *(the mind, own hands).* For each approved
@@ -123,8 +126,8 @@ in the vault — it fetches nothing.
 
 - **Authored concept pages** in the canonical anatomy, each lint-clean
   (`lint-frontmatter.py`) with a seeding `## Shifts` provenance entry.
-- **Bottom-up candidates** appended to `docs/rem-cycle/QUEUE.md` as concept
-  proposals (highest-confidence first), never auto-materialized.
+- **Bottom-up candidates** listed in the inventory (marked bottom-up), never
+  auto-materialized.
 - **`rests_on` edits** on the relevant projects/grants, surfaced in the Phase-5
   batched review.
 - **A refreshed `concepts/README.md`** (via `concept-synthesis`).
@@ -137,8 +140,7 @@ in the vault — it fetches nothing.
   Frontier bullets until an explicit promotion.
 - Delegating the *authoring* to a subagent — the Phase-1 scan is delegable, the
   concept prose is not (`SOUL.md`).
-- Materializing any concept before your human approves the inventory; auto-clearing or
-  auto-approving `QUEUE.md`.
+- Materializing any concept before your human approves the inventory.
 - Duplicating or blind-overwriting the 2 existing concepts instead of folding /
   reformatting them.
 - Generic umbrella names ("machine learning", "antibodies"). If you cannot state

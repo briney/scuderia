@@ -19,7 +19,7 @@ Where `reinforce` reports facts and `concept-coalesce` aggregates them, intersec
 does the one thing only judgment can: it asks, **across the entire corpus, what
 is the single highest-value thing for your human to look at right now.** It reads
 everything — concepts, notes, hypotheses, grants, papers, projects — and emits
-**one** candidate into the dream report. Not a page, not a QUEUE proposal: an
+**one** candidate into the dream report. Not a page, not a queue item: an
 attention target, explicitly labeled as opinion.
 
 The standard is the *perfect-home-page* ideal: a page so well-tuned it shows one
@@ -62,6 +62,10 @@ holds.
 
 1. **Scan.** Enumerate candidate attention targets across the corpus, without
    restricting to the synthesis layer. Sources of a candidate:
+   - **tonight's `notable:` signals first** — when run as a rem-cycle phase,
+     read that night's `docs/rem-cycle/runs/<date>/*.yaml` and collect their
+     `notable:` entries (contradictions, suspected entity pairs, key-conflicts,
+     ripe concepts, unsynthesized clusters),
    - a concept whose `## Shifts` log has accumulated new facts that, read
      together, point somewhere (a tension, a convergence, a gap),
    - two-plus concepts whose frontiers have drifted toward one another,
@@ -83,17 +87,16 @@ holds.
 
 ## As a rem-cycle phase
 
-The **nightly** phase (phase 8; `rem-cycle-contract.md`). The orchestrator passes
-
-`mode`; intersect is surface-only, so `dry-run` and `normal` are equivalent —
-it writes no page, only the phase result:
+The **nightly** phase (phase 8; `rem-cycle-contract.md`). intersect is
+surface-only — it writes no page, only the phase result:
 
 - **`committed[]`** — empty (intersect writes nothing to the graph).
-- **`proposed[]`** — empty (it does not queue; it reports).
+- **`notable[]`** — empty (intersect consumes tonight's signals; it reports).
 - **Phase-specific field** — the surfacing itself rides in the result file as a
   `surfacing:` block (see below), which the aggregator lifts into the report's
   "One thing" section.
-- **`metrics`** — `candidates_scanned`, `candidates_ranked`, `surfaced` (1).
+- **`metrics`** — `candidates_scanned`, `candidates_ranked`,
+  `notable_signals_seen`, `surfaced` (1).
 
 ```yaml
 surfacing:

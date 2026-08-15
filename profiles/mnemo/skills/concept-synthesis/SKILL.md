@@ -173,36 +173,34 @@ Recurring frameworks that span the research program.
 
 ## As a rem-cycle phase
 
-Invoked by the orchestrator as part of **phase 5 (consolidation)**, under
-`skills/conventions/rem-cycle-contract.md`. The graph is your human's to curate, so the dream
-**proposes** every generative change and auto-commits only the mechanical:
+Runs as its own cron job as part of **phase 5 (consolidation)**, under
+`skills/conventions/rem-cycle-contract.md` (binary gate, 2026-08-15):
 
-- **Mode.** `dry-run` (report only) or `normal` (auto-commit the mechanical,
-  queue the rest).
-- **Tiers:**
-  - *Auto* → `committed[]`: the tier recompute (T1–T4, `category: tier`), the
-    `concepts/README.md` map refresh (`category: map-refresh` — a derived,
-    regenerable index), and an **exact-duplicate** stub merge.
-  - *Propose* → `proposed[]`: a **fuzzy / semantic** concept merge (a corpus-wide
-    reference rewrite — the `entity-resolution` rule; a body wikilink and a typed
-    edge for one pair stay distinct), and the **synthesis** of a T1/T2 concept
-    (authoring durable prose is generative — `category: synthesis`, with a draft
-    outline for your human to approve; author on approval, never in the dream).
+- **Commit** → `committed[]`: the tier recompute (T1–T4, `category: tier`), the
+  `concepts/README.md` map refresh (`category: map-refresh` — a derived,
+  regenerable index), an **exact-duplicate** stub merge, and a fuzzy/semantic
+  concept merge ONLY when the two nodes are verifiably the same idea (same
+  sources, same referent — fold + corpus-wide reference rewrite in one commit).
+- **Drop** → counted in `metrics.dropped`: a fuzzy merge whose same-idea
+  verification fails.
+- **Notable** → `notable[]`: a T1/T2 concept whose durable prose is stale
+  relative to its Shifts — authoring that prose is generative (opinion), so
+  the dream detects ripeness and signals it; the synthesis happens in
+  conversation.
 - **Tiering applies to all concept pages.** Ambient idea-stubs tier on
   frequency/timespan signals; literature-syntheses tier on their own signal
   basis — inbound edge count, shift count, grant/project `rests_on:` usage.
   The consolidation phase recomputes tiers weekly regardless of whether
   ambient stubs exist; only the dedup/merge side stays stub-driven.
 - **Output.** The fenced-yaml phase result — `metrics` (`concepts_scanned`,
-  `merged_auto`, `merges_proposed`, `retiered`, `syntheses_proposed`). No
-  chaining.
+  `merged_auto`, `retiered`, `dropped`). No chaining.
 
 ## Anti-patterns
 
 - Running the full dedup pass without testing it on a sample first
   (`skills/conventions/test-before-bulk.md`).
-- In phase mode: auto-authoring a T1/T2 synthesis or auto-merging a fuzzy
-  duplicate — both are generative / reference-rewriting; propose them.
+- Authoring a T1/T2 synthesis in the dream — generative prose is
+  conversation-only; emit a `notable:` ripeness signal instead.
 - Synthesizing T3/T4 — they may never sharpen; the synthesis effort is wasted.
 - Hallucinating a quote or a date — the `Shifts` entries must be verifiable
   against the source pages.

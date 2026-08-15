@@ -48,9 +48,11 @@ profile; do not hardcode one profile's path):
   form (Europe PMC gate → PMC XML → EPMC PDF → bioRxiv/jina → publisher
   jina → Wayback) with retries/backoff. Prints JSON whose `provenance`
   value is the page's `fulltext_source:` tag. `--figures` additionally
-  scrapes figure images (Phase 4). Prefer the script over hand-walking
-  the tree; hand-walk only when its sources all miss (`provenance:
-  none`) and judgment is needed about exotic alternatives.
+  scrapes figure images (Phase 4). **Required args:** `--out <path>`
+  (output text file); optional `--pmid`, `--doi`, `--pmcid`,
+  `--publisher-url`, `--skip-publisher`. Prefer the script over
+  hand-walking the tree; hand-walk only when its sources all miss
+  (`provenance: none`) and judgment is needed about exotic alternatives.
 - **`validate_identifiers.py`** — pre-dispatch identifier validation
   (Phase 3.5). Verifies that a candidate PMID/DOI/PMCID resolves to the
   intended paper BEFORE a subagent is dispatched. `--batch` JSON +
@@ -74,9 +76,30 @@ profile; do not hardcode one profile's path):
   blocked script is saved under the profile's `cache/blocked-scripts/`
   — run it via `bash <path>`.
 - **E-utilities rate limits.** Rapid sequential calls return HTTP 429 /
-  `{"error":"API rate limit exceeded"}`. Batch ID lookups into single
-  `esummary` calls, sleep 3–5s between sequential calls, never loop on
-  429 (three consecutive → wait 15+s). Transient, not a permanent block.
+  a JSON body like `{"error":"API rate limit exceeded"}`. Batch ID
+  lookups into single `esummary` calls, sleep 3–5s between sequential
+  calls, never loop on 429 (three consecutive → wait 15+s). Transient,
+  not a permanent block. **Silent rate-limit corruption:** a rate-limited
+ `efetch` can return HTTP 200 (curl exit 0) with the JSON error *body*
+ written to the output file — `curl -s -o /tmp/x.xml` succeeds, `wc -c`
+ is non-zero (~85 bytes), and only `ET.fromstring` failing with
+ "mismatched tag" reveals the file is JSON, not XML. Always validate
+ that a fetched XML/JSON file starts with its expected token (`<?xml` /
+ `{`) before parsing; a rate-limit body masquerades as a valid
+ download. On a parse error mid-pipeline, re-fetch after a 15+s sleep
+ rather than diagnosing the parser. **Phase-1 shortcut when PubMed
+ efetch rate-limits but the EPMC gate already succeeded:** the Phase 4
+ branch-0 Europe PMC core record (always fetched first for PubMed
+ papers) carries every Phase 1 identity field — title, authorString,
+ authorList (LastName/FirstName/initials/ORCID/affiliations), doi,
+ pmcid, pubTypeList (retraction detection), meshHeadingList,
+ grantsList, abstractText. When PubMed efetch returns the rate-limit
+ JSON body, do NOT block on retrying PubMed; finish Phase 1 from the
+ already-fetched EPMC record and proceed (He & Xu 2026, Cell Res:
+ PubMed efetch 429 → EPMC core record resolved title, both ORCIDs, both
+ affiliations, pubTypeList, MeSH, grants, abstract — full identity
+ without a PubMed retry). Fetching the branch-0 gate first is free
+ insurance against this exact failure.
 - **arXiv API curl is blocked on this host.** Direct `curl` to
   `export.arxiv.org` times out at the approval gate. Use the paperclip
   mirror or the jina abs-page proxy instead (Phase 1 arXiv branch).
@@ -248,6 +271,8 @@ correct via one batch call).
 and prints the `fulltext_source` tag. Hand-walk only when it returns
 `provenance: none`.
 
+**PMCID extraction pitfall.** When parsing the PubMed XML for the PMCID, `root.findall(".//ArticleId")` iterates ALL `<ArticleId>` elements in the entire document — including those embedded in the paper's `<ReferenceList>`. A reference-list PMC ID can overwrite the article's own, and the LAST match wins in a simple loop. Observed: PMID 29163822's first parse returned `PMC2815670` (from a reference) instead of the correct `PMC5685743`. **Fix:** scope the search to the article's own `<ArticleIdList>` (a child of `<PubmedArticle>`, not inside `<CommentsCorrections>` or `<ReferenceList>`): `root.find(".//ArticleIdList")` and iterate only its direct `<ArticleId>` children. Cross-check: the PubMed abstract text endpoint also prints `PMCID: PMCxxxx` on its last line — a free second source. The same scoping applies to DOI extraction — prefer `<ELocationID EIdType="doi">` inside the article element over a bare `findall` that can match reference DOIs.
+
 **Branch 0 — Europe PMC gate (one call, always first for PubMed papers):**
 
 ```bash
@@ -261,15 +286,34 @@ are N/None AND the DOI resolves to a known-blocked publisher (table
 below), fall straight to branch 3 — the publisher round-trip is
 deterministic waste.
 
+**A PMCID in PubMed XML overrides stale Europe PMC flags.** The EPMC
+core record's `isOpenAccess`/`inPMC`/`hasPDF` flags are *not* always
+fresh — for Ivyspring and other smaller-OA/eCollection publishers they
+have been observed all-N while `efetch db=pmc&id=<PMCID>` returns the
+complete XML (Zhao 2026, ijbs.133650: EPMC `inPMC: N`/`isOpenAccess:
+N`/`hasPDF: N`/`pmcid: None`, yet PMC XML efetch delivered 238 KB; see
+`references/epmc-flag-staleness.md`). The gate above is a
+*publisher-block* fast-path, not an OA authority. **Whenever a PMCID
+appears in the Phase-1 PubMed XML (`<ArticleId IdType="pmc">`), always
+attempt `efetch db=pmc` (Branch 1) before falling to Branch 3** — the
+PMCID's presence is the stronger OA signal than EPMC's flags. Only
+declare abstract-only when `efetch db=pmc` itself returns front-matter
+only or an error, not when EPMC merely says N. (Mirrors Branch 1b's
+"delivers the publisher PDF even when `isOpenAccess: N`, as long as
+`inPMC: Y`", extended to the case where EPMC reports `inPMC: N` yet
+PubMed's own record carries the PMCID.)
+
 **Branch 1 — PMC open access.** With a PMCID and `isOpenAccess: Y`:
 
 ```bash
-curl -sL "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&id=<PMCID>&rettype=xml" -o /tmp/paper.xml
-python3 scripts/pmc_xml_body_parser.py /tmp/paper.xml --full
+curl -sL "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&id=<PMCID>&rettype=xml" -o /tmp/<pmid>_paper.xml
+python3 scripts/pmc_xml_body_parser.py /tmp/<pmid>_paper.xml --full
 ```
 
 Structured XML (`<sec>`/`<p>`/`<xref>`), complete reference list — the
-preferred path for OA papers. If terminal curl is denied, the browser
+preferred path for OA papers. Always prefix `/tmp` artifacts with the
+PMID (not bare `/tmp/paper.xml`) — parallel siblings share `/tmp` and a
+generic name gets silently overwritten (see Concurrency hazards). If terminal curl is denied, the browser
 fallback: `browser_navigate` to `https://pmc.ncbi.nlm.nih.gov/articles/<PMCID>/`,
 then `browser_console` with
 `document.querySelector('article')?.innerText?.substring(N, N+15000)`,
@@ -488,6 +532,37 @@ A task instruction "do NOT create author ledger entries" scopes to
 Branch 3 only — Branch 1 `author_on:` updates on existing person pages
 are still required.
 
+**"Write ONLY the paper page" (stronger scope — literature-dive
+subagent delegation).** When an orchestrator delegates with "Write
+ONLY the paper page — do NOT create author ledger entries. Return
+author list in your summary", this is a **stronger** scope than "do
+NOT create ledger entries" alone: skip ALL of Phase 8 (Branch 1/2/3 —
+no person-page `author_on:` updates, no ledger `citations:` appends,
+no new entries). Still perform the **pre-write slug alignment** below
+(search the ledger AND person pages by surname) so the frontmatter
+`authors:` list uses correct existing slugs where they exist — this
+ensures the orchestrator's centralized wiring will match. Return the
+complete author list (ordered, with names, ORCIDs, and proposed slugs)
+in the task summary for the orchestrator to wire. `verify_ingest.py`
+will report unresolved authors — this is **expected** for this scope,
+not a failure (see Phase 10).
+
+**Conflation check under stronger scope (mandatory).** When the
+pre-write slug alignment finds an existing ledger entry matching an
+author by surname, do NOT assume it's the same person — compare the
+paper's PubMed affiliation against the entry's `affiliations:`. If
+they disagree on institution or geography, the entry conflates two
+different people (observed: `shi-yi` in the ledger is Yi Shi at Mount
+Sinai; a paper's Shi Yi at Institute of Microbiology CAS is a
+different person). Under the stronger scope you cannot create a
+disambiguated entry, so the frontmatter `authors:` list will
+reference a wrong-person slug — and `verify_ingest.py` will report
+it as **resolved** (silent error). Flag this prominently in the
+Ingest log: name the conflated slug, both people, and propose a
+disambiguated slug (e.g. `shi-yi-cas-im`) for the orchestrator's
+wiring pass. If no task-level scope prevented ledger writes, the
+standard conflation protocol (below) applies instead.
+
 **Pre-write slug alignment (mandatory).** Before writing `authors:` or
 appending anything, search BOTH the ledger and person pages by SURNAME:
 `grep -i "name:.*<LastName>" people/_ledger.yaml` (the ledger is a dict
@@ -522,11 +597,47 @@ likewise):
 ```python
 import unicodedata, re
 def slugify(s):
+    # Pre-map non-decomposing diacritics (NFKD alone strips them to nothing)
+    _pre = {'ł':'l','Ł':'l','ø':'o','Ø':'o','đ':'d','Đ':'d','ð':'d','Ð':'d',
+            'ı':'i','İ':'i','ß':'ss','þ':'th','Þ':'th','æ':'ae','Æ':'ae',
+            'œ':'oe','Œ':'oe','ŋ':'n','Ŋ':'n','ə':'e','Ə':'e'}
+    for k,v in _pre.items():
+        s = s.replace(k,v)
     s = unicodedata.normalize('NFKD', s).encode('ascii','ignore').decode()
     return re.sub(r'[^a-z0-9]+', '-', s.lower()).strip('-')
 ```
 
-The frontmatter `authors:` list and the ledger `slug:` field MUST use
+**Why the pre-map:** `NFKD` decomposes most accented Latin characters
+(á→a, ü→u, ñ→n) but does NOT decompose certain characters — Polish
+Ł/ł, Scandinavian Ø/ø, Vietnamese/Icelandic Đ/ð, Turkish ı/İ, German
+ß, and ligatures æ/œ. Without the pre-map, `.encode('ascii','ignore')`
+strips them entirely: `Łukasz`→`ukasz` (should be `lukasz`),
+`Ciesiołkiewicz`→`Ciesiokiewicz` (should be `Ciesiolkiewicz`),
+`Søren`→`Sren` (should be `soren`). Observed in the Rodriguez 2023
+pAC65 ingest (13 Polish authors, 2 with Ł/ł). The pre-map is a small
+closed set — add entries as new non-decomposing diacritics are
+encountered.
+
+**Korean/Asian name misparsing in PubMed XML.** PubMed sometimes
+splits Korean (and potentially other Asian) names incorrectly: a
+two-syllable given name + one-syllable surname like "Tae Won Heo"
+is parsed as `LastName="Won Heo"`, `ForeName="Tae"` instead of the
+correct `LastName="Heo"`, `ForeName="Tae Won"`. This produces a wrong
+slug (`won-heo-tae` instead of `heo-tae-won`) and a wrong display
+name. **Detection signal:** a `<LastName>` containing a space
+(two words) is almost always a misparse — genuine compound surnames
+(van der Berg, de la Cruz) are rare in PubMed XML and usually carry
+particles. **Fix:** cross-check with CrossRef
+(`api.crossref.org/works/<doi>` → `message.author[].given` and
+`message.author[].family`), which correctly separates Korean
+given/family names (observed: Lee 2016 ncomms13354, CrossRef
+`given="Tae Won"`, `family="Heo"`). Use the CrossRef split for both
+the slug (`<family>-<given>`) and the `name:` display field. This
+check is cheap — the CrossRef fetch is already the third ORCID
+source (Phase 8), so inspect `given`/`family` for any author whose
+PubMed `<LastName>` contains a space.
+
+**The frontmatter `authors:` list and the ledger `slug:` field MUST use
 identical slugs — the lint resolves by exact string match. Build the
 slug list once, use it for both. The ledger `name:` display field
 retains diacritics. When a parent task explicitly specifies
@@ -616,6 +727,51 @@ pass. Cover ALL new entries, not just suspected collisions.
 
 Exit 0 = commit-ready. Run after every ingest, before commit.
 
+**Delegated ingests that skip the author ledger.** A task may instruct
+"do NOT create author ledger entries" (common for `literature-dive`
+subagents that return the author list to the parent for later wiring).
+Two scopes exist — check which one the task used:
+
+- **"do NOT create author ledger entries"** — scopes to Phase 8
+  Branch 3 (new ledger entries) only. Branch 1 `author_on:` updates on
+  existing person pages are still required. `verify_ingest.py` will
+  report only the authors with no ledger entry and no person page.
+- **"Write ONLY the paper page"** — stronger scope: skips ALL of
+  Phase 8 (Branch 1/2/3). No person-page or ledger mutations at all.
+  `verify_ingest.py` will report only the authors with NO pre-existing
+  person page or ledger entry as unresolved — it checks slug existence
+  (person page OR ledger entry), not whether the current paper's
+  citation was appended, so authors that already have a ledger entry
+  or person page from a prior ingest resolve correctly. When ALL
+  authors are new (none have any prior entry — common for a review
+  whose authors are not yet in the brain), ALL will be unresolved.
+  **This is the expected state, not a bug.**
+
+In both scenarios `verify_ingest.py` will report `authors: N checked,
+M UNRESOLVED` and exit 1. **This is the expected state, not a bug.**
+Triage the UNRESOLVED list: any slug that DOES have a pre-existing ledger
+entry (e.g. `domling-alexander` cited by an earlier paper) resolved
+correctly — the script only flags slugs with no entry at all. The
+remaining unresolved slugs are deferred to the parent's wiring pass; do
+NOT create ledger entries just to silence the verifier. Check the other
+four invariants (frontmatter, links, cited_by, ledger health); if those
+pass, the page is commit-ready. Log in the Ingest log: "Phase 10: N
+authors unresolved — deferred to parent per task constraint (no ledger
+entries created)."
+
+**Resolved-but-conflated slugs (stronger scope).** A resolved slug is
+not necessarily a correct slug. Under the stronger scope the pre-write
+alignment may have found a same-surname entry that is actually a
+different person (see "Conflation check under stronger scope" above).
+`verify_ingest.py` counts these as resolved — it checks slug existence,
+not person identity. Manually review each resolved slug's `affiliations:`
+against the paper's PubMed affiliations before declaring commit-ready.
+Flag any conflation in the Ingest log; the page is still commit-ready
+(the frontmatter `authors:` list is the authoritative authorship record;
+a wrong-person slug is a wiring error the orchestrator's entity-resolution
+pass will fix, not a page-corruption event), but the flag must be visible
+so the orchestrator doesn't silently wire to the wrong person.
+
 ## Concurrency hazards (parallel sibling ingests)
 
 `ingest-pending-papers` and `literature-dive` run this pipeline in
@@ -626,6 +782,18 @@ general rules: `patch` never `write_file` on shared files; on a
 sibling-modification warning, re-read and re-patch against current state
 (the sibling's entry is legitimate graph state); verify after every
 mutation — a clean exit code proves nothing.
+
+- **`/tmp` file collisions.** Sibling subagents share the `/tmp` filesystem.
+  Generic filenames like `/tmp/paper.xml` or `/tmp/paper_body.txt` are
+  overwritten by a sibling's own fetch, silently swapping the parsed body
+  for a DIFFERENT paper. Observed: a sibling's PMC XML fetch overwrote
+  `/tmp/paper.xml` mid-session, replacing the atezolizumab body with a
+  BMS-8/BMS-202 small-molecule paper body. **Fix:** use a unique path per
+  paper — prefix all `/tmp` artifacts with the PMID or slug (e.g.
+  `/tmp/<pmid>_paper.xml`, `/tmp/<slug>_body.txt`), never bare
+  `/tmp/paper.xml`. Re-validate the body content immediately before
+  distillation (grep for the paper's title or a key term) to catch any
+  collision that slipped through.
 
 - **`cited_by` / `links:` appends.** A sibling's append can land between
   your read and your write; `write_file` clobbers it silently. Use
@@ -727,6 +895,17 @@ text both survive a fully blocked terminal.
   ledger append+verify procedure. `scripts/verify_ingest.py` was
   written during the assembly — the verification companion had
   referenced it since 2026-08-01 without it existing.
+- **2026-08-15 — verify_ingest.py resolution semantics fix.** The Phase
+  10 "stronger scope" bullet claimed `verify_ingest.py` reports ALL
+  authors as unresolved under "Write ONLY the paper page" — "even
+  those with existing ledger entries or person pages." This is factually
+  wrong: the script checks slug existence (person page OR ledger
+  entry), not whether the current paper's citation was appended, so
+  pre-existing entries resolve correctly. Corrected to "reports only
+  authors with NO pre-existing entry as unresolved." (Almagro 2026
+  anti-PD-1 review: 10/10 authors unresolved because none had prior
+  entries — the all-new case — confirming the script reports only
+  genuinely missing slugs.)
 - **Prior history** (from the deleted patches, all validated in live
   sessions): seed-DOI cross-check, PMC full-text path (2026-07-17);
   Nature.com path, erratum disambiguation, Europe PMC ORCIDs, sibling
@@ -747,3 +926,18 @@ text both survive a fully blocked terminal.
   published-field routes, 10.64898 prefix, jina retry discipline,
   .full.pdf variant, browser-direct bioRxiv, Wayback CDX caveats,
   CrossRef ORCID third line, inbox fuzzy-clobber (2026-08-12).
+- **2026-08-15 — slugify pre-map for non-decomposing diacritics.** The
+  `slugify()` function in Phase 8 used `NFKD` + `.encode('ascii','ignore')`,
+  which silently strips non-decomposing diacritics (Ł→'', ł→'', Ø→'', ß→'')
+  instead of folding them to their base letters. Observed in the
+  Rodriguez 2023 pAC65 ingest: `Łukasz`→`ukasz` instead of `lukasz`,
+  `Ciesiołkiewicz`→`Ciesiokiewicz` instead of `Ciesiolkiewicz`. Added a
+  pre-map dict for the known closed set of non-decomposing Latin-script
+  diacritics before the NFKD normalization.
+- **2026-08-15 — Korean name misparsing in PubMed XML.** PubMed
+  splits "Tae Won Heo" as `LastName="Won Heo"`, `ForeName="Tae"`
+  instead of the correct `LastName="Heo"`, `ForeName="Tae Won"`,
+  producing a wrong slug (`won-heo-tae` vs `heo-tae-won`). CrossRef
+  `given`/`family` fields carry the correct split. Added a Phase 8
+  note: when a PubMed `<LastName>` contains a space, cross-check
+  CrossRef and use its split. (Lee 2016 ncomms13354 ingest.)

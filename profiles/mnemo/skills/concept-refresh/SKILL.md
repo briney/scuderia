@@ -1,10 +1,12 @@
 ---
 name: concept-refresh
 description: >
-  Re-synthesize a concept's Thesis/Frontier when its Shifts log has outrun it —
-  ≥3 shifts since thesis_updated. Drafts the refresh grounded in those shifts,
-  every sentence traceable to a cited shift; always propose-tier. Weekly
-  rem-cycle delegate (phase 5b) or standalone ("refresh the concepts").
+  A concept whose Shifts log has outrun its Thesis (≥3 shifts since
+  thesis_updated) is ripe for re-synthesis. In the scheduled rem-cycle
+  (phase 5b) this skill is DETECTION-ONLY — it emits notable: ripeness
+  signals, never drafts. Standalone ("refresh the concepts"), it drafts the
+  refresh grounded in those shifts and lands it in conversation with your
+  human — the rewrite is generative, so the waking path owns it.
 triggers:
   - "refresh the concepts"
   - "which concepts outran their thesis"
@@ -15,70 +17,61 @@ triggers:
 
 `reinforce` appends shifts to a concept's `## Shifts` log; nothing integrates
 them into the Thesis. A concept with ten shifts still carries the Thesis it was
-seeded with — the cortical rewrite step is missing. This skill is that step:
-when a concept's log has outrun its prose, draft the refreshed Thesis/Frontier
-**grounded in those shifts**, and queue it for your human. Propose-tier only — the
-rewrite is generative, so your human owns landing it (via `queue-drain`).
+seeded with — the cortical rewrite step is missing. This skill is that step,
+and it has two modes with different powers:
+
+- **Scheduled (rem-cycle phase 5b): DETECTION ONLY.** Thesis/Frontier prose is
+  opinion, and opinion is never written — or drafted — by the dream
+  (`rem-cycle-contract.md`, 2026-08-15 binary gate). The phase scans for
+  ripeness and emits one `notable:` entry per ripe concept. Tonight's
+  `intersect` reads the signal; a genuinely important one competes for the
+  dream report's One-thing slot.
+- **Standalone (waking): full draft.** Run in conversation, this skill drafts
+  the refreshed Thesis/Frontier grounded in the shifts and lands it with your
+  human present — the drafting procedure below governs this path.
 
 > **Conventions:** `synthesis-layer-pages.md` (concept anatomy, the Shifts
 > format), `frontmatter.md` (`thesis_updated:`), `rem-cycle-contract.md` (the
-> phase result, propose tier, the evidence rule), `quality.md` (cite-or-flag).
-> Character: `SOUL.md` — no fabricated confidence; every sentence of the draft
+> phase result, the binary gate, notable signals), `quality.md` (cite-or-flag).
+> Character: `SOUL.md` — no fabricated confidence; every sentence of a draft
 > traces to a cited shift.
 
-## Capabilities
+## The ripeness scan (both paths)
 
-`brain-read`, `brain-write` (the QUEUE proposal only). Universal; no external
-I/O — the draft is grounded in pages already in the graph.
+Scan `concepts/*.md` (skip README.md); parse `thesis_updated:` and the dated
+`## Shifts` entries (`### YYYY-MM-DD —`). Candidates: pages with ≥3 shift
+entries dated after `thesis_updated`. A shift-poor concept produces nothing —
+silence is correct.
 
-## What this guarantees
+## Scheduled path — signal, never draft
 
-- **Grounded, never invented.** Every sentence of the drafted Thesis/Frontier
-  traces to a cited shift entry (or to the page's existing prose, quoted). If
-  the shifts don't support a sentence, the sentence doesn't ship.
-- **Propose-tier always.** The concept page is never written by this skill —
-  the draft rides in `QUEUE.md` as a `thesis-refresh` proposal carrying the
-  full replacement text and the shift list. your human approves via `queue-drain`;
-  execution is a queue-drain work order like any other.
-- **Selective.** Only concepts with ≥3 shifts dated after `thesis_updated:` are
-  candidates. A shift-poor concept produces nothing — silence is correct.
-- **`[unconfirmed]` shifts count but are flagged** — the draft marks which of
-  its load-bearing movements are still unconfirmed, so your human sees the trust
-  surface he's approving.
+For each candidate emit ONE `notable:` entry: `what` = "concepts/<slug> is N
+shifts behind its Thesis", `why` = one line naming what the shifts collectively
+moved (and what they do NOT yet establish, if it tempers the signal),
+`sources` = the shift source-paper slugs. Phase result: `committed[]` empty,
+`metrics`: `concepts_scanned`, `candidates`. No cursor — the scan is cheap
+(frontmatter + heading dates).
 
-## Phases
+## Standalone path — draft and land in conversation
 
-1. **Select.** Scan `concepts/*.md`; parse `thesis_updated:` and the dated
-   `## Shifts` entries (`### YYYY-MM-DD —`). Candidates: pages with ≥3 shift
-   entries dated after `thesis_updated`.
+1. **Select** per the ripeness scan; report the candidate list.
 2. **Draft.** For each candidate, rewrite `## Thesis` and `## Frontier`
    integrating the shifts: the current best statement now reflects what the
    shifts moved; Frontier maturity markers advance where the shifts warrant.
-   Preserve your human's verbatim quotes exactly (`_output-rules.md`). Every claim
-   cites its shift's trigger page. Name what the shifts collectively moved —
-   and what they did *not* establish (the edge).
-3. **Propose.** Emit one `proposed[]` entry per candidate
-   (`category: thesis-refresh`): target = the concept, `change` = "replace
-   Thesis/Frontier with the drafted rewrite", the full draft + the shift list
-   in the entry body, confidence, and a count of `[unconfirmed]` shifts the
-   draft leans on. Never write the concept page.
-4. **Return** the phase result (rem-cycle-contract.md) or, standalone, a
-   conversational summary — including a plain "no concept has outrun its
-   thesis" when that is the answer.
-
-## As a rem-cycle phase
-
-Phase 5b (weekly, after consolidation). `committed[]` is normally empty;
-`proposed[]` carries the refresh drafts, deduped against QUEUE.md and
-`decisions.yaml`. `metrics`: `concepts_scanned`, `candidates`, `drafts_proposed`.
-No cursor — the scan is cheap (frontmatter + heading dates).
+   Preserve your human's verbatim quotes exactly (`_output-rules.md`). Every
+   claim cites its shift's trigger page. Name what the shifts collectively
+   moved — and what they did *not* establish (the edge). Mark which
+   load-bearing shifts are `[unconfirmed]`.
+3. **Land it with your human** — show the draft, take edits, write the page
+   only on his go-ahead (never blind-overwrite; read current state first).
 
 ## Anti-patterns
 
 - Manufacturing a refresh for a shift-poor concept — the ≥3-shift gate is the
   whole select step.
+- Drafting Thesis/Frontier prose in the scheduled phase — detection only;
+  the dream never authors opinion.
 - Paraphrasing or inventing your human's quotes — verbatim only, or omit.
-- Writing the concept page — propose-tier always; landing is your human's act.
 - A draft sentence with no shift citation — grounded or gone.
-- Dropping the `[unconfirmed]` flag on a shift the draft leans on — the trust
-  surface must survive into the proposal.
+- Dropping the `[unconfirmed]` flag on a shift a draft leans on — the trust
+  surface must survive into the draft.

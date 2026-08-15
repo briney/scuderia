@@ -43,9 +43,9 @@ it never fetches.
 - **Facts only, no opinion.** An entry states what the source showed, in its own
   terms, with a citation. No "this establishes", no "this overturns", no
   maturity-marker bumps, no classification of reinforce/complicate/contradict.
-- **Fully autonomous.** Every entry is a fact and auto-commits (no approval, no
-  proposal). The `[auto-approved … · revert: git revert <sha>]` banner and the
-  QUEUE.md `[x]` record are the audit trail, not a gate.
+- **Fully autonomous.** Every entry is a fact and commits under the binary gate
+  (no approval, no proposal). The git commit and the phase result's
+  `committed[]` record (with post-edit evidence spans) are the audit trail.
 - **Factual accuracy is the one hard line.** The "Shown" line must be true to the
   source. If a claim cannot be grounded in the source, it is not written — there
   is no hedge large enough to license a wrong fact (`SOUL.md` spine).
@@ -96,23 +96,22 @@ it never fetches.
 
 ## As a rem-cycle phase
 
-Phase 6 of the pipeline (`rem-cycle-contract.md`). The orchestrator passes `mode`;
+Phase 6 of the pipeline (`rem-cycle-contract.md`), run as its own cron job.
+The scheduled job parallelizes by delegation (contract § Delegation) — shard
+delegates extract compact entries, the primary validates and writes serially.
+This skill returns the fenced-yaml phase result:
 
-this skill returns the fenced-yaml phase result:
-
-- **Mode:** `dry-run` (report intended entries in `committed[]`, write nothing) or
-  `normal` (auto-append the facts-only entries).
 - **`committed[]`** — the appended entries (`category: evidence-append`), each
-  carrying the cited source and the shown-fact span. `proposed[]` is normally
-  empty — there is no propose lane for facts.
+  carrying the cited source and the post-edit shown-fact span. There is no
+  propose lane for facts.
 - **`cursor`** — the date watermark, advanced to this run's date; **`metrics`** —
-  `papers_scanned`, `concepts_touched`, `entries_committed`, `no_ops`.
+  `papers_scanned`, `concepts_touched`, `entries_committed`, `no_ops`,
+  `dropped`.
 
 ## Output
 
 - **Auto-appended entry** — a facts-only `## Shifts` entry in the canonical format
-  (`synthesis-layer-pages.md`), with the `[auto-approved …]` banner at the edit
-  site.
+  (`synthesis-layer-pages.md`).
 - **Standalone** — a conversational summary: what was appended, what was no-op'd.
 
 ## Anti-patterns

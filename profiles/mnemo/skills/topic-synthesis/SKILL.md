@@ -149,31 +149,29 @@ without conflict.
 
 ## As a rem-cycle phase
 
-Invoked by the orchestrator as part of **phase 5 (consolidation)**, this skill
-does **not author** in an unattended run (`skills/conventions/rem-cycle-contract.md`) —
-authoring a durable page is expensive, quality-sensitive, and the graph is
-your human's to curate. It **detects and proposes** instead:
+Runs as its own cron job as part of **phase 5 (consolidation)**, under
+`skills/conventions/rem-cycle-contract.md` (binary gate, 2026-08-15). This
+skill does **not author** in an unattended run — authoring a durable page is
+generative (opinion), and opinion is never written by the dream. It **detects
+and signals** instead:
 
-- **Mode.** `dry-run` (report only) or `normal` (queue the proposals).
 - **Detect ripe topics.** Cluster `paper` pages by the ripe signals —
   **`project` membership** and **shared-tag co-occurrence** are first-class
   (papers link the project/tag layer far more than the concept layer), alongside
   a dead `concepts/<slug>` linked by **≥3** papers (`maintain`'s
   under-population signal) and co-citation. A ripe topic clears **≥3 papers** and
   has **no** existing `concept`/`hypothesis` page.
-- **Propose, never write.** For each ripe topic emit a `proposed[]`
-  `category: synthesis` entry with the phase-specific fields
-  (`rem-cycle-contract.md`): `kind` (recommended `concept` vs `hypothesis`) and
-  `kind_ambiguous: true` when the pro/con test can't settle it — uniform support
-  with an unresolved-*future* "con" is not literature disagreement; flag it and
-  your human picks the kind on approval. Plus `sources`, `outline`, `coherence`
-  (`tight` = a real draft head-start / `loose` = a strawman your human will re-scope),
-  and `related_proposals` for topics sharing sources (so two half-overlapping
-  pages aren't both authored). `target_exists: false`. Authoring happens on
-  approval (a waking `topic-synthesis` run), never in the dream.
+- **Signal, never write.** For each ripe topic emit a `notable:` entry —
+  `what`: the cluster and a recommended `kind` (`concept` vs `hypothesis`;
+  say "kind ambiguous" when the pro/con test can't settle it — uniform support
+  with an unresolved-*future* "con" is not literature disagreement), `why`: the
+  ripeness signals, `sources`: the paper slugs. Name related clusters sharing
+  sources in the entry so two half-overlapping pages aren't both authored
+  later. The authoring happens in conversation (a waking `topic-synthesis`
+  run), never in the dream.
 - **Output.** The fenced-yaml phase result — an empty `committed[]` (this
-  delegate authors nothing unattended), `proposed[]` syntheses, `metrics`
-  (`topics_ripe`, `syntheses_proposed`, `papers_scanned`). No chaining.
+  delegate writes nothing unattended), `notable[]` ripe-topic signals,
+  `metrics` (`topics_ripe`, `papers_scanned`). No chaining.
 
 ## Output
 

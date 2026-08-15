@@ -1,6 +1,6 @@
 ---
 name: refresh-research-topics
-description: Keeps RESEARCH.md synchronized with the brain — auto-adds your human's explicit artifacts, auto-enriches existing entries, proposes derived topics to QUEUE.md. Weekly scheduled run plus on request.
+description: Keeps RESEARCH.md synchronized with the brain — auto-adds your human's explicit artifacts, auto-enriches existing entries, proposes derived topics in its own delivered report. Weekly scheduled run plus on request.
 triggers:
   - "refresh research topics"
   - "update RESEARCH.md"
@@ -20,26 +20,24 @@ weekly cadence, under a three-tier automation model (agreed with your human
 
 > **Conventions:** `brain-ops` (never blind-overwrite; RESEARCH.md is a
 > curated file — patch sections, don't regenerate the document),
-> `skills/conventions/quality.md` (every claim traceable to a brain page),
-> `docs/rem-cycle/rem-cycle-contract.md` (the decision ledger, QUEUE.md
-> proposal format).
+> `skills/conventions/quality.md` (every claim traceable to a brain page).
 
 ## The three-tier model
 
 | Tier | What | Action | Approval |
 |---|---|---|---|
 | **1 — Explicit artifacts** | New `grants/` or `projects/` pages your human created (grant-ingest, direct request) | Add to RESEARCH.md automatically | None — your human's own artifact |
-| **2 — Enrichment of existing entries** | Open questions, thread status, funding status, publication pipeline — driven by ingestions and page updates | Rewrite in place automatically | None — logged in the decision ledger |
-| **3 — Derived topics** | New topics *inferred* by maintenance/synthesis (a concept cluster with no RESEARCH.md home, an emerging thread in ingestion patterns) | Propose to `docs/rem-cycle/QUEUE.md` | **Required** — never written directly |
+| **2 — Enrichment of existing entries** | Open questions, thread status, funding status, publication pipeline — driven by ingestions and page updates | Rewrite in place automatically | None — the git commit is the audit record |
+| **3 — Derived topics** | New topics *inferred* by maintenance/synthesis (a concept cluster with no RESEARCH.md home, an emerging thread in ingestion patterns) | Proposed in the job's delivered report | **Required** — never written directly |
 
-Tier 3 mirrors the standing grant (2026-08-04) that synthesis queue items
-never auto-execute. Approval paths are the existing ones: conversational
-queue-drain, rem-cycle phase 0, or brief replies.
+Tier 3 mirrors the standing rule that inferred topics never auto-execute.
+Approval is conversational: your human says yes to a reported candidate and
+it lands on the next run (or immediately, in conversation).
 
 ## Capabilities
 
-`brain-read`, `brain-search`, `brain-write` (RESEARCH.md, QUEUE.md,
-decision ledger). No external I/O.
+`brain-read`, `brain-search`, `brain-write` (RESEARCH.md and the run cursor).
+No external I/O.
 
 ## Phases
 
@@ -90,20 +88,21 @@ decision ledger). No external I/O.
      by any active domain.
    - Hypotheses or notes that have attracted 3+ supporting paper links
      without a project to anchor them.
-   For each candidate, write a QUEUE.md proposal (per the rem-cycle
-   contract format): the proposed RESEARCH.md entry text, the evidence
-   (the pages and their links), and the reasoning. Never write tier-3
-   topics into RESEARCH.md directly.
+   For each candidate, include it in the job's **delivered report** as a
+   "Derived topic candidates" section: the proposed RESEARCH.md entry text,
+   the evidence (the pages and their links), and the reasoning. Never write
+   tier-3 topics into RESEARCH.md directly — your human confirms in
+   conversation and the entry lands on the next run (or immediately).
 
 5. **Write and log.** Patch RESEARCH.md section by section (never
    regenerate the file). Update the `Last refresh:` line in the header.
-   Append one `decisions.yaml` entry per tier-1/tier-2 write with the
-   revert banner. Update the cursor (`research_topics.last_run`).
+   Update the cursor (`research_topics.last_run`). The git commit is the
+   audit record — no separate ledger entries.
    Commit: `refresh-research-topics: <n> added, <m> enriched, <k>
    proposed, <f> flagged`.
 
 6. **Report.** A compact summary: entries added, entries enriched,
-   QUEUE.md proposals (with qids), flags raised. This is the job's
+   derived-topic candidates (with evidence), flags raised. This is the job's
    deliverable output.
 
 ## What this guarantees
@@ -111,10 +110,9 @@ decision ledger). No external I/O.
 - RESEARCH.md never silently drifts from the brain — tier 1 and tier 2
   keep it synchronized with explicit activity.
 - No inferred topic enters the research program's state file without
-  your human's explicit approval — tier 3 proposals are visible in QUEUE.md
-  with evidence attached.
-- Every automatic write is logged and revertible (decision ledger +
-  commit history).
+  your human's explicit approval — tier 3 candidates are reported with
+  evidence attached, never written.
+- Every automatic write is revertible (commit history).
 - Contradictions surface as flags, not silent edits.
 
 ## Anti-patterns
@@ -130,6 +128,6 @@ decision ledger). No external I/O.
 - **Letting the publication pipeline go stale silently.** If no
   `status: preprint` papers exist, say so in the section rather than
   leaving a placeholder that looks like neglect.
-- **Proposing tier-3 topics without evidence.** A QUEUE.md proposal
+- **Proposing tier-3 topics without evidence.** A derived-topic candidate
   must name the pages and links that justify the topic — a vibe is not
   a proposal.

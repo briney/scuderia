@@ -31,9 +31,10 @@ of this whole skill is telling that apart from a genuine conflict.
 
 ## Capabilities
 
-`brain-search`, `brain-read`, `brain-write`. `brain-write` is used **auto** only
-to flag an unambiguously-expired fact `stale`; every contradiction and every
-resolution is *proposed*.
+`brain-search`, `brain-read`, `brain-write`. Under the binary gate
+(`rem-cycle-contract.md`, 2026-08-15), `brain-write` is used only to flag an
+unambiguously-expired fact `stale`. Contradictions are **observations**, not
+actions — they travel as `notable:` signals, never as page edits.
 
 ## Scope — the line against the neighbours
 
@@ -55,13 +56,14 @@ resolution is *proposed*.
 - **Succession is not conflict.** Check temporal metadata *first*: two claims with
   different validity windows are a *supersession* (was → is), not a
   contradiction. Only same-window incompatible claims are conflicts.
-- **Never silently pick a winner.** A genuine conflict goes to the queue with
-  **both** evidence spans (`evidence` is a *list* of the two spans —
-  `rem-cycle-contract.md`); the resolution is your human's.
+- **Never silently pick a winner.** A genuine conflict becomes a `notable:`
+  entry with **both** evidence spans (`spans` is a *list* of the two spans) —
+  the observation feeds `intersect`, which weighs it for the dream report's
+  One-thing slot; the resolution is your human's, in conversation.
 - **No external lookups.** A flip that needs the outside world (did this preprint
-  publish? was this paper retracted? was this grant funded?) is `detect_only` —
-  reported for a waking fetch, never resolved here (`rem-cycle-contract.md`, the
-  no-external-I/O principle). Don't conflate it with a plain approve/reject.
+  publish? was this paper retracted? was this grant funded?) is a `notable:`
+  detect-only observation — reported for a waking fetch, never resolved here
+  (`rem-cycle-contract.md`, the no-external-I/O principle).
 - The only auto write is a `stale` flag on an unambiguously-expired fact —
   **adding `stale` to the page's `tags:`** (tags are free-form, `frontmatter.md`),
   a non-destructive marker, never a deletion.
@@ -73,11 +75,11 @@ resolution is *proposed*.
 A `hypothesis` carries `supports:` and `refutes:` edges. Hunt:
 
 - a paper in **both** `supports:` and `refutes:` for one hypothesis — an error or
-  a genuinely two-edged result; propose review with the paper's finding quoted.
+  a genuinely two-edged result; `notable:` with the paper's finding quoted.
 - two hypotheses whose evidence sets conflict (one's support is the other's
-  refutation) — propose surfacing the tension.
+  refutation) — `notable:` surfacing the tension.
 - a hypothesis whose net evidence has **flipped** (refutations now outweigh
-  support) — not a conflict; report it as a status signal for your human.
+  support) — not a conflict; a `notable:` status signal.
 
 ### Cross-page attribute conflicts
 
@@ -91,24 +93,25 @@ do not raise a conflict.
 
 A task past its due date; a grant `status: under-review` whose `decision_date`
 has passed; a "next week" / "forthcoming" / "in press" / "submitted" written long
-ago. **Unambiguously** expired → **auto** flag `stale` (add `stale` to `tags:`).
-Ambiguous (still plausibly true) → propose. A resolution that needs the outside
-world (the actual publication or decision) → `detect_only`, report. **Grants are
-the primary temporal surface** — their `status` / `decision_date` / `submitted`
-fields give real validity windows; pages without dated metadata fall back to
-prose judgment, so weight the succession test to where the dates actually are.
+ago. **Unambiguously** expired → **commit** a `stale` flag (add `stale` to `tags:`).
+Ambiguous (still plausibly true) → drop. A resolution that needs the outside
+world (the actual publication or decision) → `notable:` detect-only observation.
+**Grants are the primary temporal surface** — their `status` / `decision_date` /
+`submitted` fields give real validity windows; pages without dated metadata fall
+back to prose judgment, so weight the succession test to where the dates
+actually are.
 
 ## As a rem-cycle phase
 
-Under the orchestrator (`rem-cycle-contract.md`): the orchestrator passes `mode`
-(dry-run | normal); emit the fenced-yaml phase result — `committed[]`
-(unambiguous `stale` flags only), `proposed[]` (every contradiction + ambiguous
-stale, with **both** evidence spans, confidence, `target_exists`), `metrics`
-(`hypothesis_conflicts`, `attribute_conflicts`, `stale_flagged`, `stale_proposed`,
-`pages_scanned`). Cheap scanning (grep the `supports:`/`refutes:` edges and the
-date fields) is unbudgeted; adjudication respects the mutation budget. If the
-hypothesis/dated-page set outgrows one pass, rotate a slice via a cursor. No
-chaining — surface a status flip for the waking pipeline, do not fetch.
+Runs as its own cron job under `rem-cycle-contract.md` (binary gate). Emit the
+fenced-yaml phase result — `committed[]` (unambiguous `stale` flags only),
+`notable[]` (every contradiction with **both** spans, plus detect-only status
+flips), `metrics` (`hypothesis_conflicts`, `attribute_conflicts`,
+`stale_flagged`, `dropped`, `pages_scanned`). Cheap scanning (grep the
+`supports:`/`refutes:` edges and the date fields) is unbudgeted; adjudication
+respects the mutation budget. If the hypothesis/dated-page set outgrows one
+pass, rotate a slice via a cursor. No chaining — a status flip goes to
+`notable:`, never to an external fetch.
 
 The hypothesis-conflict surface is **dormant until `hypothesis` pages exist** —
 with zero hypotheses the phase runs only the grant-staleness and
@@ -126,9 +129,9 @@ phase 5).
 
 - Calling a succession a contradiction — check validity windows first; "was" then
   "is" is an update, not a conflict.
-- Silently resolving a conflict by picking a side — propose with both spans.
+- Silently resolving a conflict by picking a side — `notable:` with both spans.
 - Reaching outside the vault to resolve a status or retraction — detect and
   report; that is a waking concern.
-- Flagging a still-plausible fact `stale` — reserve the auto flag for unambiguous
-  expiry; propose the rest.
+- Flagging a still-plausible fact `stale` — reserve the stale flag for
+  unambiguous expiry; drop the rest.
 - Hand-writing a backlink when noting supersession — inbound edges are derived.

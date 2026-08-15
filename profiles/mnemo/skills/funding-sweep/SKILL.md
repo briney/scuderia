@@ -1,6 +1,6 @@
 ---
 name: funding-sweep
-description: Standing funding-opportunity scan — reads FUNDING-PROFILE.md (the lab's research translated into funder vocabulary, plus eligibility and indirect-cost facts), scans tiered sources (NIH + grants.gov, named foundations, a general net) for opportunities that fit the lab, hard-filters on fit × eligibility × feasibility, and returns a ranked shortlist. Stateful (dedupes surfaced opportunities); the weekly profile regeneration is gated through QUEUE.md. Invoked by `briefing`; also runs on request.
+description: Standing funding-opportunity scan — reads FUNDING-PROFILE.md (the lab's research translated into funder vocabulary, plus eligibility and indirect-cost facts), scans tiered sources (NIH + grants.gov, named foundations, a general net) for opportunities that fit the lab, hard-filters on fit × eligibility × feasibility, and returns a ranked shortlist. Stateful (dedupes surfaced opportunities); the weekly profile regeneration is proposed in the sweep's own report, never auto-applied. Invoked by `briefing`; also runs on request.
 triggers:
   - "funding sweep"
   - "any new funding opportunities"
@@ -31,8 +31,9 @@ opportunity, this skill **defers** (see Dedupe).
 > layer — the endpoints live there, not here), `skills/conventions/brain-first.md` (don't
 > re-pitch what's already funded/being pursued), `skills/conventions/quality.md` (every
 > item lands with a resolvable link), `_output-rules.md` (deterministic links, no
-> slop), `skills/conventions/rem-cycle-contract.md` (the QUEUE.md format the gated
-> regeneration writes into), `skills/conventions/capabilities.md` (the harness contract).
+> slop), `skills/conventions/rem-cycle-contract.md` (the binary gate — the gated
+> regeneration is delivered in the sweep's own report, not queued),
+> `skills/conventions/capabilities.md` (the harness contract).
 
 ## Capabilities
 
@@ -57,10 +58,9 @@ opportunity, this skill **defers** (see Dedupe).
   matched." Most hits do not clear it. Silence is an acceptable — expected — result.
 - **Stateful dedupe.** Diff on stable opportunity IDs (`skills/conventions/funding-sources.md`).
   A surfaced opportunity is added to `seen-ids` and never re-pitched.
-- **Read-only against the brain.** The sweep writes only `FUNDING-PROFILE.md` state
-  (and, on the weekly cadence, proposals into `QUEUE.md`). When a call clears the bar
-  it flags "→ worth a grant-plan" and your human decides; opening the engagement is
-  `grant-plan`, a separate skill and a separate decision.
+- **Read-only against the brain.** The sweep writes only `FUNDING-PROFILE.md` state.
+  When a call clears the bar it flags "→ worth a grant-plan" and your human decides;
+  opening the engagement is `grant-plan`, a separate skill and a separate decision.
 - **Honest source tiers.** Tier 1 (federal APIs) is reliable; Tier 2 (named
   foundations) is best-effort and labeled as such; Tier 3 (general net) is a wide,
   lower-precision catch-all explicitly flagged "verify eligibility yourself."
@@ -194,19 +194,12 @@ current Block A and **propose** changes:
 - an area to drop (no brain activity in ~6 months),
 - a reframing (a thread whose funder vocabulary has shifted).
 
-Write proposals into `docs/rem-cycle/QUEUE.md` in the standard format
-(`skills/conventions/rem-cycle-contract.md`), so `synthesis-briefing` surfaces them under
-"Awaiting your call" and your human confirms or declines. **Never auto-apply a Block A
-change** — a silently drifting profile starts flagging junk, and the whole value is
-that a flagged call is trustworthy. Set `last-regenerated` after proposing.
-
-```markdown
-## <YYYY-MM-DD> (funding-profile)
-- [ ] **funding-area** · FUNDING-PROFILE.md → add "structural vaccinology / immunogen design"
-      · conf 0.7 · _basis: 4 immunogen-design paper ingests since last regen; [[projects/...]] active_
-- [ ] **funding-area** · FUNDING-PROFILE.md → drop "B-cell aging" — no brain activity since 2026-01
-      · conf 0.6 · _basis: no paper ingest or project edit touching the area in ~6 months_
-```
+Deliver the proposals **in the sweep's own report** (a "Profile regen proposals"
+section: the proposed change plus its one-line basis — e.g. "4 immunogen-design
+paper ingests since last regen; [[projects/...]] active"). Your human confirms or
+declines in conversation. **Never auto-apply a Block A change** — a silently
+drifting profile starts flagging junk, and the whole value is that a flagged call
+is trustworthy. Set `last-regenerated` after proposing.
 
 ## Output
 
@@ -283,8 +276,8 @@ opportunity ("ingest this as a funding opportunity"), the ingest pattern is:
   verification — the table compounds by resolving unknowns, not by guessing.
 - Treating Tier-2/Tier-3 hits as reliable — label best-effort and wide-net hits
   honestly.
-- Auto-applying a Block A profile change instead of proposing it through QUEUE.md —
-  the regeneration is gated by design.
+- Auto-applying a Block A profile change instead of proposing it in the sweep
+  report — the regeneration is gated by design.
 - Returning every hit instead of a hard-filtered shortlist; padding a quiet sweep.
 - Auto-creating `grant` pages — the sweep is read-only against the brain; opening an
   engagement is `grant-plan`.

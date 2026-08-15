@@ -45,8 +45,9 @@ Universal; no external I/O.
   stubs and their source pages — no synthesis, no thesis, no frontier bet. The
   "so what" is a filter (does it earn a page), not a prose section.
 - **Fully autonomous when the bar clears.** ≥3 independent sourced signals + a "so
-  what" pass → auto-create the concept (`concept-create` class, armed 2026-08-13).
-  Below the bar → the stub stays; nothing is proposed.
+  what" pass → auto-create the concept (`category: concept-create` — a fact
+  aggregation under the binary gate). Below the bar → the stub stays (counted
+  as a no-op).
 - **Never creates a `hypothesis`.** Testable claims are conversation-only
   (`rem-cycle-contract.md`). A cluster whose natural output would be a hypothesis
   is simply left un-aggregated — it is not this skill's lane.

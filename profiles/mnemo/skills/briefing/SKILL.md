@@ -123,14 +123,10 @@ and one more thing pinging your human.
    the last brief, filtered by `importance` and the relevance bar — not every
    touched file, only the ones that clear the bar.
 
-7a. **Brain review queue.** Read `docs/rem-cycle/QUEUE.md`. Take up to 3
-    unchecked items, ranked confidence desc then age desc, excluding qids in
-    `_state.yaml → briefing.last_surfaced` (rolling — nothing nags daily).
-    Render each as one line: ordinal · qid · category · target · the change ·
-    conf · age. Update `last_surfaced` (this is the brief's one permitted write
-    beyond BRIEFING.md). Empty queue → section absent, not padded. Approval path
-    in the section footer: `approve 1-2` / `reject 2` / `approve all` — executed
-    by `queue-drain`.
+7a. **(Removed 2026-08-15.)** The brain review queue no longer exists — the
+    rem-cycle runs a binary commit gate and QUEUE.md is frozen. Nothing to
+    surface here; the dream report's One-thing is the rem-cycle's only
+    attention surface, and it arrives via its own delivery.
 
 8. **Today's focus.** Two or three bullets — no more — naming the highest-stakes
    things your human should be thinking about or working on today. This is a

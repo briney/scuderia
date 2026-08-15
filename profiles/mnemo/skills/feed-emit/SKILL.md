@@ -2,9 +2,10 @@
 name: feed-emit
 description: >
   Feed card producers — rebuild the instance's local feed outbox from brain
-  state. v1 slots: the rem-cycle review queue (review card) and the daily
-  briefing (summary card). Invoked by the host's feed-sync wrapper at the
-  commit boundary, never by brain-updating skills directly.
+  state. v1 slot: the daily briefing (summary card). (The rem-cycle
+  review-queue card was retired 2026-08-15 when the queue was frozen.)
+  Invoked by the host's feed-sync wrapper at the commit boundary, never by
+  brain-updating skills directly.
 triggers:
   - "emit feed cards"
   - "rebuild the feed outbox"
@@ -14,7 +15,7 @@ triggers:
 # feed-emit — producers write the outbox; the syncer pushes
 
 The feed is a defined set of persistent, named, producer-bound slots (card
-contract §3.1). This skill owns the v1 producers. Each producer is a
+contract §3.1). This skill owns the v1 producer. Each producer is a
 deterministic script: brain state in, card JSON out, no network, no
 judgment. The syncer (soma `interface/syncer/sync.py`) is the single writer
 to D1 — it validates against the schema allowlist and pushes diffs.
@@ -31,27 +32,26 @@ considered and rejected in the card-contract spec §4.4.
 
 | slot | card_id | script | source |
 |---|---|---|---|
-| rem-cycle review queue | `<instance>/remcycle/review-queue` | `scripts/emit_review_queue_card.py` | `docs/rem-cycle/QUEUE.md` |
 | daily briefing | `<instance>/briefing/daily` | `scripts/emit_briefing_card.py` | `BRIEFING.md` |
 
-Both take `VAULT_ROOT` (required), `FEED_OUTBOX_DIR` (default
+Retired: the rem-cycle review-queue card (`<instance>/remcycle/review-queue`,
+`emit_review_queue_card.py`) — removed 2026-08-15 when the rem-cycle moved to
+the binary commit gate and QUEUE.md was frozen. Git history preserves the
+producer if a future attention surface ever needs a card.
+
+The emitter takes `VAULT_ROOT` (required), `FEED_OUTBOX_DIR` (default
 `<vault>/feed-outbox`), `FEED_INSTANCE` (default: `brain.yaml` name).
 
 ## Contract rules the emitters honor
 
-- **item_id = the queue qid.** Already a stable hash; re-emitting updates in
-  place; an item that leaves QUEUE.md leaves the card on the next sync.
-- **Empty stack ≠ absent card.** An emptied review queue emits its "queue
-  clear" state — the dashboard is stable.
+- **Empty stack ≠ absent card.** An emptied slot emits its "clear" state —
+  the dashboard is stable.
+- **Dismiss is content-addressed.** The dismissal marker
+  (`<outbox>/.state/dismissed.json`) stores the dismissed content hash; the
+  card reappears when the briefing content changes.
 - **Snooze is feed-side.** `mailbox-drain` records snoozes in
-  `<outbox>/.state/snoozes.json` (`{qid: until_iso}`); the queue emitter
-  holds snoozed items out of the stack until the snooze elapses. The brain
-  is untouched by a snooze.
-- **Dismiss is content-addressed.** For the briefing card, the dismissal
-  marker (`<outbox>/.state/dismissed.json`) stores the dismissed content
-  hash; the card reappears when the briefing content changes.
-- Salience is producer-assigned (queue 0.8 — it has the measured drain
-  problem; briefing 0.6).
+  `<outbox>/.state/snoozes.json`; the brain is untouched by a snooze.
+- Salience is producer-assigned (briefing 0.6).
 
 ## The outbox is transient
 
@@ -63,4 +63,4 @@ The brain is the sole source of record; the outbox is rebuilt from it.
 1. Pick a *slot* you own — never append to someone else's.
 2. Write a deterministic emitter script here; keep bodies under the contract
    caps (title 200, body 4000, item title 300, ≤50 items).
-3. Wire it into the host feed-sync wrapper alongside the v1 emitters.
+3. Wire it into the host feed-sync wrapper alongside the v1 emitter.
