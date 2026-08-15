@@ -14,7 +14,17 @@ triggers:
   - "what's in the review queue"
 ---
 
-# queue-drain — the queue gets a drain
+# queue-drain — RETIRED (2026-08-15)
+
+> **This skill is retired.** The queue era ended 2026-08-15: QUEUE.md is frozen
+> (mass-rejected backlog, qid backlog-clear-2026-08-15 in decisions.yaml), the
+> rem-drain phase-0 job is deleted, and the rem-cycle runs a binary commit gate
+> (phases commit what adds value, drop the rest — no proposals, no drain). The
+> body below is preserved as the historical record of how the queue worked. If
+> Bryan asks "what's in the review queue," the answer is: nothing, ever again —
+> see `rem-cycle-contract.md` § The binary gate.
+
+# queue-drain — the queue gets a drain (historical)
 
 QUEUE.md is the review surface for every judgment call the dream produces
 (`rem-cycle-contract.md`). This skill is the action surface: it turns a checked
