@@ -111,10 +111,37 @@ content likely does not want a diagram at all — say so.
    If three bullets carry it, stop.
 2. Pick the diagram type from the table above.
 3. Write the block with terse labels and the right direction.
-4. Verify syntax by eye against the essentials above — an unrendered block is
-   worse than no block (check unmatched brackets, missing `end`, IDs used
-   before declared in state diagrams).
+4. **Validate.** An unrendered block is worse than no block. Use the Mermaid
+   parser (`mmdc`) when available — see "Validating syntax" below. Fall back
+   to by-eye against the syntax essentials above when it is not (check
+   unmatched brackets, missing `end`, IDs used before declared in state
+   diagrams).
 5. Anchor any substantive nodes/edges to a source in the prose beneath.
+
+## Validating syntax
+
+**Use `mmdc` (the Mermaid CLI) to validate before shipping.** It parses the
+block exactly as Obsidian would — a parse error there is a render error in
+the vault.
+
+```sh
+# one-time install (npm, ~10s)
+npm install -g @mermaid-js/mermaid-cli
+# validate — exit 0 means the block renders
+mmdc -i diagram.mmd -o /dev/null
+```
+
+To extract a block from a page for testing:
+
+```sh
+# pull the first mermaid block out of a brain page
+awk '/^```mermaid/{f=1;next} /^```/{f=0} f' path/to/page.md > /tmp/diagram.mmd
+mmdc -i /tmp/diagram.mmd -o /dev/null
+```
+
+If `mmdc` is not installed and `npm install -g` is not available, fall back
+to by-eye validation — but flag the diagram as unvalidated in conversation
+so the limitation is explicit, not silent.
 
 ## Output
 
