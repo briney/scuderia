@@ -107,6 +107,20 @@ Filling the knowledge graph, and keeping it healthy.
 | Duplicate/merge/split of the identity-keyed kinds + the author ledger — "find duplicate pages", "dedupe the brain", "audit the author ledger", "are these two the same" | `skills/entity-resolution/SKILL.md` |
 | Contradictions + expired facts — "find contradictions", "check consistency", "conflicting claims", "stale facts", "audit the hypothesis graph" | `skills/consistency-check/SKILL.md` |
 
+### Reference-corpus cluster
+
+Skills that build and enrich the durable non-graph corpora under
+`references/` (see `references/README.md` in the brain). Corpus builders own
+the curated fields; enrichment skills each own exactly one machine-generated
+block and rewrite it wholesale.
+
+| Trigger | Skill |
+|---|---|
+| "Build / extend the therapeutic antibody registry", "antibody molecule database", Tier A–D sweep of `references/therapeutic-antibodies/` | `skills/therapeutic-antibody-registry/SKILL.md` |
+| "Get sequences for <antibody>", "enrich sequences", "refresh the sequence block" — VH/VL from the Thera-SAbDab mirror into the machine-owned `## Sequences` block | `skills/antibody-sequence-search/SKILL.md` |
+| "Build the antibody target hit-list", "rank viruses/targets for mAb discovery" | `skills/target-hitlist/SKILL.md` |
+| "Profile this target" — deep per-target profile at key-paper-ingestion level | `skills/target-profiling/SKILL.md` |
+
 ### Audit cluster
 
 Three skills share the "audit the brain" job, separated by *scope*:
