@@ -97,6 +97,7 @@ Filling the knowledge graph, and keeping it healthy.
 | Capture a discussion — "capture this convo", "record what we just discussed", "save this discussion" | `skills/conversation-capture/SKILL.md` |
 | Create or update a person / institution page | `skills/enrich/SKILL.md` |
 | Restructure a raw-text or stub page into a useful one | `skills/restructure-thin-page/SKILL.md` |
+| Draw a relationship or process as a diagram — "make a diagram", "flowchart", "visualize the pipeline" (renders as a Mermaid block in Obsidian; sidecar to the page-authoring skills, never standalone) | `skills/mermaid-diagrams/SKILL.md` |
 | Deep semantic re-linking — re-read pages against the current graph and add forward edges that weren't possible at ingest ("link this page", "re-link the brain") | `skills/retroactive-linking/SKILL.md` |
 | Bootstrap the concept layer — one-time backward distillation of umbrella concepts from the existing projects/grants/papers ("seed the concept layer", "distill concepts from the grants") — distinct from `concept-synthesis` (which dedups/tiers/maps ambient idea-stubs) | `skills/concept-seeding/SKILL.md` |
 | Update concepts from recent papers — the autonomous reinforce pass that appends **facts-only** `## Shifts` evidence entries (what a source showed, cited; no opinion) ("reinforce the concepts", "what recent papers moved our concepts"); runs as rem-cycle phase 6 or standalone. The directed lane (an explicit concept call-out at ingest) lives in `paper-ingest` | `skills/reinforce/SKILL.md` |
