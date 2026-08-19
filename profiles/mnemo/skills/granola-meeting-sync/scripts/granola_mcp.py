@@ -47,7 +47,7 @@ GRANOLA_URL = "https://mcp.granola.ai/mcp"
 async def _get_session():
     """Connect to Granola MCP and return an active ClientSession."""
     from mcp import ClientSession
-    from mcp.client.streamable_http import streamablehttp_client
+    from mcp.client.streamable_http import streamable_http_client, create_mcp_http_client
 
     if not TOKEN_PATH.exists():
         print(json.dumps({
@@ -78,8 +78,9 @@ async def _get_session():
 
     headers = {"Authorization": f"Bearer {access_token}"}
 
-    transport = streamablehttp_client(GRANOLA_URL, headers=headers)
-    read_stream, write_stream, _ = await transport.__aenter__()
+    http_client = create_mcp_http_client(headers=headers)
+    transport = streamable_http_client(GRANOLA_URL, http_client=http_client)
+    read_stream, write_stream = await transport.__aenter__()
     session = ClientSession(read_stream, write_stream)
     await session.__aenter__()
     return session, transport
