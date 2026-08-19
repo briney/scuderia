@@ -20,6 +20,8 @@ eval_contract:
     - a sequence written into an entry that does not come from the mirror or another cited source
     - declaring not-found while a parent-antibody or cocktail-component lookup would have hit
     - hand-editing any non-Sequences block in the entry
+    - writing a sequence whose verification verdict is `conflict`, or writing weak evidence (PLAbDab-only, ladder-with-target-mismatch) as a sequence instead of a candidate note
+    - presenting Thera-SAbDab + PLAbDab agreement as two independent confirmations
 ---
 
 # antibody-sequence-search — corpus sequence enrichment
@@ -76,14 +78,36 @@ machine-generated block.
    For ADCs (`modality: adc`/`immunoconjugate`), look up the curated
    `Parent antibody` and label arms `parent-derived: <parent slug>`.
    For cocktails, look up each component INN separately.
+   **Ladder guard:** hits from the aggressive rungs (suffix-strip,
+   cocktail-split) are accepted only if the matched row's Target/Format is
+   consistent with the entry's curated Target(s); a mismatch demotes the
+   hit to `candidate-only` with the discrepancy noted.
+
+2b. **Confirm (false-positive gate).** For every Thera-SAbDab hit, run the
+   verification script in this skill's `scripts/`:
+   ```bash
+   python3 skills/antibody-sequence-search/scripts/verify_sequence.py \
+     --vh <VH> --vl <VL> --structures "<100% SI Structure column>"
+   ```
+   Verdicts: `structure-confirmed` (exact VH+VL match to a deposited chain →
+   confidence `verified (structure-confirmed: <pdb>)`); `no-structures` /
+   `unconfirmed` (→ `single-source`); `conflict` (a 100%-SI structure
+   disagrees — STOP: do not write the sequence; record a provenance
+   conflict and report loudly). Exact match only — near-matches are
+   reported, never counted. The acceptance bar and source-independence
+   classes are defined in the template's Sequences spec; Thera-SAbDab +
+   PLAbDab agreement is ONE vote (both patent-derived), never two.
 
 3. **Fallback ladder (only if the mirror misses).** (a) PLAbDab keyword
    search — `python3 skills/patent-search/scripts/plabdab_lookup.py --keyword
-   <target-or-code-name>` against the paired mirror; a sequence found here is
-   cited `PLAbDab:<ID>` (patent-sourced, literature-annotated). (b) IMGT/mAb-DB
+   <target-or-code-name>` against the paired mirror. A sequence found here is
+   **candidate-only** by default (a patent listing is not proof the molecule
+   is the drug); it may be promoted to the block only with a second
+   independent source class, cited `PLAbDab:<ID>`. (b) IMGT/mAb-DB
    via web — cite `IMGT/mAb-DB` as source. (c) if a structure exists in the
    PDB, the sequence can be read off the coordinates — hand a note to
-   `structure-search` and cite `pdb:<id>`. (d) otherwise mark `not-found` and
+   `structure-search` and cite `pdb:<id>`; a 100%-SI PDB readback counts as
+   the independent structure class. (d) otherwise mark `not-found` and
    leave a one-line handoff note for `patent-search` (sequence listings are
    its job — never duplicate that machinery here).
 
