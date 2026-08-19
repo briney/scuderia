@@ -118,6 +118,8 @@ block and rewrite it wholesale.
 |---|---|
 | "Build / extend the therapeutic antibody registry", "antibody molecule database", Tier A–D sweep of `references/therapeutic-antibodies/` | `skills/therapeutic-antibody-registry/SKILL.md` |
 | "Get sequences for <antibody>", "enrich sequences", "refresh the sequence block" — VH/VL from the Thera-SAbDab mirror into the machine-owned `## Sequences` block | `skills/antibody-sequence-search/SKILL.md` |
+| "Get structures for <antibody>", "enrich structures", "compute the epitope contacts" — SAbDab mirror + sequence-similarity search + computed contacts into the machine-owned `## Structures` block | `skills/structure-search/SKILL.md` |
+| "Patent search for <antibody>", "enrich patents", "what's the IP situation" — Google Patents XHR + pataa BLAST into the machine-owned `## IP & exclusivity` block (US-only; estimated expiries always labeled) | `skills/patent-search/SKILL.md` |
 | "Build the antibody target hit-list", "rank viruses/targets for mAb discovery" | `skills/target-hitlist/SKILL.md` |
 | "Profile this target" — deep per-target profile at key-paper-ingestion level | `skills/target-profiling/SKILL.md` |
 
