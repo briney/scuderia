@@ -61,22 +61,32 @@ def wait_ready(rid, poll):
 
 
 def fetch_hits(rid, max_hits):
-    text = http_get({"CMD": "Get", "FORMAT_TYPE": "Tabular", "RID": rid,
-                     "ALIGNMENTS": str(max_hits), "DESCRIPTIONS": str(max_hits)},
+    """Parse the plain-text report. FORMAT_TYPE=Tabular returns an empty body
+    via the URL API (verified 2026-08-18) — use Text and parse the
+    'Sequences producing significant alignments' description block."""
+    text = http_get({"CMD": "Get", "FORMAT_TYPE": "Text", "RID": rid},
                     timeout=180)
     hits = []
+    in_section = False
     for line in text.splitlines():
-        # tabular-with-comments: description lines start with '# ' and list hits
-        m = re.match(r"#\s+(\S+)\s+(.*?)\s*$", line)
-        if not m or "acc.ver" in line.lower():
+        if "Sequences producing significant alignments" in line:
+            in_section = True
             continue
-        acc, title = m.group(1), m.group(2)
-        pats = sorted(set(re.findall(
-            r"patent\s+(?:WO|US|EP)?\s*([A-Z]{2}\s?\d{5,}[A-Z0-9]*)", title, re.I)))
-        hits.append({"accession": acc, "title": title.strip(),
-                     "patent_numbers": [p.replace(" ", "") for p in pats]})
+        if in_section:
+            m = re.match(
+                r"([A-Z0-9]+\.\d)\s+(Sequence\s+\d+\s+from\s+patent\s+.+?)"
+                r"\s{2,}(\d+)\s+(\S+)\s+(\d+%)", line)
+            if m:
+                hits.append({"accession": m.group(1), "title": m.group(2).strip(),
+                             "bits": int(m.group(3)), "evalue": m.group(4),
+                             "identity": m.group(5)})
+            elif line.strip().startswith(">") or (line.strip() and not line.startswith(" ") and hits):
+                in_section = False
         if len(hits) >= max_hits:
             break
+    for h in hits:
+        h["patent_numbers"] = sorted({p.replace(" ", "") for p in re.findall(
+            r"patent\s+([A-Z]{2}\s?\d{5,}[A-Z0-9]*)", h["title"], re.I)})
     return hits
 
 
