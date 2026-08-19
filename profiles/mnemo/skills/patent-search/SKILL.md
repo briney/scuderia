@@ -68,16 +68,32 @@ Distinct from `antibody-sequence-search` (Sequences block) and
    (CoM-era vs lifecycle-era).
 
 3. **Sequence-derived CoM candidates.** Pull VH/VL from the entry's
-   `## Sequences` block (run `antibody-sequence-search` first if absent):
-   ```bash
-   python3 skills/patent-search/scripts/blast_pat.py <VH>
-   ```
-   BLAST against `pataa` is a queued public service — expect minutes, poll at
-   the script's interval, never hammer. A hit means the patent's sequence
-   listing contains the chain: the CoM anchor. If Sequences are `not-found` /
-   `not-public`, mark sequence search unavailable — that is precisely the
-   handoff case where the patent listing may BE the sequence source (v2:
-   sequence-listing extraction).
+   `## Sequences` block (run `antibody-sequence-search` first if absent).
+   Two passes, in order:
+   a. **PLAbDab first pass (local, instant).** PLAbDab (Oxford OPIG's Patent
+      and Literature Antibody Database, ~177k paired chains) is
+      antibody-specific and curated — it is the first place to look:
+      ```bash
+      python3 skills/patent-search/scripts/plabdab_lookup.py --vh <VH> --vl <VL> --resolve 12
+      ```
+      Exact chain matches against the local mirror
+      (`references/therapeutic-antibodies/raw/mirrors/plabdab_paired_sequences.csv.gz`,
+      ~11 MB gz — the full 5 GB DB tarball is NOT mirrored). `--resolve` maps
+      GenBank-accession-shaped IDs to patent numbers via NCBI efetch (PDB and
+      literature-name IDs don't resolve — by design). For fuzzy / CDR-region
+      search use the full PLAbDab package (`pip install .` from
+      github.com/oxpig/PLAbDab) — exact match is the v1 default.
+   b. **pataa BLAST (broader net, queued).** Catches what PLAbDab's pairing
+      and filtering drops:
+      ```bash
+      python3 skills/patent-search/scripts/blast_pat.py <VH>
+      ```
+      BLAST against `pataa` is a queued public service — expect minutes, poll
+      at the script's interval, never hammer. A hit means the patent's
+      sequence listing contains the chain: the CoM anchor. If Sequences are
+      `not-found` / `not-public`, mark sequence search unavailable — that is
+      precisely the handoff case where the patent listing may BE the
+      sequence source (v2: sequence-listing extraction).
 
 4. **Compose the block.** Table per the template spec: publication number,
    title, assignee, filed, granted, est. expiry + `expiry_basis`, claim types,

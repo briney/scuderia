@@ -77,12 +77,15 @@ machine-generated block.
    `Parent antibody` and label arms `parent-derived: <parent slug>`.
    For cocktails, look up each component INN separately.
 
-3. **Fallback ladder (only if the mirror misses).** (a) IMGT/mAb-DB via web —
-   cite `IMGT/mAb-DB` as source; (b) if a structure exists in the PDB, the
-   sequence can be read off the coordinates — hand a note to `structure-search`
-   and cite `pdb:<id>`; (c) otherwise mark `not-found` and leave a one-line
-   handoff note for `patent-search` (sequence listings are its job — never
-   duplicate that machinery here).
+3. **Fallback ladder (only if the mirror misses).** (a) PLAbDab keyword
+   search — `python3 skills/patent-search/scripts/plabdab_lookup.py --keyword
+   <target-or-code-name>` against the paired mirror; a sequence found here is
+   cited `PLAbDab:<ID>` (patent-sourced, literature-annotated). (b) IMGT/mAb-DB
+   via web — cite `IMGT/mAb-DB` as source. (c) if a structure exists in the
+   PDB, the sequence can be read off the coordinates — hand a note to
+   `structure-search` and cite `pdb:<id>`. (d) otherwise mark `not-found` and
+   leave a one-line handoff note for `patent-search` (sequence listings are
+   its job — never duplicate that machinery here).
 
 4. **Compose the block.** Follow the template spec exactly. Per chain:
    `- **VH** (<len> aa, Thera-SAbDab, mature (variable domain)): \`<seq>\``.
