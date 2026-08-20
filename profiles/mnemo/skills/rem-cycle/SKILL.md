@@ -106,10 +106,14 @@ never block the fleet.
 | Weekly | + 3, 4, 5, 5b, 5c, 7 | Entity resolution, consistency, consolidation, ripeness detection, concept-coalesce, importance |
 | Monthly | full sweep | Cursor completion + schema/eval review |
 
-The delegated shard pattern (contract § Delegation) is the scaling trick: retro
-and reinforce each process up to 60 items/night (4 batches × 3 delegates × 5
-items), so the whole corpus rotates in about a month and the ingest backlog
-drains in days, while every write stays serial and validated in the primary.
+The delegated shard pattern is the scaling trick: retro and reinforce each
+process up to 60 items/night (4 batches × 3 delegates × 5 items), so the whole
+corpus rotates in about a month and the ingest backlog drains in days, while
+every write stays serial and validated in the primary. Dispatch mechanics follow
+`skills/batch-drain/SKILL.md`: yield and wait between delegate batches (never
+dispatch a batch while a prior one is in flight — see the core invariant),
+verify extraction results on disk before the primary writes, and dispatch the
+remainder shard as a single-task call rather than dropping it.
 
 ## The phase pipeline
 
@@ -199,6 +203,9 @@ the answer is immediate).
   drop to the verbose counters.
 - Delegates writing pages — extraction is delegated, writes are not. The
   primary writes serially, or same-page edits clobber.
+- **Dispatching a delegate batch while a prior one is still in flight** — follow
+  `skills/batch-drain/SKILL.md`: yield and wait, or the overeager re-dispatch
+  triggers a truncation loop and a dropped shard.
 - Delegates returning raw prose — compact structured entries only, or the
   primary's context compacts mid-run.
 - Double-counting a change two phases both surfaced — dedup on `(target,

@@ -361,43 +361,42 @@ carve-out (`SOUL.md` §2). Delegation is appropriate here: spawn
 subagents in small batches, then read the resulting pages back to
 verify before declaring success.
 
-**Delegation protocol:**
-- Spawn subagents in batches of at most 3 (the concurrent delegation
-  pool limit — a 4-paper `delegate_task` call is rejected at dispatch
-  with "Too many tasks: max_concurrent_children is 3"). For overflow,
-  dispatch a separate single-task call, which queues and runs when a
-  slot frees.
-- Pass each subagent the *validated* DOI/PMID from the Phase 3.5
-  dispatch list (never the raw bibliography identifiers) and the
-  context that this is a Tier 1 paper from a literature dive (so the
-  subagent knows to do a full `paper-ingest`, not a stub fill).
-- The subagent inherits `paper-ingest` and does the full pipeline:
-  resolve identity, dedup, distill, file, wire, bibliography walk.
-- On return, read the page back. Check: DOI resolved, authors populated
-  as `people/<slug>`, `## Findings` with specific results tied to
-  figures, `## Analysis` present, `## Limitations` present. If any
-  identity field is empty or the body is a stub, the ingest failed —
-  retry or do it direct.
+**Delegation protocol — follow `batch-drain`.** The dispatch/yield/verify
+loop for large dives is the `skills/batch-drain/SKILL.md` primitive; load it and
+follow it for every multi-batch dive. The dive-specific bits below override only
+the *content* of each subagent task, never the scheduling discipline.
 
-**Multi-batch delegation for large dives.** For dives with >6 Tier 1
-papers, the standard pattern is: dispatch a batch of 3; while it runs,
-continue orchestrator work in the foreground (see below); when the batch
-returns, verify files on disk, then dispatch the next batch. After the
-last batch returns, do a bulk read-back verification (a Python script
-checking all files at once — frontmatter parses, DOIs present, authors
-populated, body sections present). This overlaps orchestrator thinking
-time with subagent execution time — the orchestrator is never idle.
+- Batch at most 3 (the concurrent delegation pool limit — a 4-paper
+  `delegate_task` call is rejected at dispatch with "Too many tasks:
+  max_concurrent_children is 3"). The remainder (list size not a multiple of 3)
+  is dispatched as a single-task call, never via batch mode.
+- **Yield and wait after each dispatch.** Do not emit new dispatches while a
+  batch is in flight (see `batch-drain` — the core invariant). This is the fix
+  for the truncation loop (`finish_reason='length'`) and the dropped-remainder
+  failure seen on prior dives.
+- Pass each subagent the *validated* DOI/PMID from the Phase 3.5 dispatch list
+  (never the raw bibliography identifiers) and the context that this is a Tier 1
+  paper from a literature dive (so the subagent knows to do a full
+  `paper-ingest`, not a stub fill).
+- The subagent inherits `paper-ingest` and does the full pipeline: resolve
+  identity, dedup, distill, file, wire, bibliography walk.
+- On return, verify files on disk, then commit, then dispatch the next batch.
+  After the last batch returns, do a bulk read-back verification (a Python script
+  checking all files at once — frontmatter parses, DOIs present, authors
+  populated, body sections present). Never trust the subagent's "completed"
+  report — disk is truth.
 
-**Foreground work during ingestion batches.** While subagents ingest,
-the orchestrator builds the dive's working data structures in the
-foreground: read the existing related concept pages to map what the
-brain already knows, use the spine review's framework as the organizing
-structure, and compile a working document at `working-docs/<topic>-*
--list.md` (e.g. every virus family, its entry mechanism, receptor,
-endocytic route). This working doc is NOT a brain page (no frontmatter)
-— it is a transitory document that informs the Phase 7 synthesis. It
-does not depend on subagent results and proceeds in parallel with the
-ingest batches.
+**Foreground work during ingestion batches (narrow and gated).** Permitted
+*only* when it does not depend on the in-flight batch's outputs (see
+`batch-drain`). The legitimate class is: read the existing related concept pages
+to map what the brain already knows, use the spine review's framework as the
+organizing structure, and compile a working document at `working-docs/<topic>-*
+-list.md` (e.g. every virus family, its entry mechanism, receptor, endocytic
+route). This working doc is NOT a brain page (no frontmatter) — it is a
+transitory document that informs the Phase 7 synthesis. It proceeds in parallel
+only because it does not consume the running results. **Do not build the Phase 7
+concept page (or any downstream synthesis) while its evidence papers are still
+ingesting** — that artifact depends on the in-flight batch and gets rebuilt.
 
 **Context management.** Each subagent runs in an isolated context, so
 the orchestrator's context window does not accumulate 10–20 full paper
