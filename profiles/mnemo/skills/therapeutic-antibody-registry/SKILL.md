@@ -189,15 +189,57 @@ table in a single `execute_code` pass. Key steps:
 The full sweep is a single `execute_code` call (no subagents needed). It takes
 seconds, not minutes — the table is only 168 rows.
 
-## Enrichment gap (next pass)
+## Enrichment pipeline (deep profiling)
 
-The first-pass entries carry only the Antibody Society table fields: INN, brand,
-target, format, indication, approval year. The following fields are marked
-`Unknown` and need enrichment from Purple Book / EMA EPAR / company disclosures:
+First-pass entries carry only the Antibody Society table fields: INN, brand,
+target, format, indication, approval year. Deep profiling adds sequences,
+structures, epitope contacts, and patent landscape via three dedicated
+enrichment skills, each owning one machine-generated block. The pipeline was
+validated end-to-end on nivolumab and trastuzumab (2026-08-18).
+
+### Block discipline: curated vs machine-owned
+
+The entry template has two kinds of blocks:
+
+- **Curated blocks** (Identity, Provenance, Regulation, Mechanism, Relations,
+  Source quality, Sources) — owned by THIS skill. Hand-authored from the
+  Antibody Society table, regulatory documents, and the literature. The
+  enrichment skills NEVER touch these.
+- **Machine-owned blocks** (Sequences, Structures, IP & exclusivity) — each
+  owned by its respective enrichment skill, which rewrites it wholesale on
+  each run. THIS skill NEVER writes these blocks. Entries pre-enrichment
+  simply lack them.
+
+### The enrichment sequence (per entry)
+
+1. **`antibody-sequence-search`** — resolve the molecule against the local
+   Thera-SAbDab mirror (`raw/mirrors/TheraSAbDab_SeqStruc_OnlineDownload.csv`),
+   verify against PDB structures, write the `## Sequences` block. Modality
+   gate: `fc-fusion` -> `not-applicable`; `car-t` -> expect `not-public` (verify
+   anyway). ADCs inherit the parent mAb's sequences (look up parent, not
+   conjugate name).
+2. **`structure-search`** — resolve against SAbDab mirror by name AND by VH/VL
+   sequence (both modes mandatory -- code-name deposits are the norm for
+   therapeutics). Compute epitope contacts from coordinates (4.5 A cutoff).
+   Write the `## Structures` block. Chains from the SAbDab row, not from
+   inspecting the file.
+3. **`patent-search`** -- name search (Google Patents XHR) + sequence-derived
+   search (PLAbDab exact match, then BLAST pataa). Write the `## IP &
+   exclusivity` block. Every expiry carries `expiry_basis`.
+
+Run sequence-search first (structures chain on VH/VL; patents chain on VH/VL
+for PLAbDab/BLAST). The three skills are independent writes to different blocks,
+so they can run in parallel after the sequence block is written.
+
+### Remaining curated-field enrichment gap
+
+After the three machine-owned blocks are filled, these curated fields are still
+`Unknown` and need manual enrichment from Purple Book / EMA EPAR / FDA labels /
+company disclosures:
 
 - Developer / originator
 - BLA / MAA / NDA numbers
-- ADC payload, linker, DAR
+- ADC payload, linker, DAR (curated -- the ADC appendix)
 - Biosimilar lists
 - CAR-T construct details (hinge, transmembrane, costimulatory domains)
 
@@ -236,6 +278,62 @@ verification before they reach Tier A confidence.
   `references/`, not `resources/`. Always check the existing layer before
   creating a new directory. The registry lives at
   `references/therapeutic-antibodies/`.
+- **Google Patents 503 is transient; PLAbDab is the reliable fallback.** The
+  Google Patents XHR endpoint returns 503 intermittently. When it does, the
+  patent-search skill falls back to PLAbDab sequence-derived candidates only
+  and flags the name-search gap honestly in the IP block. Do not treat a 503
+  as permanent or block the enrichment pipeline on it.
+- **Delegated subagents falsely report `completed` under PubMed-429.** When a
+  fan-out has each subagent do its own PubMed E-utilities lookups, a subagent
+  that hits HTTP 429 (3 req/s burst) can burn its whole tool budget in a retry
+  loop *before writing a single file*, then emit `status=completed` with a
+  summary ending mid-research ("now I need to look up PMIDs…"). The batch still
+  reports "ALL tasks ✓." **Never trust the batch report — verify files exist on
+  disk** (`ls`/count the target directory) and re-dispatch or fill the gap
+  yourself. This bit the virus-families sweep (2026-08-22): 5 of 15
+  subagents false-completed, leaving 9 family folders empty. Two mitigations:
+  (1) **pre-resolve PMIDs yourself** (title-verified esearch/esummary with
+  ~0.8–1.2 s delays + User-Agent) and either write directly or hand subagents
+  the verified PMID list so they don't re-search; (2) the orchestrator runs a
+  bulk `PMID → esummary` audit over the *final* corpus — every PMID must
+  resolve — because wrong/fabricated PMIDs cluster in memory-carried citations,
+  not in freshly-looked-up ones.
+- **Canonical raw-source-archive path.** The canonical raw-source-archive
+  convention lives at `~/git/soma/profiles/mnemo/conventions/raw-source-archive.md`,
+  not `references/conventions/raw-source-archive.md` (a mirror). Both exist;
+  the soma-level one is authoritative.
+- **compute_contacts.py multi-chain antigen syntax.** When the SAbDab row
+  lists multiple antigen chains (e.g., `A|G` for a glycosylated target + NAG
+  artifacts), pass them comma-separated (`--antigen A,G`), not pipe-separated.
+  The pipe format causes a chain-mismatch failure.
+- **IP block header is `## IP & exclusivity`, not `## Patents`.** The
+  patent-search skill owns a block called `## IP & exclusivity`. Scanning
+  entries for `## Patents` finds zero matches and produces a false negative.
+  Always use the exact header string. See
+  `references/enrichment-sweep-recipe.md` §Block header reference.
+- **Complex shell one-liners trigger the command-size blocker.** When
+  inventorying enrichment state across 100+ entries, write a Python script
+  to `/tmp/` and run it, rather than building a multi-clause grep/awk
+  one-liner. The inline command parser blocks oversized payloads.
+- **Commit completed work before resuming delegation.** Interrupted sweeps
+  leave enriched entries uncommitted. Commit them first so the auto-pusher
+  doesn't bury real intent under a generic snapshot, and new subagent writes
+  don't interleave with old ones in the same diff.
+- **Subagent header-clobbering.** A delegated subagent told to "append
+  enrichment blocks at end of file" may instead overwrite the entire file
+  with only the enrichment blocks, destroying the curated header (Identity,
+  Provenance, Mechanism, Sources). This happened to 5 Tier A entries
+  (livmoniplimab, lparomlimab, lu-labeled-girentuximab, lutikizumab,
+  manfidokimab) and was not caught until the index regeneration showed
+  "Unknown" modality for those entries — the post-sweep block-coverage
+  check passed because the enrichment blocks were present, but the curated
+  blocks above them were gone. Post-sweep verification MUST check that
+  curated blocks (at minimum `## Identity`) are still present in every
+  enriched entry, not just that the 3 machine-owned blocks exist. Recovery:
+  `git show <skeleton-commit>:<path>` to retrieve the original header,
+  split the current file at `## Sequences`, and reassemble
+  `original_header + "\n\n" + enrichment_blocks`. See
+  `references/enrichment-sweep-recipe.md` §Post-sweep cleanup step 7.
 
 ## Relationship to other skills
 
@@ -244,7 +342,9 @@ verification before they reach Tier A confidence.
   machine-generated block (`## Sequences`, `## Structures`,
   `## IP & exclusivity`) and rewrite it wholesale. This skill builds and
   maintains the corpus's curated fields; the enrichment skills never touch
-  them, and this skill never writes their blocks.
+  them, and this skill never writes their blocks. The enrichment pipeline is
+  documented in the "Enrichment pipeline" section above -- run
+  sequence-search first, then structures and patents can run in parallel.
 - **`antibody-target-hitlist`**: Target-side enumeration. This skill is the
   molecule-side complement. The hit-list's `profiles/` cross-reference to this
   corpus's `entries/` via target **common-name** slugs (not gene symbols — see
@@ -255,7 +355,81 @@ verification before they reach Tier A confidence.
 - **`literature-dive`**: Depth-first on one topic. This skill is breadth-first
   across all molecules.
 
+## Tier B enumeration (active clinical)
+
+Tier B (active clinical, Phase 1-3) is a different scale problem from Tier A.
+The Antibody Society table gives ~168 approved molecules; Tier B needs
+1,200-1,800 distinct molecules. Two sources, combined:
+
+1. **ATW 2026 tables** (regulatory review + late-stage clinical) — 46 entries
+   with target/format/indication. These are the highest-confidence Tier B
+   entries (late-stage or filed). Parse from the already-fetched
+   `_atw2026_fulltext.xml`. See `references/tier-b-recipe.md` for the full
+   extraction pattern including the new -art/-tug/-bart INN naming convention.
+
+2. **ClinicalTrials.gov REST API v2** — paginate through all active/recruiting
+   mAb trials and extract unique -mab INNs from intervention names. This is
+   the bulk Tier B source (~100-150 additional molecules). See
+   `references/tier-b-recipe.md` for the pagination + INN extraction + dedup
+   pattern.
+
+**INN cleaning is critical.** ClinicalTrials.gov intervention names contain
+radioisotope prefixes (131i-, 177lu-), combination-therapy concatenations
+(FOLFOX+bevacizumab), code names (HX008), and misspellings (ipililumab,
+tocilicumab). Extract -mab-ending words with regex, strip prefixes, then
+fuzzy-match against existing Tier A entries (cutoff=0.85) to remove
+misspellings. Also manually filter Tier A parent names (brentuximab is the
+parent of brentuximab vedotin, already a Tier A entry).
+
+**New INN naming convention.** The WHO has shifted antibody INN suffixes:
+-mab is being replaced by -art (antagonist/receptor), -tug (targeted
+inhibitor), -bart (antagonist), and other suffixes. ATW 2026 tables contain
+many of these (e.g., crusekitug, rademikibart, tozorakimab). Search for
+both -mab and the new suffixes when extracting INNs.
+
 ## Changelog
+
+- **2026-08-19 — Tier B enrichment sweep complete (134 entries, all 3 blocks).**
+  All 134 Tier B entries now carry Sequences + Structures + IP & exclusivity.
+  First wave enriched 107 entries (all 3 blocks) + 5 with Sequences + Structures
+  only. API interruption left 117 files uncommitted; resumption committed
+  these, pre-checked Thera-SAbDab hits for the remaining 27 entries (20 exact,
+  2 cocktail splits, 1 not-found), then dispatched 7 parallel batches (6
+  full-pipeline + 1 IP-only). Post-sweep discovered 5 Tier A entries from the
+  prior sweep whose curated headers had been clobbered by a subagent —
+  recovered from skeleton commit, merged with enrichment blocks. Added the
+  header-clobbering pitfall and post-sweep cleanup step 7 (curated-block
+  integrity check) to the skill and recipe. Final corpus: 321 entries
+  (182 Tier A + 139 Tier B), all enriched. Coverage: 112/134 with sequences
+  (84%), 8 with complex structures, 108 with IP candidates.
+
+- **2026-08-18 — Tier B skeleton (139 entries).** Built 139 Tier B entry
+  skeletons from ATW 2026 tables (39 with target/format/indication) +
+  ClinicalTrials.gov (100 INN-only, source_quality: low). 3,761 active mAb
+  trials paginated, 263 INNs extracted, fuzzy-matched against Tier A,
+  manually filtered. Fixed line-number prefix corruption in 5 Tier A
+  entries. Total corpus: 321 entries. See `references/tier-b-recipe.md`.
+
+- **2026-08-18 — full Tier A enrichment sweep (182 entries, all 3 blocks).**
+  All 182 Tier A entries enriched via 35 delegated subagent batches. 162
+  with complete sequences (89%), 97 with complex structures + computed
+  epitope contacts (53%), 162 with IP candidates (89%). 8 Fc-fusions marked
+  not-applicable, 6 CAR-T marked not-public, 5 not-found. Google Patents 503
+  throughout — PLAbDab + BLAST fallback. Post-sweep: normalized status values
+  (backtick-wrapped, trailing periods), wrote not-applicable/not-public
+  blocks, cleaned temp files, regenerated indexes with enrichment columns.
+
+- **2026-08-18 — enrichment pipeline validated.** The three enrichment skills
+  (`antibody-sequence-search`, `structure-search`, `patent-search`) were run
+  end-to-end on nivolumab and trastuzumab. The pipeline produces a full deep
+  profile: VH/VL sequences (Thera-SAbDab, structure-verified), PDB structures
+  with computed epitope contacts (4.5 A cutoff), and patent candidates
+  (PLAbDab + Google Patents). Replaced the "Enrichment gap" section with a
+  proper "Enrichment pipeline" section documenting the block-discipline model
+  (curated vs machine-owned blocks), the enrichment sequence, and the
+  remaining curated-field gap. Added pitfalls: Google Patents 503 transient
+  fallback, canonical raw-source-archive path, compute_contacts multi-chain
+  antigen syntax.
 
 - **2026-08-18 — full Tier A sweep (182 entries).** All 168 rows from the
   Antibody Society approved-antibody table processed (171 after dedup/slug
