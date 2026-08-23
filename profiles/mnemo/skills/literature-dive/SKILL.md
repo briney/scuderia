@@ -571,7 +571,8 @@ already in the corpus. A minor parameter variation on an ingested method
 is not.
 
 The gap map later feeds the concept page's Open Questions section in
-Phase 7 — write it with that reuse in mind.
+Phase 7 — write it with that reuse in mind. A template with format and
+examples lives at `references/gap-map-template.md`.
 
 #### 6.2 Three discovery prongs
 
