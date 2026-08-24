@@ -21,7 +21,7 @@ content into a file here, stop: templates say "the brain", "your human", and
 | Path | What it is |
 |---|---|
 | `core/` | The capability contract (`capabilities.md`) and schema-driven tools (`tools/`) |
-| `profiles/<name>/` | A profile template: `schema.yaml`, `conventions/`, `skills/`, `SOUL.md` / `STYLE.md` / `USER/` / `AGENTS.md` templates, `manifest.yaml`, `example-brain/` |
+| `profiles/<name>/` | A profile template: `schema.yaml`, `conventions/`, `skills/`, `SOUL.md` / `STYLE.md` / `USER/` / `AGENTS.md` templates, `manifest.yaml`, `example-instance/` |
 | `docs/north-star/` | What soma is for (`VISION.md`) and how it is built (`DESIGN.md`) |
 | `docs/harnesses/` | Per-harness capability bindings — the adapter docs |
 | `interface/` | The feed layer: card renderer + contract, publisher-agnostic |
@@ -36,9 +36,9 @@ content into a file here, stop: templates say "the brain", "your human", and
 - **Skills name capabilities, not tools** (`core/capabilities.md`); harnesses
   bind them (`docs/harnesses/`). A skill that hardcodes a harness-specific
   tool without naming the capability is a bug.
-- **Templates are generic; minds are named.** Skill and convention prose never
-  hardcodes an instance name — it says "the brain" / "your human" or reads
-  `brain.yaml`.
+- **Templates are generic; agents are named.** Skill and convention prose never
+  hardcodes an instance name — it says "the instance", "your human", or reads
+  `instance.yaml`.
 - **Half-real templates rot.** Ship a profile stub (see `profiles/oiko/`)
   rather than an unexercised template.
 - **No skill-name collisions across sources.** A profile-scoped skill must
@@ -59,7 +59,7 @@ content into a file here, stop: templates say "the brain", "your human", and
   into a harness by symlink, no real skill directories may sit alongside
   the symlink — a real dir plus a symlinked dir with the same skill name
   is the collision that deadlocks resolvers.
-- The linter is schema-driven: `core/tools/lint-frontmatter.py --brain
+- The linter is schema-driven: `core/tools/lint-frontmatter.py --instance
   <instance> [--schema profiles/<name>/schema.yaml]`. Changes to a profile's
   frontmatter contract land in *both* its `schema.yaml` and its
   `conventions/frontmatter.md` prose — the two must not drift.

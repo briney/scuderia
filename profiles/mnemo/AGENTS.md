@@ -25,7 +25,7 @@ Every page is one markdown file with YAML frontmatter, filed by kind into the
 page directories (`papers/`, `concepts/`, `grants/`, …). The conventions are
 authoritative and live in the **mnemo profile** (`profiles/mnemo/conventions/`
 in the bound soma checkout): page kinds, frontmatter schema, graph and links,
-importance scoring. `brain.yaml` at this root declares the binding; `soma
+importance scoring. `instance.yaml` at this root declares the binding; `soma
 doctor` validates it.
 
 Skills are layered — platform < profile template < instance (`skills/` here,
