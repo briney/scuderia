@@ -79,6 +79,14 @@ name.
 | `raw-source-archive-upload` | Upload a binary to R2 and return a content-addressed pointer (`conventions/raw-source-archive.md`). Hermes: `rclone copyto` to the configured R2 remote. Claude Code: requires rclone + R2 creds on the host; available via Bash, configured per host. |
 | `voice-transcribe` | Transcribe an audio file. Hermes: native voice pipeline. Not provided under Claude Code. |
 
+### Inter-mind collaboration — see `core/agora.md` (DRAFT)
+
+| Capability | Contract |
+|---|---|
+| `mind-message` | Send a message to a sibling mind (another instance on the same host); receive its reply asynchronously. Hermes: Bot Chat (`hermes -p <profile> chat --in ~ -c "Bot Chat" --create-if-missing -Q -q "…"`), reply on stdout. Claude Code: not provided. |
+| `agora-deposit` | Create a bundle or artifact directory in the shared store under the agora write rules (temp-then-rename; write-once; manifest last). Wraps `write-file`; adds the rules. Requires `AGORA_ROOT` configured per host. |
+| `agora-resolve` | Resolve an `agora://` URI to a local path under `AGORA_ROOT`; for artifacts, check readiness (manifest present) before reading. Wraps `read-file`; adds URI resolution + the readiness check. |
+
 ## The per-harness matrix
 
 Each harness's adapter doc carries the authoritative table for that
@@ -103,6 +111,8 @@ prerequisites).
 | `messaging-send` | ✓ | ✗ |
 | `raw-source-archive-upload` | ✓ (rclone+R2) | ⚠ (available if host has rclone+R2 configured) |
 | `voice-transcribe` | ✓ | ✗ |
+| `mind-message` | ✓ (Bot Chat) | ✗ |
+| `agora-deposit` / `agora-resolve` | ✓ (filesystem + `AGORA_ROOT`) | ⚠ (filesystem, if a shared store is configured) |
 
 Legend: ✓ provided; ⚠ degraded substitute or conditionally available;
 ✗ not provided.

@@ -48,6 +48,8 @@ each capability resolves to once it's set up.
 | `messaging-send` | Telegram (or whichever gateway is configured) | The reverse of `send-notification` for outbound from skills |
 | `raw-source-archive-upload` | **`rclone copyto`** to Cloudflare R2 | Configured per host; see `conventions/raw-source-archive.md` |
 | `voice-transcribe` | Native voice pipeline | Audio in, transcript out; the original goes to R2 |
+| `mind-message` | **Bot Chat** | `hermes -p <profile> chat --in ~ -c "Bot Chat" --create-if-missing -Q -q "Message from <instance>: …"`; run backgrounded, reply arrives on stdout. Verified working 2026-08-24 (round-trip ~1 min) |
+| `agora-deposit` / `agora-resolve` | Filesystem under `AGORA_ROOT` | Absolute path in profile config (never `~`-relative — the agent shell's HOME is shimmed). Reference substrate: Dropbox folder pinned available-offline |
 
 ## Error behavior
 
@@ -66,6 +68,17 @@ each capability resolves to once it's set up.
   parent's model (no per-task model selection today). Until that lands,
   the `SOUL.md` §2 "delegate under oversight" carve-out is the only
   sanctioned delegation pattern.
+- **`agora-*` on a cloud-drive File Provider root.** During the sync
+  client's first-run/initial indexing, directory *listing* under the
+  provider root can block for minutes while `stat` and writes still
+  succeed. Let initial sync settle (or exclude everything but the agora
+  via selective sync) before assuming a broken store. Online-only
+  placeholder files look present but fail on open — keep the agora
+  pinned available-offline on agent hosts.
+- **`mind-message` requires the target profile to be configured.** A
+  profile with a model but no provider fails with "Provider resolver
+  returned an empty base URL." Check `model.provider` in the target's
+  config.yaml before diagnosing the transport.
 
 ## Install prerequisites
 
@@ -80,6 +93,8 @@ summary:
 | `gmail-read` / `calendar-read` | Spark Desktop running on the host; `spark-cli` shim available |
 | `send-notification` / `messaging-send` | Bot token + `TELEGRAM_ALLOWED_USERS` in `.env`; `hermes gateway` running as a service |
 | `voice-transcribe` | Whatever voice provider is configured in `.env` |
+| `mind-message` | Target profile created (`hermes profile create`) with a working `model.provider` |
+| `agora-deposit` / `agora-resolve` | Shared synced folder (e.g. Dropbox) reachable by all minds; absolute `AGORA_ROOT` in each profile's config; folder pinned available-offline on agent hosts |
 
 ## Skill availability summary
 
