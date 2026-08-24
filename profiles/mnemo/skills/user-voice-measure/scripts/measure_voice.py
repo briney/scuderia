@@ -157,11 +157,12 @@ def rewrite_section(out_path, fingerprint_text, prov_text):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--brain", required=True, help="brain root (contains grants/, papers/)")
+    ap.add_argument("--instance", "--brain", dest="instance", required=True,
+                    help="instance root (contains grants/, papers/); --brain is a deprecated alias")
     ap.add_argument("--out", default="USER/VOICE.md", help="target VOICE.md")
     args = ap.parse_args()
 
-    narrative, structured, pages = load_verbatim_sents(args.brain)
+    narrative, structured, pages = load_verbatim_sents(args.instance)
     if not narrative and not structured:
         raise SystemExit("refusing cleanly: no `## Verbatim` corpus found — the voice model is too thin to measure")
 

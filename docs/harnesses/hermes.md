@@ -3,8 +3,8 @@
 Hermes is the **reference harness** for soma. It is fat (not thin) by
 design — it ships its own scheduler, MCP-client support, messaging
 gateways, voice transcription, and an embedded search index (qmd). When
-Hermes loads the brain + character + skills, it becomes the mind
-(`DESIGN.md` §6).
+Hermes loads the instance content + character + skills, it becomes the
+agent (`DESIGN.md` §6).
 
 The install runbook is **[`SETUP.md`](../../SETUP.md) at the root** — this
 file is the *capability mapping*, not the install procedure. They are
@@ -49,7 +49,7 @@ each capability resolves to once it's set up.
 | `messaging-send` | Telegram (or whichever gateway is configured) | The reverse of `send-notification` for outbound from skills |
 | `raw-source-archive-upload` | **`rclone copyto`** to Cloudflare R2 | Configured per host; see `conventions/raw-source-archive.md` |
 | `voice-transcribe` | Native voice pipeline | Audio in, transcript out; the original goes to R2 |
-| `mind-message` | **Bot Chat** | `hermes -p <profile> chat --in ~ -c "Bot Chat" --create-if-missing -Q -q "Message from <instance>: …"`; run backgrounded, reply arrives on stdout. Verified working 2026-08-24 (round-trip ~1 min) |
+| `agent-message` | **Bot Chat** | `hermes -p <profile> chat --in ~ -c "Bot Chat" --create-if-missing -Q -q "Message from <instance>: …"`; run backgrounded, reply arrives on stdout. Verified working 2026-08-24 (round-trip ~1 min) |
 | `agora-deposit` / `agora-resolve` | Filesystem under `AGORA_ROOT` | `AGORA_ROOT` set in the profile's `.env` (absolute path — the agent shell's HOME is shimmed; quote paths containing spaces). Reference substrate: Dropbox folder pinned available-offline |
 
 ## Error behavior
@@ -76,7 +76,7 @@ each capability resolves to once it's set up.
   via selective sync) before assuming a broken store. Online-only
   placeholder files look present but fail on open — keep the agora
   pinned available-offline on agent hosts.
-- **`mind-message` requires the target profile to be configured.** A
+- **`agent-message` requires the target profile to be configured.** A
   profile with a model but no provider fails with "Provider resolver
   returned an empty base URL." Check `model.provider` in the target's
   config.yaml before diagnosing the transport.
@@ -94,8 +94,8 @@ summary:
 | `gmail-read` / `calendar-read` | Spark Desktop running on the host; `spark-cli` shim available |
 | `send-notification` / `messaging-send` | Bot token + `TELEGRAM_ALLOWED_USERS` in `.env`; `hermes gateway` running as a service |
 | `voice-transcribe` | Whatever voice provider is configured in `.env` |
-| `mind-message` | Target profile created (`hermes profile create`) with a working `model.provider` |
-| `agora-deposit` / `agora-resolve` | Shared synced folder (e.g. Dropbox) reachable by all minds; `AGORA_ROOT` (absolute) in each profile's `.env`; folder pinned available-offline on agent hosts |
+| `agent-message` | Target profile created (`hermes profile create`) with a working `model.provider` |
+| `agora-deposit` / `agora-resolve` | Shared synced folder (e.g. Dropbox) reachable by all agents; `AGORA_ROOT` (absolute) in each profile's `.env`; folder pinned available-offline on agent hosts |
 
 ## Skill availability summary
 

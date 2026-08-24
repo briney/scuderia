@@ -17,12 +17,13 @@ Validates a brain against a profile schema (``profiles/<name>/schema.yaml``):
   - Named warn-only checks enabled in schema ``checks:``.
 
 Usage:
-  lint-frontmatter.py --brain <brain-root> [--schema <schema.yaml>]
+  lint-frontmatter.py --instance <instance-root> [--schema <schema.yaml>]
                       [--skills-root <dir>]
 
-Defaults: --brain is the cwd; --schema is profiles/mnemo/schema.yaml relative
-to this script's repo checkout; --skills-root is the schema's sibling
-``skills/`` directory.
+Defaults: --instance is the cwd; --schema is profiles/mnemo/schema.yaml
+relative to this script's repo checkout; --skills-root is the schema's sibling
+``skills/`` directory. ``--brain`` is accepted as a deprecated alias for
+``--instance``.
 
 Exit codes:
   0 — no errors (warnings allowed)
@@ -523,8 +524,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description=(__doc__ or "").splitlines()[0]
     )
-    parser.add_argument("--brain", type=Path, default=Path.cwd(),
-                        help="brain root to lint (default: cwd)")
+    parser.add_argument("--instance", "--brain", dest="instance", type=Path,
+                        default=Path.cwd(),
+                        help="instance root to lint (default: cwd); "
+                             "--brain is a deprecated alias")
     parser.add_argument("--schema", type=Path,
                         default=script_repo / "profiles" / "mnemo" / "schema.yaml",
                         help="profile schema.yaml")
@@ -533,7 +536,7 @@ def main() -> int:
                              "(default: schema's sibling skills/ dir)")
     args = parser.parse_args()
 
-    brain = args.brain.resolve()
+    brain = args.instance.resolve()
     BRAIN_ROOT = brain
     schema = load_schema(args.schema.resolve())
     skills_root = args.skills_root or args.schema.resolve().parent / "skills"

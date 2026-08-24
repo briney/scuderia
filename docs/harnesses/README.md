@@ -1,7 +1,7 @@
 # `docs/harnesses/` — per-harness adapter docs
 
-A soma brain is pure markdown and runs inside a **harness** — a process that
-loads the brain + character + skills and becomes the mind
+A soma instance is pure markdown and runs inside a **harness** — a process
+that loads the instance content + character + skills and becomes the agent
 (`docs/north-star/DESIGN.md` §6). Each supported harness has an adapter
 doc here that maps soma's named capabilities
 (`skills/conventions/capabilities.md`) to that harness's actual tools.
@@ -27,7 +27,7 @@ Each adapter doc carries:
    `raw-source-archive-upload` under Hermes).
 4. **Skill availability summary.** Which skills work natively, which
    degrade, which are unavailable and why.
-5. **Harness-specific behaviors.** Anything the mind needs to know about
+5. **Harness-specific behaviors.** Anything the agent needs to know about
    how this harness loads files, sessions, plan modes, etc.
 
 ## Adding a new harness
@@ -39,7 +39,7 @@ Each adapter doc carries:
    `skills/conventions/capabilities.md`.
 4. If the harness has its own entry-point convention (a file it
    auto-loads on session start — like Claude Code's `CLAUDE.md`),
-   author that file at the brain root so the harness finds it.
+   author that file at the instance root so the harness finds it.
 5. Update `AGENTS.md` if the new harness changes anything universal.
 
 ## Why per-harness docs exist (and why they don't bloat)

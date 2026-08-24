@@ -1,7 +1,7 @@
 ---
 name: agora-exchange
-description: "Use for reads/writes to the agora shared store and for messaging sibling minds."
-version: 1.0.0
+description: "Use for reads/writes to the agora shared store and for messaging sibling agents."
+version: 1.1.0
 author: soma
 license: MIT
 platforms: [macos, linux]
@@ -11,19 +11,19 @@ metadata:
     tags: [agora, cross-profile, collaboration, shared-storage]
 ---
 
-# agora-exchange — shared store + sibling-mind messaging
+# agora-exchange — shared store + sibling-agent messaging
 
-The **agora** is the shared-storage layer for collaboration between minds
+The **agora** is the shared-storage layer for collaboration between agents
 (instances of soma profiles on the same host) and their human. It is
-**not a brain**: no frontmatter, no page kinds, no linting, no indexing.
-Knowledge that proves load-bearing gets promoted into a brain via that
-brain's own ingest skills; files stay put.
+**not an instance store**: no frontmatter, no page kinds, no linting, no
+indexing. Content that proves load-bearing gets promoted into an instance
+via that instance's own ingest skills; files stay put.
 
 **Canonical contract:** `../agora.md` (harness-neutral rules). This skill
-is the generic procedure every participating mind loads; where the two
+is the generic procedure every participating agent loads; where the two
 disagree, the contract wins and this skill should be patched.
 
-**Capabilities named:** `agora-deposit`, `agora-resolve`, `mind-message`
+**Capabilities named:** `agora-deposit`, `agora-resolve`, `agent-message`
 (see `capabilities.md`).
 
 ## Configuration
@@ -35,7 +35,7 @@ Never hardcode it, never commit it, never expand `~`-relative forms
 refuse cleanly and tell the human to configure it per
 `docs/harnesses/<harness>.md`.
 
-In cross-mind messages, use `agora://<subdir>/<name>` URIs; each machine
+In cross-agent messages, use `agora://<subdir>/<name>` URIs; each machine
 resolves against its own `AGORA_ROOT`. Absolute host paths are never
 transmitted.
 
@@ -65,7 +65,7 @@ agora/
 4. Deposit **interactive session files** (`.pse`, Chimera sessions, …)
    alongside data files — the human opens artifacts interactively.
 
-## Messaging a sibling mind (`mind-message`)
+## Messaging a sibling agent (`agent-message`)
 
 Transport is bound per harness (`docs/harnesses/<harness>.md`); Hermes
 uses Bot Chat. Rules regardless of transport:
@@ -95,7 +95,7 @@ available-offline on agent hosts:
 
 ## Provenance discipline
 
-The requesting mind guarantees input *bundles* are correct; the executing
-mind guarantees the transformation is faithful and verified. When an
-artifact is worth remembering, the requesting brain ingests it — no mind
-ever writes into another mind's repo.
+The requesting agent guarantees input *bundles* are correct; the executing
+agent guarantees the transformation is faithful and verified. When an
+artifact is worth remembering, the requesting instance ingests it — no
+agent ever writes into another agent's repo.

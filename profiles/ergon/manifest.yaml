@@ -16,14 +16,14 @@ dirs:
 # the profile root; `target` is relative to the instance root. Placeholders
 # {{INSTANCE_NAME}} and {{CREATED}} are substituted in file contents.
 files:
-  - template: example-brain/brain.yaml
-    target: brain.yaml
+  - template: example-instance/instance.yaml
+    target: instance.yaml
   - template: SOUL.md
     target: SOUL.md
     strip_header: true
 
 placeholders:
-  INSTANCE_NAME: the instance's name (minds are named)
+  INSTANCE_NAME: the instance's name (agents are named)
   CREATED: ISO date of scaffold
 
 # Harness-side bindings are NOT performed by the CLI; they are documented

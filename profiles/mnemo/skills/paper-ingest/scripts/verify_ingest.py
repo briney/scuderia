@@ -97,14 +97,15 @@ def load_ledger(brain):
 def main():
     ap = argparse.ArgumentParser(description="Phase 10 verification for paper-ingest")
     ap.add_argument("slug", help="paper slug (papers/<slug>.md)")
-    ap.add_argument("--brain", help="brain root (auto-detected from cwd if omitted)")
+    ap.add_argument("--instance", "--brain", dest="instance",
+                    help="instance root (auto-detected from cwd if omitted); --brain is a deprecated alias")
     args = ap.parse_args()
 
-    brain = args.brain or find_brain_root(os.getcwd())
+    brain = args.instance or find_brain_root(os.getcwd())
     if not brain:
         sys.stderr.write(
-            "ERROR: could not auto-detect brain root (no papers/ + people/ above cwd); "
-            "pass --brain\n"
+            "ERROR: could not auto-detect instance root (no papers/ + people/ above cwd); "
+            "pass --instance\n"
         )
         sys.exit(2)
 

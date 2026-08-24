@@ -34,11 +34,12 @@ def instance_name(vault):
     env = os.environ.get("FEED_INSTANCE")
     if env:
         return env
-    brain = vault / "brain.yaml"
-    if brain.exists():
-        m = re.search(r"^name:\s*(\S+)", brain.read_text(), re.M)
-        if m:
-            return m.group(1)
+    for fname in ("instance.yaml", "brain.yaml"):  # brain.yaml = legacy name
+        contract = vault / fname
+        if contract.exists():
+            m = re.search(r"^name:\s*(\S+)", contract.read_text(), re.M)
+            if m:
+                return m.group(1)
     return vault.name
 
 

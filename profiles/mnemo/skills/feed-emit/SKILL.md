@@ -40,7 +40,7 @@ the binary commit gate and QUEUE.md was frozen. Git history preserves the
 producer if a future attention surface ever needs a card.
 
 The emitter takes `VAULT_ROOT` (required), `FEED_OUTBOX_DIR` (default
-`<vault>/feed-outbox`), `FEED_INSTANCE` (default: `brain.yaml` name).
+`<vault>/feed-outbox`), `FEED_INSTANCE` (default: `instance.yaml` name).
 
 ## Contract rules the emitters honor
 

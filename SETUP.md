@@ -1,7 +1,7 @@
-# SETUP.md — installing a soma brain
+# SETUP.md — installing a soma instance
 
 The runbook for going from zero to a running instance. Two paths cover the
-same ground: `soma init` scaffolds a new brain; `soma adopt` binds an
+same ground: `soma init` scaffolds a new instance; `soma adopt` binds an
 existing one. Both are defined by the profile's `manifest.yaml`, so the paths
 cannot drift. A third path — agent-guided install — is the same steps with
 the harness agent doing the interview and invoking the CLI.
@@ -18,10 +18,10 @@ all the platform needs.
 
 ## 2. Scaffold or adopt the instance
 
-New brain:
+New instance:
 
 ```
-setup/soma init --profile mnemo --name <your-brain-name> --path ~/git/<name>
+setup/soma init --profile mnemo --name <agent-name> --path ~/git/<name>
 cd ~/git/<name> && git init && git add -A && git commit -m "birth"
 ```
 
@@ -55,13 +55,13 @@ ln -sfn <instance>/SOUL.md ~/.hermes/profiles/<instance>/SOUL.md
 # own skills/ dir can be bound as a second category when it has content)
 ln -sfn <soma>/profiles/mnemo/skills ~/.hermes/profiles/<instance>/skills/<category>
 
-# sessions run with the brain root as cwd
+# sessions run with the instance root as cwd
 #   config.yaml:  terminal.cwd: <instance abs path>
 #   .env:         MESSAGING_CWD=<instance abs path>
 ```
 
 Optional host overlay (lets `skills/conventions/…` references resolve from
-the brain root as cwd): symlink `<instance>/skills/conventions` →
+the instance root as cwd): symlink `<instance>/skills/conventions` →
 `<soma>/profiles/mnemo/conventions`, and add it to the instance's
 `.gitignore` and `.stignore` — it is host-only glue, never committed or
 synced.
@@ -87,6 +87,6 @@ The per-capability mapping and error behavior: `docs/harnesses/<harness>.md`.
 
 - `setup/soma doctor --path <instance>` is green.
 - A live session loads the character and template skills through the
-  binding, and brain paths resolve from cwd.
-- `python3 core/tools/lint-frontmatter.py --brain <instance>` runs (findings
+  binding, and instance paths resolve from cwd.
+- `python3 core/tools/lint-frontmatter.py --instance <instance>` runs (findings
   are the instance's own, not the install's).

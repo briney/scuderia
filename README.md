@@ -32,7 +32,7 @@ setup/           the soma CLI: init / doctor / adopt
 - A **profile template** (e.g. `mnemo`) defines page kinds, schema, conventions,
   skills, and character templates for a kind of brain.
 - An **instance** is a private repo of actual content, bound to a soma checkout
-  by a `brain.yaml`. Instances are sibling repos, never subdirectories or
+  by an `instance.yaml`. Instances are sibling repos, never subdirectories or
   submodules: the unit of privacy is the repo.
 
 ## Quick start

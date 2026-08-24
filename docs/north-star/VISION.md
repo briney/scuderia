@@ -11,6 +11,17 @@
 > genericized — the archetype it describes is the **mnemo profile** (soma's
 > flagship research-brain template), and "your human" is whoever runs an
 > instance. Instances are named; the template is not.
+>
+> v1.3 note: **vocabulary split.** The platform's general category is the
+> **agent** — any profile's instance, of any kind. **Mind** is mnemo's
+> self-description: a mnemo agent is a mind because a thinker is what it is.
+> Agents of other profiles are not minds — an ergon instance is a *doer*,
+> and its persistent state is a capability library, not a knowledge graph.
+> This document describes the mnemo archetype throughout; nothing in it
+> should be read as claiming every soma agent is mind-shaped. Inter-agent
+> collaboration (a doer working with a mind) is governed by
+> `core/agora.md`. The instance contract file is `instance.yaml`
+> (renamed from `brain.yaml`).
 
 ---
 
@@ -609,3 +620,9 @@ better at each part for seeing the others.
    vault carry only the markdown brain; git tracks a lightweight pointer per
    archived file. The archive is the layer the brain is distilled from, kept so
    the brain can be re-derived as models improve.
+9. **Platform vocabulary.** ✓ Resolved (2026-08-24, v1.3 note): the general
+   category is the **agent**; **mind** is mnemo's character word, not a
+   platform term. Extending "mind" to every profile was a mnemo-centric
+   accident — corrected when the ergon (doer) profile made the mismatch
+   visible. The instance contract file is `instance.yaml` (was
+   `brain.yaml`). Multi-agent collaboration lives in `core/agora.md`.

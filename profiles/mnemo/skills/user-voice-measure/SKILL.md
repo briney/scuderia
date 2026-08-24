@@ -66,7 +66,7 @@ cold-start stance. Do not measure from drafts or from memory.
 
 ```
 python3 skills/user-voice-measure/scripts/measure_voice.py \
-    --brain <brain-root> --out USER/VOICE.md
+    --instance <instance-root> --out USER/VOICE.md
 ```
 
 The script (stdlib only):

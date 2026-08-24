@@ -10,6 +10,16 @@
 >
 > v1.2 note: genericized for the soma platform split, as `VISION.md` was —
 > "the mind" is a mnemo instance, "your human" is whoever runs one.
+>
+> v1.3 note: **vocabulary split** (see `VISION.md` v1.3). The platform's
+> general category is the **agent**; **mind** is mnemo's self-description.
+> This blueprint describes the mnemo agent — its page kinds, its knowledge
+> graph, its character. Other profiles build other kinds of agents (ergon:
+> a doer whose persistent state is a capability library); the *machinery*
+> here (schema-driven pages, the instance contract, the harness seam) is
+> profile-general, and the seam (§6) works the same for a non-mind agent.
+> The instance contract file is `instance.yaml` (renamed from
+> `brain.yaml`). Inter-agent collaboration: `core/agora.md`.
 
 ---
 
@@ -97,7 +107,7 @@ and *is* a git repository (§9.2).
 
 ```
 brain/
-├── brain.yaml           # the instance contract — name, profile, version pins
+├── instance.yaml        # the instance contract — name, profile, version pins
 ├── AGENTS.md            # orientation for any agent/human entering the vault
 ├── SOUL.md              # character — who the mind is (§3.1)
 ├── STYLE.md             # scientific-writing voice (§3.2)
@@ -454,11 +464,14 @@ The harness points at the brain directory. It loads `SOUL.md`, `STYLE.md`,
 `USER/<name>.md`, and `AGENTS.md` as the always-on layer, discovers the layered
 `skills/`, reads `skills/RESOLVER.md` for routing, and builds (or borrows) a
 search index over the page tree. With those loaded, the running harness
-process *is* the mind. The **brain side of the seam contract** is exactly
-this set of file conventions — `brain.yaml` plus the character files and
+process *is* the mind. The **instance side of the seam contract** is exactly
+this set of file conventions — `instance.yaml` plus the character files and
 `RESEARCH.md` at the root, the layered `skills/` tree with `RESOLVER.md`,
 the page directories with their frontmatter schema. Any harness that honors
-those conventions can host a mnemo brain. `soma doctor` validates the
+those conventions can host a mnemo brain. The seam is profile-general: a
+harness loading an ergon instance becomes a doer agent by the same mechanism
+— the file-convention set differs per profile (each profile's `manifest.yaml`
+declares it). `soma doctor` validates the
 contract.
 
 ### 6.3 The mind generates, the harness delivers

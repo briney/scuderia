@@ -19,7 +19,7 @@ that day comes, an oiko profile needs the same five things mnemo ships:
    budget cards for the feed).
 3. `SOUL.md` / `STYLE.md` / `USER/` templates — the lab-manager character is
    a different voice from the research thought partner.
-4. `manifest.yaml` + `example-brain/` — the install contract.
+4. `manifest.yaml` + `example-instance/` — the install contract.
 5. Card types for the feed (budget/protocol cards), declared in the schema.
 
 The platform machinery (capability contract, linter, CLI, feed renderer) is

@@ -1,13 +1,13 @@
-# The agora: inter-mind collaboration contract
+# The agora: inter-agent collaboration contract
 
-Status: **DRAFT — pending review** (2026-08-24). Nothing is bound yet;
-the pilot that validates this contract is planned but not run.
+Status: **DRAFT** (2026-08-24). Contract reviewed by the human; the pilot
+that validates it is planned but not run.
 
-A soma mind is one mind per instance. But minds of *different kinds* can
-collaborate: a knowledge mind (an instance of `mnemo`) holds what is
-known; a doer mind (an instance of `ergon`) holds what can be done. The
-**agora** is where they meet: a shared artifact store plus the message
-conventions that surround it.
+A soma agent is one agent per instance. But agents of *different kinds* can
+collaborate: a knowledge agent (a mnemo instance) holds what is known; a
+doer agent (an ergon instance) holds what can be done. The **agora** is
+where they meet: a shared artifact store plus the message conventions that
+surround it.
 
 This document is the harness-neutral contract. Transports are bound per
 harness in `docs/harnesses/`; the capabilities named here are added to
@@ -23,25 +23,25 @@ harness in `docs/harnesses/`; the capabilities named here are added to
    questions, statuses, and `agora://` pointers. Structured data —
    sequences, residue lists, task inputs — is written to the store as a
    *bundle*; the message carries the path, never the payload.
-3. **No mind writes into another mind's repo.** The unit of privacy is
+3. **No agent writes into another agent's repo.** The unit of privacy is
    the repo (soma's load-bearing rule). If a doer's output is worth
-   remembering, the knowledge mind ingests it through its own skills.
+   remembering, the knowledge agent ingests it through its own skills.
    The agora is the *only* shared writable surface.
-4. **Truth/fidelity split.** The requesting mind guarantees the input
-   bundle is correct. The executing mind guarantees the transformation
+4. **Truth/fidelity split.** The requesting agent guarantees the input
+   bundle is correct. The executing agent guarantees the transformation
    is faithful and *verified* — never reports success without real
    output. When execution fails, the report says what was tried and
    what is missing.
 5. **Craft state, not domain data.** A doer's persistent state is its
    capability library, its artifact registry, and its craft knowledge
    (tool quirks, environment facts). Domain facts are requested from
-   the knowledge mind every time — cached domain data goes stale, and
-   the brain is the single source of truth.
+   the knowledge agent every time — cached domain data goes stale, and
+   the knowledge agent's store is the single source of truth.
 
 ## The store
 
 The agora lives on a **synced shared filesystem** reachable by every
-participating mind *and* by the human (the human opens artifacts
+participating agent *and* by the human (the human opens artifacts
 interactively — this constraint rules out object-storage-as-primary).
 Reference substrate: a cloud-drive folder (Dropbox) pinned
 available-offline on agent hosts. Sync is **not backup** — deletions
@@ -67,7 +67,7 @@ agora/
     <date>-<slug>/
       manifest.json                 # written LAST — see write rules
       ...output files
-  proposals/                        # doer's gated skill-creation proposals
+  proposals/                        # doers' gated skill-creation proposals
     <date>-<slug>.md
 ```
 
@@ -87,17 +87,17 @@ not merge. They reduce sync pathology to approximately zero:
 
 ### What the agora is not
 
-The agora is **not a brain**. No frontmatter, no page kinds, no
-linting, no indexing, no wikilinks. It is a working surface shared
-across minds. Content that proves load-bearing is promoted into a brain
-by that brain's own ingest skills; the agora copy remains as the file
-the human can touch.
+The agora is **not an instance store**. No frontmatter, no page kinds,
+no linting, no indexing, no wikilinks. It is a working surface shared
+across agents. Content that proves load-bearing is promoted into an
+instance by that instance's own ingest skills; the agora copy remains as
+the file the human can touch.
 
 ## Capabilities
 
 Three new named capabilities (full contracts in `core/capabilities.md`):
 
-- **`mind-message`** — send a message to a sibling mind; receive its
+- **`agent-message`** — send a message to a sibling agent; receive its
   reply asynchronously.
 - **`agora-deposit`** — create a bundle or artifact directory under the
   write rules above.
@@ -107,14 +107,14 @@ Three new named capabilities (full contracts in `core/capabilities.md`):
 ## Message shapes
 
 Messages are short prose plus a small JSON block. Every message opens
-with a sender prefix (`Message from <instance>:`) so the receiving mind
+with a sender prefix (`Message from <instance>:`) so the receiving agent
 knows who is talking. Three types:
 
-- **Query** (doer → knowledge mind): a question, an optional
+- **Query** (doer → knowledge agent): a question, an optional
   `agora://` bundle pointer for structured context, and the expected
-  reply shape. The knowledge mind answers from its brain and deposits
-  any structured payload as a reply bundle.
-- **Commission** (human or knowledge mind → doer): a task
+  reply shape. The knowledge agent answers from its own store and
+  deposits any structured payload as a reply bundle.
+- **Commission** (human or knowledge agent → doer): a task
   specification, a bundle pointer with inputs, and the expected
   artifact description (formats, verification expectations).
 - **Report** (doer → requester): `status` ∈ {complete, blocked,
@@ -187,4 +187,4 @@ it. "I couldn't" without those four elements is not a report.
 - Doer-initiated messages (e.g. "a stored artifact's upstream data was
   deprecated"): out of scope for v1; doers are reactive.
 - `docs/north-star/DESIGN.md` integration: once the pilot validates
-  this contract, the north-star blueprint gains a multi-mind section.
+  this contract, the north-star blueprint gains a multi-agent section.
