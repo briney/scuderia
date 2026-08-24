@@ -18,9 +18,10 @@ each capability resolves to once it's set up.
   regenerates a default 513-byte stub — stop the gateway before moving
   character files.)
 - **Skills:** one symlinked category per layer under
-  `~/.hermes/profiles/<instance>/skills/`: template layer →
-  `<soma>/profiles/mnemo/skills`; instance layer → `<instance>/skills`.
-  Instance overrides template by skill name.
+  `~/.hermes/profiles/<instance>/skills/`: core layer →
+  `<soma>/core/skills`; template layer → `<soma>/profiles/<profile>/skills`;
+  instance layer → `<instance>/skills`. Instance overrides template
+  overrides core by skill name.
 - **Conventions:** reachable as `skills/conventions/…` — the template skills
   dir carries a `conventions` symlink to the profile's conventions. An
   optional host overlay (`<instance>/skills/conventions`, git+sync ignored)
@@ -49,7 +50,7 @@ each capability resolves to once it's set up.
 | `raw-source-archive-upload` | **`rclone copyto`** to Cloudflare R2 | Configured per host; see `conventions/raw-source-archive.md` |
 | `voice-transcribe` | Native voice pipeline | Audio in, transcript out; the original goes to R2 |
 | `mind-message` | **Bot Chat** | `hermes -p <profile> chat --in ~ -c "Bot Chat" --create-if-missing -Q -q "Message from <instance>: …"`; run backgrounded, reply arrives on stdout. Verified working 2026-08-24 (round-trip ~1 min) |
-| `agora-deposit` / `agora-resolve` | Filesystem under `AGORA_ROOT` | Absolute path in profile config (never `~`-relative — the agent shell's HOME is shimmed). Reference substrate: Dropbox folder pinned available-offline |
+| `agora-deposit` / `agora-resolve` | Filesystem under `AGORA_ROOT` | `AGORA_ROOT` set in the profile's `.env` (absolute path — the agent shell's HOME is shimmed; quote paths containing spaces). Reference substrate: Dropbox folder pinned available-offline |
 
 ## Error behavior
 
@@ -94,7 +95,7 @@ summary:
 | `send-notification` / `messaging-send` | Bot token + `TELEGRAM_ALLOWED_USERS` in `.env`; `hermes gateway` running as a service |
 | `voice-transcribe` | Whatever voice provider is configured in `.env` |
 | `mind-message` | Target profile created (`hermes profile create`) with a working `model.provider` |
-| `agora-deposit` / `agora-resolve` | Shared synced folder (e.g. Dropbox) reachable by all minds; absolute `AGORA_ROOT` in each profile's config; folder pinned available-offline on agent hosts |
+| `agora-deposit` / `agora-resolve` | Shared synced folder (e.g. Dropbox) reachable by all minds; `AGORA_ROOT` (absolute) in each profile's `.env`; folder pinned available-offline on agent hosts |
 
 ## Skill availability summary
 
