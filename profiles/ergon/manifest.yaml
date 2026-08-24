@@ -11,6 +11,7 @@ dirs:
   - proposals
   - skills
   - user
+  - working-docs
 
 # Files copied into the instance at scaffold time. `template` is relative to
 # the profile root; `target` is relative to the instance root. Placeholders
