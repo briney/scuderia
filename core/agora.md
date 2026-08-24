@@ -4,10 +4,10 @@ Status: **DRAFT** (2026-08-24). Contract reviewed by the human; the pilot
 that validates it is planned but not run.
 
 A soma agent is one agent per instance. But agents of *different kinds* can
-collaborate: a knowledge agent (a mnemo instance) holds what is known; a
-doer agent (an ergon instance) holds what can be done. The **agora** is
-where they meet: a shared artifact store plus the message conventions that
-surround it.
+collaborate: a knowledge agent (e.g. a mnemo instance) holds what is known;
+a doer agent (e.g. an ergon instance) holds what can be done. The **agora**
+is where they meet: a shared artifact store plus the message conventions
+that surround it.
 
 This document is the harness-neutral contract. Transports are bound per
 harness in `docs/harnesses/`; the capabilities named here are added to

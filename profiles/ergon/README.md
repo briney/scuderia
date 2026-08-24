@@ -1,18 +1,31 @@
 # ergon — the doer profile (SKELETON)
 
-*ergon*: work, deed, craft. The doer complement to mnemo's thinker.
+*ergon*: work, deed, craft.
 
-A mnemo instance is a **mind**: its persistent state is a knowledge graph.
-An ergon instance is a **doer**: its persistent state is a *capability
-library* — its skills, its run log, and its craft knowledge (tool quirks,
-environment facts, failure modes). It holds **no domain data**: when it
-needs to know something, it asks a knowledge agent, fresh, every time. Its
-products are artifacts — verified, provenance-carrying, deposited in the
-shared store.
+An ergon agent is a **doer**: an agent whose persistent state is a
+*capability library* — its skills, its run log, and its craft knowledge
+(tool quirks, environment facts, failure modes). Its products are
+**artifacts**: verified, provenance-carrying outputs deposited in a shared
+store, and reports that state plainly what ran, what it produced, and what
+was checked.
 
-The collaboration contract (shared store, message shapes, provenance
-schemas, gated skill creation) lives at **`core/agora.md`** — it spans
-profiles and is owned by the platform, not by ergon.
+An ergon agent holds **no domain data**. When a commission needs a fact
+about the world, the agent obtains it from a configured knowledge source —
+which may be a sibling soma agent (via the agora; see `core/agora.md`), a
+database, a public repository, an MCP service, or anything else the
+instance is wired to. No particular knowledge source — and no companion
+profile — is required. What is required is the discipline: domain facts are
+requested fresh, labeled with provenance, and never cached as if they were
+the agent's own knowledge.
+
+The profile ships:
+
+- `schema.yaml` — two page kinds, both about the craft, never domain
+  content: `run` (a job log: commission, inputs, artifact, what broke) and
+  `proposal` (a gated skill-creation proposal awaiting human approval).
+- `SOUL.md` — the character skeleton. The spine (§2) is near-final; the
+  rest is marked draft pending a live instance.
+- `manifest.yaml` + `example-instance/` — the install contract.
 
 **This is a skeleton, not a stub** (contrast `profiles/oiko/`): an ergon
 instance is being built toward a pilot, so the schema, manifest, and SOUL
@@ -22,9 +35,10 @@ is scaffolded):
 1. `conventions/` — prose frontmatter/page-kind conventions (schema.yaml
    is the machine-readable source of record; the prose must be written and
    the two kept in sync per the platform rule).
-2. `skills/` — ergon-specific craft skills. The generic agora procedure is
-   already inherited from `core/skills/agora-exchange`; coding methodology
-   is evaluated as a harness plugin before anything is vendored here.
+2. `skills/` — ergon-specific craft skills. The generic shared-store
+   procedure is inherited from `core/skills/agora-exchange`; additional
+   methodology (e.g. coding skills) is evaluated per instance before
+   anything is vendored here.
 3. `STYLE.md` / `USER/` / `AGENTS.md` / `CLAUDE.md` templates.
 4. Card types for the feed, if runs/proposals ever want feed surfaces.
 
