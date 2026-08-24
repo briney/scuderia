@@ -1,0 +1,44 @@
+# ergon install manifest — Layer 0 of the setup contract (soma spec §8).
+# Mirrors profiles/mnemo/manifest.yaml; see that file for the contract prose.
+
+manifest_version: 1
+profile: ergon
+
+# Directories the instance must have. Derived from schema.yaml kinds plus the
+# instance-skill layer; listed explicitly so init is declarative.
+dirs:
+  - runs
+  - proposals
+  - skills
+  - user
+
+# Files copied into the instance at scaffold time. `template` is relative to
+# the profile root; `target` is relative to the instance root. Placeholders
+# {{INSTANCE_NAME}} and {{CREATED}} are substituted in file contents.
+files:
+  - template: example-brain/brain.yaml
+    target: brain.yaml
+  - template: SOUL.md
+    target: SOUL.md
+    strip_header: true
+
+placeholders:
+  INSTANCE_NAME: the instance's name (minds are named)
+  CREATED: ISO date of scaffold
+
+# Harness-side bindings are NOT performed by the CLI; they are documented
+# one-liners in docs/harnesses/<harness>.md and verified by `soma doctor`.
+bindings:
+  - id: harness-character
+    description: harness loads the instance SOUL.md (and the user model, USER/<name>.md) at session start
+    verify: harness-specific; see the adapter doc
+  - id: harness-skills
+    description: harness skill path exposes the layered skill set
+                 (core < profile template < instance)
+    verify: harness-specific; see the adapter doc
+  - id: harness-cwd
+    description: sessions run with the instance root as working directory
+    verify: harness-specific; see the adapter doc
+  - id: harness-agora
+    description: "AGORA_ROOT is set in the harness per-profile environment (Hermes: profile .env) so the core agora-exchange skill resolves"
+    verify: harness-specific; see the adapter doc

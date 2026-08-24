@@ -1,0 +1,52 @@
+# ergon profile schema — machine-readable frontmatter contract.
+#
+# Same role as mnemo's schema.yaml: the page kinds, their directories, the
+# shared spine, per-kind required fields and enums. Tools read this file
+# (core/tools/lint-frontmatter.py, setup/soma doctor). The prose source of
+# record (conventions/frontmatter.md) does not exist yet — see README.md;
+# write it when the first ergon instance is scaffolded and keep the two in
+# sync.
+
+schema_version: 1
+profile: ergon
+
+# Fields every page carries regardless of kind.
+spine:
+  required: [kind, slug, title]
+  validated_optional:
+    importance:
+      type: number
+      range: [0.0, 1.0]
+
+# Two kinds, both about the craft — never domain content. An ergon brain is
+# tiny by design: the skill library is the real brain; these pages are the
+# craft's memory of its own exercise.
+kinds:
+  # A job log: what was commissioned, what bundle it consumed, what artifact
+  # it produced, what broke. Failure detail is the feedstock for proposals.
+  run:
+    dir: runs
+    required: [status]
+    enums:
+      status: [complete, blocked, failed]
+  # A gated skill-creation proposal (core/agora.md §proposal flow). The
+  # human-facing copy also lives at agora://proposals/ for review; this page
+  # is the mind's own record.
+  proposal:
+    dir: proposals
+    required: [status]
+    enums:
+      status: [pending, approved, rejected, crystallized]
+
+# Link-shaped fields (shape-checked on every page).
+link_fields: [links]
+
+# Slug shape: lowercase, hyphen-separated, ASCII-only.
+slug_pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+
+# Skill frontmatter contract (same as mnemo's).
+skills:
+  glob: 'skills/*/SKILL.md'
+  required: [name, description, triggers]
+  allow_extra_fields: false
+  name_matches_dir: true

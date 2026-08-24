@@ -1,0 +1,12 @@
+# brain.yaml — the instance contract (soma spec §5)
+# This file binds a brain repo to a profile. It is the entire
+# platform→instance API: the platform validates this file plus the
+# directories the profile's schema.yaml declares.
+#
+# `soma init` fills the placeholders; `soma doctor` validates the result.
+
+name: {{INSTANCE_NAME}}        # minds are named; templates are generic
+profile: ergon                 # which soma profile template this brain runs
+profile_version: 1             # pin against the profile's schema_version lineage
+schema_version: 1              # the profile schema.yaml version this brain conforms to
+created: {{CREATED}}           # ISO date, filled at scaffold time
