@@ -49,6 +49,8 @@ agora/
     <date>-<slug>/manifest.json   # written LAST
     <date>-<slug>/...files
   proposals/    # doers' gated skill-creation proposals
+  projects/     # live human <-> doer workspaces (mutable — the only exception)
+    _inbox/     # raw drops: <slug>/ + brief.md; intake is notify-and-confirm
 ```
 
 ## Write rules (non-negotiable)

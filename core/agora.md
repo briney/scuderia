@@ -69,6 +69,11 @@ agora/
       ...output files
   proposals/                        # doers' gated skill-creation proposals
     <date>-<slug>.md
+  projects/                         # live human ↔ doer workspaces — see "Projects"
+    INDEX.md                        # registry, generated from state.json files
+    _inbox/                         # raw drops land here: <slug>/ + brief.md
+    <date>-<slug>/
+      brief.md  inputs/  work/  outputs/  log.md  state.json
 ```
 
 ### Write rules
@@ -85,6 +90,11 @@ not merge. They reduce sync pathology to approximately zero:
    artifact directory. *Manifest exists ⇒ artifact complete.* This is
    the readiness signal; readers must check for it, not guess.
 
+Rule 2 applies to `bundles/`, `artifacts/`, and `proposals/`.
+`projects/` is the documented exception — a mutable, human-co-edited
+surface with its own per-file rules, defined in "Projects" below. Rules
+1 and 3 apply everywhere, including inside a project's `outputs/`.
+
 ### What the agora is not
 
 The agora is **not an instance store**. No frontmatter, no page kinds,
@@ -92,6 +102,42 @@ no linting, no indexing, no wikilinks. It is a working surface shared
 across agents. Content that proves load-bearing is promoted into an
 instance by that instance's own ingest skills; the agora copy remains as
 the file the human can touch.
+
+## Projects
+
+A **project** is a live, mutable workspace shared by the human and one
+doer — the only place in the agora where the write-once rule does not
+apply at the directory level. It exists for iterative work: the human
+drops raw inputs plus instructions, the doer intakes and runs a first
+pass, and both refine the results over multiple sessions.
+
+Anatomy of `projects/<date>-<slug>/`:
+
+- `brief.md` — the ask, in prose; edited as the work evolves.
+- `inputs/` — the dropped files, hashed at intake, frozen thereafter.
+- `work/` — the doer's scratch: scripts, intermediates.
+- `outputs/` — finished artifacts only; write rules 1 and 3 apply within
+  it (temp-then-rename, `manifest.json` last, hashes recorded).
+- `log.md` — running journal: what ran, what was corrected, what is next.
+- `state.json` — `{status, created, last_activity, open_questions}` with
+  `status ∈ {inbox, active, dormant, complete}`.
+
+Rules:
+
+1. `inputs/` is immutable after intake. New data mid-project arrives via
+   `_inbox/` and is folded in by the doer.
+2. `outputs/` entries are versioned — a revised figure is a new file,
+   never an overwrite.
+3. `INDEX.md` is generated from the `state.json` files, never
+   hand-edited.
+4. A project belongs to exactly one doer instance. A sibling agent
+   participates by commissioning the doer, never by writing into the
+   project.
+
+Intake is **notify-and-confirm**: detection machinery is harness-bound,
+but the contract requires that the doer restate its understanding of the
+brief and the planned first pass, and receive human confirmation, before
+intake runs.
 
 ## Capabilities
 
