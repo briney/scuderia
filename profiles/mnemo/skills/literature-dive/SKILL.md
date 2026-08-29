@@ -72,6 +72,38 @@ dispatch:
   title,externalIds,year`) is the discovery fallback; it also
   rate-limits under load, so if both are blocked, wait 10–15s.
 
+**`curl | python3` pipe is blocked by the security scanner.** The
+Phase 1 PubMed search templates below use `curl ... | python3 -c "..."`
+but Hermes blocks pipes from curl to interpreters (security scan: "Pipe
+to interpreter"). Use `execute_code` with `urllib.request` instead — it
+handles URL encoding correctly and avoids both the pipe block and a
+second issue: unencoded parentheses in PubMed query URLs cause `curl -o`
+to fail with exit code 3. `urllib.parse.urlencode` in `execute_code`
+handles this transparently. The `execute_code` path also lets you batch
+multiple PubMed searches in one call and parse results with the full
+Python stdlib.
+
+**Delegation rate-limit fallback (HTTP 429).** If the provider
+rate-limits all dispatched subagents (observed 2026-08-26, Nipah
+antibodies dive: 6/6 subagents across 2 batches hit HTTP 429 and wrote
+zero files), do NOT retry delegation — the rate limit persists for the
+session. Fall back to **direct orchestrator ingestion**: fetch abstracts
+via Europe PMC REST
+(`europepmc.org/webservices/rest/search?query=ext_id:PMID&resultType=core&format=json`
+— reliably returns `abstractText`, `title`, `authorList`, `pmcid`,
+`journalTitle`), distill and write the paper pages yourself.
+Abstract-only distillation (`fulltext_source: abstract-only`,
+`needs-enrichment: false`) is acceptable when full text is paywalled —
+the abstract plus the spine review's detailed discussion of the paper
+(Table entries, in-text citations with surrounding context) usually
+provides enough signal for a useful distillation. This is slower than
+delegation but reliable; a 25-paper dive can be completed in ~30 minutes
+of direct writing. For full text when available, Europe PMC
+`fullTextXML` works for some PMCIDs but 404s for others — fall back to
+jina reader (`https://r.jina.ai/https://pmc.ncbi.nlm.nih.gov/articles/PMC{id}/`)
+when XML fails, and note that the `PMC` prefix must NOT be duplicated
+(`/articles/PMCPMC123/` 404s; use `/articles/PMC123/`).
+
 **Crash recovery.** If a dive crashes mid-flight: restart Hermes (clears
 FD leaks), `ulimit -n 4096` immediately, use `session_search` to
 reconstruct state (phase, selections, batches dispatched), check the

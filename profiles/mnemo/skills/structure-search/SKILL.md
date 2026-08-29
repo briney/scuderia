@@ -122,10 +122,56 @@ never catch. Distinct from `antibody-sequence-search` (Sequences block) and
 ## Anti-patterns
 
 - Name search only — code-name deposits are the norm for therapeutics, and
-  skipping sequence search silently halves recall.
+  skipping sequence search silently halves recall. In the 2026-08-25 Tier B
+  pilot, name search found **0/10** entries; sequence search found **7/10**.
+  The mandatory sequence search is not a backup — it is the primary path.
 - Treating computed contacts as database annotations, or database fields
   (SAbDab has no epitope annotation) as contacts.
 - Committing `.sabdab-cif-cache/` or any mmCIF to git.
 - Using the `/webapps/newsabdab/api/...` host for POSTs (301 → GET downgrade).
 - Guessing chain assignments when the mirror row disagrees with the file.
 - Patching anything outside the `## Structures` block.
+
+## Pitfalls
+
+- **Diabody chain-ID mismatch.** SAbDab uses composite chain IDs for diabody
+  instances (e.g. `A1`, `B2` for 5iwl) that do NOT map to the mmCIF
+  `auth_asym_id` (e.g. `A`, `B`). `compute_contacts.py` reports
+  `_missing_chains` because it uses Bio.PDB's auth_asym_id. Fix: inspect the
+  mmCIF to identify the actual chain letters, map the SAbDab Hchain to the
+  chain containing the VH domain and Lchain to the chain containing VL, and
+  re-run with the mapped IDs. Record the mapping in the block note — never
+  silently substitute. For 5iwl (magrolimab): SAbDab `A1/B2` → mmCIF `A/B`,
+  antigen `D/L` → `D` (CD47), `L` was TRIETHYLENE GLYCOL (artifact, excluded).
+
+- **Artifact chains in `antigen_chain`.** SAbDab's `antigen_chain` field
+  uses `|` as a delimiter and mixes real antigen chains with crystallization
+  artifacts in the same string (e.g. `A|C` where C = TRIETHYLENE GLYCOL, or
+  `C|J` where J = NICKEL (II) ION). The `antigen_name` field is similarly
+  `|`-delimited and pairs positionally with `antigen_chain`. Before computing
+  contacts, split both fields on `|`, pair them, and filter out chains whose
+  corresponding name matches an artifact pattern (TRIETHYLENE GLYCOL, SULFATE
+  ION, NICKEL, CHLORIDE, MORPHOLINO/MES, OCTAOXAHEXACOSAN, GLYCEROL,
+  ETHANEDIOL, PHOSPHATE ION). Pass only the real antigen chains to
+  `compute_contacts.py --antigen`. The skill's `classify_state` function
+  already classifies these instances as `additive-only` or `complex`, but
+  does not split the artifact chains from the antigen chains — that is the
+  agent's job at contact-computation time.
+
+- **Fusion proteins inherit parent-antibody structures.** A fusion protein
+  (e.g. ficerafusp-alfa, cetuximab Fab + TGF-β trap) has its binding arm
+  derived from a well-known parent antibody. Sequence search at 95% threshold
+  will return many parent structures at 100% identity. These are NOT false
+  positives — the epitope contacts from the parent-antigen complex are
+  directly relevant to the fusion protein's binding arm. Label them as
+  parent-derived in the block (analogous to ADC parent-derived sequences).
+  For ficerafusp-alfa: 27 cetuximab structures, 3 with EGFR complexes
+  (1yy9, 4kro, 4krp), contacts computed and directly relevant to the
+  EGFR-binding arm.
+
+- **Name search hit-rate is near zero for Tier B.** In the 2026-08-25 pilot
+  (10 Tier B entries), name search returned 0 hits for all 10 — every
+  structure was found via sequence search. This is expected: Tier B
+  molecules are rarely deposited under their INN. Do not treat a zero name
+  search as a failure or skip sequence search; the mandatory sequence search
+  is the actual retrieval path.

@@ -105,6 +105,13 @@ def pmc_xml_to_text(xml_str):
                 t = text_of(child)
                 if t:
                     out.append(t)
+            elif tag == "preformat":
+                # Older PMC XML (pre-~2000) wraps full body text in
+                # <preformat preformat-type="pmc-pdf-text"> instead of
+                # <sec>/<p> structure. Extract the raw text directly.
+                t = (child.text or "").strip()
+                if t:
+                    out.append(t)
             elif tag == "fig":
                 cap = child.find("caption")
                 label = child.find("label")

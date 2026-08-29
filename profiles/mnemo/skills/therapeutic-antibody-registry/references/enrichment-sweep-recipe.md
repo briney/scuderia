@@ -177,9 +177,45 @@ enrichment blocks are often the first substantive data in the entry.
 - Final corpus: 321 entries (182 Tier A + 139 Tier B), all enriched
 - First wave: 117 files committed (74d869af), second wave: 40 files (4e73816c)
 
+## Coverage results — Tier B structure+patent pilot (2026-08-25)
+
+Pilot of 10 Tier B entries (all had NaturalAntibody-derived sequences, no
+Structures or IP blocks). Run directly (not delegated) to test the pipeline
+on the next cohort before committing to the full ~409 Tier B + 241 Tier D sweep.
+
+**Structure hit-rate: 7/10 (70%)**
+- All 7 found via sequence search ONLY (name search: 0/10 — confirms
+  code-name deposition is universal for Tier B)
+- 7/10 with complex structures + computed epitope contacts (4.5 Å)
+- 3/10 none-found (spartalizumab, imgatuzumab, acasunlimab) — expected
+- Edge cases: diabody chain mapping (magrolimab/5iwl), fusion protein
+  parent-derived structures (ficerafusp-alfa → 27 cetuximab structures)
+
+**Patent hit-rate: 10/10 (100%)**
+- PLAbDab paired hits: 10/10 (100%) — universal
+- PLAbDab patent-number resolution: 3/10 (30%) — low; reference titles
+  are the fallback for the other 70%
+- Google Patents name search: 4/10 succeeded (40%) — 6 returned 503
+  (intermittent, not the "throughout" pattern seen in Tier A)
+- BLAST pataa: 3 submitted, pending (queued NCBI service)
+
+**Scaling recommendation**: the full 409 Tier B + 241 Tier D sweep is worth it.
+- Structure pipeline scales: ~5 min for 10 entries (SAbDab API); full 409
+  would take ~3-4 hours of API time in batched runs
+- Patent pipeline scales: PLAbDab is local (instant); Google Patents 503
+  is intermittent — retry in smaller batches
+- BLAST should be selective for the full sweep: run only for entries where
+  PLAbDab found no paired hits or where CoM confirmation is specifically
+  needed — not for every entry (queued NCBI service, minutes per query)
+- For Tier D: expect lower structure hit-rate (pre-clinical, rarely
+  deposited) but PLAbDab should still find patent listings; patent
+  landscape is the primary value for Tier D
+
 ## Time budget
 
 - Each subagent batch (4-5 entries): 400-1100s (BLAST patent search is the bottleneck)
 - Full Tier A sweep (35 batches, 12 waves): ~30 minutes wall clock
 - Post-sweep cleanup: ~5 minutes
 - Total: ~35 minutes for 182 entries
+- Tier B pilot (10 entries, direct not delegated): ~10 minutes total
+  (5 min structure search + 4 min patent search + 1 min contact computation)

@@ -9,7 +9,10 @@ triggers:
 
 # Skill creator — author a skill in the house style
 
-A skill is one file: `skills/<name>/SKILL.md`. It captures how the mind works on
+A skill is one file: `skills/<name>/SKILL.md` — plus optionally a `references/`
+directory (`references/<topic>.md`), `templates/`, and `scripts/` for
+session-specific detail and re-runnable helpers. The `SKILL.md` carries the
+procedure; support files carry the detail. It captures how the mind works on
 a recognizable job — a procedure, not a database entry and not a character
 trait. This skill authors new skills and rewrites existing ones so they match
 the house style and stay MECE with the rest of the set.
@@ -98,6 +101,12 @@ A bug fix records a dated entry in the body:
    genuinely distinct. If you create a separate skill despite overlap, record the
    one-sentence distinction in the new body. When improving an existing skill,
    this is the step where you decide whether the fix is a rewrite or a merge.
+   Note also the **shared primitives**: a scheduling/looping discipline that
+   spans several skills (e.g. the dispatch/yield/verify loop of `batch-drain`)
+   is extracted as its own class-level skill and *referenced* by consumers, never
+   restated inline in each — when a new skill's logic looks like "what several
+   other skills each hand-roll", extract the common primitive instead of adding a
+   fourth copy.
 3. **Write the SKILL.md.** Use the template below. Keep it crisp and declarative
    — a fat-but-tight markdown procedure, roughly 60-160 lines. Cite conventions
    by path; do not duplicate them. Reference the character; do not restate it.
@@ -178,7 +187,19 @@ those named keys, they are the future scoring-harness seam. No `version`, no
   `hard_fails`.
 - Authoring a skill for a behaviour with no nameable trigger — that is character.
 - Authoring a "skill" for a one-off, or bundling several intents into one skill.
-- Creating extra files alongside `SKILL.md`. A skill is one file.
+- Creating extra files alongside `SKILL.md`. A skill is one file: **support files
+  go in `references/` / `templates/` / `scripts/` subdirectories**, never
+  alongside the `SKILL.md` as loose files. `references/<topic>.md` holds
+  session-specific detail and condensed knowledge banks; `templates/` holds
+  starter files meant to be copied and modified; `scripts/` holds statically
+  re-runnable actions. The umbrella `SKILL.md` gains a one-line pointer to every
+  support file so future agents know it exists.
+- Authoring a task-agnostic skill into the instance-private profile. Skills that
+  are generalizable (not specific to one instance's data) belong in the soma
+  mnemo template (`~/git/soma/profiles/mnemo/skills/`), and `skill_manage`
+  cannot write there — author directly in the soma checkout and add the
+  `RESOLVER.md` row in that checkout too. Instance-private skills live in
+  `skills/` inside the instance.
 - Forgetting the resolver row — an unrouted skill is invisible.
 - Forgetting the `eval_contract` — a skill without a stated bar has no
   regression baseline.

@@ -126,3 +126,32 @@ Distinct from `antibody-sequence-search` (Sequences block) and
   20y-from-filing and 17y-from-grant.
 - Claiming legal status without a legal-events source (v1 has none).
 - Patching anything outside the `## IP & exclusivity` block.
+
+## Pitfalls
+
+- **PLAbDab VH-only hits can resolve to patent numbers.** The
+  `plabdab_lookup.py` script reports `paired_hits` (both VH+VL match in the
+  same row) and `vh_hits` (VH-only). The `--resolve` flag maps accession-shaped
+  IDs to patent numbers via NCBI efetch. Resolved patents can come from
+  VH-only hits, not just paired hits — in the 2026-08-25 pilot, 2 of 3
+  entries with resolved patents (fresolimumab: US10730936, US9783604) got
+  their patent numbers from VH-only hits, not from paired hits. When
+  composing the block, always check the `resolved` dict from ALL hits
+  (paired + VH-only), and include a "Resolved patent numbers" subsection
+  listing every accession → patent mapping, noting whether it came from a
+  paired or VH-only hit.
+
+- **PLAbDab patent-number resolution rate is low (~30%).** In the
+  2026-08-25 pilot, only 3/10 entries had any accessions resolve to patent
+  numbers via NCBI efetch. Many PLAbDab IDs are PDB instance IDs or
+  literature names that don't resolve by design. The `reference_title`
+  field is the fallback — it carries the patent title, which identifies the
+  patent family even without a number. Always include the reference titles
+  in the block even when resolution fails.
+
+- **Google Patents 503 is intermittent, not permanent.** In the pilot,
+  4/10 queries succeeded and 6 returned 503 — not the "throughout" pattern
+  seen in the Tier A sweep. Retry later or in smaller batches; the 503 is
+  a rate-limit on bursts, not a service outage. When it hits, fall back to
+  PLAbDab-only and flag the gap honestly — do not burn budget retrying
+  in the same run.

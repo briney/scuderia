@@ -26,6 +26,16 @@ full text is often present and fetchable before EPMC's flags catch up.
 Observed: EPMC `inPMC: N` while PubMed `<ArticleId IdType="pmc">` is
 populated and `efetch db=pmc` succeeds.
 
+**This is not confined to small publishers.** Observed for a Springer
+Nature major journal (Nature Aging, PMID 42581103, PMCID PMC13472855,
+2026-08-18): EPMC core record reported `isOpenAccess: N`, `inPMC: N`,
+`inEPMC: N`, `hasPDF: N`, `pmcid: None` — all flags stale — yet PubMed
+XML carried `<ArticleId IdType="pmc">PMC13472855</ArticleId>` and
+`efetch db=pmc` returned 256 KB of complete body XML (31 sections,
+85K chars body text). The EPMC flags were stale despite Nature Aging
+being a high-profile Nature-family journal. The rule below applies to
+ALL publishers, not just OA-native ones.
+
 ## Rule
 
 **A PMCID present in the Phase-1 PubMed XML overrides stale Europe PMC

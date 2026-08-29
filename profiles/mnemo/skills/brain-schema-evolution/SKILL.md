@@ -13,7 +13,9 @@ triggers:
 The highest-blast-radius change the brain can take. A page kind is forever:
 directories, the linter, ingest wiring, and every skill's templates all bind
 to it. Treat every proposal as an architecture decision, not a feature
-request. Worked example: `references/lab-management-expansion-2026-07.md`.
+request. Worked examples: `references/lab-management-expansion-2026-07.md`,
+`references/email-modality-2026-08-01.md`,
+`references/hitlist-concept-promotion-2026-08-18.md`.
 
 ## Step 1 — Read the scope boundary before designing anything
 

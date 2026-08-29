@@ -1,0 +1,275 @@
+{
+  "depemokimab": {
+    "name_hits": [
+      {
+        "via": "name",
+        "pdb": "9gvn",
+        "instance": "pdb_00009gvn-C-D",
+        "h_chain": "C",
+        "l_chain": "D",
+        "antigen_chains": [
+          "A|B|H"
+        ],
+        "antigen_name": "Interleukin-5|GLYCEROL",
+        "antigen_type": "PROTEIN|HAPTEN",
+        "resolution": "1.933",
+        "method": "XRAY",
+        "compound": "DEPEMOKIMAB FAB IN COMPLEX WITH INTERLEUKIN 5",
+        "date": "2024/09/25",
+        "heavy_species": "homo sapiens",
+        "state": "complex"
+      },
+      {
+        "via": "name",
+        "pdb": "9gvn",
+        "instance": "pdb_00009gvn-E-F",
+        "h_chain": "E",
+        "l_chain": "F",
+        "antigen_chains": [
+          "A|B|G"
+        ],
+        "antigen_name": "Interleukin-5|1,2-ETHANEDIOL",
+        "antigen_type": "PROTEIN|HAPTEN",
+        "resolution": "1.933",
+        "method": "XRAY",
+        "compound": "DEPEMOKIMAB FAB IN COMPLEX WITH INTERLEUKIN 5",
+        "date": "2024/09/25",
+        "heavy_species": "homo sapiens",
+        "state": "complex"
+      }
+    ],
+    "seq_hits": []
+  },
+  "dinutuximab": {
+    "name_hits": [],
+    "seq_hits": []
+  },
+  "donanemab": {
+    "name_hits": [],
+    "seq_hits": []
+  },
+  "dostarlimab": {
+    "name_hits": [
+      {
+        "via": "name",
+        "pdb": "7wsl",
+        "instance": "pdb_00007wsl-H-L",
+        "h_chain": "H",
+        "l_chain": "L",
+        "antigen_chains": [
+          "D"
+        ],
+        "antigen_name": "Programmed cell death protein 1",
+        "antigen_type": "PROTEIN",
+        "resolution": "1.534",
+        "method": "XRAY",
+        "compound": "PD-1 in complex with Dostarlimab",
+        "date": "2022/01/30",
+        "heavy_species": "homo sapiens",
+        "state": "complex"
+      }
+    ],
+    "seq_hits": []
+  },
+  "dupilumab": {
+    "name_hits": [
+      {
+        "via": "name",
+        "pdb": "6wg8",
+        "instance": "pdb_00006wg8-A-B",
+        "h_chain": "A",
+        "l_chain": "B",
+        "antigen_chains": [
+          "D"
+        ],
+        "antigen_name": "GLYCEROL",
+        "antigen_type": "HAPTEN",
+        "resolution": "1.36",
+        "method": "XRAY",
+        "compound": "Fab portion of dupilumab with Crystal Kappa design",
+        "date": "2020/04/05",
+        "heavy_species": "homo sapiens",
+        "state": "additive-only"
+      },
+      {
+        "via": "name",
+        "pdb": "6wgb",
+        "instance": "pdb_00006wgb-A-B",
+        "h_chain": "A",
+        "l_chain": "B",
+        "antigen_chains": [],
+        "antigen_name": null,
+        "antigen_type": null,
+        "resolution": "1.99",
+        "method": "XRAY",
+        "compound": "Crystal structure of the fab portion of dupilumab",
+        "date": "2020/04/05",
+        "heavy_species": "homo sapiens",
+        "state": "unliganded"
+      },
+      {
+        "via": "name",
+        "pdb": "6wgb",
+        "instance": "pdb_00006wgb-C-D",
+        "h_chain": "C",
+        "l_chain": "D",
+        "antigen_chains": [],
+        "antigen_name": null,
+        "antigen_type": null,
+        "resolution": "1.99",
+        "method": "XRAY",
+        "compound": "Crystal structure of the fab portion of dupilumab",
+        "date": "2020/04/05",
+        "heavy_species": "homo sapiens",
+        "state": "unliganded"
+      },
+      {
+        "via": "name",
+        "pdb": "6wgj",
+        "instance": "pdb_00006wgj-A-B",
+        "h_chain": "A",
+        "l_chain": "B",
+        "antigen_chains": [],
+        "antigen_name": null,
+        "antigen_type": null,
+        "resolution": "1.9",
+        "method": "XRAY",
+        "compound": "Fab portion of dupilumab with Crystal Kappa design and no interchain disulfide",
+        "date": "2020/04/05",
+        "heavy_species": "homo sapiens",
+        "state": "unliganded"
+      },
+      {
+        "via": "name",
+        "pdb": "6wgj",
+        "instance": "pdb_00006wgj-C-D",
+        "h_chain": "C",
+        "l_chain": "D",
+        "antigen_chains": [],
+        "antigen_name": null,
+        "antigen_type": null,
+        "resolution": "1.9",
+        "method": "XRAY",
+        "compound": "Fab portion of dupilumab with Crystal Kappa design and no interchain disulfide",
+        "date": "2020/04/05",
+        "heavy_species": "homo sapiens",
+        "state": "unliganded"
+      },
+      {
+        "via": "name",
+        "pdb": "6wgj",
+        "instance": "pdb_00006wgj-E-F",
+        "h_chain": "E",
+        "l_chain": "F",
+        "antigen_chains": [],
+        "antigen_name": null,
+        "antigen_type": null,
+        "resolution": "1.9",
+        "method": "XRAY",
+        "compound": "Fab portion of dupilumab with Crystal Kappa design and no interchain disulfide",
+        "date": "2020/04/05",
+        "heavy_species": "homo sapiens",
+        "state": "unliganded"
+      },
+      {
+        "via": "name",
+        "pdb": "6wgj",
+        "instance": "pdb_00006wgj-G-H",
+        "h_chain": "G",
+        "l_chain": "H",
+        "antigen_chains": [],
+        "antigen_name": null,
+        "antigen_type": null,
+        "resolution": "1.9",
+        "method": "XRAY",
+        "compound": "Fab portion of dupilumab with Crystal Kappa design and no interchain disulfide",
+        "date": "2020/04/05",
+        "heavy_species": "homo sapiens",
+        "state": "unliganded"
+      },
+      {
+        "via": "name",
+        "pdb": "6wgk",
+        "instance": "pdb_00006wgk-A-B",
+        "h_chain": "A",
+        "l_chain": "B",
+        "antigen_chains": [],
+        "antigen_name": null,
+        "antigen_type": null,
+        "resolution": "1.62",
+        "method": "XRAY",
+        "compound": "Fab portion of dupilumab with Crystal Kappa design and intrachain disulfide",
+        "date": "2020/04/05",
+        "heavy_species": "homo sapiens",
+        "state": "unliganded"
+      },
+      {
+        "via": "name",
+        "pdb": "6wgk",
+        "instance": "pdb_00006wgk-C-D",
+        "h_chain": "C",
+        "l_chain": "D",
+        "antigen_chains": [],
+        "antigen_name": null,
+        "antigen_type": null,
+        "resolution": "1.62",
+        "method": "XRAY",
+        "compound": "Fab portion of dupilumab with Crystal Kappa design and intrachain disulfide",
+        "date": "2020/04/05",
+        "heavy_species": "homo sapiens",
+        "state": "unliganded"
+      },
+      {
+        "via": "name",
+        "pdb": "6wgk",
+        "instance": "pdb_00006wgk-E-F",
+        "h_chain": "E",
+        "l_chain": "F",
+        "antigen_chains": [],
+        "antigen_name": null,
+        "antigen_type": null,
+        "resolution": "1.62",
+        "method": "XRAY",
+        "compound": "Fab portion of dupilumab with Crystal Kappa design and intrachain disulfide",
+        "date": "2020/04/05",
+        "heavy_species": "homo sapiens",
+        "state": "unliganded"
+      },
+      {
+        "via": "name",
+        "pdb": "6wgk",
+        "instance": "pdb_00006wgk-G-H",
+        "h_chain": "G",
+        "l_chain": "H",
+        "antigen_chains": [],
+        "antigen_name": null,
+        "antigen_type": null,
+        "resolution": "1.62",
+        "method": "XRAY",
+        "compound": "Fab portion of dupilumab with Crystal Kappa design and intrachain disulfide",
+        "date": "2020/04/05",
+        "heavy_species": "homo sapiens",
+        "state": "unliganded"
+      },
+      {
+        "via": "name",
+        "pdb": "6wgl",
+        "instance": "pdb_00006wgl-A-B",
+        "h_chain": "A",
+        "l_chain": "B",
+        "antigen_chains": [
+          "C"
+        ],
+        "antigen_name": "Interleukin-4 receptor subunit alpha",
+        "antigen_type": "PROTEIN",
+        "resolution": "2.82",
+        "method": "XRAY",
+        "compound": "Dupilumab fab with Crystal Kappa design complexed with human IL-4 receptor",
+        "date": "2020/04/05",
+        "heavy_species": "homo sapiens",
+        "state": "complex"
+      }
+    ],
+    "seq_hits": []
+  }
+}
