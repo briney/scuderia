@@ -20,7 +20,7 @@ a future engine). **Honesty about degradation** — a skill that names
 Claude Code (no Gmail integration) refuses cleanly instead of
 fabricating.
 
-This rule is **engineering hygiene, not iron law** (`DESIGN.md` §5.2).
+This rule is **engineering hygiene, not iron law** (`DESIGN.md` §5).
 Where binding to a specific tool's rich surface makes the skill
 meaningfully better, bind directly and document the coupling.
 
@@ -66,7 +66,7 @@ name.
 
 | Capability | Contract |
 |---|---|
-| `user-model-query` | Returns the agent's model of its human: `{declared: USER/<name>.md}`. Same shape on every harness — `USER/<name>.md` lives in the instance's `USER/` directory and is read off disk. See `DESIGN.md` §7. |
+| `user-model-query` | Returns the agent's model of its human: `{declared: USER/<name>.md}`. Same shape on every harness — `USER/<name>.md` lives in the instance's `USER/` directory and is read off disk. See the platform `DESIGN.md` §8 and the reference binding in `profiles/mnemo/DESIGN.md` §7. |
 | `read-conversation-history` | Returns recent session transcripts (windowed by the caller). Consumed by `user-model-reflect` on manual invocation. Hermes: native session store. Claude Code: transcript files under `~/.claude/projects/<encoded-cwd>/*.jsonl` (one JSONL per session; user/assistant records carry `message.content` plus `timestamp` and `sessionId`). Skills that name it as required refuse cleanly on harnesses that don't expose conversation history. |
 
 ### Authenticated / infrastructural — Hermes-only unless the harness wires equivalents

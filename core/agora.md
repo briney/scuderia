@@ -1,7 +1,8 @@
 # The agora: inter-agent collaboration contract
 
-Status: **DRAFT** (2026-08-24). Contract reviewed by the human; the pilot
-that validates it is planned but not run.
+Status: **LIVE** (pilot running since 2026-08 — atticus ↔ faber exchange
+through `projects/` and `_inbox/`). Contract reviewed by the human; the
+write rules and message shapes below are the ones the pilot runs on.
 
 A scuderia agent is one agent per instance. But agents of *different kinds* can
 collaborate: a knowledge agent (e.g. a mnemo instance) holds what is known;
@@ -232,5 +233,5 @@ it. "I couldn't" without those four elements is not a report.
   deferred until message volume justifies the machinery.
 - Doer-initiated messages (e.g. "a stored artifact's upstream data was
   deprecated"): out of scope for v1; doers are reactive.
-- `docs/north-star/DESIGN.md` integration: once the pilot validates
-  this contract, the north-star blueprint gains a multi-agent section.
+- ~~`docs/north-star/DESIGN.md` integration~~ — done (2026-08-28): the
+  platform blueprint carries the agora in §7.1.

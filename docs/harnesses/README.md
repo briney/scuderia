@@ -4,7 +4,8 @@ A scuderia instance is pure markdown and runs inside a **harness** — a process
 that loads the instance content + character + skills and becomes the agent
 (`docs/north-star/DESIGN.md` §6). Each supported harness has an adapter
 doc here that maps scuderia's named capabilities
-(`skills/conventions/capabilities.md`) to that harness's actual tools.
+(`core/capabilities.md`, also reachable as `skills/conventions/capabilities.md`
+from an instance root) to that harness's actual tools.
 
 ## Supported harnesses
 
