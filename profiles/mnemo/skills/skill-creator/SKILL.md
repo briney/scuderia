@@ -90,6 +90,85 @@ A bug fix records a dated entry in the body:
 - **Hard rule added:** [new constraint to prevent recurrence]
 ```
 
+**Mode C — streamline.** A skill has grown so large it is a context drain:
+SKILL.md over ~500 lines / ~40KB, with case-specific "Observed:" provenance
+annotations, a changelog, encyclopedic lookup tables, or implementation
+detail that belongs in scripts. The procedure is sound but buried. This is
+*not* a Mode B surgical patch — it is a full restructure, but preserving the
+working procedure (not rewriting from scratch).
+
+1. **Diagnose by category.** Read the entire SKILL.md. Categorize every
+   section as one of: **core procedure** (keep), **pure provenance** /
+   changelog / "Observed:" session logs (delete — this is what git history
+   is for), **encyclopedic reference material** (move to
+   `references/<topic>.md`), or **implementation detail** (move to a
+   `scripts/<name>.py` that the agent runs instead of hand-typing).
+2. **Extract first, cut second.** Create any new reference files and
+   scripts *before* rewriting SKILL.md — the SKILL.md will point to them.
+   Consolidate fragmented reference files into one coherent file per
+   topic.
+3. **Rewrite SKILL.md.** Keep the phase structure and every load-bearing
+   rule. Cut every "Observed: PMID XXX, YYYY-MM-DD" annotation. Convert
+   prose-dense hazard lists into compact tables. Delete the changelog and
+   any redundant "Anti-patterns" section that restates positive
+   instructions already in the body. Target: every line earns its
+   context cost by being exercised in the majority of invocations.
+4. **Verify.** Line/byte count drop; all `references/` and `scripts/`
+   paths referenced in SKILL.md exist on disk; no "Observed:" annotations
+   remain; no dangling references to deleted files; scripts compile.
+
+The bar for Mode C: the skill's context footprint must drop substantially
+(>50%) without losing any load-bearing procedure. If the procedure itself
+needs rethinking, that is a Mode A rewrite, not a streamline.
+
+**Mode D — retire.** A skill was built for a one-time campaign (a survey,
+an enumeration, a profiling run). The campaign is complete. The
+methodology, templates, and final outputs already live in a
+`references/` corpus (e.g. `master.md`, `templates/`, `profiles/`). The
+skill is now dead weight — it loads on every invocation but will never be
+invoked again. Retire it:
+
+1. **Confirm the skill is spent.** Was it used once for a campaign that's
+   done? Do its outputs already exist in a `references/` directory? If
+   both are yes, it's a retire, not a streamline.
+2. **Rescue unique content.** Diff the skill against the reference
+   corpus — does the skill contain anything NOT already captured there?
+   Move only the un-duplicated pieces (typically a methodology note or
+   API pattern) to the corpus's `notes/` directory. Most of the skill will
+   be redundant with what the corpus already has.
+3. **Delete the skill** and its skill directory. Remove the resolver row.
+4. **Point any inbound references** (brain pages, other skills,
+   `master.md` cross-references) at the reference corpus instead.
+
+The bar for Mode D: the skill has no plausible future invocation AND its
+load-bearing content is already preserved in a durable reference corpus.
+If there's a reasonable chance the skill will be re-run (even with
+modifications), that's a Mode C streamline, not a Mode D retire.
+
+**The systematic library audit** — when asked "inventory all skills" or
+"find bloated skills": measure every SKILL.md by bytes
+(`find ... -name SKILL.md -exec wc -c {} \; | sort -rn`), then check
+total directory size (`du -sh` — linked files add up). For any skill
+over ~40KB, read section headers and compute per-section line counts;
+the bloat pattern is always the same — observation/provenance sections
+and narrative changelogs consuming >50% of the file while the actual
+procedure is <350 lines. Check for duplication: inline observation
+sections that also exist as `references/` files (diff filenames against
+the `references/` directory). Check for template-vs-instance duplicates
+(a skill in both `skills/atticus/` and `skills/` — the instance-local
+copy is the evolved one; the template copy is stale). Full audit recipe
+and cross-reference deletion checklist:
+`references/skill-library-audit.md`.
+
+**The bloat signal.** Skills that accumulate session outputs inline —
+per-target observation sections (500-700 lines each), changelogs that are
+actually full writeups (3,000+ lines), per-item profiles embedded as SKILL.md
+sections — are the canonical Mode C/D signal. The SKILL.md should carry
+the *procedure*, not the *outputs*. Outputs belong in `references/` (as
+individual files) or in a reference corpus. A SKILL.md over ~40KB almost
+always has session outputs mixed into the procedure; the fix is extraction
+(Mode C) or retirement (Mode D), not compression.
+
 ## Phases
 
 1. **Name the capability gap.** What recognizable job has no skill? What request
@@ -204,5 +283,12 @@ those named keys, they are the future scoring-harness seam. No `version`, no
 - Forgetting the `eval_contract` — a skill without a stated bar has no
   regression baseline.
 - Rewriting a skill from scratch to improve it — Mode B preserves what works.
+- Keeping a spent one-time campaign skill alive when its outputs already
+  live in a `references/` corpus — that's a Mode D retire. Dead skills
+  still load on every invocation and crowd the resolver.
+- Accumulating session outputs (observation writeups, per-item profiles,
+  narrative changelogs) inline in SKILL.md — these are the bloat signal.
+  Outputs go in `references/` files or a reference corpus, never in the
+  procedure.
 - Shipping an edit without the no-regression + re-read gate (for a
   schedule-backed skill, without re-running a representative task).
