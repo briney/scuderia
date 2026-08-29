@@ -17,9 +17,9 @@ Build and maintain `references/therapeutic-antibodies/` — a structured corpus 
 known therapeutic antibodies, one record per distinct **drug product** (INN), across
 all modalities (naked IgG, ADC, bispecific, CAR-T, Fc-fusion, fragments) and all
 development stages (approved through pre-clinical). This is the **molecule-side
-complement** to `antibody-target-hitlist` (target-side): the hit-list asks "what
-targets exist?"; this corpus asks "what molecules got built, and how far did they
-get?"
+complement** to the `antibody-target-hitlist` reference corpus (target-side):
+the hit-list asks "what targets exist?"; this corpus asks "what molecules got
+built, and how far did they get?"
 
 ## Scope (locked decisions)
 
@@ -345,13 +345,11 @@ verification before they reach Tier A confidence.
   them, and this skill never writes their blocks. The enrichment pipeline is
   documented in the "Enrichment pipeline" section above -- run
   sequence-search first, then structures and patents can run in parallel.
-- **`antibody-target-hitlist`**: Target-side enumeration. This skill is the
+- **`antibody-target-hitlist`** (reference corpus, not a skill): Target-side
+  enumeration at `references/antibody-target-hitlist/`. This skill is the
   molecule-side complement. The hit-list's `profiles/` cross-reference to this
   corpus's `entries/` via target **common-name** slugs (not gene symbols — see
   "Cross-referencing to the hit-list" above).
-- **`target-profiling`**: Builds deep per-target profiles. The profiles carry an
-  "Antibody landscape" field that lists known antibodies — this corpus is the
-  authoritative source for that field.
 - **`literature-dive`**: Depth-first on one topic. This skill is breadth-first
   across all molecules.
 

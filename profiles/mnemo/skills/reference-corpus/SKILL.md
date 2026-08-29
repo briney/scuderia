@@ -24,8 +24,9 @@ Existing corpora (follow their anatomy as the proven pattern):
 - `references/therapeutic-antibodies/` — per-molecule mAb registry (321).
 - `references/virus-families/` — per-family virology + per-virus clinical (two-tier).
 
-The per-corpus skills (`therapeutic-antibody-registry`, `antibody-target-hitlist`,
-`target-prioritization`) own *one* corpus each. This skill owns the *pattern* for
+The per-corpus skills (`therapeutic-antibody-registry`, `target-prioritization`)
+own *one* corpus each; `antibody-target-hitlist` is now a reference corpus
+without a skill (methodology lives in its `master.md`). This skill owns the *pattern* for
 standing up a new one. Read `references/README.md` and
 `docs/specs/2026-08-18-references-directory-design.md` before designing — they
 are the authoritative contract (anatomy, registry table, changelog format,

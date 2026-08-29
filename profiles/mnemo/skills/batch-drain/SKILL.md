@@ -138,5 +138,5 @@ Consumers (edit these to point here rather than restating the loop inline):
 - `skills/retroactive-linking/SKILL.md` and `skills/retroactive-linking-shard-worker/SKILL.md` —
   corpus sharding for re-link passes.
 - `skills/rem-cycle/SKILL.md` — nightly phases dispatched 4x3x5.
-- `skills/antibody-target-hitlist/templates/full-run-prompt.md` — target-profile
-  build at scale.
+- `references/antibody-target-hitlist/templates/full-run-prompt.md` — target-profile
+  build at scale (reference corpus, not a skill).

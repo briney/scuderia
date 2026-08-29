@@ -73,7 +73,7 @@ review, ~27 rows), Table 3 (late-stage non-cancer, ~17 rows), Table 4
 (late-stage cancer, ~6 rows).
 
 **Known PMID list**: 41560619 (2026), 39711140 (2025), 38178784 (2024).
-See antibody-target-hitlist skill's references/atw-series.md for full list.
+See `references/antibody-target-hitlist/notes/atw-series.md` for full list.
 
 ## 3. Source probing (format check)
 
