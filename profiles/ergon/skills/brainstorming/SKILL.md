@@ -199,6 +199,10 @@ is the whole process.
 - Write the validated design (spec) to
   `working-docs/YYYY-MM-DD-<topic>-design.md`
   - (User preferences for spec location override this default)
+  - Multi-file material (attachments, source drops, supporting trees)
+    goes in a dated subdirectory `working-docs/YYYY-MM-DD-<topic>/` with
+    its own README — see `working-docs/README.md` for the
+    flat-file-vs-subdir convention.
 - Commit the design document to git
 
 **Spec Self-Review:**
