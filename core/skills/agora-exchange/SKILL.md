@@ -2,7 +2,7 @@
 name: agora-exchange
 description: "Use for reads/writes to the agora shared store and for messaging sibling agents."
 version: 1.1.0
-author: soma
+author: scuderia
 license: MIT
 platforms: [macos, linux]
 required_environment_variables: [AGORA_ROOT]
@@ -14,7 +14,7 @@ metadata:
 # agora-exchange — shared store + sibling-agent messaging
 
 The **agora** is the shared-storage layer for collaboration between agents
-(instances of soma profiles on the same host) and their human. It is
+(instances of scuderia profiles on the same host) and their human. It is
 **not an instance store**: no frontmatter, no page kinds, no linting, no
 indexing. Content that proves load-bearing gets promoted into an instance
 via that instance's own ingest skills; files stay put.

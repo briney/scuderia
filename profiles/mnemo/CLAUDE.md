@@ -5,7 +5,7 @@
 
 This file is *only* what differs when the harness is **Claude Code** — a
 secondary harness; Hermes is the reference. Full capability mapping, error
-behavior, and gotchas: `docs/harnesses/claude-code.md` in the soma checkout.
+behavior, and gotchas: `docs/harnesses/claude-code.md` in the scuderia checkout.
 
 ## Every session
 

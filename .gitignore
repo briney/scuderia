@@ -1,4 +1,4 @@
-# soma repo .gitignore
+# scuderia repo .gitignore
 .DS_Store
 __pycache__/
 *.pyc

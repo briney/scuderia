@@ -1,4 +1,4 @@
-/* soma feed renderer — turns cards into a page.
+/* scuderia feed renderer — turns cards into a page.
  * Knows what a *card* is (summary / review / alert / metric + the generic
  * fallback), never what a budget or a concept synthesis is.
  *

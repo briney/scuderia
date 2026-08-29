@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Schema-driven frontmatter linter for soma brains.
+"""Schema-driven frontmatter linter for scuderia brains.
 
 Validates a brain against a profile schema (``profiles/<name>/schema.yaml``):
 

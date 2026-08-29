@@ -1,4 +1,4 @@
-// soma feed — shared helpers for the Pages Functions.
+// scuderia feed — shared helpers for the Pages Functions.
 // Contract: card model + decision/mailbox protocol (see interface/README.md).
 // Instance-specific values (keys, D1 binding) come from env, never code.
 

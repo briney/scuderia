@@ -1,4 +1,4 @@
-# ergon install manifest — Layer 0 of the setup contract (soma spec §8).
+# ergon install manifest — Layer 0 of the setup contract (scuderia spec §8).
 # Mirrors profiles/mnemo/manifest.yaml; see that file for the contract prose.
 
 manifest_version: 1
@@ -28,7 +28,7 @@ placeholders:
   CREATED: ISO date of scaffold
 
 # Harness-side bindings are NOT performed by the CLI; they are documented
-# one-liners in docs/harnesses/<harness>.md and verified by `soma doctor`.
+# one-liners in docs/harnesses/<harness>.md and verified by `scuderia doctor`.
 bindings:
   - id: harness-character
     description: harness loads the instance SOUL.md (and the user model, USER/<name>.md) at session start

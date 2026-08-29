@@ -52,7 +52,7 @@ Run it with Hermes' venv Python (the system Python lacks the `mcp` package):
 
 ```bash
 VENV=$HOME/.hermes/hermes-agent/venv/bin/python3
-SCRIPT=<soma-checkout>/profiles/mnemo/skills/granola-meeting-sync/scripts/granola_mcp.py
+SCRIPT=<scuderia-checkout>/profiles/mnemo/skills/granola-meeting-sync/scripts/granola_mcp.py
 
 # Verify connection and account
 $VENV $SCRIPT account_info
@@ -122,7 +122,7 @@ Run the bridge script to check the account:
 
 ```bash
 VENV=$HOME/.hermes/hermes-agent/venv/bin/python3
-SCRIPT=<soma-checkout>/profiles/mnemo/skills/granola-meeting-sync/scripts/granola_mcp.py
+SCRIPT=<scuderia-checkout>/profiles/mnemo/skills/granola-meeting-sync/scripts/granola_mcp.py
 $VENV $SCRIPT account_info
 ```
 

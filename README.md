@@ -1,11 +1,11 @@
-# soma
+# scuderia
 
-**soma** is a platform kit for running a personal research brain: a pure-markdown
+**scuderia** is a platform kit for running a personal research brain: a pure-markdown
 knowledge graph, a character, and a set of skills, loaded by a harness (an AI
-agent runtime). Greek *soma*: body — the reusable body of machinery that houses
+agent runtime). Greek *scuderia*: body — the reusable body of machinery that houses
 and sustains a mind.
 
-soma is a **kit, not a runtime**: conventions + schema-driven tools + profile
+scuderia is a **kit, not a runtime**: conventions + schema-driven tools + profile
 templates + a setup CLI. No plugin registries, no discovery, no framework. A new
 harness needs one adapter doc, not a port.
 
@@ -19,9 +19,9 @@ profiles/
                  skills/, SOUL.md / STYLE.md / USER/ templates, example brain
   oiko/          lab-manager template (stub)
 docs/
-  north-star/    what soma is for (VISION) and how it is built (DESIGN)
+  north-star/    what scuderia is for (VISION) and how it is built (DESIGN)
   harnesses/     per-harness capability bindings (Hermes, Claude Code)
-setup/           the soma CLI: init / doctor / adopt
+setup/           the scuderia CLI: init / doctor / adopt
 ```
 
 ## The model
@@ -31,15 +31,15 @@ setup/           the soma CLI: init / doctor / adopt
   is — that is profile-defined.
 - A **profile template** (e.g. `mnemo`) defines page kinds, schema, conventions,
   skills, and character templates for a kind of brain.
-- An **instance** is a private repo of actual content, bound to a soma checkout
+- An **instance** is a private repo of actual content, bound to a scuderia checkout
   by an `instance.yaml`. Instances are sibling repos, never subdirectories or
   submodules: the unit of privacy is the repo.
 
 ## Quick start
 
 ```
-setup/soma init --profile mnemo --name <your-brain-name> --path <dir>
-setup/soma doctor --path <dir>
+setup/scuderia init --profile mnemo --name <your-brain-name> --path <dir>
+setup/scuderia doctor --path <dir>
 ```
 
 Then bind your harness per `docs/harnesses/<your-harness>.md`. See

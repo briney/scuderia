@@ -1,6 +1,6 @@
-# mnemo install manifest — Layer 0 of the setup contract (soma spec §8).
+# mnemo install manifest — Layer 0 of the setup contract (scuderia spec §8).
 #
-# "Installed" is defined as data, here, so the two entry paths (the `soma` CLI
+# "Installed" is defined as data, here, so the two entry paths (the `scuderia` CLI
 # and an agent-guided install) can never drift. The CLI reads this file; the
 # agent-guided install skill reads the same file through the CLI's output.
 
@@ -52,9 +52,9 @@ placeholders:
   INSTANCE_NAME: the instance's name (agents are named)
   CREATED: ISO date of scaffold
 
-# Harness-side bindings are NOT performed by the CLI (soma spec §8: the CLI
-# touches only soma-owned things). They are documented one-liners in
-# docs/harnesses/<harness>.md; `soma doctor` verifies them. Listed here so the
+# Harness-side bindings are NOT performed by the CLI (scuderia spec §8: the CLI
+# touches only scuderia-owned things). They are documented one-liners in
+# docs/harnesses/<harness>.md; `scuderia doctor` verifies them. Listed here so the
 # agent-guided install knows what to perform and doctor knows what to check.
 bindings:
   - id: harness-character

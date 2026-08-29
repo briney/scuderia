@@ -195,9 +195,9 @@ those named keys, they are the future scoring-harness seam. No `version`, no
   re-runnable actions. The umbrella `SKILL.md` gains a one-line pointer to every
   support file so future agents know it exists.
 - Authoring a task-agnostic skill into the instance-private profile. Skills that
-  are generalizable (not specific to one instance's data) belong in the soma
-  mnemo template (`~/git/soma/profiles/mnemo/skills/`), and `skill_manage`
-  cannot write there — author directly in the soma checkout and add the
+  are generalizable (not specific to one instance's data) belong in the scuderia
+  mnemo template (`~/git/scuderia/profiles/mnemo/skills/`), and `skill_manage`
+  cannot write there — author directly in the scuderia checkout and add the
   `RESOLVER.md` row in that checkout too. Instance-private skills live in
   `skills/` inside the instance.
 - Forgetting the resolver row — an unrouted skill is invisible.

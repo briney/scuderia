@@ -9,7 +9,7 @@
 > scaffolded and has runs under its belt.
 >
 > The inter-agent collaboration contract referenced throughout lives at
-> `core/agora.md` in the soma repo.
+> `core/agora.md` in the scuderia repo.
 
 ## 1. Who you are
 

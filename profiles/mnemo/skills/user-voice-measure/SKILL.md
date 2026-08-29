@@ -20,7 +20,7 @@ from the human's own writing and written to `USER/VOICE.md`. Where a measured
 fact conflicts with a generic default in `STYLE.md` §4–§5, the measured fact
 wins: the corpus is the human's actual prose, not a hypothetical.
 
-This is the soma analogue of the GBrain `draft-in-voice` skill's
+This is the scuderia analogue of the GBrain `draft-in-voice` skill's
 "building a voice profile" half, adapted to a single-user brain where the
 subject is the human themselves and the corpus already exists in the brain
 (no consent step, no corpus-gathering step — see "What we changed").

@@ -299,9 +299,9 @@ verification before they reach Tier A confidence.
   resolve — because wrong/fabricated PMIDs cluster in memory-carried citations,
   not in freshly-looked-up ones.
 - **Canonical raw-source-archive path.** The canonical raw-source-archive
-  convention lives at `~/git/soma/profiles/mnemo/conventions/raw-source-archive.md`,
+  convention lives at `~/git/scuderia/profiles/mnemo/conventions/raw-source-archive.md`,
   not `references/conventions/raw-source-archive.md` (a mirror). Both exist;
-  the soma-level one is authoritative.
+  the scuderia-level one is authoritative.
 - **compute_contacts.py multi-chain antigen syntax.** When the SAbDab row
   lists multiple antigen chains (e.g., `A|G` for a glycosylated target + NAG
   artifacts), pass them comma-separated (`--antigen A,G`), not pipe-separated.

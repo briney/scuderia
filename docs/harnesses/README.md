@@ -1,9 +1,9 @@
 # `docs/harnesses/` — per-harness adapter docs
 
-A soma instance is pure markdown and runs inside a **harness** — a process
+A scuderia instance is pure markdown and runs inside a **harness** — a process
 that loads the instance content + character + skills and becomes the agent
 (`docs/north-star/DESIGN.md` §6). Each supported harness has an adapter
-doc here that maps soma's named capabilities
+doc here that maps scuderia's named capabilities
 (`skills/conventions/capabilities.md`) to that harness's actual tools.
 
 ## Supported harnesses

@@ -17,7 +17,7 @@ triggers:
 The feed is a defined set of persistent, named, producer-bound slots (card
 contract §3.1). This skill owns the v1 producer. Each producer is a
 deterministic script: brain state in, card JSON out, no network, no
-judgment. The syncer (soma `interface/syncer/sync.py`) is the single writer
+judgment. The syncer (scuderia `interface/syncer/sync.py`) is the single writer
 to D1 — it validates against the schema allowlist and pushes diffs.
 
 ## When this runs

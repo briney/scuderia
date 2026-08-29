@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""soma feed syncer — the single writer to the feed service.
+"""scuderia feed syncer — the single writer to the feed service.
 
 Reads the instance's local outbox (a directory of card JSON files written by
 producers), validates every card against the contract (field allowlist, size

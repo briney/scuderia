@@ -1,7 +1,7 @@
 # STYLE.md — mnemo archetype template
 
 > This is the **template** for a mnemo instance's scientific-writing standard.
-> At scaffold time (`soma init`) it is copied into the new brain; instances
+> At scaffold time (`scuderia init`) it is copied into the new brain; instances
 > evolve their own as they learn their human's voice.
 >
 > Everything below the line is the template body.

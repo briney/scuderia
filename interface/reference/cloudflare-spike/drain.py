@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""soma spike drain: apply pending decisions against current brain state.
+"""scuderia spike drain: apply pending decisions against current brain state.
 
 For each pending decision:
   - item still open in QUEUE.md (- [ ])  -> apply (tick box), ack 'applied'
@@ -10,7 +10,7 @@ import json, re, urllib.request, pathlib
 W = "https://soma-feed-spike.soma-feed.workers.dev"
 KEYS = dict(
     line.split("=", 1)
-    for line in pathlib.Path("/tmp/soma-spike/.keys").read_text().splitlines()
+    for line in pathlib.Path("/tmp/scuderia-spike/.keys").read_text().splitlines()
 )
 QUEUE = pathlib.Path(
     os.environ.get("QUEUE_PATH", "<brain-root>/docs/rem-cycle/QUEUE.md")
@@ -25,7 +25,7 @@ def req(path, key, method="GET", body=None):
         headers={
             "x-feed-key": key,
             "content-type": "application/json",
-            "user-agent": "soma-drain/0.1 (spike)",
+            "user-agent": "scuderia-drain/0.1 (spike)",
         },
     )
     return json.load(urllib.request.urlopen(r))

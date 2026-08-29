@@ -8,7 +8,7 @@ A skill *references* the character (`SOUL.md`, `STYLE.md`); it never restates it
 Cross-cutting rules live in `skills/conventions/`.
 
 **Path resolution.** References of the form `skills/…` are
-profile-root-relative: they resolve in the soma checkout
+profile-root-relative: they resolve in the scuderia checkout
 (`profiles/mnemo/skills/…`) and through the harness skills binding (on
 Hermes, the category symlink under `~/.hermes/profiles/<instance>/skills/`).
 Brain paths (`papers/`, `docs/rem-cycle/`, `USER/<name>.md`, …) resolve from the

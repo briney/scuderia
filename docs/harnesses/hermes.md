@@ -1,6 +1,6 @@
 # Hermes — capability adapter
 
-Hermes is the **reference harness** for soma. It is fat (not thin) by
+Hermes is the **reference harness** for scuderia. It is fat (not thin) by
 design — it ships its own scheduler, MCP-client support, messaging
 gateways, voice transcription, and an embedded search index (qmd). When
 Hermes loads the instance content + character + skills, it becomes the
@@ -19,7 +19,7 @@ each capability resolves to once it's set up.
   character files.)
 - **Skills:** one symlinked category per layer under
   `~/.hermes/profiles/<instance>/skills/`: core layer →
-  `<soma>/core/skills`; template layer → `<soma>/profiles/<profile>/skills`;
+  `<scuderia>/core/skills`; template layer → `<scuderia>/profiles/<profile>/skills`;
   instance layer → `<instance>/skills`. Instance overrides template
   overrides core by skill name.
 - **Conventions:** reachable as `skills/conventions/…` — the template skills
@@ -140,7 +140,7 @@ collapse and still matter under Hermes:
   `.hermes.md` → `AGENTS.md` → `CLAUDE.md` → `.cursorrules`; first match
   wins, no fallback. The vault's `AGENTS.md` is what reaches the prompt;
   there is no second file loaded automatically. Anything host-specific a
-  human or agent needs to know about the soma install belongs in
+  human or agent needs to know about the scuderia install belongs in
   `~/.hermes/profiles/<instance>/INTEGRATION.md` and must be loaded
   explicitly.
 - **qmd token is object-scoped, not bucket-scoped.** `rclone lsd

@@ -11,7 +11,7 @@ was checked.
 
 An ergon agent holds **no domain data**. When a commission needs a fact
 about the world, the agent obtains it from a configured knowledge source —
-which may be a sibling soma agent (via the agora; see `core/agora.md`), a
+which may be a sibling scuderia agent (via the agora; see `core/agora.md`), a
 database, a public repository, an MCP service, or anything else the
 instance is wired to. No particular knowledge source — and no companion
 profile — is required. What is required is the discipline: domain facts are

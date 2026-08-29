@@ -1,6 +1,6 @@
 # example-instance
 
-The minimal valid mnemo instance, per the instance contract (soma spec §5):
+The minimal valid mnemo instance, per the instance contract (scuderia spec §5):
 
 1. `instance.yaml` parses: `{name, profile, profile_version, schema_version,
    created}`.
@@ -8,9 +8,9 @@ The minimal valid mnemo instance, per the instance contract (soma spec §5):
    empty — hence the `.gitkeep` files).
 3. `skills/` exists (may be empty) — instance-private skills live here and
    override template skills by name.
-4. Every version pin is satisfiable by the bound soma checkout.
+4. Every version pin is satisfiable by the bound scuderia checkout.
 
-`soma init --profile mnemo --name <name> --path <dir>` scaffolds exactly this
+`scuderia init --profile mnemo --name <name> --path <dir>` scaffolds exactly this
 tree, templating `{{INSTANCE_NAME}}` and `{{CREATED}}` in `instance.yaml` and
 copying the character templates (`SOUL.md`, `STYLE.md`, `USER/` (the user model)) from the
 profile root with the instance name substituted.

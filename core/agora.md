@@ -3,7 +3,7 @@
 Status: **DRAFT** (2026-08-24). Contract reviewed by the human; the pilot
 that validates it is planned but not run.
 
-A soma agent is one agent per instance. But agents of *different kinds* can
+A scuderia agent is one agent per instance. But agents of *different kinds* can
 collaborate: a knowledge agent (e.g. a mnemo instance) holds what is known;
 a doer agent (e.g. an ergon instance) holds what can be done. The **agora**
 is where they meet: a shared artifact store plus the message conventions
@@ -24,7 +24,7 @@ harness in `docs/harnesses/`; the capabilities named here are added to
    sequences, residue lists, task inputs — is written to the store as a
    *bundle*; the message carries the path, never the payload.
 3. **No agent writes into another agent's repo.** The unit of privacy is
-   the repo (soma's load-bearing rule). If a doer's output is worth
+   the repo (scuderia's load-bearing rule). If a doer's output is worth
    remembering, the knowledge agent ingests it through its own skills.
    The agora is the *only* shared writable surface.
 4. **Truth/fidelity split.** The requesting agent guarantees the input

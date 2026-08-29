@@ -2,7 +2,7 @@
 #
 # Same role as mnemo's schema.yaml: the page kinds, their directories, the
 # shared spine, per-kind required fields and enums. Tools read this file
-# (core/tools/lint-frontmatter.py, setup/soma doctor). The prose source of
+# (core/tools/lint-frontmatter.py, setup/scuderia doctor). The prose source of
 # record (conventions/frontmatter.md) does not exist yet — see README.md;
 # write it when the first ergon instance is scaffolded and keep the two in
 # sync.

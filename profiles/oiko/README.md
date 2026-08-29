@@ -3,13 +3,13 @@
 *oikos*: household — the root of both *economics* and *ecology*. Budgets and
 compliance.
 
-oiko is the second soma profile: a brain for running a lab rather than running
+oiko is the second scuderia profile: a brain for running a lab rather than running
 a research program. Biosafety and IRB/IACUC protocols, budgets and spending,
 personnel and equipment — a page-kind set that shares almost nothing with
-mnemo's, which is exactly why soma is profile-pluggable rather than
+mnemo's, which is exactly why scuderia is profile-pluggable rather than
 scope-extended.
 
-**This is a stub by design** (soma spec §12): a real template is built only
+**This is a stub by design** (scuderia spec §12): a real template is built only
 when someone is ready to run an oiko instance — half-real templates rot. When
 that day comes, an oiko profile needs the same five things mnemo ships:
 

@@ -1,4 +1,4 @@
--- soma feed — D1 schema (authoritative copy; supersedes the spike's).
+-- scuderia feed — D1 schema (authoritative copy; supersedes the spike's).
 -- D1 holds ONLY the card outbox and the decisions mailbox. Never raw brain
 -- content; the syncer (single writer) enforces the field allowlist + caps.
 

@@ -1,6 +1,6 @@
 # Claude Code — capability adapter
 
-Claude Code is a **secondary supported harness** for soma. It provides a
+Claude Code is a **secondary supported harness** for scuderia. It provides a
 clean universal substrate (file IO, fetch, subagents) plus brain operations
 via Read/Write/Edit, and is excellent for thought-partner and grant-writing
 work. It does **not** provide the integrations that the research-logistics
@@ -56,7 +56,7 @@ four-layer model and references this file for the capability mapping.
 
 ## Install prerequisites
 
-Claude Code itself has no soma-specific install. On a fresh checkout:
+Claude Code itself has no scuderia-specific install. On a fresh checkout:
 
 1. Clone the brain.
 2. Open Claude Code with the brain root as `cwd`.

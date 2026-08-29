@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""soma — the platform CLI (skeleton).
+"""scuderia — the platform CLI (skeleton).
 
 Commands over one declarative core (the profile's manifest.yaml):
 
-  soma init   --profile mnemo --name <name> --path <dir>
+  scuderia init   --profile mnemo --name <name> --path <dir>
       Scaffold a new instance: create the manifest's dirs, copy its templated
       files with {{INSTANCE_NAME}} / {{CREATED}} substituted.
 
-  soma doctor --path <dir>
+  scuderia doctor --path <dir>
       Verify the instance contract (spec §5) against the bound profile:
       instance.yaml parses with the required keys; every page directory
       declared
@@ -15,19 +15,19 @@ Commands over one declarative core (the profile's manifest.yaml):
       satisfiable. Exits nonzero with one complaint per failure. Idempotent;
       the shared definition of done.
 
-  soma skill-check [--root <checkout>] [--strict]
+  scuderia skill-check [--root <checkout>] [--strict]
       Platform-level skill hygiene: fails on frontmatter `name:` collisions
       across skills roots (shared skills/ + profiles/*/skills/), warns on
       patch-marker skills ("patch pending", "should be folded into", ...).
       A name collision is how resolver deadlocks and patch-skill sprawl
       start; run in CI or before committing skill changes.
 
-  soma adopt  --path <existing vault> [--name <name>] [--profile mnemo]
+  scuderia adopt  --path <existing vault> [--name <name>] [--profile mnemo]
       Generate instance.yaml for a pre-existing instance and validate it.
       Refuses to overwrite an existing instance.yaml (or legacy brain.yaml).
 
 Dependencies: stdlib + PyYAML (also required by core/tools/lint-frontmatter.py).
-Run in place from the soma checkout: `setup/soma <cmd>`.
+Run in place from the scuderia checkout: `setup/scuderia <cmd>`.
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ from pathlib import Path
 try:
     import yaml
 except ImportError:  # pragma: no cover
-    sys.exit("soma requires PyYAML (pip install pyyaml) — also used by "
+    sys.exit("scuderia requires PyYAML (pip install pyyaml) — also used by "
              "core/tools/lint-frontmatter.py")
 
 SOMA_ROOT = Path(__file__).resolve().parent.parent
@@ -50,7 +50,7 @@ INSTANCE_YAML_KEYS = ("name", "profile", "profile_version", "schema_version", "c
 def profile_dir(profile: str) -> Path:
     d = SOMA_ROOT / "profiles" / profile
     if not d.is_dir():
-        sys.exit(f"soma: unknown profile `{profile}` (no profiles/{profile}/ "
+        sys.exit(f"scuderia: unknown profile `{profile}` (no profiles/{profile}/ "
                  f"in this checkout)")
     return d
 
@@ -59,7 +59,7 @@ def load_yaml(path: Path) -> dict:
     try:
         doc = yaml.safe_load(path.read_text(encoding="utf-8"))
     except (OSError, yaml.YAMLError) as e:
-        sys.exit(f"soma: could not parse {path}: {e}")
+        sys.exit(f"scuderia: could not parse {path}: {e}")
     return doc if isinstance(doc, dict) else {}
 
 
@@ -85,7 +85,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     created = datetime.date.today().isoformat()
 
     if target.exists() and any(target.iterdir()) and not args.force:
-        sys.exit(f"soma init: {target} is not empty (pass --force to scaffold "
+        sys.exit(f"scuderia init: {target} is not empty (pass --force to scaffold "
                  f"into it anyway)")
     target.mkdir(parents=True, exist_ok=True)
 
@@ -100,17 +100,17 @@ def cmd_init(args: argparse.Namespace) -> int:
             print(f"  skip (exists): {entry['target']}")
             continue
         if not src.is_file():
-            sys.exit(f"soma init: manifest template missing: {src}")
+            sys.exit(f"scuderia init: manifest template missing: {src}")
         dst.write_text(substitute(src.read_text(encoding="utf-8"),
                                   args.name, created,
                                   strip_header=bool(entry.get("strip_header"))),
                        encoding="utf-8")
         print(f"  wrote: {entry['target']}")
 
-    print(f"soma init: scaffolded `{args.name}` (profile {args.profile}) at "
+    print(f"scuderia init: scaffolded `{args.name}` (profile {args.profile}) at "
           f"{target}")
     print("next: bind your harness per docs/harnesses/<harness>.md, then "
-          f"`soma doctor --path {target}`")
+          f"`scuderia doctor --path {target}`")
     return 0
 
 
@@ -124,8 +124,8 @@ def check_contract(path: Path, prof_name: str | None) -> list[str]:
         contract_file = legacy_file
         print("  note: brain.yaml is deprecated — rename it to instance.yaml")
     if not contract_file.is_file():
-        return [f"instance.yaml missing at {path} — run `soma adopt --path {path}` "
-                f"or `soma init`"]
+        return [f"instance.yaml missing at {path} — run `scuderia adopt --path {path}` "
+                f"or `scuderia init`"]
 
     data = load_yaml(contract_file)
     for key in INSTANCE_YAML_KEYS:
@@ -136,7 +136,7 @@ def check_contract(path: Path, prof_name: str | None) -> list[str]:
     prof = SOMA_ROOT / "profiles" / str(profile)
     if not prof.is_dir():
         complaints.append(f"{contract_file.name}: profile `{profile}` not present in "
-                          f"this soma checkout")
+                          f"this scuderia checkout")
         return complaints
 
     schema_path = prof / "schema.yaml"
@@ -161,7 +161,7 @@ def check_contract(path: Path, prof_name: str | None) -> list[str]:
         if brain_sv > prof_sv:
             complaints.append(
                 f"{contract_file.name} pins schema_version {brain_sv} but profile "
-                f"`{profile}` ships {prof_sv} — update the soma checkout")
+                f"`{profile}` ships {prof_sv} — update the scuderia checkout")
 
     # Binding health: harness-side bindings are adapter-doc one-liners the CLI
     # does not perform (spec §8). Surface them as a reminder, not a failure.
@@ -175,11 +175,11 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     path = args.path.expanduser().resolve()
     complaints = check_contract(path, args.profile)
     if complaints:
-        print("soma doctor: FAIL")
+        print("scuderia doctor: FAIL")
         for c in complaints:
             print(f"  - {c}")
         return 1
-    print(f"soma doctor: OK — {path} is a valid instance")
+    print(f"scuderia doctor: OK — {path} is a valid instance")
     return 0
 
 
@@ -193,7 +193,7 @@ PATCH_MARKERS = (
 
 
 def skill_roots(root: Path) -> list[tuple[str, Path]]:
-    """Every skills root in a soma checkout: the shared set (if it ever
+    """Every skills root in a scuderia checkout: the shared set (if it ever
     exists) plus each profile's scoped set."""
     roots: list[tuple[str, Path]] = []
     shared = root / "skills"
@@ -230,7 +230,7 @@ def cmd_skill_check(args: argparse.Namespace) -> int:
     root = (args.root.expanduser().resolve() if args.root else SOMA_ROOT)
     roots = skill_roots(root)
     if not roots:
-        print(f"soma skill-check: no skills roots found under {root}")
+        print(f"scuderia skill-check: no skills roots found under {root}")
         return 0
 
     seen: dict[str, list[str]] = {}
@@ -260,16 +260,16 @@ def cmd_skill_check(args: argparse.Namespace) -> int:
     for w in warnings:
         print(f"  warning: {w}")
     if duplicates:
-        print("soma skill-check: FAIL — skill-name collisions across sources")
+        print("scuderia skill-check: FAIL — skill-name collisions across sources")
         for name, locs in sorted(duplicates.items()):
             print(f"  - {name}:")
             for loc in locs:
                 print(f"      {loc}")
         return 1
     if warnings and args.strict:
-        print("soma skill-check: FAIL (--strict: warnings treated as failures)")
+        print("scuderia skill-check: FAIL (--strict: warnings treated as failures)")
         return 1
-    print(f"soma skill-check: OK — {count} skills across {len(roots)} root(s), "
+    print(f"scuderia skill-check: OK — {count} skills across {len(roots)} root(s), "
           f"no name collisions" + (f", {len(warnings)} warning(s)" if warnings else ""))
     return 0
 
@@ -278,13 +278,13 @@ def cmd_skill_check(args: argparse.Namespace) -> int:
 def cmd_adopt(args: argparse.Namespace) -> int:
     path = args.path.expanduser().resolve()
     if not path.is_dir():
-        sys.exit(f"soma adopt: {path} is not a directory")
+        sys.exit(f"scuderia adopt: {path} is not a directory")
     contract_file = path / "instance.yaml"
     legacy_file = path / "brain.yaml"
     if contract_file.exists() or legacy_file.exists():
-        sys.exit(f"soma adopt: {contract_file if contract_file.exists() else legacy_file} "
+        sys.exit(f"scuderia adopt: {contract_file if contract_file.exists() else legacy_file} "
                  f"already exists — refusing to "
-                 f"overwrite; run `soma doctor --path {path}` instead")
+                 f"overwrite; run `scuderia doctor --path {path}` instead")
 
     name = args.name or path.name
     doc = {
@@ -295,24 +295,24 @@ def cmd_adopt(args: argparse.Namespace) -> int:
         "created": datetime.date.today().isoformat(),
     }
     contract_file.write_text(
-        "# instance.yaml — the instance contract (generated by `soma adopt`)\n"
+        "# instance.yaml — the instance contract (generated by `scuderia adopt`)\n"
         + yaml.safe_dump(doc, sort_keys=False, default_flow_style=False),
         encoding="utf-8")
-    print(f"soma adopt: wrote {contract_file} (name: {name}, profile: "
+    print(f"scuderia adopt: wrote {contract_file} (name: {name}, profile: "
           f"{args.profile})")
 
     complaints = check_contract(path, args.profile)
     if complaints:
-        print("soma adopt: instance.yaml written, but the contract is not met:")
+        print("scuderia adopt: instance.yaml written, but the contract is not met:")
         for c in complaints:
             print(f"  - {c}")
         return 1
-    print("soma adopt: instance valid")
+    print("scuderia adopt: instance valid")
     return 0
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="soma", description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(prog="scuderia", description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_init = sub.add_parser("init", help="scaffold a new instance")
@@ -332,7 +332,7 @@ def main() -> int:
         help="fail on skill-name collisions across skills roots (shared + "
              "profile-scoped); warn on patch-marker skills")
     p_check.add_argument("--root", type=Path, default=None,
-                         help="soma checkout to scan (default: this one)")
+                         help="scuderia checkout to scan (default: this one)")
     p_check.add_argument("--strict", action="store_true",
                          help="treat patch-marker warnings as failures")
     p_check.set_defaults(fn=cmd_skill_check)

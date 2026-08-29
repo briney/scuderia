@@ -4,7 +4,7 @@ The default publisher for the card feed: a Cloudflare Pages app — static
 renderer (`public/`) plus Pages Functions (`functions/`) implementing the
 card contract's routes over D1.
 
-This is the only publisher-specific code in soma. The contract is
+This is the only publisher-specific code in scuderia. The contract is
 publisher-agnostic; a tailnet adapter serves the same routes from a local
 process.
 

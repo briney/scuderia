@@ -8,7 +8,7 @@
 > is wrong and is brought into line — never the reverse. The two are paired
 > core documents and evolve together.
 >
-> v1.2 note: genericized for the soma platform split, as `VISION.md` was —
+> v1.2 note: genericized for the scuderia platform split, as `VISION.md` was —
 > "the mind" is a mnemo instance, "your human" is whoever runs one.
 >
 > v1.3 note: **vocabulary split** (see `VISION.md` v1.3). The platform's
@@ -471,7 +471,7 @@ the page directories with their frontmatter schema. Any harness that honors
 those conventions can host a mnemo brain. The seam is profile-general: a
 harness loading an ergon instance becomes a doer agent by the same mechanism
 — the file-convention set differs per profile (each profile's `manifest.yaml`
-declares it). `soma doctor` validates the
+declares it). `scuderia doctor` validates the
 contract.
 
 ### 6.3 The mind generates, the harness delivers

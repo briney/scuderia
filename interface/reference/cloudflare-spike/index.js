@@ -1,4 +1,4 @@
-// soma feed spike — minimal card contract server
+// scuderia feed spike — minimal card contract server
 // Routes:
 //   GET  /            HTML dashboard (key via ?key=, kept in localStorage)
 //   GET  /feed        JSON cards            (reader key)
@@ -31,7 +31,7 @@ function checkKey(request, env, kind) {
 const PAGE = `<!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>soma feed (spike)</title>
+<title>scuderia feed (spike)</title>
 <style>
  body{font-family:-apple-system,system-ui,sans-serif;background:#0f1115;color:#e8e8ec;max-width:36em;margin:1.5em auto;padding:0 1em}
  .card{background:#1a1d26;border:1px solid #2a2e3d;border-radius:12px;padding:1em 1.2em;margin:1em 0}
@@ -44,7 +44,7 @@ const PAGE = `<!DOCTYPE html>
  .sent{opacity:.55}
  h1{font-size:1.25em}
 </style></head><body>
-<h1>soma — feed (spike)</h1>
+<h1>scuderia — feed (spike)</h1>
 <div id="out">loading…</div>
 <script>
 const params=new URLSearchParams(location.search);

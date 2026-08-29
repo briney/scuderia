@@ -1,7 +1,7 @@
 # SOUL.md — mnemo archetype template
 
 > This is the **template** for a mnemo instance's character file. At scaffold
-> time (`soma init`), `{{INSTANCE_NAME}}` is replaced with the instance's name
+> time (`scuderia init`), `{{INSTANCE_NAME}}` is replaced with the instance's name
 > and this file is copied into the new brain. Instances then evolve their own
 > SOUL.md — the archetype is the starting voice, not a straitjacket.
 >

@@ -1,14 +1,14 @@
 # VISION.md
 
-> **Status: v1.2 — vision settled; genericized for the soma platform.** This is
+> **Status: v1.2 — vision settled; genericized for the scuderia platform.** This is
 > the big-picture vision for what a **mnemo mind** *is for*. Its major questions
 > have been worked through and decided; §8 is the decision log. It is
 > deliberately implementation-light — the blueprint is `DESIGN.md`, which
 > carries the *how*. Where the two disagree, *this* document is the intent and
 > `DESIGN.md` is brought into line.
 >
-> v1.2 note: this document predates the soma platform split and has been
-> genericized — the archetype it describes is the **mnemo profile** (soma's
+> v1.2 note: this document predates the scuderia platform split and has been
+> genericized — the archetype it describes is the **mnemo profile** (scuderia's
 > flagship research-brain template), and "your human" is whoever runs an
 > instance. Instances are named; the template is not.
 >
@@ -18,7 +18,7 @@
 > Agents of other profiles are not minds — an ergon instance is a *doer*,
 > and its persistent state is a capability library, not a knowledge graph.
 > This document describes the mnemo archetype throughout; nothing in it
-> should be read as claiming every soma agent is mind-shaped. Inter-agent
+> should be read as claiming every scuderia agent is mind-shaped. Inter-agent
 > collaboration (a doer working with a mind) is governed by
 > `core/agora.md`. The instance contract file is `instance.yaml`
 > (renamed from `brain.yaml`).
@@ -470,7 +470,7 @@ or appends rather than clobbering.
 **Privacy note.** The GitHub repo is private, but this *does* place a copy of
 the brain — including, eventually, synced email and calendar content — on
 GitHub's servers. Syncthing-over-Tailscale alone touches no third party; GitHub
-is a deliberate, accepted exception made for the iOS bridge. (In the soma
+is a deliberate, accepted exception made for the iOS bridge. (In the scuderia
 layout the privacy boundary is sharper: the brain repo is private forever; the
 platform repo holds no brain content by construction.)
 

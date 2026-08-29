@@ -4,7 +4,7 @@
 # their directories, the shared frontmatter spine, per-kind required fields and
 # enums, link-shaped fields, and the author-ledger contract. The prose source of
 # record is conventions/frontmatter.md; this file is what tools read
-# (core/tools/lint-frontmatter.py, setup/soma doctor).
+# (core/tools/lint-frontmatter.py, setup/scuderia doctor).
 #
 # Schema-driven by design: the linter knows nothing about what a "paper" is —
 # it reads this file. A new profile (oiko, …) ships its own schema.yaml.

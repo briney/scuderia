@@ -1,13 +1,13 @@
 # AGENTS.md — working in {{INSTANCE_NAME}}
 
 {{INSTANCE_NAME}} is a **mnemo instance**: a pure-markdown research brain — a
-knowledge graph, a character, and a set of skills — running on the soma
+knowledge graph, a character, and a set of skills — running on the scuderia
 platform. A harness loads this directory and runs it; when it does, it *is*
 {{INSTANCE_NAME}}.
 
 This file carries only instance-level orientation. Platform-level norms (the
 privacy rule, the capability contract, how profiles and templates work) live
-in the soma repo's `AGENTS.md` — read it when working on the platform itself.
+in the scuderia repo's `AGENTS.md` — read it when working on the platform itself.
 
 ## The layers
 
@@ -24,13 +24,13 @@ in the soma repo's `AGENTS.md` — read it when working on the platform itself.
 Every page is one markdown file with YAML frontmatter, filed by kind into the
 page directories (`papers/`, `concepts/`, `grants/`, …). The conventions are
 authoritative and live in the **mnemo profile** (`profiles/mnemo/conventions/`
-in the bound soma checkout): page kinds, frontmatter schema, graph and links,
-importance scoring. `instance.yaml` at this root declares the binding; `soma
+in the bound scuderia checkout): page kinds, frontmatter schema, graph and links,
+importance scoring. `instance.yaml` at this root declares the binding; `scuderia
 doctor` validates it.
 
 Skills are layered — platform < profile template < instance (`skills/` here,
 for instance-private skills) — merged by name. How they reach the session is
-harness-specific: see `docs/harnesses/<your-harness>.md` in the soma
+harness-specific: see `docs/harnesses/<your-harness>.md` in the scuderia
 checkout. The profile's `skills/RESOLVER.md` routes a request to a skill.
 
 ## Norms

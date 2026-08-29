@@ -76,11 +76,11 @@ profile; do not hardcode one profile's path):
   **Script path pitfall:** the script does NOT live at a repo-relative
   `skills/paper-ingest/scripts/verify_ingest.py` path from the vault root —
   it lives under the profile skills dir (resolved via the profile symlink into
-  the soma checkout: `~/git/soma/profiles/mnemo/skills/paper-ingest/scripts/`
+  the scuderia checkout: `~/git/scuderia/profiles/mnemo/skills/paper-ingest/scripts/`
   or `~/.hermes/profiles/<profile>/skills/<category>/paper-ingest/scripts/`).
   A bare `python3 skills/paper-ingest/scripts/verify_ingest.py` from the vault
   root prints `can't open file ... No such file or directory`. Use the resolved
-  profile/soma path (or `find ~ -name verify_ingest.py`).
+  profile/scuderia path (or `find ~ -name verify_ingest.py`).
   **Invocation pitfall:** pass the BARE slug filename (e.g.
   `2017-verstraete-tslp-...md`), NOT the `papers/<slug>.md` relative
   path. The script prepends `papers/` itself, so passing the full

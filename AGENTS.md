@@ -1,6 +1,6 @@
-# AGENTS.md — working in the soma repo
+# AGENTS.md — working in the scuderia repo
 
-soma is a **platform kit** for personal knowledge-graph minds: conventions +
+scuderia is a **platform kit** for personal knowledge-graph minds: conventions +
 schema-driven tools + profile templates + a setup CLI. There is no runtime
 here — a *harness* (Hermes, Claude Code, …) loads an instance and runs it.
 This repo is the public body; minds (instances) live elsewhere, in private
@@ -8,7 +8,7 @@ repos bound by config.
 
 ## The load-bearing rule
 
-**The unit of privacy is the repo.** soma must never contain instance (brain)
+**The unit of privacy is the repo.** scuderia must never contain instance (brain)
 content — no pages, no user models, no program state, no private specs. An
 instance is a *sibling* repo, never a subdirectory or submodule of this
 checkout, so no careless `git add -A` can ever stage private content into the
@@ -22,10 +22,10 @@ content into a file here, stop: templates say "the brain", "your human", and
 |---|---|
 | `core/` | The capability contract (`capabilities.md`) and schema-driven tools (`tools/`) |
 | `profiles/<name>/` | A profile template: `schema.yaml`, `conventions/`, `skills/`, `SOUL.md` / `STYLE.md` / `USER/` / `AGENTS.md` templates, `manifest.yaml`, `example-instance/` |
-| `docs/north-star/` | What soma is for (`VISION.md`) and how it is built (`DESIGN.md`) |
+| `docs/north-star/` | What scuderia is for (`VISION.md`) and how it is built (`DESIGN.md`) |
 | `docs/harnesses/` | Per-harness capability bindings — the adapter docs |
 | `interface/` | The feed layer: card renderer + contract, publisher-agnostic |
-| `setup/soma` | The CLI: `init` / `doctor` / `adopt` |
+| `setup/scuderia` | The CLI: `init` / `doctor` / `adopt` |
 
 ## Working norms
 
@@ -48,12 +48,12 @@ content into a file here, stop: templates say "the brain", "your human", and
   profile-specific variants get a distinct name (e.g. `<name>-<profile>`).
   Skill resolvers refuse ambiguous names — and refusal means nobody can
   patch anything, which is how the 2026-08 patch-skill sprawl happened.
-  `setup/soma skill-check` enforces this mechanically.
+  `setup/scuderia skill-check` enforces this mechanically.
 - **Patch skills are not a pattern.** Never create a skill whose purpose
   is to annotate another skill; patch the target directly. If a patch
   genuinely cannot be applied immediately (an interrupted session, a
   cross-profile guard), the finding goes in a working document with a
-  TODO, not in the skill index. `setup/soma skill-check` flags
+  TODO, not in the skill index. `setup/scuderia skill-check` flags
   patch-marker skills as warnings.
 - **One canonical home per skill.** When a profile's skills are bound
   into a harness by symlink, no real skill directories may sit alongside
@@ -68,6 +68,6 @@ content into a file here, stop: templates say "the brain", "your human", and
 
 ## The spec
 
-`docs/north-star/VISION.md` fixes what soma is for; `docs/north-star/DESIGN.md`
+`docs/north-star/VISION.md` fixes what scuderia is for; `docs/north-star/DESIGN.md`
 is the implementation blueprint. Where anything here disagrees with them, they
 are the intent.
