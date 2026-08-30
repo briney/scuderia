@@ -19,11 +19,33 @@ Validates a brain against a profile schema (``profiles/<name>/schema.yaml``):
 Usage:
   lint-frontmatter.py --instance <instance-root> [--schema <schema.yaml>]
                       [--skills-root <dir>]
+                      [--paths <file> <file> ... | --changed-since <rev>]
+                      [--base <rev>]
 
 Defaults: --instance is the cwd; --schema is profiles/mnemo/schema.yaml
 relative to this script's repo checkout; --skills-root is the schema's sibling
 ``skills/`` directory. ``--brain`` is accepted as a deprecated alias for
 ``--instance``.
+
+Modes:
+  full (default)    lint every page in every page-kind directory. This is
+                    what CI runs; it is the only mode whose results are
+                    complete (link existence needs the whole graph).
+  --paths /         lint only the given files (paths may be absolute or
+  --changed-since   instance-relative). ``--changed-since <rev>`` expands to
+                    ``git diff --name-only <rev> -- '*.md'`` inside the
+                    instance, plus any files that no longer parse
+                    (structure is checked everywhere, field content only on
+                    the selected files). Use this mode from producers and
+                    pre-commit gates: it is the difference between a
+                    40-second full run and a sub-second check that still
+                    catches the fields a producer actually writes.
+
+Scoped modes check page structure (frontmatter parses, fence intact) on
+every page but defer field/content checks (spine, per-kind, enums, links,
+ledger, skills) to the selected files only. Link-existence findings for
+unselected files are suppressed — they are reported by the next full run.
+Exit codes are identical to full mode.
 
 Exit codes:
   0 — no errors (warnings allowed)
@@ -34,6 +56,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -534,12 +557,40 @@ def main() -> int:
     parser.add_argument("--skills-root", type=Path, default=None,
                         help="directory containing skills/ to lint "
                              "(default: schema's sibling skills/ dir)")
+    scope = parser.add_mutually_exclusive_group()
+    scope.add_argument("--paths", nargs="+", type=Path, metavar="FILE",
+                       help="lint only these files (instance-relative or "
+                            "absolute); structure is still checked everywhere")
+    scope.add_argument("--changed-since", dest="changed_since", metavar="REV",
+                       help="lint only files changed since git rev REV "
+                            "(structure checked everywhere)")
     args = parser.parse_args()
 
     brain = args.instance.resolve()
     BRAIN_ROOT = brain
     schema = load_schema(args.schema.resolve())
     skills_root = args.skills_root or args.schema.resolve().parent / "skills"
+
+    # --- resolve the scoped file set ---
+    selected: set[Path] | None = None
+    if args.paths is not None:
+        selected = set()
+        for raw in args.paths:
+            p = raw.resolve()
+            if not p.exists():
+                sys.exit(f"fatal: --paths file not found: {raw}")
+            if brain not in p.parents:
+                sys.exit(f"fatal: --paths file outside instance: {raw}")
+            selected.add(p)
+    elif args.changed_since:
+        try:
+            out = subprocess.run(
+                ["git", "diff", "--name-only", args.changed_since, "--", "*.md"],
+                cwd=brain, capture_output=True, text=True, check=True,
+            ).stdout
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            sys.exit(f"fatal: --changed-since needs a git repo at {brain}: {e}")
+        selected = {(brain / line).resolve() for line in out.splitlines() if line}
 
     report = Report()
     all_slugs: set[str] = set()
@@ -557,6 +608,23 @@ def main() -> int:
                 report.error(path, err)
                 continue
             assert fm is not None
+            if schema.get("checks", {}).get("temp_file_in_page_dir") \
+                    and path.name.startswith("_tmp"):
+                report.warn(
+                    path,
+                    "temp-prefixed file in a page directory — promote to a "
+                    "real slug or move to working-docs/; snapshotter commit "
+                    "was the failure mode (see conventions/quality.md)",
+                )
+            if selected is not None and path.resolve() not in selected:
+                # scoped mode: structure parsed fine. Still index the page's
+                # identity — link existence and ledger citations resolve
+                # against all_slugs, which must span the whole graph even
+                # when content checks are deferred.
+                slug = fm.get("slug")
+                if isinstance(slug, str) and slug == path.stem:
+                    all_slugs.add(f"{spec['dir']}/{slug}")
+                continue
             lint_page(path, fm, spec["dir"], schema, all_slugs, report)
             page_data.append((path, fm))
 
@@ -568,6 +636,8 @@ def main() -> int:
     skills_spec = schema.get("skills")
     if skills_spec and skills_root.is_dir():
         for skill_md in sorted(skills_root.glob("*/SKILL.md")):
+            if selected is not None and skill_md.resolve() not in selected:
+                continue
             fm, err = parse_frontmatter(skill_md)
             if err:
                 report.error(skill_md, err)

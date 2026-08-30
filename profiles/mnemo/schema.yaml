@@ -109,3 +109,7 @@ checks:
   # a concept with a `## Shifts` section but no `thesis_updated` field leaves
   # concept-refresh unable to tell when the Thesis was last synthesized.
   concept_thesis_updated: true
+  # temp-prefixed files in page directories get promoted into the brain by
+  # the snapshotter before anyone reviews them (2026-08 lint-debt burndown).
+  # working-docs/ is the sanctioned home for transitory files.
+  temp_file_in_page_dir: true

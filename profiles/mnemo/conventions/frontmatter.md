@@ -281,3 +281,26 @@ are the **derived backlinks** of these edges — never written by hand.
 - `slug` is the identity — never reuse one, never derive meaning from the path
   beyond the kind directory.
 - Skills *enforce* this schema; they do not duplicate the character (`SOUL.md`).
+- Every producer (paper-ingest, literature-sweep, grant-ingest, enrich, any
+  skill that writes a page) lints what it wrote before declaring the write
+  done: `lint-frontmatter.py --instance <brain> --paths <files...>`. A page
+  that fails its own lint is an unfinished write, not debt to fix later —
+  this is the boundary gate the 2026-08 lint-debt burndown was built to
+  prevent recurring. The full-repo lint stays the CI net behind it.
+
+## Lint modes
+
+`core/tools/lint-frontmatter.py` runs in two modes:
+
+- **Full** (default, and what CI runs): every page, every field, link
+  existence against the whole graph. Complete but slow — minutes on a
+  10k-page brain.
+- **Scoped** (`--paths <files>` or `--changed-since <rev>`): page structure
+  (frontmatter parses, fence intact) everywhere, field content only on the
+  selected files. Sub-second. This is the producer self-lint and the
+  pre-commit gate mode — it catches a bad write at the moment of writing,
+  which is the only place a fix is cheap.
+
+A scoped run never reports link-existence findings for unselected files;
+those surface in the next full run. A scoped run that passes is therefore
+not a guarantee the brain is clean — only that the files you touched are.
