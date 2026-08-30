@@ -519,7 +519,8 @@ def lint_skill(path: Path, fm: dict, spec: dict, report: Report) -> None:
         report.error(path, f"missing required skill field `{f}`")
 
     if not spec.get("allow_extra_fields", False):
-        extras = set(fm.keys()) - required
+        allowed = required | frozenset(spec.get("optional", []))
+        extras = set(fm.keys()) - allowed
         if extras:
             report.error(
                 path,

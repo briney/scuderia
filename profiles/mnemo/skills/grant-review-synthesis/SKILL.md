@@ -1,6 +1,10 @@
 ---
 name: grant-review-synthesis
 description: Use for grant summary statements and reviewer critiques.
+triggers:
+  - "ingest a summary statement"
+  - "ingest reviewer critiques"
+  - "grant review synthesis"
 ---
 
 # Grant review synthesis

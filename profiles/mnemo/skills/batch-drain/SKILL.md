@@ -1,7 +1,7 @@
 ---
 name: batch-drain
 description: "Dispatch subagent batches in waves, yield-and-wait between them, verify on disk before advancing. Use whenever sharding a large list of work items across delegate_task batches (enrichment sweeps, literature dives, corpus backfills, rem-cycle phases)."
-aliases:
+triggers:
   - "batch-drain primitive"
   - "drain the delegation batches"
   - "dispatch in waves"

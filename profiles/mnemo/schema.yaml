@@ -97,6 +97,9 @@ ledger:
 skills:
   glob: 'skills/*/SKILL.md'
   required: [name, description, triggers]
+  # eval_contract is the sanctioned optional fourth field —
+  # conventions/skill-hygiene.md "The eval contract". Not required.
+  optional: [eval_contract]
   allow_extra_fields: false
   name_matches_dir: true
 
