@@ -1229,6 +1229,23 @@ spelling/middle-initial variants (`louder-mark` vs `louder-mark-k`;
 ORCID-bearing entry, union citations and affiliations) before the final
 pass. Cover ALL new entries, not just suspected collisions.
 
+**Schema lint (required, non-delegable).** The invariants above are
+graph-level; they do not check the schema. A page with a missing
+`status:` or a slug that mismatches its filename passes all five and
+lands in CI red (this exact gap shipped a paper without `status` on
+2026-08-30). After `verify_ingest.py`, run the platform linter in
+scoped mode on exactly the files this ingest touched:
+
+```bash
+python3 <platform-repo>/core/tools/lint-frontmatter.py \
+--instance <brain> \
+--paths papers/<slug>.md people/_ledger.yaml
+```
+
+Sub-second (structure everywhere, field checks on the listed files
+only). Exit 0 = commit-ready. A page that fails its own lint is an
+unfinished write, not debt to fix later.
+
 Exit 0 = commit-ready. Run after every ingest, before commit.
 
 **External URLs in `links:` always report as MISSING — this is a false

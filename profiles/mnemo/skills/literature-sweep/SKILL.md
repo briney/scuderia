@@ -219,6 +219,28 @@ Summary: {N} stubs created, {M} already-held dropped, {K} links repaired
 Flag standout papers worth immediate attention ("→ worth reading now")
 rather than relying on the drain's queue order.
 
+## Self-lint before declaring the sweep done
+
+The stub template above is what a correct stub looks like; the sweep
+writes dozens per run and a field dropped under pressure (missing
+`status:`, slug/filename mismatch, a raw string in `authors:`) lands in
+CI red without anyone noticing for days. After writing the batch, run
+the platform linter in scoped mode over exactly the stubs written this
+run:
+
+```bash
+python3 <platform-repo>/core/tools/lint-frontmatter.py \
+  --instance <brain> \
+  --changed-since <rev-before-this-sweep>
+```
+
+Structure is checked everywhere, field checks on the sweep's files
+only — sub-second on a 10k-page brain. Exit 0 = the sweep is done.
+Any error means the stub is an unfinished write: fix it before the run
+ends, not as future debt. The stubs are born red, not red-later: the
+2026-08 lint-debt burndown was 4,191 errors that originated as exactly
+this class of producer gap.
+
 ## Anti-patterns
 
 - **Sweeping without reading `RESEARCH.md`** — a profile-less sweep is

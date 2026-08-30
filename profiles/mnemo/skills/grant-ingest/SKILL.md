@@ -346,6 +346,19 @@ Ingesting a backlog of historical submissions is expected. For more than a
 handful, follow `skills/conventions/test-before-bulk.md`: ingest 3-5, read the output,
 fix the approach, then run the rest in committed batches.
 
+Before declaring the ingest done, run the platform linter in scoped mode
+on every page this ingest wrote or edited (grant page, updated project and
+institution pages):
+
+```bash
+python3 <platform-repo>/core/tools/lint-frontmatter.py \
+  --instance <brain> \
+  --changed-since <rev-before-this-ingest>
+```
+
+Sub-second; exit 0 = done. A page failing its own lint is an unfinished
+write — fix before the run ends.
+
 ## Page shape
 
 ```markdown

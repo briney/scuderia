@@ -58,7 +58,7 @@ Three rules, in order:
 ## Step 4 — Roll out pilot-first
 
 Design note → conventions (`page-kinds.md`, `frontmatter.md`) → linter
-(`.github/scripts/lint-frontmatter.py`) → skill templates (`enrich`, ingests)
+(`core/tools/lint-frontmatter.py` in the platform repo) → skill templates (`enrich`, ingests)
 → pilot on 3–5 real pages → your human reviews the shape → full pass. Never
 full-scale without the pilot. Schema before skills: a template that writes
 fields the linter doesn't know produces failing pages.

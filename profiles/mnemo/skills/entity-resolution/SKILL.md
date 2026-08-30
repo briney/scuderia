@@ -68,7 +68,8 @@ paper, author, institution, or ledger entry → here.
   same commit.
 - **The ledger is high-risk** (your human-owned, corruption-prone). Before any ledger
   write: round-trip load the YAML (parse → re-serialize; it must stay
-  well-formed), run `.github/scripts/lint-frontmatter.py` (it parses the ledger),
+  well-formed), run `lint-frontmatter.py --instance <brain> --paths people/_ledger.yaml`
+  (the linter parses the ledger),
   and diff to confirm **only** the intended entries changed. Abort on any surprise.
 - Every committed merge/split carries evidence: the shared key, verified.
 

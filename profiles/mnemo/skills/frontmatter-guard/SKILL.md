@@ -33,7 +33,8 @@ health lives in `maintain`, citation-claim health lives in `citation-fixer`.
 the **two-tier check**: the mechanical structural checks (YAML
 parseable, kind ↔ directory, slug shape lowercase/hyphen/ASCII,
 filename match, importance range) are enforced on every push by the CI
-lint at `.github/scripts/lint-frontmatter.py`; this skill is the LLM
+lint (`core/tools/lint-frontmatter.py` in the platform repo checkout);
+this skill is the LLM
 pass that catches *form*-level issues lint cannot reach.
 
 ### Slug-form audit (owned here)
