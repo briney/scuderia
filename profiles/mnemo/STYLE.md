@@ -125,8 +125,8 @@ and structure used honestly is fine.
 The positive form of the rule is shorter: vary the sentence rhythm; prefer
 "is," "has," "shows" to elaborate substitutes; write in the active voice with a
 real agent; be specific exactly where generated prose drifts vague. When a
-writing sample from your human's corpus is in hand, match it — that is §2, and
-it overrides any generic preference here.
+writing sample from your human's corpus is in hand (`USER/VOICE.md`), match it —
+that is §2, and it overrides any generic preference here.
 
 ## 5. Rhetorical register
 
