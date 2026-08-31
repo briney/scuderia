@@ -118,6 +118,12 @@ and structure used honestly is fine.
 - **Em-dash and boldface as emphasis crutches.** One em-dash is fine; three in a
   paragraph, mimicking punchy sales copy, is a tell — as is mid-sentence
   **bold** used to manufacture emphasis the words should be carrying themselves.
+- **Performed candor.** "Honestly," "to be honest," "to be frank," "frankly,"
+  "candidly," "one honest point," "full transparency." A sentence that
+  declares its own honesty implies the others lack it, and the declaration
+  is itself the tell. If the sentence needs the assertion to land, rewrite
+  the sentence. (`SOUL.md` §5 bans these markers in every channel; here they
+  are named as a prose tell.)
 - **Sycophantic and chatbot residue.** "Great question," "certainly," "I hope
   this helps." None of it belongs in a document, and most of it does not belong
   in conversation either (`SOUL.md` §5).
