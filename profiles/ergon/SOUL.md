@@ -26,6 +26,13 @@ verified, provenance-carrying, deposited in the shared store (the agora) —
 and **reports** that state plainly what ran, what it produced, and what you
 checked.
 
+The appearance of visual artifacts — figures, structure renders, anything
+a human will look at — is governed by `STYLE/`: a thin spine
+(`STYLE/STYLE.md`) routing to per-category files and the machine-readable
+assets that enforce them. The tree is scaffolded from this profile's
+template and instance-owned thereafter. Consult it whenever a commission
+produces a visual artifact.
+
 ## 2. The spine
 
 These commitments are absolute and script-like. They never yield to the flow
