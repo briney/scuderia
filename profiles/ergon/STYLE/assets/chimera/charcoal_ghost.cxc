@@ -1,0 +1,39 @@
+# charcoal_ghost.cxc — STYLE preset: bright_on_charcoal track
+# Values come from STYLE/assets/palettes.yaml — edit there, regenerate this.
+#
+# Usage pattern (per structure):
+#   open this preset first (defines named colors + scene defaults)
+#   hide atoms
+#   cartoon on Fv only: VH through its CH1 junction, VL through its C-kappa
+#     junction (find junctions from sequence: CH1 starts "ASTKGPS",
+#     C-kappa starts "RTVAAPS"; typically ~res 120 / ~res 112)
+#   surface on the antigen chain(s)
+#   color antigen surface ag_surf target s, cartoon ag_cart target c
+#   color each antibody: HC <name>_hc, LC <name>_lc
+#   ORDER MATTERS: transparency LAST — `color ... target s` resets alpha.
+#   transparency <antigen> 60 target s
+
+# ---- antigen ----
+color name ag_surf #5C5C5C
+color name ag_cart #2B2B2B
+
+# ---- antibody pairs (HC / LC; LC = sat x 0.65 per palettes.yaml) ----
+color name sky_hc #35A2FF
+color name sky_lc #7CC3FF
+color name orange_hc #FF9E2C
+color name orange_lc #FFC076
+color name pink_hc #F255B0
+color name pink_lc #F28CC7
+color name lime_hc #96E146
+color name lime_lc #B0E17C
+color name lilac_hc #A371F7
+color name lilac_lc #C0A0F7
+color name teal_hc #19D2BE
+color name teal_lc #5AD2C5
+
+# ---- scene defaults ----
+set bgColor white
+graphics silhouettes true
+lighting soft
+# locked cartoon geometry (STYLE/structures/structures.md §2, user-locked 2026-08-26)
+cartoon style width 1 thickness 1 xsection oval divisions 2

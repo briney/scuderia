@@ -1,0 +1,65 @@
+# palettes.yaml — canonical palettes (instance-owned; scaffolded from the
+# ergon profile template)
+# Crystallized 2026-08-25 from a demonstrated run in the founding instance
+# (ChimeraX iteration on public PD1–Fab complexes 5ggs/5wt9; user-corrected
+# through v1–v10).
+# Enforced by STYLE/STYLE.md §3: colors are defined HERE, once; modality
+# and type files and presets reference this file, never redefine values.
+
+version: 1
+crystallized_from: "demonstrated run in the founding instance, 2026-08-25"
+
+rules:
+  # LC colors are GENERATED, not hand-picked: same hue as HC, HSV
+  # saturation x 0.65, value unchanged. (Locked 2026-08-26 after user
+  # compared 50/55/60/65/70% on rendered structures; 65% = "clearly
+  # distinguishable, but subtle". Do not hand-tune individual LCs.)
+  lc_generation: "hue(HC), HSV saturation = HC x 0.65, value = HC"
+
+render_defaults:
+  background: white
+  silhouettes: true
+  lighting: soft
+  # Glycans and other ligands stay neutral so they don't compete.
+  ligand_color: "#FFFFFF"
+
+# ---------------------------------------------------------------------------
+# Track: bright_on_charcoal — high-key Fv colors on a dark neutral ghost.
+# Vibe: modern, high-contrast. (C3-revised: bright base, lime/teal re-voiced
+# brighter to match; mint and gold dropped.)
+# ---------------------------------------------------------------------------
+bright_on_charcoal:
+  antigen:
+    surface: "#5C5C5C"   # charcoal, true neutral (R=G=B; slate reads purple)
+    cartoon: "#2B2B2B"   # visible through the ghost
+    surface_transparency: 60
+  antibodies:
+    sky:    {hc: "#35A2FF", lc: "#7CC3FF"}
+    orange: {hc: "#FF9E2C", lc: "#FFC076"}
+    pink:   {hc: "#F255B0", lc: "#F28CC7"}
+    lime:   {hc: "#96E146", lc: "#B0E17C"}
+    lilac:  {hc: "#A371F7", lc: "#C0A0F7"}
+    teal:   {hc: "#19D2BE", lc: "#5AD2C5"}
+  warnings:
+    - "sky vs. teal is the most confusable pair under deuteranopia; avoid on adjacent antibodies in one render"
+    - "for 3-color bin schemes the default order gives sky+orange+pink, which reads poorly together; use sky/pink/lime instead (user correction 2026-08-27)"
+
+# ---------------------------------------------------------------------------
+# Track: muted_warm_on_paper — muted warm colors on a warm paper-grey ghost.
+# Vibe: mature, printed-page. (W1: terracotta/olive/plum/ochre/dusty teal/
+# slate blue.)
+# ---------------------------------------------------------------------------
+muted_warm_on_paper:
+  antigen:
+    surface: "#B0A99F"   # warm paper grey
+    cartoon: "#5A544C"   # warm dark grey-brown
+    surface_transparency: 60
+  antibodies:
+    terracotta:  {hc: "#C06B4A", lc: "#C08973"}
+    olive:       {hc: "#8A8B4C", lc: "#8A8B62"}
+    plum:        {hc: "#9B5B73", lc: "#9B7181"}
+    ochre:       {hc: "#C7952C", lc: "#C7A662"}
+    dusty_teal:  {hc: "#5B8C85", lc: "#6C8C87"}
+    slate_blue:  {hc: "#6B7FA3", lc: "#7F8CA3"}
+  warnings:
+    - "HCs are already low-saturation, so 65% LCs are VERY subtle here; if a render needs clearer chain distinction, lighten LC value +10% (record the deviation in the manifest)"

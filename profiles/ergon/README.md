@@ -25,6 +25,13 @@ The profile ships:
   `proposal` (a gated skill-creation proposal awaiting human approval).
 - `SOUL.md` — the character skeleton. The spine (§2) is near-final; the
   rest is marked draft pending a live instance.
+- `STYLE/` — the visual-artifact standard: a three-tier tree (spine →
+  modality → type) plus machine-readable palette and preset assets. Copied
+  into instances at scaffold and instance-owned thereafter (divergence is
+  expected: style is crystallized from the instance's own corrected runs).
+  Opinionated defaults crystallized from the founding instance's
+  demonstrated runs; generic craft earned downstream is back-ported here
+  with the `style-promote` skill.
 - `manifest.yaml` + `example-instance/` — the install contract.
 
 **This is a skeleton, not a stub** (contrast `profiles/oiko/`): an ergon
@@ -35,11 +42,12 @@ is scaffolded):
 1. `conventions/` — prose frontmatter/page-kind conventions (schema.yaml
    is the machine-readable source of record; the prose must be written and
    the two kept in sync per the platform rule).
-2. `skills/` — ergon-specific craft skills. The generic shared-store
-   procedure is inherited from `core/skills/agora-exchange`; additional
-   methodology (e.g. coding skills) is evaluated per instance before
-   anything is vendored here.
-3. `STYLE.md` / `USER/` / `AGENTS.md` / `CLAUDE.md` templates.
+2. `skills/` — ergon-specific craft skills. The craft set now ships
+   (planning/verification skills plus `style-promote`); the generic
+   shared-store procedure is inherited from `core/skills/agora-exchange`;
+   additional methodology (e.g. coding skills) is evaluated per instance
+   before anything is vendored here.
+3. `USER/` / `AGENTS.md` / `CLAUDE.md` templates (`STYLE/` now ships).
 4. Card types for the feed, if runs/proposals ever want feed surfaces.
 
 v1 scope: ergon agents are **reactive only** — they answer queries and

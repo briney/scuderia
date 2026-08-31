@@ -22,6 +22,25 @@ files:
   - template: SOUL.md
     target: SOUL.md
     strip_header: true
+  - template: STYLE/STYLE.md
+    target: STYLE/STYLE.md
+    strip_header: true
+  - template: STYLE/plotting/plotting.md
+    target: STYLE/plotting/plotting.md
+  - template: STYLE/plotting/heatmaps.md
+    target: STYLE/plotting/heatmaps.md
+  - template: STYLE/structures/structures.md
+    target: STYLE/structures/structures.md
+  - template: STYLE/structures/fv-antigen.md
+    target: STYLE/structures/fv-antigen.md
+  - template: STYLE/assets/README.md
+    target: STYLE/assets/README.md
+  - template: STYLE/assets/palettes.yaml
+    target: STYLE/assets/palettes.yaml
+  - template: STYLE/assets/chimera/charcoal_ghost.cxc
+    target: STYLE/assets/chimera/charcoal_ghost.cxc
+  - template: STYLE/assets/chimera/warm_paper_ghost.cxc
+    target: STYLE/assets/chimera/warm_paper_ghost.cxc
 
 placeholders:
   INSTANCE_NAME: the instance's name (agents are named)

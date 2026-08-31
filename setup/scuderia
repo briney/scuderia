@@ -101,6 +101,10 @@ def cmd_init(args: argparse.Namespace) -> int:
             continue
         if not src.is_file():
             sys.exit(f"scuderia init: manifest template missing: {src}")
+        # File targets create their own parent dirs — a manifest file must
+        # never depend on a `dirs` entry landing first (cf. the mnemo USER/
+        # red-CI bug, 6925e64).
+        dst.parent.mkdir(parents=True, exist_ok=True)
         dst.write_text(substitute(src.read_text(encoding="utf-8"),
                                   args.name, created,
                                   strip_header=bool(entry.get("strip_header"))),

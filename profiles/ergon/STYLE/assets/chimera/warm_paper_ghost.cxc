@@ -1,0 +1,32 @@
+# warm_paper_ghost.cxc — STYLE preset: muted_warm_on_paper track
+# Values come from STYLE/assets/palettes.yaml — edit there, regenerate this.
+#
+# Usage pattern: identical to charcoal_ghost.cxc; only the colors differ.
+# NOTE: HC/LC distinction is subtler on this track (muted HCs) — if a
+# specific render needs clearer chains, lighten the LC value +10% and
+# record the deviation in the artifact manifest (palettes.yaml warning).
+
+# ---- antigen ----
+color name ag_surf #B0A99F
+color name ag_cart #5A544C
+
+# ---- antibody pairs (HC / LC; LC = sat x 0.65 per palettes.yaml) ----
+color name terracotta_hc #C06B4A
+color name terracotta_lc #C08973
+color name olive_hc #8A8B4C
+color name olive_lc #8A8B62
+color name plum_hc #9B5B73
+color name plum_lc #9B7181
+color name ochre_hc #C7952C
+color name ochre_lc #C7A662
+color name dusty_teal_hc #5B8C85
+color name dusty_teal_lc #6C8C87
+color name slate_blue_hc #6B7FA3
+color name slate_blue_lc #7F8CA3
+
+# ---- scene defaults ----
+set bgColor white
+graphics silhouettes true
+lighting soft
+# locked cartoon geometry (STYLE/structures/structures.md §2, user-locked 2026-08-26)
+cartoon style width 1 thickness 1 xsection oval divisions 2

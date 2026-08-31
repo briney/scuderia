@@ -30,6 +30,8 @@ jobs:
         run: |
           python3 setup/scuderia init --profile mnemo --name ci-test --path /tmp/ci-brain
           python3 setup/scuderia doctor --path /tmp/ci-brain
+          python3 setup/scuderia init --profile ergon --name ci-ergon --path /tmp/ci-ergon
+          python3 setup/scuderia doctor --path /tmp/ci-ergon
 
       - name: Frontmatter lint — example brain against profile schema
         run: python3 core/tools/lint-frontmatter.py --brain profiles/mnemo/example-brain --schema profiles/mnemo/schema.yaml
