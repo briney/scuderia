@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """verify_ingest.py — Phase 10 verification for paper-ingest.
 
-Checks all five Phase 10 invariants for one ingested paper page:
+Checks the graph invariants for one ingested paper page:
 
   1. Paper frontmatter parses as valid YAML.
   2. All `links:` targets exist as pages on disk.
@@ -9,17 +9,47 @@ Checks all five Phase 10 invariants for one ingested paper page:
   4. All `cited_by:` targets exist.
   5. people/_ledger.yaml parses and has no duplicate slugs.
 
+Plus the canonical-identity phase (network; skip with --offline):
+
+  6. The page's identifiers agree with the canonical record:
+     - `doi` resolves (DataCite first for arXiv-registered 10.48550/* DOIs,
+       OpenAlex otherwise; each falls back to the other, then Crossref) and
+       the resolved title matches the page title (token-set ratio >= 90)
+       and the publication year is within ±1.
+     - `pmid` resolves in PubMed (esummary) and its DOI agrees with the
+       page `doi`; a retraction pubtype is surfaced as a warning.
+     - the author list is complete against the canonical count (PubMed
+       individual authors when pmid present, else the DOI record's
+       authors). Fewer than canonical = truncated list (FAIL); more =
+       possible conflation (WARN); empty page list against a non-empty
+       canonical list of individuals = FAIL.
+
+Rationale: the five graph invariants verify the brain's internal
+consistency but never the paper's real-world identity. Phase 1 resolves
+identity; nothing read it back — wrong-DOI defects (a DOI that resolves
+to a different paper than the page describes) and truncated or empty
+author lists land silently without this phase. It closes both classes
+in ~2 API calls per paper.
+
 Usage:
-  python3 verify_ingest.py <paper-slug> [--brain /path/to/brain]
+  python3 verify_ingest.py <paper-slug> [--instance /path/to/brain] [--offline]
 
 The brain root is auto-detected by walking up from the cwd looking for a
 directory containing both papers/ and people/. Exit code 0 = all pass;
-non-zero = failures found.
+1 = failures found (including canonical UNVERIFIED due to network);
+2 = usage/argument errors.
 """
 
 import argparse
+import html
 import os
+import re
 import sys
+import time
+import unicodedata
+import urllib.error
+import urllib.parse
+import urllib.request
 
 try:
     import yaml
@@ -27,6 +57,307 @@ except ImportError:
     sys.stderr.write("ERROR: PyYAML is required (pip install pyyaml)\n")
     sys.exit(2)
 
+UA = "mnemo-verify-ingest/1.2 (mailto:bryan.briney@gmail.com)"
+MAILTO = "bryan.briney@gmail.com"
+TIMEOUT = 30
+TITLE_PASS = 90.0
+STOP = set(
+    "the a an of in on for and or to with by from at as is are was were "
+    "be been its their we our".split()
+)
+
+
+# ------------------------------------------------------------------ matching
+# Same token-set matching as validate_identifiers.py — reordered words and
+# subset titles (paraphrases) score high; never pass on title alone elsewhere.
+
+def norm_title(t):
+    t = html.unescape(re.sub(r"<[^>]+>", " ", t or ""))
+    t = unicodedata.normalize("NFKD", t).encode("ascii", "ignore").decode()
+    return " ".join(re.sub(r"[^a-z0-9 ]+", " ", t.lower()).split())
+
+
+def content_tokens(t):
+    return [x for x in norm_title(t).split() if x not in STOP]
+
+
+def token_set_ratio(a, b):
+    import difflib
+
+    A, B = set(content_tokens(a)), set(content_tokens(b))
+    if not A or not B:
+        return 0.0
+    inter = sorted(A & B)
+    rest_a = sorted(A - B)
+    rest_b = sorted(B - A)
+    t0 = " ".join(inter)
+    t1 = " ".join(inter + rest_a)
+    t2 = " ".join(inter + rest_b)
+
+    def ratio(x, y):
+        return difflib.SequenceMatcher(None, x, y).ratio() * 100 if x and y else 0.0
+
+    return max(ratio(t0, t1), ratio(t0, t2), ratio(t1, t2))
+
+
+# ------------------------------------------------------------------ fetching
+
+def fetch_json(url, retries=2, backoff=4.0):
+    """GET a JSON document with retry/backoff on 429/5xx/transient errors."""
+    last = None
+    for attempt in range(retries + 1):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": UA})
+            with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+                import json
+
+                return json.loads(r.read().decode("utf-8", "replace"))
+        except urllib.error.HTTPError as e:
+            last = e
+            if e.code in (429, 500, 502, 503) and attempt < retries:
+                time.sleep(backoff * (attempt + 1))
+                continue
+            raise
+        except (urllib.error.URLError, TimeoutError) as e:
+            last = e
+            if attempt < retries:
+                time.sleep(backoff * (attempt + 1))
+                continue
+            raise
+    if last is not None:
+        raise last
+    raise RuntimeError("fetch failed without exception: %s" % url)
+
+
+def openalex_work(doi):
+    u = (
+        f"https://api.openalex.org/works/doi:{urllib.parse.quote(doi)}"
+        f"?mailto={MAILTO}"
+    )
+    m = fetch_json(u)
+    auths = m.get("authorships") or []
+    return {
+        "title": m.get("title") or "",
+        "year": m.get("publication_year"),
+        "n_authors": len(auths),
+        "retracted": bool(m.get("is_retracted")),
+        "source": "OpenAlex",
+    }
+
+
+def datacite_work(doi):
+    u = f"https://api.datacite.org/dois/{urllib.parse.quote(doi)}"
+    d = fetch_json(u)
+    attrs = d.get("data", {}).get("attributes", {})
+    titles = attrs.get("titles") or [{}]
+    creators = attrs.get("creators") or []
+    return {
+        "title": titles[0].get("title") or "",
+        "year": attrs.get("publicationYear"),
+        "n_authors": len(creators),
+        "n_personal": sum(
+            1 for c in creators if c.get("nameType") == "Personal"
+        ),
+        "retracted": False,
+        "source": "DataCite",
+    }
+
+
+def crossref_work(doi):
+    u = f"https://api.crossref.org/works/{urllib.parse.quote(doi)}"
+    m = fetch_json(u)["message"]
+    issued = (m.get("issued", {}).get("date-parts") or [[None]])[0]
+    return {
+        "title": (m.get("title") or [""])[0],
+        "year": issued[0],
+        "n_authors": len(m.get("author") or []),
+        "retracted": False,
+        "source": "Crossref",
+    }
+
+
+def pubmed_esummary(pmid):
+    u = (
+        "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
+        f"?db=pubmed&id={pmid}&retmode=json"
+    )
+    d = fetch_json(u)
+    rec = d.get("result", {}).get(str(pmid), {})
+    if not rec or rec.get("error"):
+        return None
+    doi = next(
+        (a["value"] for a in rec.get("articleids", []) if a.get("idtype") == "doi"),
+        "",
+    )
+    pubtypes = rec.get("pubtype", []) or []
+    # esummary's authors array mixes individuals (authtype "Author") with
+    # collectives (authtype "CollectiveName", e.g. trial groups). Only
+    # individuals count against the page's author list — a collective-only
+    # paper legitimately carries `authors: []` (corporate-authorship branch,
+    # paper-ingest Phase 8).
+    individuals = [
+        a for a in rec.get("authors", []) or []
+        if str(a.get("authtype", "")).lower() == "author"
+    ]
+    return {
+        "title": rec.get("title", ""),
+        "year": (rec.get("pubdate", "") or "")[:4] or None,
+        "doi": doi.lower().rstrip(".") or None,
+        "n_authors": len(individuals),
+        "n_authors_all": len(rec.get("authors", []) or []),
+        "retracted": any("retract" in str(p).lower() for p in pubtypes),
+        "source": "PubMed",
+    }
+
+
+# ------------------------------------------------------- canonical identity
+
+def _clean_identifier(value):
+    """Normalize a frontmatter identifier; None for absent/placeholder."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    s = str(value).strip()
+    if s.lower() in ("", "null", "none"):
+        return None
+    return s
+
+
+def canonical_checks(fm):
+    """Verify frontmatter identifiers against canonical sources.
+
+    Returns (findings, unverified) where findings is a list of
+    (level, message) with level in {"OK", "WARN", "FAIL"}.
+    `unverified` is True when every applicable source was unreachable —
+    the caller must treat that as a non-pass, not a pass.
+    """
+    findings = []
+    doi = _clean_identifier(fm.get("doi"))
+    pmid = _clean_identifier(fm.get("pmid"))
+    if doi is None and pmid is None:
+        findings.append(("OK", "no identifiers on page — canonical phase not applicable"))
+        return findings, False
+
+    # ---- DOI resolution + title/year match ------------------------------
+    doi_rec = None
+    if doi is not None:
+        chain = (
+            [datacite_work, openalex_work, crossref_work]
+            if doi.startswith("10.48550/")
+            else [openalex_work, datacite_work, crossref_work]
+        )
+        errors = []
+        for fn in chain:
+            try:
+                rec = fn(doi)
+                if rec.get("title"):
+                    doi_rec = rec
+                    break
+            except Exception as e:  # HTTPError 404 etc. — try next source
+                errors.append(f"{getattr(fn, '__name__', '?')}: {e}")
+        if doi_rec is None:
+            findings.append(("FAIL", f"doi {doi} did not resolve to a record "
+                                     f"({'; '.join(errors)[:180]})"))
+        else:
+            score = token_set_ratio(fm.get("title") or "", doi_rec["title"])
+            if score < TITLE_PASS:
+                findings.append((
+                    "FAIL",
+                    f"doi {doi} resolves to a different paper — title match "
+                    f"{score:.0f} (<{TITLE_PASS:.0f}): page "
+                    f"\"{str(fm.get('title'))[:70]}\" vs {doi_rec['source']} "
+                    f"\"{doi_rec['title'][:70]}\"",
+                ))
+            else:
+                findings.append(("OK", f"doi resolves ({doi_rec['source']}, "
+                                       f"title match {score:.0f})"))
+            try:
+                page_year = int(str(fm.get("year"))[:4])
+                rec_year = int(str(doi_rec.get("year"))[:4])
+                if abs(page_year - rec_year) > 1:
+                    findings.append(("FAIL", f"year {page_year} vs canonical "
+                                             f"{rec_year} ({doi_rec['source']})"))
+            except (TypeError, ValueError):
+                pass
+            if doi_rec.get("retracted"):
+                findings.append(("WARN", "retracted per record — the page must "
+                                         "carry a prominent retraction warning "
+                                         "(paper-ingest Phase 3)"))
+
+    # ---- PMID resolution + DOI agreement + author count ------------------
+    pm_rec = None
+    if pmid is not None:
+        try:
+            pm_rec = pubmed_esummary(pmid)
+        except Exception as e:
+            findings.append(("FAIL", f"pmid {pmid} lookup failed: {str(e)[:120]}"))
+        if pm_rec is None:
+            findings.append(("FAIL", f"pmid {pmid} not found in PubMed"))
+        else:
+            if doi is not None and pm_rec.get("doi") and pm_rec["doi"] != doi.lower():
+                findings.append((
+                    "FAIL",
+                    f"pmid {pmid} carries doi {pm_rec['doi']} but page says "
+                    f"{doi} — identifiers disagree",
+                ))
+            elif pm_rec.get("doi"):
+                findings.append(("OK", f"pmid doi agrees ({pm_rec['doi']})"))
+            if pm_rec.get("retracted"):
+                findings.append(("WARN", "retracted per PubMed pubtype — the page "
+                                         "must carry a prominent retraction "
+                                         "warning (paper-ingest Phase 3)"))
+
+    # ---- author-list completeness ----------------------------------------
+    page_n = len(fm.get("authors") or [])
+    if pm_rec is not None:
+        canon_n = pm_rec["n_authors"]
+        src = "PubMed"
+    elif doi_rec is not None:
+        canon_n = doi_rec.get("n_personal", doi_rec.get("n_authors", 0))
+        src = doi_rec["source"]
+    else:
+        canon_n = None
+        src = None
+
+    if canon_n:
+        if page_n == 0:
+            # PubMed/individual-filtered sources: empty is a defect. OpenAlex
+            # counts organizations as authors, so an empty list there is only
+            # a warning — corporate authorship is a legitimate Phase 8 branch.
+            level = "FAIL" if src in ("PubMed", "DataCite") else "WARN"
+            findings.append((
+                level,
+                f"author list is empty but {src} lists {canon_n} "
+                f"(individual) authors — pull the complete list "
+                f"(paper-ingest Phase 8); if this is deliberate corporate "
+                f"authorship, note it in the Ingest log",
+            ))
+        elif page_n < canon_n:
+            findings.append((
+                "FAIL",
+                f"author list truncated: page has {page_n}, {src} lists "
+                f"{canon_n} — pull the complete list (paper-ingest Phase 8)",
+            ))
+        elif page_n > canon_n:
+            findings.append((
+                "WARN",
+                f"page lists more authors ({page_n}) than {src} ({canon_n}) "
+                f"— check for conflation or ledger-grouping",
+            ))
+        else:
+            findings.append(("OK", f"author count matches {src} ({page_n})"))
+
+    # ---- unverified detection ---------------------------------------------
+    attempted = (doi is not None) or (pmid is not None)
+    got_record = doi_rec is not None or pm_rec is not None
+    unverified = attempted and not got_record and not any(
+        lvl == "FAIL" for lvl, _ in findings
+    )
+    return findings, unverified
+
+
+# ------------------------------------------------------------ graph invariants
 
 def find_brain_root(start):
     d = os.path.abspath(start)
@@ -65,7 +396,6 @@ def load_frontmatter(path):
 def target_exists(brain, target):
     """A link target like 'papers/<slug>' or 'concepts/<slug>' exists as a page."""
     t = str(target).strip()
-    # tolerate wikilink-style or .md-suffixed targets
     t = t.strip("[]")
     if t.endswith(".md"):
         t = t[:-3]
@@ -84,7 +414,6 @@ def load_ledger(brain):
         return None, f"ledger YAML parse error: {e}"
     if data is None:
         return [], None
-    # the ledger is a dict with a top-level 'entries:' key
     if isinstance(data, dict):
         entries = data.get("entries", [])
     elif isinstance(data, list):
@@ -99,6 +428,8 @@ def main():
     ap.add_argument("slug", help="paper slug (papers/<slug>.md)")
     ap.add_argument("--instance", "--brain", dest="instance",
                     help="instance root (auto-detected from cwd if omitted); --brain is a deprecated alias")
+    ap.add_argument("--offline", action="store_true",
+                    help="skip the canonical-identity phase (network checks)")
     args = ap.parse_args()
 
     brain = args.instance or find_brain_root(os.getcwd())
@@ -189,6 +520,31 @@ def main():
         failures += len(bad_cb)
     else:
         print(f"  cited_by: {len(cited_by)} checked, {len(cited_by)} OK")
+
+    # Invariant 6: canonical identity (network)
+    if args.offline:
+        print("  Canonical identity: SKIPPED (--offline)")
+    else:
+        try:
+            findings, unverified = canonical_checks(fm)
+        except Exception as e:
+            findings, unverified = [("FAIL", f"canonical phase crashed: {e}")], False
+        if unverified:
+            print("  Canonical identity: UNVERIFIED — all canonical sources "
+                  "unreachable. Re-run before commit, or pass --offline to "
+                  "deliberately skip.")
+            failures += 1
+        elif findings:
+            levels = [lvl for lvl, _ in findings]
+            n_fail = levels.count("FAIL")
+            n_warn = levels.count("WARN")
+            head = "FAIL" if n_fail else ("WARN" if n_warn else "OK")
+            print(f"  Canonical identity: {n_fail} FAIL, {n_warn} WARN" if (n_fail or n_warn)
+                  else "  Canonical identity: OK")
+            for lvl, msg in findings:
+                if lvl != "OK":
+                    print(f"    [{lvl}] {msg}")
+            failures += n_fail
 
     print()
     if failures:

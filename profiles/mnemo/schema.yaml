@@ -116,3 +116,10 @@ checks:
   # the snapshotter before anyone reviews them (2026-08 lint-debt burndown).
   # working-docs/ is the sanctioned home for transitory files.
   temp_file_in_page_dir: true
+  # paper identifier format sanity (warn-only): bare DOI (not URL/placeholder
+  # string), bare integer pmid, PMC-prefixed pmcid, bare arXiv id. Malformed
+  # identifiers defeat DOI/PMID-keyed dedup and canonical verification.
+  paper_identifiers: true
+  # corpus-level duplicate-identity net (errors, full mode only): two paper
+  # pages sharing a doi or pmid are the same real-world object filed twice.
+  paper_duplicates: true

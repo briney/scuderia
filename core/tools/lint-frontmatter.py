@@ -333,6 +333,152 @@ def lint_page(
                     "last synthesized",
                 )
 
+    if checks.get("paper_identifiers") and expected_kind == "paper":
+        check_paper_identifiers(path, fm, report)
+
+
+DOI_RE = re.compile(r"^10\.\d{4,9}/\S+$")
+ARXIV_ID_RE = re.compile(r"^\d{4}\.\d{4,5}(v\d+)?$")
+# doi suffix must not carry a trailing dot (punctuation bleed from citations)
+PLACEHOLDERS = frozenset({"", "null", "none", "n/a", "tbd"})
+
+
+def _clean_id(value):
+    """Normalize a frontmatter identifier; None for absent/placeholder."""
+    if value is None or isinstance(value, bool):
+        return None
+    s = str(value).strip()
+    if s.lower() in PLACEHOLDERS:
+        return None
+    return s
+
+
+def check_paper_identifiers(path: Path, fm: dict, report: Report) -> None:
+    """Identifier format sanity for paper pages (warn-only).
+
+    Errors of fact — wrong DOI, wrong PMID, truncated authors — need
+    canonical-source verification and live in
+    ``skills/paper-ingest/scripts/verify_ingest.py`` (Phase 10). This check
+    is the cheap structural layer: well-formed identifiers, no placeholder
+    strings, DOI not stored as a URL, pmcid prefixed. A malformed
+    identifier silently defeats every downstream dedup query that keys on
+    it — that is what makes it worth a warning, not trivia.
+    """
+    # doi: bare form, not a URL, not a placeholder string
+    doi = fm.get("doi")
+    if doi is not None:
+        s = str(doi).strip()
+        if s.lower() in PLACEHOLDERS:
+            report.warn(
+                path,
+                f"doi is the placeholder string `{doi!r}` — use explicit "
+                f"`doi: null` for papers with no DOI (papers with no DOI "
+                f"exist; placeholder strings defeat DOI-keyed dedup)",
+            )
+        elif s.lower().startswith(("http://", "https://", "doi.org", "dx.doi.org")):
+            report.warn(
+                path,
+                f"doi `{s}` is a URL — store the bare DOI "
+                f"(`10.xxxx/suffix`); URL-form defeats DOI-keyed dedup",
+            )
+        elif not DOI_RE.match(s):
+            report.warn(
+                path,
+                f"doi `{s}` is not shaped `10.<suffix>` — verify against "
+                f"the canonical record (Phase 1)",
+            )
+        elif s != s.rstrip("."):
+            report.warn(path, f"doi `{s}` has a trailing period")
+
+    # pmid: a number, or explicit null
+    pmid = fm.get("pmid")
+    if pmid is not None and not isinstance(pmid, bool):
+        s = str(pmid).strip()
+        if s.lower() in PLACEHOLDERS:
+            report.warn(
+                path,
+                f"pmid is the placeholder string `{pmid!r}` — use explicit "
+                f"`pmid: null`",
+            )
+        elif not s.isdigit():
+            report.warn(
+                path,
+                f"pmid `{s}` is not a bare integer — verify against PubMed "
+                f"(Phase 1)",
+            )
+
+    # pmcid: PMC-prefixed
+    pmcid = fm.get("pmcid")
+    if pmcid is not None:
+        s = str(pmcid).strip()
+        if s.lower() in PLACEHOLDERS:
+            report.warn(
+                path,
+                f"pmcid is the placeholder string `{pmcid!r}` — use explicit "
+                f"`pmcid: null`",
+            )
+        elif not s.startswith("PMC") or not s[3:].isdigit():
+            report.warn(
+                path,
+                f"pmcid `{s}` is not shaped `PMC<number>` — a bare number "
+                f"here is usually a PMID or an article-version integer "
+                f"(the PMCID extraction pitfalls in paper-ingest Phase 4 "
+                f"produce this class)",
+            )
+
+    # arxiv: bare id, not a URL or DOI
+    arxiv = fm.get("arxiv")
+    if arxiv is not None:
+        s = str(arxiv).strip()
+        if s.lower() in PLACEHOLDERS:
+            report.warn(
+                path,
+                f"arxiv is the placeholder string `{arxiv!r}` — use explicit "
+                f"`arxiv: null`",
+            )
+        elif not ARXIV_ID_RE.match(s):
+            report.warn(
+                path,
+                f"arxiv `{s}` is not a bare arXiv id "
+                f"(`<YYMM>.<NNNNN>` optionally versioned)",
+            )
+
+
+def check_paper_duplicates(
+    page_data: list[tuple[Path, dict]],
+    report: Report,
+) -> None:
+    """Corpus-level duplicate-identity check for paper pages.
+
+    Two papers pages sharing a DOI (or a PMID) are the same real-world
+    object filed twice. The per-ingest dedup search (paper-ingest Phase
+    2) is prose guidance with no mechanical support, so this check is
+    the corpus-level net. Reports the *second and later* occurrences; the
+    first (canonical) page is named in each message so the merge target
+    is visible.
+    """
+    seen: dict[tuple[str, str], Path] = {}
+    for path, fm in page_data:
+        if fm.get("kind") != "paper":
+            continue
+        for field in ("doi", "pmid"):
+            v = _clean_id(fm.get(field))
+            if v is None:
+                continue
+            if field == "doi":
+                v = v.lower()
+            key = (field, v)
+            first = seen.get(key)
+            if first is None:
+                seen[key] = path
+            elif first != path:
+                report.error(
+                    path,
+                    f"duplicate `{field}` `{v}` — also on "
+                    f"{first.name} (same real-world paper filed twice; "
+                    f"merge per paper-ingest Phase 2 stub-replacement)",
+                )
+
 
 def check_link_existence(
     path: Path,
@@ -630,6 +776,12 @@ def main() -> int:
             page_data.append((path, fm))
 
     ledger_slugs = lint_ledger(brain, schema, all_slugs, report)
+
+    # Corpus-level duplicate-identity net (errors). Runs only in full mode —
+    # in scoped mode page_data holds just the selected files, and a
+    # duplicate is a property of the corpus, not of one file.
+    if selected is None and schema.get("checks", {}).get("paper_duplicates"):
+        check_paper_duplicates(page_data, report)
 
     for path, fm in page_data:
         check_link_existence(path, fm, schema, all_slugs, ledger_slugs, report)
