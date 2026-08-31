@@ -182,6 +182,21 @@ is safe for paper distillation just because the API supports it.
      without asking the user (a retracted paper may still warrant a
      page, but that is a human call).
 
+   Also run the pre-write dedup gate over the queue before dispatching —
+   a stub whose DOI already has a FULL page on disk is a duplicate-in-
+   waiting, and dispatching it wastes a subagent on a merge that Phase 4
+   verification then has to untangle:
+
+   ```bash
+   python3 skills/paper-ingest/scripts/dedup_check.py \
+       --doi <doi> --pmid <pmid> --title <title> --json
+   ```
+
+   A stub that matches a FULL page via doi/pmid should be merged now
+   (fold its `cited_by` into the full page, delete the stub, note the
+   merge in the final report) rather than dispatched. Title-only matches
+   are REVIEW, not verdicts — confirm via DOI/PMID first.
+
 3. **Delegate `paper-ingest` per stub, in batches.** Group remaining stubs
    into batches of up to 3 (the configured `max_concurrent_children`). For
    each stub in a batch, spawn a subagent via `delegate_task` with:

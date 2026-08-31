@@ -62,6 +62,12 @@ via the profile symlink into the scuderia checkout
   paper BEFORE a subagent is dispatched. `--batch` JSON + `--recover` for
   recovery via Europe PMC title search. Output: `validated` /
   `recovered` / `HOLD`; `retracted: true` surfaced.
+- **`dedup_check.py`** — the pre-write dedup gate (Phase 2). Scans
+  `papers/` frontmatter for an existing page with the same DOI, PMID, or
+  near-identical title before a new page is written. Exit 0 = safe to
+  create; exit 1 = existing page found (STUB/FULL state shown per match);
+  exit 2 = usage error. `--json` for machine-readable output. Run with
+  the *resolved* identifiers from Phase 1, never the seed identifiers.
 - **`slugify_name.py`** — author slug derivation (Phase 8). Handles
   diacritic folding (Ł→l, ø→o, ß→ss), PubMed name misparsing (Korean
   `LastName="Won Heo"` → `heo-tae-won`; Italian `ForeName="Paola Lo"`
@@ -227,10 +233,26 @@ but these URLs can be Cloudflare-blocked too).
 
 ### 2. Dedup against the brain
 
-Search `papers/` for the resolved PMID/DOI/title before writing anything.
-If a full page exists, this is a re-ingest — enrich, don't duplicate. If
-a stub exists (from a Phase 7 bibliography walk), this is a stub fill —
-preserve its `cited_by` (see Phase 5).
+Run the mechanical gate BEFORE writing anything:
+
+```bash
+python3 skills/paper-ingest/scripts/dedup_check.py \
+    --doi <doi> --pmid <pmid> --title <resolved title>
+```
+
+Exit 0 = no existing page (safe to create). Exit 1 = existing page found —
+the output names each match with its STUB/FULL state, so the path is
+unambiguous: a FULL match means this is a re-ingest — enrich, don't
+duplicate; a STUB match means this is a stub fill — preserve its
+`cited_by` (see Phase 5). A title-only match (`title~<score>`) is a
+REVIEW signal, not a verdict — corrections, replies, and sister papers
+share titles; confirm against DOI/PMID before treating it as the same
+paper.
+
+The gate matters because the citation-form search it replaces fails on
+near-duplicate slugs: full pages and stubs for the same DOI have been
+filed under different slugs. Run it after Phase 1 (with the *resolved*
+identifiers, not the seed) and before the Phase 5 page write.
 
 ### 3. Retraction and integrity check
 
