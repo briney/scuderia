@@ -51,8 +51,17 @@ multi-section and multi-week. These skills additionally load `STYLE.md` and
 hold the whole application in view; cite-or-flag is non-negotiable. They draft
 into one `grant` page and chain heavily — read each skill's phases.
 
+`foundation-pitch` is the cluster's exception: the audience is a donor, not a
+study section, so the NIH-shaped skills give the wrong guidance there. First-
+round foundation pitches are usually citation-free and figurative language is
+allowed (SOUL.md §2, "Know your situation"). Route any foundation/donor/
+development-office document to `foundation-pitch`, never to `grant-section`;
+it hands off to `grant-plan` only once a funder engages and a real
+application process starts.
+
 | Trigger | Skill |
 |---|---|
+| Writing for a foundation, philanthropic donor, or development office — shaping a blue-sky idea, drafting/editing a concept note, pitch, or foundation proposal of any format | `skills/foundation-pitch/SKILL.md` |
 | "Start / plan a grant", "let's write an R01", a NOFO dropped with intent to apply | `skills/grant-plan/SKILL.md` |
 | "Draft / revise a section" — Specific Aims, Significance, Innovation, Approach, a resubmission Introduction | `skills/grant-section/SKILL.md` |
 | "Check the grant", "review the whole application", the pre-submission coherence gate | `skills/grant-coherence/SKILL.md` |
