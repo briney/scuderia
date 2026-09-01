@@ -1,159 +1,175 @@
 ---
 name: foundation-pitch
-description: Use when a foundation call or blue-sky idea needs a pitch.
+description: Use when shaping an idea for foundation funding or writing a document for a foundation or donor audience.
 triggers:
-  - a foundation or Development-office solicitation email arrives asking for project descriptions or 2-pagers
-  - capture a blue-sky foundation-scale idea for the foundation-ready page
-  - draft the 2-pager for a foundation-ready candidate
-  - map funders to foundation-ready candidates
+  - Bryan brings a blue-sky idea to develop for foundation or philanthropic funding
+  - draft, edit, or refine any document aimed at a foundation, donor, or development office
+  - assess what a project needs to become a strong foundation candidate
 ---
 
-# Foundation pitch — blue-sky ideas to fundable 2-pagers
+# Writing for foundations
 
-The foundation channel is a distinct funding lane: high-concept, expensive,
-high-profile projects that NIH study sections punish and foundations exist to
-fund. The *content* lives in the brain — `concepts/foundation-ready-projects.md`
-is the incubator page. This skill is the pipeline around it: capture
-candidates against the bar, ingest Development solicitations as they arrive,
-map funders to candidates, and draft the 2-page pitches the solicitations
-ask for.
+This skill covers two jobs:
 
-> **Conventions:** `skills/conventions/quality.md` (citations, notability
-> gate), `skills/conventions/frontmatter.md` (interaction fields),
-> `skills/_brain-filing-rules.md`, `skills/_output-rules.md`. Prose in the
-> 2-pager itself is governed by `STYLE.md`.
+1. **Shaping an idea** into the kind of project foundations fund well.
+2. **Writing the documents** that present it — concept notes, short
+   project descriptions, formal proposals, and anything in between.
 
-Session-specific detail for the originating Barrett solicitation (funder
-table, honesty calls, open items) lives in
-`references/barrett-solicitation-2026-08.md`.
+Documents in this space have no fixed format. The same foundation may
+ask for a one-page concept note at first contact and a detailed proposal
+later. The funder's stated ask sets the length and structure of each
+document. This skill sets what the project should be and how the prose
+should sound, independent of format.
 
-## Capabilities
+The portfolio of candidate projects — their maturity, funder state,
+and history — lives in the brain at `concepts/foundation-ready-projects.md`.
+This skill covers the craft; that page holds the live state.
 
-`brain-read`, `brain-write`, `fetch-url` (only if verifying a funder's public
-programs before a direct submission). Mostly brain work — the pipeline runs
-on what the graph already holds.
+> Prose in any produced document is governed by `STYLE.md`. The
+> writing-as-Bryan audit (tell counter plus read-back) runs before
+> anything leaves.
 
-## What this guarantees
+## Part 1 — What foundations fund
 
-- Every blue-sky idea captured in conversation lands on the incubator page
-  at the right maturity, checked against the bar — not lost to chat scroll.
-- An inbound solicitation is ingested as an interaction page, wired into the
-  incubator page, and its funder set mapped to candidates within the session
-  it arrives.
-- 2-pagers are drafted to the solicitation's stated criteria, live in
-  `working-docs/`, and pass a STYLE.md self-audit before handoff.
-- External-facing honesty boundaries (bylines, partners, evidence, numbers)
-  are enforced before anything leaves the lab.
+Foundations fund projects that are too big, too risky, or too
+unconventional for government grant mechanisms — and they fund them
+because of those properties, not in spite of them. The ideal foundation
+project has these properties:
 
-## The asset — `concepts/foundation-ready-projects.md`
+1. **World-changing if it works.** Success changes what a field can do.
+   The result is not a paper; it is a new capability, a new resource, or
+   a new field. The impact survives the "so what" question when asked by
+   a smart non-specialist.
+2. **One-sentence clarity.** The idea can be stated in a single sentence
+   that a non-scientist understands and can repeat. High concept, not
+   high complexity.
+3. **Expensive for a reason.** The project costs what it costs because
+   of what it attempts — scale, duration, or infrastructure that smaller
+   funding instruments cannot cover.
+4. **Possible only here.** The project is feasible because of something
+   the lab uniquely has: a platform, a dataset, a method, a team. The
+   answer to "why us" is structural, not aspirational.
+5. **Backed by a consortium — when the scale demands it.** Foundation-
+   scale projects are often big enough that they require more than one
+   lab; when this one does, the natural partners exist and would say
+   yes. A consortium is not a requirement — plenty of foundation-funded
+   projects are single-lab.
 
-Brain-first lookup starts here. The page carries:
+Property 4 is what keeps a project honest. Ambition alone is easy to
+claim; a structural reason it can succeed is not.
 
-- **The bar** — five criteria, all must clear: (1) world-changing if it
-  works, (2) one-sentence clarity, (3) foundation-scale cost, (4)
-  platform-powered from our side, (5) consortium-ready. Criteria 4–5 are the
-  floor that keeps the page from becoming a wish list — "irresistible to
-  foundations" alone selects for theater.
-- **The maturity ladder** — `sketch` (idea on paper) → `developing` (facts
-  gathered, feasibility probed) → `ready-to-pitch` (draft exists, funder
-  list short).
-- **Candidates** — one numbered subsection each: one-liner, the idea, why
-  world-changing, why us, consortium, scale & shape, known hard parts,
-  alternate names.
-- **Funder mapping** — a live table, refreshed on every solicitation
-  (`## Funder mapping (as of <date>)`).
+### Shaping an idea toward these properties
 
-Graduation: a candidate earns its own `project` page on its first dedicated
-working session or when a funder target is named.
+Bryan arrives with the idea. The job is to find the version of it that
+has these properties, working outward from what the idea already is:
 
-## Phase 1 — capture a candidate
+- **Start from the end state.** What exists when the project is done
+  that does not exist now? That answer becomes the headline.
+- **Find the one-sentence version.** If the idea needs a paragraph to
+  explain, it is not shaped yet. Keep cutting until a non-scientist can
+  repeat it.
+- **Locate the scale in the science.** Identify what becomes possible
+  only at the proposed scale — that is the justification for the cost,
+  and it belongs in the pitch.
+- **Name the structural advantage.** What does the lab have that makes
+  this feasible now, and that others lack? If the answer is "we would
+  work harder," the idea is not ready.
+- **Name the partners — if the project needs them.** If the scale calls
+  for more than one lab, name the natural collaborators and whether
+  they would actually say yes.
 
-1. Search the brain for provenance *before* writing — past interactions,
-   meetings, and grants usually already hold the idea's atoms (the Atlas
-   candidate was anchored to a group-meeting interaction that had already
-   stated the proteome-scale goal).
-2. Check against the bar; record at `sketch` maturity with the one-liner in
-  your human's words, sourced `[Source: your-human, session, <date>]`.
-3. Include a known-hard-parts subsection — the honest obstacle list, not a
-   sales section.
+If the idea's natural form is a single-lab project of ordinary scale,
+say so. Inflating a modest idea into mission language produces a pitch
+that convinces no one; a smaller honest project is better served by a
+different funding instrument.
 
-## Phase 2 — a solicitation arrives
+### Common shapes
 
-1. Ingest the email as an interaction page (`channel: email`, verbatim
-   excerpt, the funder table as stated). Person page for the sender if they
-   are a recurring channel (a Development VP is; a one-off program officer
-   usually is not).
-2. Wire it into the incubator page's `links:`; strike through (~~...~~) any
-   open question the solicitation answers — answered questions stay visible
-   as history, never deleted.
-3. Do **not** create institution pages for foundations merely named in a
-   solicitation bullet — they earn pages when a specific engagement starts
-   (notability gate). Funders of record link to their existing pages.
-4. Flag unconfirmed identities in the source (e.g. which "Andrew" a
-   solicitation means) rather than guessing; flag unstated dates.
+Foundation projects tend to take one of a few shapes. A project may fit
+more than one, and the shape often determines which funders are a good
+fit:
 
-## Phase 3 — funder mapping
+- **Resource builds.** The deliverable is a public artifact: a dataset,
+  a map, a structure collection, a model. The AlphaFold Protein
+  Structure Database is the precedent.
+- **Scale campaigns.** A proven method run at a scale no one has
+  attempted, where the scale itself produces the discovery.
+- **Mission programs.** Work organized around a finish line a
+  non-scientist can repeat — curing a class of disease, mapping a
+  system completely. The goal may be unreachable in full; that is the
+  correct ambition level, because the mission is what makes large
+  partial progress happen.
 
-On the incubator page, map each named funder's stated interest to each
-candidate's **shape**:
+## Part 2 — How the writing sounds
 
-- compute-shaped (GPU awards) · dataset-shaped (the deliverable is data) ·
-  infrastructure/generalization · clinical-outcomes · disease-specific.
+The reader is a donor or a program officer advising one: someone looking
+for an idea worth attaching their name to. They are not reviewing for
+flaws. Write for that reader.
 
-One candidate can carry multiple framings — name them (the Atlas: compute
-framing, dataset framing, infrastructure framing). Check FUNDING-PROFILE
-Block C (foundation indirect-cost gate) for any specific foundation hit.
-Rank: funders of record first, then shape fit, then disease-angle fit.
+1. **Lead with the world changed.** Open at the end state — what exists
+   when the project is done that does not exist now. The explanation of
+   the gap comes after, in service of the mission.
+2. **Use mission language.** Name a finish line a non-scientist can
+   repeat at dinner. Aims, milestones, and deliverables belong in the
+   operational plan, not the pitch.
+3. **Place the project in the Big Science lineage.** Human Genome
+   Project, AlphaFold, the next unbuilt layer. Funders judge scale by
+   lineage, so state the project's place in that arc explicitly and
+   early.
+4. **Sell the people.** "Why us" is a story about people with a
+   structural edge — the platform exists, the inputs exist, the partners
+   have said yes — stated as confidence. Foundations fund extraordinary
+   researchers, not feasibility checklists.
+5. **Let the numbers carry the audacity.** Use ambition superlatives,
+   never scale superlatives. "The most ambitious X ever attempted"
+   states reach. "The largest X ever attempted" is a ranking claim: it
+   imports a verification burden and reads as something to check rather
+   than join. Scale belongs in the numbers themselves, not in
+   adjectives.
+6. **Do not answer objections nobody raised.** Calibration arguments,
+   phasing, caveats: these are real answers, and they belong in the
+   operational plan. A hedged pitch reads as doubt, and donors do not
+   fund doubt at scale.
+7. **Honesty is unchanged; only the posture differs.** No fabricated
+   claims. Numbers from the record. Partners described at the level the
+   record supports. Evidence traced to its source. Honesty grades true
+   versus untrue, never bold versus not bold. When a bold claim feels
+   unverifiable, rewrite it so it is bolder and true at once — never
+   retreat to a smaller, safer claim.
 
-## Phase 4 — the 2-pager
+## Part 3 — Process
 
-1. Lives in `working-docs/` — not a brain page; the incubator page gains a
-   plain-text pointer (working docs are never wikilinked).
-2. **Funder-neutral by default** when Development routes it to a funder set;
-   tailor only for a direct single-funder submission. The funder-mapping
-   table already records the per-funder framing, so tailoring is a cheap
-   later edit.
-3. **Structure = the solicitation's stated criteria.** The Barrett ask —
-   impact, and how the project generalizes for broad field-wide impact —
-   became the section skeleton (Impact / How this generalizes). Lead with
-   the one-sentence pitch.
-4. **Honesty boundaries — the load-bearing rules:**
-   - **No byline presumption.** Co-authors are those who have agreed;
-     prospective partners are described factually in the body.
-   - **Anonymize industry partners** unless the brain record supports the
-     claim level ("an industry partner" vs. naming the firm + stage).
-   - **A preliminary-data claim must not outrun its evidence session.** If
-     the enabling result rests on a discussion that has not happened yet
-     (e.g. SEAD successes your human has said need a dedicated session),
-     flag it to your human before the document goes external — do not paper
-     over it with "recent successes."
-   - **Numbers from the brain record, not rounded up** (corpus sizes,
-     complex counts). Convert units carefully: predictions are not
-     GPU-hours; do not fabricate a conversion to sound bigger.
-   - **References are real and verifiable**; uncited claims about prior
-     efforts get citations or get cut.
-5. **Self-audit against STYLE.md §4 after drafting** — read the draft back
-   and cut the tells. The originating session's audit caught a garbled
-   phrase, a forced triad, an inflated superlative, a partner overclaim,
-   and a fabricated-unit risk (see the references file).
-6. Commit; bump the candidate's maturity (`sketch` → `developing`) and add
-   the working-doc pointer.
-
-## Phase 5 — handoff
-
-When a foundation bites and a real application process starts, hand off to
-`grant-plan` (mechanism: foundation program) and graduate the candidate per
-the ladder. This skill ends at the 2-pager.
+1. **Shape the idea first** (Part 1). Agree on the headline end state
+   and the one-sentence version with Bryan before drafting anything.
+2. **Let the funder's ask set the format.** Length, structure, and
+   required sections come from the solicitation or the contact's stated
+   ask — never assumed. When no format is stated, a short concept note
+   is the default first document.
+3. **Set the opening, structure, and posture at the start.** They are
+   architectural decisions, not a tone pass applied to a finished draft.
+4. **Run the honesty check before anything goes external.** Bylines
+   only for those who have agreed. Partners at the claim level the
+   record supports. Numbers from the record, with units converted
+   honestly. References real and verifiable. Resolve every flag by
+   rewriting the claim bolder and truer, never by softening it.
+5. **Run the STYLE.md §4 read-back audit before handoff.** Foundation
+   documents are the highest-visibility prose the lab sends out. The
+   audit catches garbled phrasing, forced triads, inflated superlatives,
+   partner overclaims, and unit conversions invented to sound bigger.
+6. **Hand off when a funder engages.** Once a foundation responds and a
+   real application process starts, use `grant-plan`. This skill covers
+   pitch documents, not full applications.
 
 ## Anti-patterns
 
-- Writing the 2-pager into the brain — it is a working doc, pointed to, not
-  wikilinked.
-- Creating institution pages for foundations only named in a solicitation
-  bullet.
-- Naming co-Is or partners before agreement or beyond what the record holds.
-- Deleting answered open questions instead of striking them through.
-- Letting the pitch's evidence claims outrun what the brain actually holds.
-- Tailoring to one funder when Development is routing to a set.
-- Skipping the STYLE.md read-back — the audit pass catches real defects, and
-  a foundation pitch is the highest-visibility prose the lab sends out.
+- **Inflated ambition.** Mission language wrapped around a project of
+  ordinary scale. Detectable immediately, and it costs credibility.
+- **Gap-first openings.** Leading with what is unknown pitches a
+  problem. Foundations fund the end state.
+- **The defensive fallback.** Softening a bold claim to a smaller
+  verified one instead of rewriting it bolder and truer.
+- **Answering unasked objections.** Calibration paragraphs, phasing
+  defenses, preemptive caveats. Doubt at scale is unfundable.
+- **Scale superlatives.** Ranking claims that dare the reader to check.
+- **Ambition without the floor.** A world-changing claim with no
+  structural why-us behind it.
