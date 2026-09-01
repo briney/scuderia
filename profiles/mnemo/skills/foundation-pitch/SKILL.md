@@ -133,7 +133,11 @@ flaws. Write for that reader.
 7. **Honesty is unchanged; only the posture differs.** No fabricated
    claims. Numbers from the record. Partners described at the level the
    record supports. Evidence traced to its source. Honesty grades true
-   versus untrue, never bold versus not bold. When a bold claim feels
+   versus untrue, never bold versus not bold. Figurative language is
+   allowed in this genre — "mapping the antibody universe" is acceptable
+   even though no one travels to other planets in search of antibodies;
+   the honesty rules govern factual claims (capabilities, numbers,
+   partners, evidence), not metaphor. When a bold claim feels
    unverifiable, rewrite it so it is bolder and true at once — never
    retreat to a smaller, safer claim.
 
@@ -150,8 +154,9 @@ flaws. Write for that reader.
 4. **Run the honesty check before anything goes external.** Bylines
    only for those who have agreed. Partners at the claim level the
    record supports. Numbers from the record, with units converted
-   honestly. References real and verifiable. Resolve every flag by
-   rewriting the claim bolder and truer, never by softening it.
+   honestly. Citations are usually absent from first-round pitches; where
+   references do appear, they are real and verifiable. Resolve every flag
+   by rewriting the claim bolder and truer, never by softening it.
 5. **Run the STYLE.md §4 read-back audit before handoff.** Foundation
    documents are the highest-visibility prose the lab sends out. The
    audit catches garbled phrasing, forced triads, inflated superlatives,
