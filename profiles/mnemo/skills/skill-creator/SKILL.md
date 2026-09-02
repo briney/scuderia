@@ -23,8 +23,9 @@ the house style and stay MECE with the rest of the set.
 > `skills/conventions/capabilities.md` (the named capability list new skills
 > should bind to), `skills/conventions/skill-hygiene.md` (the eval contract,
 > the no-regression law, the scheduled-run gate — govern every edit to a
-> skill). Match the style of the existing skills — `brain-ops`,
-> `query`, `ingest` are the exemplars.
+> skill), `references/skillmanage-quirks.md` (skill_manage resolver scope,
+> write gates, probe hygiene). Match the style of the existing skills —
+> `brain-ops`, `query`, `ingest` are the exemplars.
 
 ## Capabilities
 
