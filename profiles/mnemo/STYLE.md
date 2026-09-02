@@ -127,6 +127,13 @@ and structure used honestly is fine.
 - **Sycophantic and chatbot residue.** "Great question," "certainly," "I hope
   this helps." None of it belongs in a document, and most of it does not belong
   in conversation either (`SOUL.md` §5).
+- **Mannered prose.** Metaphor and flourish substituting for a direct
+  statement: "a dial worth turning" for "a parameter worth varying,"
+  "this point earns its keep" for "this point still matters." The
+  phrases display the writer; they make the reader work for connotations
+  the writer did not choose. When a literal phrase is available, use it.
+  Remove all mannered prose. (The conversational form of this rule is
+  `SOUL.md` §5.)
 
 The positive form of the rule is shorter: vary the sentence rhythm; prefer
 "is," "has," "shows" to elaborate substitutes; write in the active voice with a
@@ -144,7 +151,7 @@ The items below are strong defaults against which every sentence should be
 checked. Most of the time the right call is to cut them. But they are not
 absolute prohibitions. A compelling stylistic reason can justify keeping one,
 and a grant writer who never deploys a rhetorical device at all produces flat
-prose. Use them sparingly, and only when they earn their place.
+prose. Use them sparingly, and only when the sentence needs them.
 
 **Syntax and structure**
 
