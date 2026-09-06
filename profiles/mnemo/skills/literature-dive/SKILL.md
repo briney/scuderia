@@ -209,6 +209,20 @@ semantic search missed. Some dives will use both: survey for taxonomy,
 semantic search for the frontier. Confirmed at scale in a second dive
 (protein structure tokenization, 27 papers) with no survey at all.
 
+**Seed-corpus entry (anchor sets).** When your human hands you a paper
+whose load-bearing references form a near-complete causal chain —
+typically an ingested paper whose Ingest log names deferred anchor
+stubs — the dive can start from those anchors directly: resolve and
+validate every anchor identity (Phase 3.5 rules), ingest them in
+batches (Phase 4 protocol), and run the review-discovery search in
+parallel; the spine review, when one exists, is ingested as a
+supplementary paper rather than before the corpus (observed 2026-09-05,
+adaptive-immunity-CNS dive: the park-2026 anchor set was ingested
+first, and the Smyth/Kipnis "Redefining CNS immune privilege" review
+surfaced in the discovery search and landed mid-dive). Tier
+classification then runs against the anchors' own deferred-reference
+logs plus the review when it arrives.
+
 ### 2. Review ingest (delegate with read-back)
 
 Ingest the selected review(s) with `paper-ingest`. When there is only
@@ -382,7 +396,24 @@ each PMID, the PMID is correct and the paper can be dispatched. Do NOT
 discard a paper solely because the validator's title-match heuristic
 failed (astrovirus dive, 2026-08-07: 17 of 33 Tier 1 papers flagged
 HOLD; all 17 PMIDs verified correct via PubMed batch, all dispatched
-successfully).
+successfully). Hyphenated surnames are another false-HOLD source
+(observed 2026-09-05, adaptive-immunity-CNS dive: "Eme-Scolan" scored
+100 on the PubMed title check but OpenAlex reported `surname_match:
+false` against resolved first author "Elisa Eme-Scolan", verdict
+MIXED) — the PubMed `esummary` batch check resolves it like any other
+HOLD. Separately, a "PMCID" that lacks the `PMC` prefix (bare digits
+from a parse) is not a PMCID: confirm against the EPMC core record
+before routing retrieval through it. Curly-apostrophe title variants
+are a third false-HOLD source (same dive: "ageing and Alzheimer's
+disease" with U+2019 scored 99.2–100.0 but failed the surname check
+while PMID↔DOI consistency and PMCID resolution both PASSed) — the
+defect is apostrophe normalization, not identity; the PubMed batch
+check confirms. And the converse of the bare-PMCID rule: a
+properly-prefixed PMCID can look wrong and still be right — a recent
+paper carrying an older author-manuscript PMCID (same dive, Antila
+2024 Nat Cardiovasc Res: PMC7616318, MID EMS196559) is the same
+record, not a mis-mapping; `efetch db=pmc` + title match settles it
+before the identifier is discarded.
 
 ### 4. Tier 1 ingest (delegate with read-back)
 
@@ -460,16 +491,69 @@ cheap.
   after each batch. This eliminates concurrent-write races on shared
   files. For small dives (≤5 papers), subagents do their own wiring as
   in the standard `paper-ingest` pipeline.
+- **Dispatch briefs are brief-vs-fulltext hazards.** A context note
+  written from recollection can assert facts the paper lacks (observed
+  2026-09-05: a brief claimed the Kolabas Cell 2023 skull-BM atlas had
+  a WashU consortium, migraine/cancer cohorts, and
+  CNS-antigen-experienced cells — it is a Helmholtz Munich/LMU/DZNE/
+  Charité consortium with AD/tau/stroke/MS cohorts and no
+  antigen-experienced-cell finding; the subagent caught all three).
+  Every factual claim in a dispatch brief — authorship cluster, cohort
+  composition, key findings — comes from the PubMed abstract or EPMC
+  record read at dispatch time, never from memory. The subagent's
+  brief-verification step is the backstop, not the plan.
 
 **Centralized ledger wiring pitfalls (large dives).**
 - *Misplaced citations.* When appending a citation to an existing
-  author's ledger entry, the `  - papers/<slug>` line must go inside the
-  entry's `citations:` block — between the last existing `  - papers/`
-  line and the `  name:` field. Inserted between `orcid:`/`name:` and
-  `slug:`, it breaks the YAML ("expected <block end>, but found '-'").
-  Safe pattern: find `  slug: <slug>\n`, search backwards for
-  `  citations:\n`, insert after the last `  - papers/` line before
-  `  name:`. After writing, `yaml.safe_load()` the ledger to validate.
+  author's ledger entry, the `- papers/<slug>` line must go inside the
+  entry's `citations:` block. **Bound the entry FIRST** (full rules in
+  paper-ingest Phase 8 "Branch 2 mechanics"): entries begin at any
+  0-indent `- ` list line — key order inside entries is arbitrary, and
+  legacy entries can START with `- citations:` before `name:`/`slug:` —
+  so an entry block spans from its 0-indent start line to the next
+  0-indent `- ` line or EOF. Never bound by walking back from the slug
+  line to `\n- name:` — that grabs the PREVIOUS entry when the target
+  begins `- citations:` (observed 2026-09-05: batch citation appends
+  landed under the wrong authors). With the block correctly bounded,
+  find the last `- papers/…` line WITHIN it and insert the new citation
+  after it. **Match the entry's citation indent**: legacy entries use
+  2-space `  - papers/` lists, newer blocks use 4-space — a mismatched
+  indent still YAML-parses but the citation silently drops out of the
+  parsed list. After writing, `yaml.safe_load()` the ledger and check
+  the target entry actually gained the citation.
+- *Batch wiring.* Collect every (position, text) splice against the
+  ORIGINAL raw string, sort descending by position, apply in a single
+  pass. Never recompute `find()` offsets inside a mutation loop — stale
+  offsets compound into a quadratic blowup (observed 2026-09-05: a
+  4.8 MB ledger ballooned to 1.85 GB before the process was killed).
+- *Citation shape — the `papers/` prefix is load-bearing.* A citation
+  inserted as `- <slug>` (no prefix) still YAML-parses into the entry's
+  list, so a membership test written against the same bare-slug
+  convention passes — writer and verifier share the defect and neither
+  catches it. The independent gate is the platform linter
+  (`lint-frontmatter.py --paths people/_ledger.yaml`), whose shape
+  check rejects `citations` values not shaped `papers/<slug>` (observed
+  2026-09-05, adaptive-immunity-CNS dive: 7 appends were committed
+  through a red lint before the fix). Run that lint after every wiring
+  pass, read its output, and gate the commit on exit 0 — piping the
+  lint through `tail` masks its exit code, and sequencing it before
+  `git commit` with `;` commits straight through a red lint.
+- *Normalize citation values once, use the constant everywhere.*
+  Build the wiring table with `papers/<slug>`-prefixed values for both
+  writer and verifier. A bare-slug wiring table makes a CORRECT ledger
+  look broken (the verifier's membership test compares
+  `fitzpatrick-2024-…` against `papers/fitzpatrick-2024-…` and fails
+  every append) — the inverse of the prefix bug above; both observed
+  in the same dive. When a verification pass fails wholesale, suspect
+  the verifier's value convention before touching the ledger.
+- *Wire from durable sources, not subagent summaries.* Return
+  summaries are context-trimmed in transit ("[SUMMARY TRUNCATED]"),
+  and a page's Ingest log can record a count ("ORCIDs captured: 22 of
+  25") without the values. Build the wiring table from each paper
+  page's frontmatter `authors:` slugs plus the EPMC core record's
+  `authorList` (names and ORCIDs — authoritative and re-fetchable),
+  merged across the dive so shared authors get one entry carrying all
+  the dive's citations.
 - *Duplicate entries.* If an author was added to the ledger by a
   subagent during the dive AND the orchestrator's new-entry code also
   finds that slug, a duplicate results — one with real affiliations,
@@ -604,7 +688,10 @@ is not.
 
 The gap map later feeds the concept page's Open Questions section in
 Phase 7 — write it with that reuse in mind. A template with format and
-examples lives at `references/gap-map-template.md`.
+examples lives at `references/gap-map-template.md`. For the
+axis-reframed query pattern (Prong 2b), session detail with the full
+query set, the paperclip output-parsing gotcha, and the
+dedup-quantification step lives at `references/axis-reframed-probe.md`.
 
 #### 6.2 Three discovery prongs
 
@@ -626,6 +713,28 @@ keyword and semantic queries with the learned vocabulary and run them.
 A useful self-check: if an original query returned near-zero hits where
 a jargon term now returns many, that quantifies what the uninformed pass
 missed.
+
+**Prong 2b — axis-reframed queries (the harness-probe pattern).**
+Jargon upgrades keep the dive's original *axis* — what the systems do.
+A corpus can still be structurally blind on the orthogonal axis: how
+the systems are *built*. Observed 2026-09-05 (autoresearch dives 1–2 →
+dive 3): two application-seeded dives (AIRA, SENPAI) produced an
+applications-heavy corpus; 8 semantic queries reframed on
+infrastructure-design vocabulary (agent harness, harness engineering,
+runtime substrate, control plane, system of record, checkpoint/restore,
+transactional sandboxing, agent memory as database, git/PR
+communication backbone) surfaced 113 unique papers of which 111 were
+not in the vault — a self-named 2026 field the systems papers never
+cite. The method: (1) find the machinery layer's own name for itself —
+often coined in industry posts rather than papers, so check the anchor
+paper's related-work section for blog/repo citations that name the
+practice; (2) run 6–10 plain-language semantic queries on that
+vocabulary; (3) dedup against the vault; (4) quantify new-vs-known.
+A high new fraction (>90%) is evidence the initial pass had a
+structural blind spot and a supplementary dive on that axis is
+warranted before synthesis. If the new axis has grown to rival the
+original, split the concept page FIRST, then dispatch the dive — see
+the split pattern in Phase 7.
 
 **Prong 3 — informed snowball.** Read the bibliographies of the dive's
 Tier 1 papers with the dive's full context and identify references worth
@@ -742,6 +851,23 @@ for the topic, `topic-synthesis` will gate via `ask-user`: update in
 place, restructure, or cancel. The dive's synthesis enriches the
 existing page with the newly ingested literature.
 
+**Concept-page split (Bryan-directed, observed 2026-09-05).** When a
+dive reveals that a concept page is carrying two literatures that cite
+each other sparsely and are searched with different vocabulary (the
+application/harness split), ask whether to split into sibling pages
+BEFORE dispatching the supplementary dive's batches. Rationale: pages
+wired once into the right concept are cheaper than pages re-sorted
+afterward, and a single page carrying both axes buries each. The split
+protocol: (1) create the new concept page with the orthogonal axis's
+map, inheriting the relevant links from the old page's frontmatter;
+(2) rewrite the old page's self-description to scope it to its own
+axis and cross-link the sibling in both `related_concepts` and body
+prose; (3) both pages get Shifts entries documenting the split, the
+new page's entry explaining what moved and why; (4) do NOT
+bulk-repoint inbound paper links — the old page still resolves them;
+a future retroactive-linking pass can migrate them deliberately.
+(5) The supplementary dive wires into the NEW page only.
+
 **Concept page supersession (extending to a broader scope).** When the
 dive extends an existing concept page to a genuinely broader scope
 (e.g., ebolavirus to filovirus-wide), there is a fourth path beyond
@@ -851,6 +977,24 @@ dive is not complete until the concept page is written.
 
 ## Changelog
 
+- **2026-09-05 — axis-reframed queries + concept-page split
+  (autoresearch dive 3).** Prong 2b: semantic queries reframed on the
+  orthogonal axis (how systems are built, not what they do) surfaced a
+  self-named field invisible to two application-seeded dives —
+  machinery-layer vocabulary often originates in industry posts, so
+  mine the anchor paper's related-work section for the practice-naming
+  citations. Concept-page split protocol added to Phase 7: when one
+  page carries two sparsely-interciting literatures, split BEFORE
+  dispatching the supplementary dive so new papers wire into the right
+  page from the start; do not bulk-repoint inbound links.
+- **2026-09-05 — centralized-wiring hardening (adaptive-immunity-CNS
+  dive).** papers/-prefix citation shape rule + platform-linter gate on
+  wiring passes; single normalized citation representation for writer
+  and verifier; wiring tables built from frontmatter+EPMC rather than
+  subagent summaries; seed-corpus (anchor-set) dive entry;
+  hyphenated-surname and curly-apostrophe false-HOLDs; odd-but-valid
+  author-manuscript PMCIDs; dispatch-brief facts from records not
+  recollection.
 - **2026-08-12 — consolidation + Phase 6.** Folded all ten dated patch
   skills (2026-08-04 through 2026-08-10d) into this file and deleted
   them; patch provenance lives in git history. Added Phase 6 (informed
