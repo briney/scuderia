@@ -68,6 +68,17 @@ paperclip search -s pmc,biorxiv,medrxiv "broadly neutralizing antibodies against
   DOI/PMC URL, one-line AI summary. Results are saved to a handle
   (`[s_39953bc5]`) for follow-up `map --from s_xxx "question"` (AI
   reader over the result set — not yet used in mnemo workflows).
+- **Output format (parsing gotcha).** For full-text sources
+  (`pmc`, `biorxiv`, `arxiv`, ...), stdout is a numbered human-readable
+  table — blank-line-separated blocks of `N. Title`, optional author
+  line, then `arx_<id> · arXiv · <year> · <N> citations` — NOT a list
+  of `/papers/` paths. A script that filters stdout for lines starting
+  with `/` finds nothing and looks like a failed search. Verify with
+  one raw query before writing a batch parser; parse by block-splitting
+  on blank lines and regexing the id line
+  (`arx_([0-9.]+)\s*·\s*arXiv\s*·\s*(\d{4})`). The result handle on the
+  first line (`Found 20 papers [s_xxx]`) is for `map --from`, not for
+  programmatic id extraction.
 - Quality observation: for the ebolavirus-bNAb query, top hits were the
   exact load-bearing papers (Flyak 2018 HR2/MPER, Gilchuk 2018
   EBOV-520), plus semantically-generalized neighbors (bNAbs of other
