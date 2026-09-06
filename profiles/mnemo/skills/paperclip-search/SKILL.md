@@ -232,6 +232,13 @@ other result.
   delete this skill's workflow hooks; the keyword-template fallback
   must always be the default path.
 - **Self-update reverts the shebang pin.** See Auth/install above.
+- **2025–2026 arXiv mirrors: stale, abstract-only, and authorless.**
+  Observed across dive 3 (2026-09-05, ~30 papers): brand-new papers
+  (days old) return `Paper not found`; many 2026 arXiv mirrors carry
+  abstract-only `content.lines` (1–3 KB) and an empty `authors` field in
+  `meta.json` even when the record exists. Treat mirror authorship as
+  unverified unless the field is populated; for papers <2 weeks old skip
+  the mirror and go straight to the abs page + versioned HTML.
 - **`map`/`repo` features deliberately unused.** They duplicate what
   the mind does better (delegation with read-back, the vault itself).
   Paperclip is used strictly for search and retrieval.

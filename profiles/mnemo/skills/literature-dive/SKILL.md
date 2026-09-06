@@ -481,8 +481,27 @@ cheap.
   instead. `paperclip cat --full /papers/<id>/content.lines` is a proven
   third-tier full-text fallback when `fetch_fulltext.py` fails
   (Cloudflare blocks, jina misses, new bioRxiv DOI prefixes, arXiv HTML
-  not rendered); use `fulltext_source: paperclip-biorxiv` or
-  `paperclip-arxiv` accordingly.
+  not rendered); use `fulltext_source: paperclip-biorxiv` (for bioRxiv) or
+  `paperclip-arxiv` (for arXiv) accordingly.
+- **arXiv-dive dispatch-brief clauses (dive 3, 2026-09-05, seven
+  batches).** Each clause prevented a real failure: (a) require a
+  unique `/tmp/<prefix>_<slug>` artifact prefix per subagent —
+  siblings share `/tmp` and collide on generic names (write-collision
+  warning, batch 1); (b) subagents must use `check_authors.py` for
+  slug-existence checks, never bare grep — trailing whitespace makes
+  grep report a taken slug as free (MemoHarness: an anchored grep said
+  `zhao-yue` was free; `check_authors.py` correctly reported EXISTING
+  against a different AWS author); (c) warn that jina renders drop
+  first-author bylines — recover authorship from `citation_author`
+  meta or `ltx_personname` spans in versioned raw HTML (hit on 5 of 7
+  batches); (d) paperclip mirrors lag arXiv by days-to-weeks —
+  abstract-only `content.lines` and empty `meta.json` `authors` fields
+  are common for 2026 papers, so the abs page is the authorship
+  authority, and S2 citation counts drift upward within days (record
+  live counts in the Ingest log); (e) name collisions with existing
+  ledger entries resolve by institution-suffixed slugs
+  (`zhang-xinyu-fudan` vs biomedical `zhang-xinyu`), never merges —
+  collect the flags for central entity-resolution.
 - For large dives (>15 papers): instruct subagents to write ONLY their
   paper page — no `people/_ledger.yaml` edits, no concept/method-page
   links, no rem-cycle inbox appends. Subagents return their author lists
