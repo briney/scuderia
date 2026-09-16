@@ -4,7 +4,7 @@ description: >
   Feed card producers — rebuild the instance's local feed outbox from brain
   state. v1 slot: the daily briefing (summary card). (The rem-cycle
   review-queue card was retired 2026-08-15 when the queue was frozen.)
-  Invoked by the host's feed-sync wrapper at the commit boundary, never by
+  Invoked by the host's independent feed-refresh job against committed content, never by
   brain-updating skills directly.
 triggers:
   - "emit feed cards"
@@ -22,8 +22,9 @@ to D1 — it validates against the schema allowlist and pushes diffs.
 
 ## When this runs
 
-At the **commit boundary only** — the host's feed-sync wrapper runs the
-emitters and then the syncer on every auto_push tick. Do NOT hook emission
+The independent **feed-refresh job** runs the host feed-sync wrapper. The
+briefing emitter reads one resolved Git HEAD snapshot, never staged, dirty,
+or untracked briefing content. No Git writes occur in this job. Do NOT hook emission
 into brain-updating skills (ingest, synthesis, capture…): fan-out burden,
 and one forgetful skill means a silently stale card. That anti-pattern was
 considered and rejected in the card-contract spec §4.4.
@@ -39,8 +40,17 @@ Retired: the rem-cycle review-queue card (`<instance>/remcycle/review-queue`,
 the binary commit gate and QUEUE.md was frozen. Git history preserves the
 producer if a future attention surface ever needs a card.
 
-The emitter takes `VAULT_ROOT` (required), `FEED_OUTBOX_DIR` (default
-`<vault>/feed-outbox`), `FEED_INSTANCE` (default: `instance.yaml` name).
+The emitter takes `VAULT_ROOT` (required Git worktree), `FEED_OUTBOX_DIR`
+(default `<vault>/feed-outbox`), and optional `FEED_INSTANCE` (otherwise the
+committed `instance.yaml` / legacy `brain.yaml` name). BRIEFING.md and identity
+metadata come from the same resolved HEAD. A committed deletion withdraws the
+card; a Git/read error preserves the old card and stops sync with a nonzero
+exit. Working-tree changes do not affect the feed. The wrapper fails visibly
+on missing credentials, emitter failure, or sync failure.
+
+Verification: run `scripts/test_emit_briefing_card.py` against disposable Git
+repositories. Set `FEED_SYNC_TEST_TARGET` to the host wrapper to include its
+isolated-copy tests; no production credentials or network are used by tests.
 
 ## Contract rules the emitters honor
 
