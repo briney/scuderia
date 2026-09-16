@@ -53,13 +53,18 @@ report from phase-result files. There is no orchestrator process.
 | rem-full-sweep | monthly sweep | 1st 05:00 | cursor completion + schema review |
 | rem-report-monthly | 9 Report | 1st 06:30 | this skill (aggregator) |
 
-Every phase job: take the lock → work within its `budgets.by_phase` slice →
-write `docs/rem-cycle/runs/<date>/<phase>.yaml` → commit → release the lock.
+Every phase job: take the phase lock → work within its budget → write the
+phase result → validate and close its owned edits/result through
+`skills/git-ops/SKILL.md` → release the lock in cleanup. The primary owns its
+phase commit and push; children never perform Git operations. A failed push
+leaves a local commit, is reported separately, and does not justify holding
+the phase lock indefinitely.
 The aggregator validates the checkable invariants on the full results (it holds
 the files, not summaries — it verifies more than the old orchestrator could),
 dedupes across phases on `(target, category)`, writes the concise + verbose
 reports to `docs/rem-cycle/history/`, updates `_state.yaml` (`last_run`,
-canonical metrics, connectivity), commits, and delivers the concise report.
+canonical metrics, connectivity), closes only those reports/state through
+git-ops, and delivers the concise report. Never collect unfinished phase edits.
 
 **Current state (2026-08-15): the binary-gate refactor.** The queue era is over:
 there is no drain phase, no propose lane, no confidence scores, no QUEUE.md
@@ -131,7 +136,8 @@ remainder shard as a single-task call rather than dropping it.
 | 8 | Intersect | `intersect` — the single-item ranker: corpus scan + that night's `notable:` signals → one surfacing into the report's "One thing" (surface-only, never a page) | surface |
 | 9 | Report + commit | this skill (aggregator) | — |
 
-**No external I/O.** Phases consolidate what is already in the graph. Fetching,
+**No external research I/O.** Phases consolidate what is already in the graph.
+Authorized Git fetch/push at closeout is permitted; source retrieval is not. Fetching,
 filling paper stubs (`ingest-pending-papers`), and resolving `status:unknown` by
 lookup are **waking** concerns — the dream *detects and counts* those backlogs
 (phase 1, verbose report) but never reaches outside the vault.
@@ -217,9 +223,9 @@ the answer is immediate).
   not an attested one.
 - Exceeding `_state.yaml` budgets, or forgetting to advance the cursor — that
   breaks resumability and idempotency.
-- Committing under a generic message, or leaving the report for the snapshotter.
+- Committing under a generic message or leaving verified output unpublished without reporting the block.
 - Use-based forgetting, or lowering a protected page's importance.
-- **Leaving the auto-push lock file in place** — each job creates the lock
+- **Leaving the phase coordination lock file in place** — each job creates the lock
   (content: `<job-name> <timestamp>`) at the start, refreshes it between
   delegate batches, and removes it after its commit. A fresh foreign lock
   (<45 min) means another job is running: skip and log.

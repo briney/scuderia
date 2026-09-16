@@ -10,6 +10,8 @@ triggers:
 
 # Granola meeting sync — source adapter for Granola meetings
 
+> **Git closeout:** Follow `skills/git-ops/SKILL.md`. The sync parent owns each verified group of interaction/entity/task changes. meeting-ingestion returns paths and checks; update the sync watermark only after successful ingestion, and report Git publication failure separately so a retry does not duplicate meetings.
+
 Granola is your human's meeting recorder. This skill is the **source adapter**: it
 pulls meeting data from Granola via the Granola MCP server, deduplicates against
 existing `interactions/` pages, and feeds each new meeting into

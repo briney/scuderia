@@ -16,7 +16,7 @@ triggers:
 The instance runs a fleet of scheduled cron jobs: the rem-cycle tiers (nightly /
 weekly / monthly), the Granola meeting sync, the standing scans
 (monitor-the-situation, funding-sweep), and the no_agent script jobs
-(auto-push, qmd-reindex, drop-watcher). When one fails, the failure is almost
+(feed-refresh, qmd-reindex, drop-watcher). When one fails, the failure is almost
 never in the job's *content* skill (rem-cycle, granola-meeting-sync) — it is in
 the cron *operational* layer: model resolution, delivery, or the environment.
 This skill is that operational layer. The content skills are loaded by the job;

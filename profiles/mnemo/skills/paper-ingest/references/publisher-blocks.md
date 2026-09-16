@@ -32,6 +32,33 @@ If `efetch db=pmc` with the PubMed XML PMCID returns front-matter only
 (no `<body>` element, <10 KB), check the EPMC core record's `pmcid` field
 for a *different* PMCID and retry.
 
+## Unpaywall `closed` vs S2 `BRONZE` — attempt on contradiction, close on agreement
+
+The OA-status oracles can contradict each other, and the cheapest one to
+consult is not always right. Observed 2026-09-05 (Wang 2021, *Immunity*):
+Unpaywall reported `is_oa: false, oa_status: closed`, EPMC all-N — but S2
+`openAccessPdf.status: BRONZE` pointed at the publisher copy, and
+retrieval delivered the complete Cell Press body (89k chars, Highlights
+through STAR Methods, masquerade check passed). The brief's expected
+abstract-only closure was never legitimately satisfiable.
+
+Rule: S2's `openAccessPdf` is an independent OA oracle, not a duplicate of
+Unpaywall — `BRONZE` means free-at-publisher without a license, and
+Unpaywall often misses these because bronze is publisher-discretionary and
+can lag. When the two disagree, ATTEMPT the retrieval (one
+`fetch_fulltext.py --publisher-url` call) rather than trusting either
+verdict; the three-source abstract-only closure requires S2 to say CLOSED
+or null, not merely for Unpaywall to say closed. Most exposed: subscription
+Cell Press journals (Immunity, Cell), where BRONZE free-to-read is common.
+
+The inverse pattern also exists: recent Nature subscription articles
+(observed 2026-02–2026-04 online dates) report closed in ALL FOUR sources
+(EPMC all-N, S2 CLOSED, Unpaywall closed, OpenAlex `is_oa: false`) with a
+hard paywall on the page itself — closure is real. The lesson is not "S2
+always wins" but "contradiction means attempt, agreement means closure."
+
+---
+
 ## NEJM Wayback timing
 
 NEJM articles are paywalled for ~6 months after publication, then become
@@ -120,7 +147,7 @@ direct article URL form.
 | Publisher | Domain | Working URL form | Notes |
 |---|---|---|---|
 | Elsevier / Lancet | thelancet.com | `thelancet.com/journals/<journal>/article/PIIS<id>/fulltext` | DOIs contain parens → 404 via jina. PIIS form: strip `10.1016/` prefix from DOI, prepend `PII` to the suffix. The "S" in "PIIS" comes from the DOI suffix — do NOT add an extra S |
-| Cell Press | cell.com | `cell.com/<journal>/fulltext/<PII>` | PII from PubMed XML `<ArticleIdList>` or `elink.fcgi?cmd=prlinks`. Use `/fulltext/` not `/pdf/` |
+| Cell Press | cell.com | `cell.com/<journal>/fulltext/<PII>` | PII from PubMed XML `<ArticleIdList>` or `elink.fcgi?cmd=prlinks`. Use `/fulltext/` not `/pdf/`. Subscription Cell Press can be BRONZE free-to-read — check S2 `openAccessPdf` before declaring abstract-only (see the S2-vs-Unpaywall section above) |
 | ASBMB / JBC | jbc.org | `jbc.org/article/<PII>/fulltext` | Resolve DOI → PII via `linkinghub.elsevier.com/retrieve/pii/<PII>`. Jina on DOI URL returns 404 |
 | Elsevier / JACI | jacionline.org | `jacionline.org/article/S<PII>/fulltext` | Jina on DOI URL 404s. Try PIIS URL via jina before declaring abstract-only |
 | AHA Journals | ahajournals.org | `ahajournals.org/doi/<doi>` | Jina succeeds intermittently. Some Circ Res articles are in PMC (OA) and work normally via PMC XML |
@@ -154,6 +181,11 @@ paywalled. The full extraction technique is in
   rich `citation_*` meta tags (authors, affiliations, ORCIDs, full
   reference list, figure captions, data/code availability). Try jina
   first (may return metadata sections); meta-tag extraction is fallback.
+  Paywall-preview pages still carry the full ED-figure captions, the
+  reference list, and the author block (observed 2026-09-05, Monaghan
+  2026 Nature: 495 KB direct curl + 84 KB jina, both preview-only but
+  carrying 10 ED captions + 59 refs — a rich abstract-only, not a bare
+  one).
 - **Nature OA research articles** (Nature, Nature Communications) render
   full body via browser — distinct from subscription journals.
 
@@ -179,4 +211,6 @@ abstract-only snapshots, no PMCID or PMCID-present-but-restricted).
 
 For all of these: three-source closure (EPMC all-N + Unpaywall closed + S2
 CLOSED/null), tag `fulltext_source: abstract-only`, `needs-enrichment: true`.
-PubMed structured abstract is the primary content source.
+PubMed structured abstract is the primary content source. The closure
+requires S2 to actually say CLOSED — see the S2-vs-Unpaywall section above
+for the BRONZE exception.

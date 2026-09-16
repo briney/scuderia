@@ -11,6 +11,8 @@ triggers:
 
 # Grant citations — resolve, verify, and format the references
 
+> **Git closeout:** Follow `skills/git-ops/SKILL.md`. Close the verified citation/bibliography repair unit, or return it to the grant-section/application parent when nested. Do not independently commit an intermediate bibliography during a parent revision.
+
 A grant's references are a spine commitment, not a formatting chore: every
 substantive claim carries a verifiable citation or an explicit needs-citation
 flag (`SOUL.md` §2). This skill closes that loop on a grant in progress — it

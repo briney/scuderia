@@ -10,6 +10,8 @@ triggers:
 
 # Grant finalize — close out a submitted grant
 
+> **Git closeout:** Follow `skills/git-ops/SKILL.md`. Close the verified submission-state, verbatim promotion, source pointers, and required graph propagation together. No submitted binaries enter Git.
+
 The post-submission endpoint of the grant-writing cluster. `grant-coherence`
 clears the pre-submission gate, your human submits, and this skill takes the `grant`
 page from `drafting` to a fully-integrated `submitted` page: the draft becomes

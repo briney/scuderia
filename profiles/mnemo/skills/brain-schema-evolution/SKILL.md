@@ -10,6 +10,8 @@ triggers:
 
 # Brain schema evolution
 
+> **Git closeout:** Follow `skills/git-ops/SKILL.md`. The authorized schema-change owner closes conventions, validator, templates, and approved migration units with their required checks. Keep private design evidence in the instance repository; each repository has separate publication authorization.
+
 The highest-blast-radius change the brain can take. A page kind is forever:
 directories, the linter, ingest wiring, and every skill's templates all bind
 to it. Treat every proposal as an architecture decision, not a feature

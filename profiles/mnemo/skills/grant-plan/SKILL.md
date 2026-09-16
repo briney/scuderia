@@ -11,6 +11,8 @@ triggers:
 
 # Grant plan — open and scope a grant-writing engagement
 
+> **Git closeout:** Follow `skills/git-ops/SKILL.md`. Close the agreed grant plan and its required project/source-pointer changes after the go/no-go and source checks. Hold any unapproved draft or human edits outside the unit.
+
 This is the entry point to the grant-writing cluster. Grant writing is
 multi-week and multi-section (`VISION.md` §2.2); this skill sets the engagement
 up so the whole application stays in view. It identifies the application,

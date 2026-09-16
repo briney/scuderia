@@ -106,6 +106,18 @@ without conflict.
    Maintain claim / evidence / hope separation (`SOUL.md` §3): what was
    shown, what was concluded from it, what would merely be nice.
 
+   **Reading at scale (corpora of 15+ papers).** A whole-paper read of
+   every page overflows the drafting context. The economical order:
+   read each paper's `## Analysis` FIRST — a well-distilled Analysis
+   section already names the paper's position in its own literature
+   and its relation to sibling papers (dive-distilled pages cross-link
+   their neighbours by design), which is most of what the synthesis
+   needs — then drop into `## Findings` only for the papers whose
+   Analysis names a quantitative anchor the Thesis will cite. A
+   scripted bulk extract (grep the `## Analysis` block per page into
+   one working buffer, read that) can reduce repeated full-page reads.
+   Re-read Findings wherever a quantitative claim requires primary detail.
+
 4. **Choose the page kind.**
    - **`concept`** when the synthesis is a *framework* or *principle* —
      a way of organizing what the field believes ("affinity maturation
@@ -144,8 +156,27 @@ without conflict.
      new synthesis without clobbering — the never-blind-overwrite rule
      in `SOUL.md` §2 spine applies), **(b) refuse and route to
      `restructure-thin-page`** if the existing page is a stub that needs
-     restructuring first, or **(c) cancel** if the existing page is
-     fine.
+     restructuring first, **(c) cancel** if the existing page is
+     fine, or **(d) split into sibling pages** when the page has grown
+     to carry two separable axes (see below).
+
+- **Split into sibling concept pages.** An existing concept page can
+  accrete a second axis that rivals the original in weight — the signal
+  is structural: sections for the new axis have grown comparable to the
+  applications sections, the two axes' literatures cite each other only
+  sparsely, and they are *searched with different vocabulary* (one
+  query-framing does not retrieve the other's corpus). For example,
+  an applications literature and its implementation-infrastructure literature
+  may require separate query vocabularies and concept pages. Split mechanics: (1) create the sibling page at a new slug with the new
+  axis's map and its inherited evidence (the papers that carry the
+  axis's sections); (2) move those sections out of the original and
+  leave a one-paragraph cross-link in each page's Thesis; (3) both pages
+  list each other in `related_concepts:` and carry a dated Shifts entry
+  documenting the split and its trigger; (4) papers stay linked in the
+  page whose axis they evidence — a load-bearing paper for both (e.g.
+  a production harness with results) links from both. The split gate is
+  the human's — present the axis evidence and let him call it, the same
+  ask-user gate as the existing-page check above.
 
 ## As a rem-cycle phase
 

@@ -443,7 +443,9 @@ the *content* of each subagent task, never the scheduling discipline.
   `paper-ingest`, not a stub fill).
 - The subagent inherits `paper-ingest` and does the full pipeline: resolve
   identity, dedup, distill, file, wire, bibliography walk.
-- On return, verify files on disk, then commit, then dispatch the next batch.
+- On return, verify files on disk and finish required parent-owned wiring.
+  Close a coherent unit through git-ops before advancing past that unit; do
+  not treat a returned scheduling batch as automatically complete.
   After the last batch returns, do a bulk read-back verification (a Python script
   checking all files at once — frontmatter parses, DOIs present, authors
   populated, body sections present). Never trust the subagent's "completed"
@@ -501,7 +503,9 @@ cheap.
   live counts in the Ingest log); (e) name collisions with existing
   ledger entries resolve by institution-suffixed slugs
   (`zhang-xinyu-fudan` vs biomedical `zhang-xinyu`), never merges —
-  collect the flags for central entity-resolution.
+  collect the flags for central entity-resolution. (f) **Git ownership:** children return changed paths and validation;
+  they never stage, commit, pull, or push. The parent closes coherent verified
+  units through `skills/git-ops/SKILL.md`.
 - For large dives (>15 papers): instruct subagents to write ONLY their
   paper page — no `people/_ledger.yaml` edits, no concept/method-page
   links, no rem-cycle inbox appends. Subagents return their author lists
@@ -835,16 +839,11 @@ inline-ingested as Tier 2.)
 
 After the supplementary pass is complete, synthesize the result.
 
-**Commit before synthesizing — and earlier.** Commit each verified
-ingestion batch promptly, not just at the end: the auto-snapshotter
-(`auto_push.sh`, every 5 min) can commit subagent-written pages under a
-generic `auto: snapshot` message before your explicit commit, burying
-the dive's intent (observed 2026-08-05: 28 paper files snapshotted
-generic). The window between batch verification and commit should be
-minutes. If the snapshotter beats you, the content is preserved — do not
-re-commit or amend (that rewrites history). After the final batch and
-before starting synthesis, commit any remaining papers, ledger updates,
-and link updates with a descriptive message.
+**Close ingestion units before synthesizing.** The dive parent completes
+required wiring and validates each coherent ingestion unit, then commits and
+pushes it through `skills/git-ops/SKILL.md`. Dispatch size does not determine
+commit size. The final verified concept synthesis is a separate unit. Do not
+commit unrelated pending work or rewrite earlier history.
 
 **Default: invoke `topic-synthesis`.** The dive has now populated the
 brain with a review + its foundational literature + the supplementary
@@ -870,7 +869,7 @@ for the topic, `topic-synthesis` will gate via `ask-user`: update in
 place, restructure, or cancel. The dive's synthesis enriches the
 existing page with the newly ingested literature.
 
-**Concept-page split (Bryan-directed, observed 2026-09-05).** When a
+**Concept-page split (human-approved).** When a
 dive reveals that a concept page is carrying two literatures that cite
 each other sparsely and are searched with different vocabulary (the
 application/harness split), ask whether to split into sibling pages
@@ -908,6 +907,17 @@ dive extends an existing concept page to a genuinely broader scope
 Ask your human whether to update in place, supersede, or create a fresh
 independent page. Supersession is right when the dive's scope genuinely
 exceeds the old page's scope and the old content is fully subsumed.
+
+**Concept-page link verification (the `.md`-extension trap).** After
+enriching a concept page, verify every frontmatter `links:` entry and
+body wikilink resolves ON DISK — but note that `links:` values are
+extensionless (`papers/<slug>`), so a verifier that checks
+`os.path.exists(vault + "/" + link)` reports EVERY link missing and
+looks like a total graph failure. The correct check tests both forms:
+`vault + "/" + target + ".md"` OR `vault + "/" + target`. When a
+verification pass fails *wholesale*, suspect the verifier's path
+convention before touching the artifact — the same suspicion-the-
+verifier-first rule as the ledger's bare-slug wiring-table bug.
 
 **The synthesis is the deliverable.** The individual paper pages are
 the evidence base; the concept page is the output your human reads. The
@@ -995,6 +1005,14 @@ dive is not complete until the concept page is written.
   specific entry block.
 
 ## Changelog
+
+- **2026-09-05 (evening, harness dive 3) — subagent git discipline +
+  concept-verifier path convention.** Dispatch-brief clause (f): no
+  amend, no force-push; leave snapshotter commits untouched (batch-13
+  divergence, reconciled by rebase after md5 identity check).
+  Concept-page link verification: extensionless `links:` values need
+  both-forms path checks — a wholesale verification failure means
+  suspect the verifier's path convention first.
 
 - **2026-09-05 — axis-reframed queries + concept-page split
   (autoresearch dive 3).** Prong 2b: semantic queries reframed on the

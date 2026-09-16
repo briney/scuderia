@@ -11,6 +11,8 @@ triggers:
 
 # ingest-pending-papers — drain the paper-ingest queue
 
+> **Git closeout:** Follow `skills/git-ops/SKILL.md`. The drain parent closes each verified group of fills, required wiring, and propagation packets; children never perform Git operations. Incomplete fills remain outside the completed unit. The final accounting identifies any local-only commits or held changes.
+
 This skill exists for one reason: to keep `grant-ingest` (and, eventually, the
 paper-ingest redesign that walks bibliographies) from running inline paper
 ingests. Inline paper ingestion stacks an unbounded number of paper

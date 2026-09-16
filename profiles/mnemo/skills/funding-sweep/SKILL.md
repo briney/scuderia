@@ -11,6 +11,8 @@ triggers:
 
 # funding-sweep — the standing funding-opportunity scan
 
+> **Git closeout:** Follow `skills/git-ops/SKILL.md`. The standalone sweep owns verified funding-state and related page changes. Commit and publish the coherent unit explicitly; notifications and Git publication have separate success states.
+
 Where `literature-sweep` scans for *publications* that touch the research program,
 this skill scans for *funding opportunities* that fit the lab. It sits between the
 two standing-scan patterns already in the brain:

@@ -191,6 +191,11 @@ always has session outputs mixed into the procedure; the fix is extraction
    — a fat-but-tight markdown procedure, roughly 60-160 lines. Cite conventions
    by path; do not duplicate them. Reference the character; do not restate it.
    Declare the `eval_contract` in frontmatter (`skill-hygiene.md`).
+Every persistent-writing skill declares its completed-unit boundary, required
+validation, and standalone-versus-child owner. Reference `skills/git-ops/SKILL.md`
+for closeout; do not duplicate Git commands or introduce timed snapshot recovery.
+A child returns changed paths and verification to the parent instead of committing.
+
 4. **Add a routing row to the resolver.** Add one row to `skills/RESOLVER.md` in
    the cluster the skill belongs to (thought-partner, research-logistics,
    brain-building and upkeep, or meta), with the trigger and the skill path.

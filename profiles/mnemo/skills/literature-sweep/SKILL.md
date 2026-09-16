@@ -12,6 +12,8 @@ triggers:
 
 # literature-sweep — standing scan + brain coverage audit
 
+> **Git closeout:** Follow `skills/git-ops/SKILL.md`. The standalone sweep owns its verified new stubs and corresponding sweep cursors as a coherent unit. Publish that unit explicitly; unchanged runs create no commit.
+
 Two modes, one job: **Mode 1** catches new publications the brain doesn't
 have yet; **Mode 2** audits existing concept pages for load-bearing papers
 that were overlooked when the concept was built. Both modes write **stubs**

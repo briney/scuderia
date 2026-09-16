@@ -15,6 +15,8 @@ triggers:
 
 # synthesis-briefing — the weekly PUSH
 
+> **Git closeout:** Follow `skills/git-ops/SKILL.md`. Close the verified weekly briefing artifact when changed. Do not include concept edits or rem-cycle state; its on-demand or scheduled caller owns publication.
+
 The delivery surface that closes the concept layer's loop back to your human. The
 synthesis engine — `reinforce` nightly, `intersect` nightly — writes *state* into
 concept `## Shifts` logs and the night's `notable:` signals; this composes that

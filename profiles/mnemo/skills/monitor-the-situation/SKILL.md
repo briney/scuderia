@@ -12,6 +12,8 @@ triggers:
 
 # monitor-the-situation — the standing change-detection watch
 
+> **Git closeout:** Follow `skills/git-ops/SKILL.md`. The standalone sweep owns verified MONITORS.md and related persistent changes. Publish its coherent unit explicitly; never rely on a separate auto-push job.
+
 Where `literature-sweep` runs a *stateless* scan — it re-derives its interest
 profile from `RESEARCH.md` every run and re-filters against the brain — this
 skill is **stateful by design**. Its entire value is detecting *change*, which

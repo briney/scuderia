@@ -11,6 +11,8 @@ triggers:
 
 # Briefing — the attention contract in action
 
+> **Git closeout:** Follow `skills/git-ops/SKILL.md`. Close the verified BRIEFING.md delivery artifact when its content changes, without modifying brain pages. Feed refresh is a separate consumer of committed content, not part of this Git transaction.
+
 The brief is not a list-printer. It is the **attention contract** (`VISION.md`
 §5, `DESIGN.md` §4.5) made concrete: a filter on your human's attention that surfaces
 signal and silences noise. The skill *composes* the brief — against the brain,

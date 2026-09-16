@@ -12,6 +12,8 @@ triggers:
 
 # User-voice measure — the writing fingerprint into `USER/VOICE.md`
 
+> **Git closeout:** Follow `skills/git-ops/SKILL.md`. Close the verified measured voice-profile changes and approved supporting artifacts after the skill checks. Never stage unrelated human-owned user-model edits.
+
 The **derived** half of the writing-voice split (`DESIGN.md` §7,
 `docs/decisions/user-directory.md`). `USER/<name>.md` §6 holds the
 **judgment** — argument-level decisions, human-approved. This skill holds the

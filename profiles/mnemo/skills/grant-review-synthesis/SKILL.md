@@ -9,6 +9,8 @@ triggers:
 
 # Grant review synthesis
 
+> **Git closeout:** Follow `skills/git-ops/SKILL.md`. Close the verified review-only delta, its source pointers, and required funding/project updates as one unit. Preserve existing application prose. When nested, return paths and checks to the parent.
+
 Post-submission review materials — a summary statement, reviewer critiques, a score notice — are a **delta on an existing grant page**, not a new grant package. This skill owns that delta: preserve the already-ingested application prose, add the review outcome, synthesize what study section punished, and propagate the funding state into the research graph.
 
 Use `grant-ingest` instead when the operation includes a new application package or creates the grant page for the first time. Use this skill when the grant already exists and the new material is review/outcome material.

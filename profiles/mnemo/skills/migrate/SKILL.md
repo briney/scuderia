@@ -10,6 +10,8 @@ triggers:
 
 # Migrate — onboard an existing note collection
 
+> **Git closeout:** Follow `skills/git-ops/SKILL.md`. Keep the pilot approval gate. After approval, the parent closes coherent validated migration groups, including renames and repaired inbound links; children return paths and checks.
+
 The vault starts empty. When your human already keeps notes somewhere — Obsidian,
 Notion, Logseq, Roam, a markdown folder, a CSV — this skill brings that material
 in: each source page mapped onto one of the page kinds, given proper

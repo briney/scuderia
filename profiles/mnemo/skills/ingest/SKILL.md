@@ -10,6 +10,8 @@ triggers:
 
 # Ingest — the routing layer
 
+> **Git closeout:** Follow `skills/git-ops/SKILL.md`. The routed specialist owns the coherent unit when invoked standalone; this router does not make a second commit. In a parent campaign, all nested skills return changed paths and verification to that parent.
+
 Ingestion turns raw material — a paper, a transcript, a link, a voice memo —
 into distilled brain pages. This skill is the **router**: it identifies what
 arrived and hands off to the specialist that knows how to distill it.

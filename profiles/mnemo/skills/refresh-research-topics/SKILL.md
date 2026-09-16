@@ -98,8 +98,9 @@ No external I/O.
    regenerate the file). Update the `Last refresh:` line in the header.
    Update the cursor (`research_topics.last_run`). The git commit is the
    audit record — no separate ledger entries.
-   Commit: `refresh-research-topics: <n> added, <m> enriched, <k>
-   proposed, <f> flagged`.
+   Close RESEARCH.md and its owned cursor change through `skills/git-ops/SKILL.md`.
+   Describe the actual research-state change in the subject; put verified counts
+   and unaccepted proposals in the body/report, not a generic date-only title.
 
 6. **Report.** A compact summary: entries added, entries enriched,
    derived-topic candidates (with evidence), flags raised. This is the job's

@@ -13,6 +13,8 @@ triggers:
 
 # therapeutic-antibody-registry — molecule-level therapeutic antibody corpus
 
+> **Git closeout:** Follow `skills/git-ops/SKILL.md`. Standalone entry work closes its verified curated fields; a bulk sweep parent owns coherent entry/index units after required enrichment and integrity checks. Nested enrichment skills return paths and evidence, never commit independently.
+
 Build and maintain `references/therapeutic-antibodies/` — a structured corpus of
 known therapeutic antibodies, one record per distinct **drug product** (INN), across
 all modalities (naked IgG, ADC, bispecific, CAR-T, Fc-fusion, fragments) and all
@@ -315,10 +317,11 @@ verification before they reach Tier A confidence.
   inventorying enrichment state across 100+ entries, write a Python script
   to `/tmp/` and run it, rather than building a multi-clause grep/awk
   one-liner. The inline command parser blocks oversized payloads.
-- **Commit completed work before resuming delegation.** Interrupted sweeps
-  leave enriched entries uncommitted. Commit them first so the auto-pusher
-  doesn't bury real intent under a generic snapshot, and new subagent writes
-  don't interleave with old ones in the same diff.
+- **Resume from verified units.** Read the actual changed entries, finish
+  their required blocks and validation, then close coherent completed units
+  through `skills/git-ops/SKILL.md`. Do not commit every dirty file before
+  resuming. Children return their paths; the sweep parent owns Git closeout.
+
 - **Subagent header-clobbering.** A delegated subagent told to "append
   enrichment blocks at end of file" may instead overwrite the entire file
   with only the enrichment blocks, destroying the curated header (Identity,

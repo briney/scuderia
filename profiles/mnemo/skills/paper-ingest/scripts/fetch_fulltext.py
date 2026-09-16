@@ -295,6 +295,7 @@ def fetch_pmc_figures(pmcid, out_prefix):
     return figdir if n else None
 
 
+
 # ---------------------------------------------------------------- main
 
 def main():
@@ -312,7 +313,6 @@ def main():
     ap.add_argument("--skip-publisher", action="store_true",
                     help="Stop before branch 2 (never touch the publisher page)")
     args = ap.parse_args()
-
     notes = []
     result = {"provenance": "none", "chars": 0,
               "text_file": None, "figures_dir": None, "notes": notes}
@@ -407,4 +407,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

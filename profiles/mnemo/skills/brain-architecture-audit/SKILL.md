@@ -141,8 +141,9 @@ measurements is an opinion); numbered design sections; an **Open questions**
 section for your human's calls; a rollout/migration order; an explicit
 out-of-scope section naming the follow-on specs.
 
-**Commit the spec immediately** with a descriptive message — never leave it
-for the auto-push snapshotter.
+Close the reviewed spec through `skills/git-ops/SKILL.md` under repository
+commit/push authorization. An audit does not itself authorize implementation
+or publication of unrelated work.
 
 ## Pitfalls
 
@@ -156,5 +157,4 @@ for the auto-push snapshotter.
 - Implementing vault-side changes from an audit session. Vault skills
   (`skills/`) are human-owned; the audit's deliverable is the spec +
   a flagged implementation order. Edits happen in foreground with your human.
-- Letting the spec sit uncommitted — the snapshotter will bury it under a
-  generic message.
+- Claiming the spec is published without the git-ops commit and remote read-back.

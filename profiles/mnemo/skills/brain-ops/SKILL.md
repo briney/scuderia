@@ -91,6 +91,16 @@ ingest event. When a signal names something worth a page, enrich it — but:
 - **File by subject.** The primary subject sets the kind, not the format the
   content arrived in (`_brain-filing-rules.md`).
 
+## Persistent-write closeout
+
+A completed persistent-writing operation closes through `skills/git-ops/SKILL.md`
+under the repository's authorization. The caller provides its exact changed
+paths and domain verification. A nested skill or child returns those to its
+parent, which commits the complete unit and verifies publication. This applies
+to ambient capture too; do not leave its writes for a timer. Read-only and
+unchanged operations do not create commits. Human edits are a separate reviewed
+"save my edits" operation, never part of an automatic sweep.
+
 ## Anti-patterns
 
 - Answering from general knowledge when a brain page exists.

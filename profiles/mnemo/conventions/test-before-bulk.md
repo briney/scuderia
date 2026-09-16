@@ -9,7 +9,9 @@ Never run a batch operation over the brain without testing one item first.
 3. **Test on 3-5 items.** Produce the pages but hold the commit.
 4. **Check the work yourself.** Read the actual output. Is the quality pristine? Titles sharp? `kind` and frontmatter correct? Links forward-only and resolving? Citations present or honestly flagged?
 5. **Fix what's wrong.** Update the skill, not the one-off output. The skill is the durable artifact.
-6. **Only then: bulk execute.** Commit in batches so a bad run is easy to revert.
+6. **Only then: bulk execute.** The parent closes coherent verified units via
+   `skills/git-ops/SKILL.md`; children return paths and evidence. Keep the pilot
+   approval gate. A scheduling batch alone is not a commit boundary.
 
 ## Why This Matters
 

@@ -10,6 +10,8 @@ triggers:
 
 # Grant ingest — distill a grant application package
 
+> **Git closeout:** Follow `skills/git-ops/SKILL.md`. A standalone owner closes one verified grant package, required graph propagation, and citation stubs after archival and verbatim checks. Paper fills remain a later operation. A nested ingest returns its paths and validation to the parent.
+
 Turn a grant — a funded or unfunded application, a renewal, a resubmission —
 into one `grant` page that is distilled against grant structure *and* carries
 your human's verbatim prose intact. A grant is the richest source the brain ingests:

@@ -17,7 +17,7 @@ eval_contract:
     - "YIELD_AND_WAIT — does the orchestrator emit zero new dispatches while any prior batch is still in flight?"
     - "REMAINDER_INTEGRITY — is every leftover shard (list size not a multiple of batch size) dispatched via a single-task call, never dropped, never pushed through batch mode?"
     - "DISK_VS_REPORT — is every shard's completion verified against the filesystem (files exist, content correct), never against the subagent's self-reported 'completed'?"
-    - "COMMIT_CADENCE — is each returned batch committed with a descriptive message before the next dispatch, beating the auto-snapshotter?"
+    - "COMMIT_BOUNDARY — does the parent close each coherent verified unit through git-ops, after required wiring, rather than commit merely because a dispatch batch returned?"
   hard_fails:
     - "Any new delegate_task dispatch emitted while a prior batch is still in flight."
     - "Any shard counted as done without a filesystem verification of its output."
@@ -101,9 +101,11 @@ the thing that depends on the batch, the correct action is to yield and wait.
    subagent's self-reported "completed." A subagent can report success without
    writing (see failure table), and can time out *after* writing correctly:
    disk is truth, not the report and not the exit.
-4. **Commit the returned batch** with a descriptive message before the next
-   dispatch. The auto-snapshotter can commit unfinished work under a generic
-   message if it fires mid-wave; commit promptly so intent survives.
+4. **Close a coherent unit through `skills/git-ops/SKILL.md`.** The parent
+   completes required wiring and verification, then commits and pushes the
+   unit under repository authorization. A dispatch batch is not automatically
+   a complete unit; follow the domain caller's boundary. Children return paths
+   and evidence, never stage/commit/push. Hold incomplete units explicitly.
 5. **Dispatch the next batch.** Repeat 2-4 until all batches are out. Dispatch
    the remainder single-task call last (or fold it into the final wave).
 6. **Bulk read-back at the end.** After the last batch returns, one aggregate

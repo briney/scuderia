@@ -64,8 +64,11 @@ touch importance, centrality, or backlinks, yet stay readable in Obsidian.
 ## The phase result
 
 Every phase ends by writing its phase result — one fenced-yaml block — to
-`docs/rem-cycle/runs/<YYYY-MM-DD>/<phase>.yaml`, then commits it and releases
-the lock. The aggregator reads these files; it never scrapes prose. A phase
+`docs/rem-cycle/runs/<YYYY-MM-DD>/<phase>.yaml`, then closes its owned changes
+and result through `skills/git-ops/SKILL.md` and releases the phase lock in
+cleanup. The primary commits/pushes; child workers do neither. A failed push
+is a local-only commit, reported as a publication block, not a failed content
+edit to repeat. The aggregator reads these files; it never scrapes prose. A phase
 that dies before writing its file is recorded by the aggregator as `missing` —
 distinct from `skipped` — and named in the report's machinery note.
 
@@ -171,8 +174,11 @@ High-throughput phases (retro, reinforce) parallelize by delegation:
    target+change), then applies all writes **serially** — this eliminates
    both git races and read-modify-write clobbering when two delegates return
    edits to the same page.
-4. The primary refreshes the lock file (below) between batches, writes the
-   phase result, commits once, releases the lock.
+4. The primary refreshes the phase lock between batches, writes the phase
+   result, validates the coherent unit, then commits and pushes through
+   `skills/git-ops/SKILL.md`. Release the phase lock in cleanup even if push
+   fails; preserve and report any local-only commit. Publication does not
+   relax the phase's mutation scope or authorize outside research retrieval.
 
 ## Invariants every phase honors
 
@@ -208,7 +214,9 @@ sections via `git diff` on the phase's commit.
   A phase starting while a fresh (<45 min) lock is held by another job skips
   itself and writes a result with `status: skipped` and
   `skipped: ["lock held by <job>"]` — the aggregator reports it. Remove the
-  lock after your commit lands; a crashed job's lock ages out on its own.
+  lock in cleanup after closeout, including publication failure; a crashed
+  job's phase lock ages out on its own. This phase lock coordinates content
+  jobs; Git writers must also honor git-ops ownership/exclusivity.
 
 ## The reports
 

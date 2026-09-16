@@ -160,7 +160,9 @@ skipped: []
 
 ## Hard constraints
 
-- **No git commands.** The aggregator handles commit.
+- **No git commands.** Return changed paths and evidence to the phase primary,
+  which owns Git closeout through `skills/git-ops/SKILL.md`; the later report
+  aggregator commits only reports/state, not worker edits.
 - **No edits to protected files:** `docs/rem-cycle/QUEUE.md`,
   `docs/rem-cycle/_state.yaml`, `people/_ledger.yaml`, `USER/<name>.md`, `SOUL.md`,
   `STYLE.md`, `RESEARCH.md`.

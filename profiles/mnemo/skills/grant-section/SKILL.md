@@ -11,6 +11,8 @@ triggers:
 
 # Grant section — draft one section in your human's voice
 
+> **Git closeout:** Follow `skills/git-ops/SKILL.md`. Close one verified section revision and its supporting citation changes. Do not claim the entire unfinished application is complete. When called by a larger grant operation, return changed paths and validation to that owner.
+
 The workhorse of the grant-writing cluster. It drafts or revises **one** section
 of a grant already opened by `grant-plan`, writing into that grant's `## Draft`.
 It is invoked many times across a multi-week application — once per section,

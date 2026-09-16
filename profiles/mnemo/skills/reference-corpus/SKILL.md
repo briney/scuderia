@@ -12,6 +12,8 @@ triggers:
 
 # reference-corpus — build a durable reference corpus
 
+> **Git closeout:** Follow `skills/git-ops/SKILL.md`. Close the reviewed corpus scaffold/pilot as its own unit; later population and enrichment owners close their verified batches. Do not commit raw binary sources or unrelated corpus changes.
+
 The brain has a third content layer beyond graph pages (`concepts/`, `papers/`,
 ...) and ephemeral `working-docs/`: **`references/`** — durable, structured,
 consulted-not-authored corpora that inform the research program but are NOT part

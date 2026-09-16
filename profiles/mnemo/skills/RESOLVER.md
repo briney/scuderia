@@ -96,6 +96,7 @@ Filling the knowledge graph, and keeping it healthy.
 |---|---|
 | Generic "ingest this" — auto-routes to a specialist below | `skills/ingest/SKILL.md` |
 | A scientific paper — peer-reviewed or preprint, any format | `skills/paper-ingest/SKILL.md` |
+| Satellite/ledgerless-vault ingest or erratum-driven result re-attribution — sidecar loaded *after* base `paper-ingest` when a brief names a non-main vault or an erratum reassigns results inside the paper | `skills/paper-ingest-vault-modes/SKILL.md` |
 | A grant — an application package, summary statement, or reviewer critiques | `skills/grant-ingest/SKILL.md` |
 | Drain the paper-ingest queue — fill in stub papers that grant-ingest (or other producers) flagged with `needs-ingest: true` | `skills/ingest-pending-papers/SKILL.md` |
 | A shared link, article, or idea | `skills/idea-ingest/SKILL.md` |
@@ -169,6 +170,7 @@ two audit skills.
 
 | Trigger | Skill |
 |---|---|
+| "Commit and push this work", "save my edits", "review uncommitted changes", or a completed persistent-writing operation | `skills/git-ops/SKILL.md` |
 | "Create a skill", "improve this skill" | `skills/skill-creator/SKILL.md` |
 | Present options, gate on a user decision | `skills/ask-user/SKILL.md` |
 | "Migrate from Obsidian / Notion / Logseq", import an existing vault | `skills/migrate/SKILL.md` |

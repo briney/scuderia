@@ -122,11 +122,10 @@ follows a specific assessment-then-continue pattern:
    interrupted sweep actually completed — subagent reports and git status
    are not sufficient.
 
-2. **Commit completed work first.** Interrupted sweeps leave enriched entries
-   uncommitted in the working tree. Commit them with a descriptive message
-   *before* starting new delegation — otherwise the auto-pusher may bury real
-   intent under a generic snapshot message, and new subagent writes may
-   interleave with old ones in the same diff.
+2. **Close verified units.** Inspect the actual entry changes, finish and
+   verify coherent units, and close them through `skills/git-ops/SKILL.md`.
+   The sweep parent owns commits/pushes; children return paths and evidence.
+   Unfinished or unrelated changes remain outside those commits.
 
 3. **Pre-check Thera-SAbDab hits for all pending entries.** Before writing
    delegation context, run a single batch `therasabdab_lookup.py` call with all

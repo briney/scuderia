@@ -114,20 +114,12 @@ the user is the source adapter; you are the distiller and page writer.
 A meeting is **not fully ingested** until its notable entities are enriched and
 linked. Stopping at the meeting page leaves a thin, disconnected page.
 
-## Committing batch work — race the auto-snapshot
+## Git closeout
 
-The brain repo has an `auto_push.sh` cron that runs every 5 minutes and
-commits any uncommitted files with a generic `auto: snapshot <timestamp>`
-message. When writing a batch of pages (e.g., 10+ meetings), this cron can
-fire mid-batch and commit some of your files before you do — burying your
-descriptive commit message for those files.
-
-**Mitigation:** After writing all files for a batch, `git add` and `git commit`
-immediately in a single terminal call. Do not interleave other work between
-the last `write_file` and the commit. If the auto-snapshot does catch some
-files, verify the committed content is correct (`git diff HEAD -- <file>`)
-and commit the remaining files with your descriptive message. The auto-snapshot
-does not corrupt content — it only steals the commit message.
+Follow `skills/git-ops/SKILL.md`. A standalone meeting ingest closes the
+interaction page and required entity/task updates after source/read-back
+verification. Inside a Granola sync or batch, return paths and checks to the
+parent; the parent owns coherent batch commits and publication.
 
 ## Page shape
 
@@ -173,5 +165,4 @@ Structured notes by topic.
 - Pasting the raw transcript instead of distilling the discussion.
 - Hand-writing backlinks on attendee pages — they are derived.
 - Leaving notable institutions un-enriched "for later".
-- Letting the auto-snapshot commit your batch files before you do — commit
-  immediately after the last write.
+- Letting nested workers commit incomplete batches rather than returning them to the parent.

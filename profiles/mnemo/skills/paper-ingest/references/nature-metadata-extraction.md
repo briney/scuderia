@@ -119,6 +119,21 @@ returns only the reference list, not even the abstract).
 Does NOT apply to: Nature (flagship), Nature Communications — these
 are either OA or render full body via browser (per the Branch 2 note).
 
+## Experimental & Molecular Medicine (confirmed 2026-09-01)
+
+Park, Im & Hwang, "Decoding T cell exhaustion in the tumour
+microenvironment," DOI 10.1038/s12276-026-01809-w (OA CC BY, published
+2026-08-31). EMM is Springer Nature-hosted (articles live at
+`nature.com/articles/s12276-*`). Direct curl returned ~647 KB HTML
+with the COMPLETE body — every section through Conclusion, the full
+reference list, and the author/affiliation block.
+`fetch_fulltext.py --doi --pmid --publisher-url` returned
+`publisher-jina` at 186,860 chars. OA EMM articles behave like Nature
+Communications: full body renders, no paywall extraction needed.
+Subscription-article behavior untested. Day-old-paper note: EPMC had
+no record at all (empty resultList) despite complete PubMed + Crossref
+records — see the EPMC-lag note in SKILL.md Phase 4 Branch 0.
+
 ## Nature Machine Intelligence (confirmed 2026-08-19)
 
 Chen et al. 2026, "VITAL," *Nature Machine Intelligence*, DOI
@@ -184,3 +199,53 @@ better than pure abstract-only:
   brain-adjacent papers and prior work by the same group
 - **Author ledger**: complete author list with affiliations and ORCIDs
 - **Limitations**: note the paywall and mark `needs-enrichment: true`
+
+## Nature flagship, hybrid OA (confirmed 2026-09-05)
+
+Park et al. 2026, "Functional role of skull lymphoid structures in CNS
+immunosurveillance," DOI 10.1038/s41586-026-10951-4 (PMID 42618784) —
+Nature flagship research Article, hybrid OA (CC-BY), published
+2026-08-19. EPMC gate: no PMCID, `inPMC: N, inEPMC: N, isOpenAccess:
+N, hasPDF: N`. Unpaywall: `is_oa: true, oa_status: hybrid, license:
+cc-by, host_type: publisher`. No PMC copy exists, but the publisher
+copy is open — direct curl of
+`https://www.nature.com/articles/s41586-026-10951-4` returned 570 KB
+HTML with the COMPLETE body (all themed sections, Methods, 12 Extended
+Data caption blocks, 59 references). Tag `fulltext_source:
+nature-browser` — the enum's Nature value; there is no separate
+curl-vs-browser tag.
+
+**The standard masquerade grep FAILS here.** Nature flagship articles
+carry thematic section headings, not Introduction/Results/Discussion
+— grep for those returns ~0 on a complete body. Verify instead by
+extracting the `<h2>` set (Abstract / Main / themed Results sections /
+Discussion / Methods / Data availability / References / Extended data
+figures and tables) and counting `<p>` paragraphs inside the body div
+(264 paragraphs, ~104k chars for this Article).
+
+**Extraction recipe (regex only, no bs4):**
+
+- Body div: `re.search(r'<div[^>]*class="[^"]*c-article-body[^"]*"[^>]*>(.*?)(?:<section data-title="References"|<h2[^>]*>References</h2>)', html, re.DOTALL)` — then split on `(<h2>...</h2>)` for sections and `(<h3>...</h3>)` for Methods subsections, pulling `<p>(.*?)</p>` per section.
+- References: `citation_reference` meta tags — the full list, one
+  semicolon-delimited string per ref with DOIs, directly parsable for
+  the Phase 7 bibliography walk. Two shapes appear:
+  `citation_journal_title=...; citation_title=...; citation_doi=...`
+  and free-text `Author, A. et al. Title. Journal https://doi.org/...
+  (year).`
+- Authors + affiliations: `citation_author` /
+  `citation_author_institution` parallel meta lists.
+- ORCIDs: `orcid\.org/([0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{4})` over the
+  whole HTML — caught all 7 ORCID-bearing authors.
+- Main figure captions: `<figcaption>` inside the body div (dense
+  statistical detail — n values, tests, exact P values). Extended
+  Data captions: `Extended Data Fig. N` `<h3>` blocks later in the
+  page.
+- Markup cleanup before distillation: `<sup>x</sup>` → `^x` and
+  `<sub>x</sub>` → `_x` (gives readable `CD4^+`, `T_FH`, `IL-21–VFP`),
+  then strip remaining tags and unescape entities.
+
+**Volume/pages quirk:** on a freshly published online-first Article,
+`citation_volume`/`citation_issue` are empty and
+`citation_firstpage: 1` / `citation_lastpage: 9` are article-internal
+— omit volume/pages from the page frontmatter rather than recording
+misleading values.

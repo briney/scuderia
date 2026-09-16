@@ -11,6 +11,8 @@ triggers:
 
 # User-model reflect — append candidate observations to the sidecar
 
+> **Git closeout:** Follow `skills/git-ops/SKILL.md`. Close only the verified observations-sidecar update; the human-owned user model remains untouched. When nested, return paths and checks to the parent.
+
 The user model is a directory of siblings (`USER/`):
 
 - **`USER/<name>.md`** — declared, human-authored, always loaded. The

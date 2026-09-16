@@ -37,7 +37,9 @@ checkout. The profile's `skills/RESOLVER.md` routes a request to a skill.
 
 - Never blind-overwrite a file: read current state first; if it was edited
   very recently, append or hold rather than clobbering.
-- Commit finished units of work promptly with descriptive messages.
+- Close verified work units through `skills/git-ops/SKILL.md`, under the
+  instance's declared commit/push authorization. Children return changes to
+  their parent; no timer commits or publishes unfinished work.
 - `USER/<name>.md` is human-owned: never write it. Candidate observations go
   to `USER/OBSERVATIONS.md` via the `user-model-reflect` skill, on manual
   invocation only.
