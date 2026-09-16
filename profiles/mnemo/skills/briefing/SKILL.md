@@ -7,6 +7,17 @@ triggers:
   - "what's happening today"
   - "deadline status"
   - the scheduled morning brief
+eval_contract:
+  goal: Compose a source-grounded daily attention brief without changing brain pages.
+  dimensions:
+  - RELEVANCE — user priorities and deadline proximity determine inclusion
+  - EVIDENCE — sources, freshness, and unavailable capabilities are explicit
+  - RESTRAINT — no padding, retired queue prompts, or invented focus items
+  - AUDITABILITY — the ignore-report explains exclusions
+  hard_fails:
+  - Fabricating a deadline, meeting, citation, or current source check.
+  - Editing brain pages in the briefing composer, outside a separately invoked specialist’s authorized scope.
+  - Asking for decisions on the retired review queue.
 ---
 
 # Briefing — the attention contract in action
@@ -70,8 +81,8 @@ and one more thing pinging your human.
 
 2. **Today's calendar and inbox.** Read today's events via `calendar-read`
    and scan recent mail via `gmail-read` (under Hermes both are bound through
-   spark-cli — the binding is documented in `docs/harnesses/hermes.md`, not
-   here). The calendar is the real schedule; the inbox surfaces meeting invites,
+   spark-cli — the binding is documented in the scuderia checkout’s
+   `docs/harnesses/hermes.md`, not here). The calendar is the real schedule; the inbox surfaces meeting invites,
    replies owed, and deadline-bearing messages. Route what you find into the
    sections below — an event into meetings, a hard date into deadlines, a reply
    owed into today's focus. When the capability is unavailable, say so plainly
@@ -125,10 +136,9 @@ and one more thing pinging your human.
    the last brief, filtered by `importance` and the relevance bar — not every
    touched file, only the ones that clear the bar.
 
-7a. **(Removed 2026-08-15.)** The brain review queue no longer exists — the
-    rem-cycle runs a binary commit gate and QUEUE.md is frozen. Nothing to
-    surface here; the dream report's One-thing is the rem-cycle's only
-    attention surface, and it arrives via its own delivery.
+The review queue is retired and `QUEUE.md` is frozen. Do not include a queue
+section or approval/rejection prompts. The rem-cycle dream report has its
+own attention surface and delivery.
 
 8. **Today's focus.** Two or three bullets — no more — naming the highest-stakes
    things your human should be thinking about or working on today. This is a
@@ -197,11 +207,6 @@ MONITORS                                      (omit the section entirely when no
 RECENT IN THE BRAIN
 - {kind/slug} — {what changed}
 
-BRAIN REVIEW QUEUE                            (omit the section entirely when empty)
-1. `{qid}` {category} · {target} · {the change} · conf {N} · {age}d
-2. `{qid}` {category} · {target} · {the change} · conf {N} · {age}d
-   reply "approve 1-2" / "reject 2" / "approve all"
-
 RESURFACED                                    (omit the section entirely when empty)
 - {item that fell through the cracks} — {why it matters, why it surfaces now}
 
@@ -223,8 +228,6 @@ presenting it as current.
   `daily-task-prep` owns.
 - Resurfacing a deliberately-postponed item, or running the resurface section
   every day — it is rare and reserved for high-impact neglect.
-- Ignoring the review queue — an invisible queue never drains; the brief is its
-  only regular surface.
 - Omitting the ignore-report — an unauditable filter cannot earn trust.
 - Composing from memory instead of reading the `meeting`, `people`, `grant`, and
   `task` pages, or the live calendar and inbox.
@@ -233,3 +236,9 @@ presenting it as current.
   (`BRIEFING.md`, the delivery artifact, aside).
 - Treating `BRIEFING.md` as a brain page, or filing the brief into a page
   directory — it is a delivery artifact, not knowledge.
+
+## Procedure-change verification
+
+Edits require the no-regression read-back in `skills/conventions/skill-hygiene.md`.
+For scheduled consumers, re-run a representative task and inspect its real
+output without live delivery; do not advance production cursors during a check.

@@ -81,7 +81,7 @@ silence what does not, escalate with stakes.
 | Trigger | Skill |
 |---|---|
 | Daily briefing, "what's happening today", deadline status | `skills/briefing/SKILL.md` |
-| Weekly synthesis digest — the PUSH: precipitated hypotheses + concept `## Shifts` + QUEUE triage, archived to `docs/rem-cycle/briefings/` ("weekly synthesis briefing", "what precipitated this week"); the weekly *intellectual* digest, distinct from the daily *attention* `briefing` | `skills/synthesis-briefing/SKILL.md` |
+| Weekly synthesis digest — the PUSH: precipitated hypotheses + concept `## Shifts`, archived to `docs/rem-cycle/briefings/` ("weekly synthesis briefing", "what precipitated this week"); the weekly *intellectual* digest, distinct from the daily *attention* `briefing` | `skills/synthesis-briefing/SKILL.md` |
 | Standing publication sweep — recent papers across the research program's interests | `skills/literature-sweep/SKILL.md` |
 | Standing change-detection watch — "monitor / watch for / notify me when X happens"; maintains `MONITORS.md` and sweeps structured open-API sources daily for a significant new hit | `skills/monitor-the-situation/SKILL.md` |
 | Morning prep, meeting context, planning the day | `skills/daily-task-prep/SKILL.md` |
@@ -97,7 +97,8 @@ Filling the knowledge graph, and keeping it healthy.
 | Generic "ingest this" — auto-routes to a specialist below | `skills/ingest/SKILL.md` |
 | A scientific paper — peer-reviewed or preprint, any format | `skills/paper-ingest/SKILL.md` |
 | Satellite/ledgerless-vault ingest or erratum-driven result re-attribution — sidecar loaded *after* base `paper-ingest` when a brief names a non-main vault or an erratum reassigns results inside the paper | `skills/paper-ingest-vault-modes/SKILL.md` |
-| A grant — an application package, summary statement, or reviewer critiques | `skills/grant-ingest/SKILL.md` |
+| A new grant/application package, or material requiring first creation of its grant page | `skills/grant-ingest/SKILL.md` |
+| Review/outcome material only for an existing grant (summary statement, critiques, score notice) | `skills/grant-review-synthesis/SKILL.md` |
 | Drain the paper-ingest queue — fill in stub papers that grant-ingest (or other producers) flagged with `needs-ingest: true` | `skills/ingest-pending-papers/SKILL.md` |
 | A shared link, article, or idea | `skills/idea-ingest/SKILL.md` |
 | A video, podcast, book, repo, or non-paper PDF | `skills/media-ingest/SKILL.md` |

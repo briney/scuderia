@@ -6,6 +6,15 @@ triggers:
   - "save this to the brain"
   - "process this"
   - a file appears in _drop/
+eval_contract:
+  goal: Route incoming material to the correct specialist without duplicating its extraction or closeout.
+  dimensions:
+  - ROUTING — subject and existing-page state determine the specialist
+  - SCOPE — packages stay intact and review-only deltas preserve application prose
+  - HANDOFF — source archival and validation remain with the owning specialist
+  hard_fails:
+  - Routing a scientific paper as generic media.
+  - Splitting an application package or creating a duplicate grant for a review-only update.
 ---
 
 # Ingest — the routing layer
@@ -45,7 +54,8 @@ needs `schedule-job` (the cron poll) and `raw-source-archive-upload`.
 | Input | Route to |
 |---|---|
 | A scientific paper — peer-reviewed or preprint, any format | `skills/paper-ingest/SKILL.md` |
-| A grant — an application package, a summary statement, reviewer critiques | `skills/grant-ingest/SKILL.md` |
+| A new grant/application package, or material requiring first creation of its grant page | `skills/grant-ingest/SKILL.md` |
+| Review/outcome material only (summary statement, critiques, score notice) for an existing grant page | `skills/grant-review-synthesis/SKILL.md` |
 | A link, article, or written-out idea | `skills/idea-ingest/SKILL.md` |
 | A video, podcast, book, code repo, or a non-paper PDF | `skills/media-ingest/SKILL.md` |
 | A meeting or talk transcript | `skills/meeting-ingestion/SKILL.md` |
@@ -64,7 +74,12 @@ paper link is a paper, not a generic article.
 
 A **grant routes to `grant-ingest` as a whole package** — Specific Aims,
 Research Strategy, budget, summary statement, and the rest are one grant, one
-page. Do not route the individual package documents separately.
+page. Do not route the individual package documents separately. For a review-only
+arrival, first locate the application in `grants/`; an existing page routes
+to `grant-review-synthesis`. If no matching page exists, use `grant-ingest`
+to establish it. Hold ambiguous application matches rather than creating a
+duplicate. Routing invokes a skill; it does not override `SOUL.md` limits on
+delegating source ingestion.
 
 ## What every ingest specialist shares
 
@@ -100,3 +115,9 @@ then run the rest in committed batches.
 - Leaving a notable person or institution un-enriched "for later".
 - Committing the binary original into git instead of archiving it to R2.
 - Bulk-ingesting a backlog without testing a few first.
+
+## Procedure-change verification
+
+Edits require the no-regression read-back in `skills/conventions/skill-hygiene.md`.
+For scheduled consumers, re-run a representative task and inspect its real
+output without live delivery; do not advance production cursors during a check.

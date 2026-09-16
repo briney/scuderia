@@ -6,6 +6,19 @@ triggers:
   - "the grant went in"
   - "finalize the submitted grant"
   - the post-submission housekeeping pass
+eval_contract:
+  goal: |
+    Close a confirmed submission by preserving the submitted prose, recording
+    lifecycle and source metadata, and completing required graph propagation.
+  dimensions:
+    - "PRESERVATION — submitted prose and captions are retained intact"
+    - "LIFECYCLE — status and dates reflect confirmed submission"
+    - "INTEGRATION — archival and required graph updates are verified"
+    - "ROUTING — later reviews and resubmissions reach their owning skills"
+  hard_fails:
+    - Marking a grant submitted without the human's confirmation.
+    - Re-extracting or overwriting submitted prose during a review-only update.
+    - Claiming archival or graph propagation without verification.
 ---
 
 # Grant finalize — close out a submitted grant
@@ -54,8 +67,9 @@ as-submitted package).
 
 1. **Confirm submission.** your human confirms the grant was submitted. Identify the
    `grant` page (`status: drafting`). This skill is the submission moment only:
-   anything that comes *back* — a summary statement, reviewer critiques — is
-   `grant-ingest`'s job, and a resubmission re-enters at `grant-plan`.
+   returning review/outcome material for this existing page goes to
+   `skills/grant-review-synthesis/SKILL.md`; a new application package goes
+   to `grant-ingest`, and planning a resubmission re-enters at `grant-plan`.
 
 2. **Promote the draft to corpus.** `## Draft` → `## Verbatim`. The submitted
    prose is your human's voice — no authorship marker, no segregation of

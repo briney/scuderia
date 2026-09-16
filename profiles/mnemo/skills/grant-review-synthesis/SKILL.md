@@ -5,6 +5,16 @@ triggers:
   - "ingest a summary statement"
   - "ingest reviewer critiques"
   - "grant review synthesis"
+eval_contract:
+  goal: Integrate review-only material into the existing grant while preserving application prose and distinguishing score from funding decision.
+  dimensions:
+  - IDENTITY — the correct existing application receives the delta
+  - PRESERVATION — application prose and source provenance remain intact
+  - OUTCOME — reported scores and decision state are not inferred
+  - PROPAGATION — required research/project updates and checks are completed
+  hard_fails:
+  - Rewriting application prose or creating a duplicate grant page.
+  - Inferring a percentile or funding outcome absent from the source.
 ---
 
 # Grant review synthesis
@@ -49,7 +59,3 @@ Use `grant-ingest` instead when the operation includes a new application package
 - Do not run paper-ingest for references mentioned only inside reviewer prose.
 - Do not delete a `_drop/` original until the archive round-trip is verified. For direct attachments outside `_drop/`, leave the attachment in place.
 - If `rclone hashsum` is unsupported by the object store, verify a small upload by streaming it back (`rclone cat ... | shasum -a 256`) and comparing against the local hash; record the verified hash in `sources:`.
-
-## References
-
-- `references/summary-statement-update-example.md` — worked example from a P01 summary-statement-only update, including status choice, propagation points, and R2 hash verification.

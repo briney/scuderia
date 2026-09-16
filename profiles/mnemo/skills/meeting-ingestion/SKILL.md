@@ -6,6 +6,16 @@ triggers:
   - "meeting transcript"
   - "meeting notes"
   - a meeting or talk transcript received
+eval_contract:
+  goal: Distill meeting sources into a verified interaction page with required entity links and warranted action items.
+  dimensions:
+  - SOURCE — summary-first distillation retains transcript checks and explicit source limits
+  - CONTENT — attendees, decisions, owners, and deadlines are source-grounded
+  - GRAPH — notable entities and warranted tasks are linked without duplicates
+  - PRESERVATION — available originals and supplied archive metadata are retained
+  hard_fails:
+  - Inventing a decision, attendee identity, deadline, or quote.
+  - Claiming complete ingestion without required enrichment or source verification.
 ---
 
 # Meeting ingestion — distill a meeting transcript
@@ -27,51 +37,36 @@ transcript document is in hand).
 
 ## Source hierarchy: summary-first
 
-When the meeting source is a Granola sync (or any source with an AI-generated
-summary), use the **summary as the primary source** for distillation. The
-transcript is for spot-checking specific details — not as the primary input.
+This skill owns source use for meeting distillation; source adapters supply
+labeled material rather than redefining the hierarchy.
 
-For long meetings (study sections, all-day workshops, transcripts >20K chars),
-the summary is the only practical source — the transcript is too large to
-process in a single context window. The raw transcript must still be archived
-to R2 (see `skills/conventions/raw-source-archive.md`) so it can be consulted later
-if the summary missed something.
+- **Summary available:** use it as the starting input for structured notes.
+  Check the transcript for exact quotations, ambiguous decisions, owners,
+  deadlines, or details the summary may have omitted. A summary is not
+  evidence that an exact phrase was spoken. If a check exposes disagreement,
+  use the relevant transcript passage and flag any remaining uncertainty.
+- **Long transcript:** retain summary-first reading; retrieve relevant
+  passages for verification rather than loading the entire transcript at
+  once. Length does not make the transcript unusable. Archive the available
+  raw transcript under `skills/conventions/raw-source-archive.md` even when
+  the summary supplies most of the distillation.
+- **No summary:** distill from the transcript, reading it in chunks if needed;
+  label the result transcript-only. Do not invent a summary or omit later
+  portions of the meeting because the first extraction was truncated.
+- **No transcript:** use the available notes, label their provenance, and
+  state that transcript verification was unavailable. If neither source has
+  substantive content, report the missing source rather than writing a page.
 
-If the transcript is available and short enough (<10K chars), read it to
-catch nuances the summary may have flattened — but the page is still a
-distillation, not a transcript paste.
+For Granola retrieval, batching limits, and archive transport, load
+`skills/granola-meeting-sync/SKILL.md` only when those adapter operations are
+needed. For a supplied source bundle, preserve its provided identity and
+archive metadata; do not repeat a verified upload. Resolve missing content
+through the adapter before distilling.
 
-**No summary available.** Granola occasionally returns an empty or "No
-summary" result from `get_meetings` even for meetings that do have a
-transcript. In this case, fall back to the raw transcript as the primary
-source: call `get_meeting_transcript` with the meeting ID to retrieve the
-full transcript, then distill directly from it. The same distillation
-rules apply — structured notes by topic, no raw transcript paste. Flag in
-the meeting page or to the user that no AI summary was available and the
-page was distilled from the transcript only.
-
-**Batch ingestion.** When ingesting multiple meetings in one session,
-fetch all summaries (`get_meetings`) and transcripts
-(`get_meeting_transcript`) in parallel up front — the Granola MCP calls are
-independent of each other. This avoids serial round-trips when the user
-provides several Granola IDs at once. Apply the notability gate to all
-attendees across all meetings before creating person pages, so a recurring
-attendee who appears in multiple meetings gets one page, not duplicates.
-
-**`get_meetings` 10-ID cap.** The `mcp__granola__get_meetings` tool accepts
-at most 10 meeting IDs per call. When ingesting more than 10 meetings, split
-into multiple calls (e.g., 10 + N) and issue them in parallel — they are
-independent.
-
-**Pre-processed metadata entry path.** Sometimes the user has already done
-the Granola sync and R2 archiving themselves, and hands you a batch of
-meetings with slugs, dates, archive metadata (hash, r2_key, filename),
-importance scores, links, and tags already determined. In this case, skip the
-source-adapter phase entirely (no `granola-meeting-sync` chaining, no R2
-upload) — go directly to fetching the Granola AI summary via
-`mcp__granola__get_meetings` for distillation content, then write the pages
-using the user-provided metadata for frontmatter. This is the fastest path:
-the user is the source adapter; you are the distiller and page writer.
+For a batch, resolve recurring attendees across the batch before creating
+person pages and apply the notability gate once per identity. Invoke the
+source-reading and distillation steps yourself unless the instance's
+`SOUL.md` explicitly permits delegation of that input.
 
 ## What this guarantees
 
@@ -83,7 +78,7 @@ the user is the source adapter; you are the distiller and page writer.
 
 ## Phases
 
-1. **Parse the transcript.** Extract the attendees and their roles, the date,
+1. **Read the sources using the hierarchy above.** Extract attendees and roles, the date,
    the topics discussed, the decisions made, and the action items with their
    owners and deadlines.
 
@@ -166,3 +161,9 @@ Structured notes by topic.
 - Hand-writing backlinks on attendee pages — they are derived.
 - Leaving notable institutions un-enriched "for later".
 - Letting nested workers commit incomplete batches rather than returning them to the parent.
+
+## Procedure-change verification
+
+Edits require the no-regression read-back in `skills/conventions/skill-hygiene.md`.
+For scheduled consumers, re-run a representative task and inspect its real
+output without live delivery; do not advance production cursors during a check.

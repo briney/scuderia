@@ -6,6 +6,16 @@ triggers:
   - "sync granola meetings"
   - "import meetings from granola"
   - cron-driven daily meeting sync
+eval_contract:
+  goal: Fetch and deduplicate Granola meetings, preserve source identity, and hand them to meeting-ingestion without redefining its source hierarchy.
+  dimensions:
+  - IDENTITY — granola_id dedup prevents duplicate interaction pages
+  - HANDOFF — available notes, transcript, and archive metadata reach the distiller
+  - STATE — only successfully completed scheduled syncs advance the watermark
+  - FAILURES — unavailable sources and failed ingests are reported
+  hard_fails:
+  - Fabricating a source, archive verification, or successful ingest.
+  - Advancing the watermark past an incomplete sync or on an on-demand pull.
 ---
 
 # Granola meeting sync — source adapter for Granola meetings
@@ -19,7 +29,7 @@ existing `interactions/` pages, and feeds each new meeting into
 
 This skill does **not** write meeting pages itself — that is `meeting-ingestion`'s
 job. This skill handles: what's new, what's already in the brain, and how to
-translate Granola's data into the transcript-shaped input that
+translate Granola's data into the source bundle that
 `meeting-ingestion` expects.
 
 > **Conventions:** `_brain-filing-rules.md` (file by subject),
@@ -120,7 +130,8 @@ Granola), but **required** on any meeting page created by this skill.
 
 ### 2. Verify the MCP connection
 
-Run the bridge script to check the account:
+Call native `mcp__granola__get_account_info` first. If native tools are
+unavailable or fail, use the bridge script:
 
 ```bash
 VENV=$HOME/.hermes/hermes-agent/venv/bin/python3
@@ -138,12 +149,21 @@ If it fails:
 
 ### 3. List recent meetings
 
+Use native `mcp__granola__list_meetings` with the phase-1 pull window; use a
+custom range when needed. Request the connected user’s meetings rather than
+all workspace-visible notes. The bridge fallback below is a last-week example,
+not a replacement for the actual window:
+
 ```bash
 $VENV $SCRIPT list_meetings --range last_week
 ```
 
-This returns JSON with a `meetings` array. Each meeting has: meeting ID, title,
-date, attendees. Parse the JSON from the terminal output.
+Inspect the returned format before parsing: native tools and the bridge may
+return text containing meeting records rather than a JSON `meetings` array.
+Extract IDs, titles, dates, and known participant metadata; reconcile the
+declared count with the records collected. Participant metadata alone does
+not prove attendance. For bridge results without an involvement filter,
+verify the user’s involvement before ingesting workspace-accessible notes.
 
 ### 4. Deduplicate
 
@@ -153,7 +173,10 @@ frontmatter. If a match is found, skip that meeting.
 
 ### 5. Fetch full content for new meetings
 
-For each new meeting, call the bridge script to fetch details and transcript:
+For new meetings, fetch details with native `mcp__granola__get_meetings`
+(in batches up to its current schema limit) and transcripts with
+`mcp__granola__get_meeting_transcript`. Independent requests may run in parallel.
+Use the bridge only as a fallback:
 
 ```bash
 # Get meeting details (AI-enhanced notes + private notes)
@@ -163,20 +186,13 @@ $VENV $SCRIPT get_meetings MEETING_ID
 $VENV $SCRIPT get_transcript MEETING_ID
 ```
 
-The `get_meetings` command returns the enhanced (AI-generated) notes and private
-notes. The `get_transcript` command returns the raw verbatim transcript — the
-richest source for distillation.
-
-**Source hierarchy:** Use the Granola AI summary as the **primary source** for
-distillation. The transcript is for spot-checking specific details the summary
-may have missed, not as the primary input. For long meetings (study sections,
-all-day workshops, transcripts >20K chars), the summary is the only practical
-source — the transcript is too large to process in a single context window.
-
-If `get_transcript` returns an error about paid plans, use the enhanced notes as
-the primary source. The enhanced notes are Granola's AI summary — useful, but
-treat as a secondary source when the transcript is available, since the
-transcript has the verbatim discussion.
+The details response supplies AI-enhanced notes and any private notes; the
+transcript response supplies verbatim discussion when available. Pass both
+with their source labels. `skills/meeting-ingestion/SKILL.md` owns the
+summary-first distillation and transcript-verification rules; this adapter
+does not define another hierarchy. If no summary exists, fetch the transcript
+for transcript-only distillation. If transcript access fails, report the
+limitation and pass the available notes without claiming transcript checks.
 
 ### 5a. Archive the transcript to R2
 
@@ -218,8 +234,9 @@ can include them in the meeting page's `sources:` frontmatter.
 
 For each new meeting, assemble the input for `meeting-ingestion`:
 - The meeting title, date, and attendees from Granola.
-- The enhanced notes (as context for distillation).
-- The raw transcript (as the primary source for distillation, when available).
+- The AI-enhanced summary and private notes, labeled separately.
+- The raw transcript when available, or its retrieval failure; source use is
+  governed by meeting-ingestion.
 - The `granola_id` to set in the meeting page frontmatter.
 - The `sources:` entry (hash, r2_key, filename, ingested, provenance) from the
   R2 archive step, so meeting-ingestion includes it in the meeting page's
@@ -227,16 +244,20 @@ For each new meeting, assemble the input for `meeting-ingestion`:
 
 Then chain into `skills/meeting-ingestion/SKILL.md` and let it handle the
 distillation, attendee enrichment, institution enrichment, and action-item
-promotion. **Do not** write the meeting page directly — delegate to
-`meeting-ingestion`.
+promotion. Invoke `meeting-ingestion` in the same agent; skill chaining is
+not permission to delegate fresh-source distillation to a child. Follow the
+instance’s `SOUL.md` delegation limits.
 
 When chaining, pass the `granola_id` and the `sources:` entry explicitly so
 `meeting-ingestion` includes them in the frontmatter of the page it writes.
 
 ### 7. Update sync state
 
-After a successful sync, write the current date to
-`~/.hermes/profiles/<instance>/.granola-sync-state.json`:
+Only after the scheduled pull window is fully processed and every new
+meeting is ingested and verified, write the current date to
+`~/.hermes/profiles/<instance>/.granola-sync-state.json`. On any retrieval or
+ingestion failure, retain the prior watermark; completed pages are deduped
+on retry. An on-demand pull never changes this state. Example shape:
 
 ```json
 {"last_sync": "2026-07-10"}
@@ -275,8 +296,14 @@ does not silently skip. The failure is visible in the cron job output.
 - Writing a meeting page directly instead of chaining into `meeting-ingestion`.
 - Ingesting a meeting twice because the `granola_id` dedup was skipped.
 - Proceeding without verifying the MCP connection (silent failures).
-- Using the enhanced notes as the primary source when the transcript is available.
+- Redefining source precedence instead of following meeting-ingestion.
 - Updating the sync watermark on an on-demand pull of an old date range.
 - Fabricating meeting data when the MCP connection is down.
 - Assuming native MCP tool calls won't work without trying them first. The
   bridge script is a fallback, not the default path.
+
+## Procedure-change verification
+
+Edits require the no-regression read-back in `skills/conventions/skill-hygiene.md`.
+For scheduled consumers, re-run a representative task and inspect its real
+output without live delivery; do not advance production cursors during a check.
