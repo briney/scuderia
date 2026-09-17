@@ -12,6 +12,15 @@ triggers:
   - "retroactive linking"
   - "re-link the brain"
   - "what should this page connect to"
+eval_contract:
+  goal: Re-link the selected frontier with justified forward edges and exact post-edit evidence.
+  dimensions:
+    - "PRECISION — existing targets and load-bearing citations justify each edge"
+    - "PRESERVATION — frozen text and non-owned content survive"
+    - "COMPLETION — accounting, evidence, cursor, and write ownership agree"
+  hard_fails:
+    - Unsupported edges, frozen-text edits, fabricated evidence, or hand-written backlinks.
+    - Scheduled extraction delegates writing pages or a result naming the destination as the edited page.
 ---
 
 # Retroactive linking — connect a page to the graph it now lives in
@@ -23,8 +32,8 @@ everything the brain now knows*. That re-reading is this skill — the heart of
 the `rem-cycle`, and the one phase no existing skill covers.
 
 > **Conventions:** `graph-and-links.md` (the two edge forms, forward-only,
-> derived backlinks), `rem-cycle-contract.md` (the phase result, the two commit
-> tiers, the evidence rule — when run as a rem-cycle phase), `quality.md`
+> derived backlinks), `rem-cycle-contract.md` (the phase result, binary commit
+> gate, evidence rule — when run as a rem-cycle phase), `quality.md`
 > (forward-only linking, the notability gate), `brain-ops` (never-blind-overwrite).
 
 ## Capabilities
@@ -47,6 +56,15 @@ rotates systematically over the whole corpus. `maintain` catches the obvious
 ones inline and **chains here** for the deep pass, the same way it chains into
 `frontmatter-guard` and `citation-fixer`.
 
+## Delegation ownership
+
+Scheduled phases use read-only extraction delegates returning
+`{page, change, anchor (pre-edit), target (destination)}`; the primary validates
+and writes serially under `skills/conventions/rem-cycle-contract.md`.
+Explicitly assigned page-writing campaigns instead use
+`skills/retroactive-linking-shard-worker/SKILL.md` and its separate result
+schema. Do not substitute that worker for a scheduled extraction delegate.
+
 ## What this guarantees
 
 - Every edge added is a **forward** edge on the page being read — never a
@@ -59,7 +77,7 @@ ones inline and **chains here** for the deep pass, the same way it chains into
   does not touch. A pre-edit excerpt that no longer appears in the page fails
   the aggregator's verbatim check (observed 2026-08-04: 4/4 committed spans
   failed this way).
-- The two commit tiers follow `rem-cycle-contract.md`: an evidence-backed
+- The binary gate follows `rem-cycle-contract.md`: an evidence-backed
   verbatim mention (canonical abbreviations count) → wikilink committed; a
   *typed* relationship edge commits when the citation is analytically
   load-bearing, never for a benchmark or incidental mention. An edge to a
@@ -109,9 +127,13 @@ What gets re-linked in one invocation:
 
 ## Output
 
-- **As a rem-cycle phase:** the fenced-yaml phase result
+- **As a rem-cycle phase:** the YAML phase result
   (`rem-cycle-contract.md`) — `committed[]` edges with post-edit evidence,
   `notable[]` observations, `metrics.edges_added`, and the advanced `cursor`.
+  Each committed entry's `target` is the **edited page**, not the destination
+  from an extraction entry. The primary verifies final evidence there,
+  validates the complete owned unit, and closes it through
+  `skills/git-ops/SKILL.md`; children never perform Git operations.
 - **Standalone:** the links committed, and a short count of what dropped.
 
 ## Anti-patterns
@@ -133,3 +155,7 @@ What gets re-linked in one invocation:
 - Editing a page without reading it in full, or overwriting a just-edited page.
 - Re-linking `USER/<name>.md` or other protected pages.
 - Inventing an alias to force a match — normalize real aliases, never fabricate.
+
+Authoring changes follow `skills/conventions/skill-hygiene.md`: re-run a
+representative scheduled task without live delivery, inspect its real output
+against this contract, and ship no regression.

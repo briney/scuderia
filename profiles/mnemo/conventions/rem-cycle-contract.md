@@ -63,7 +63,7 @@ touch importance, centrality, or backlinks, yet stay readable in Obsidian.
 
 ## The phase result
 
-Every phase ends by writing its phase result — one fenced-yaml block — to
+Every phase ends by writing its phase result as raw YAML to
 `docs/rem-cycle/runs/<YYYY-MM-DD>/<phase>.yaml`, then closes its owned changes
 and result through `skills/git-ops/SKILL.md` and releases the phase lock in
 cleanup. The primary commits/pushes; child workers do neither. A failed push
@@ -71,6 +71,9 @@ is a local-only commit, reported as a publication block, not a failed content
 edit to repeat. The aggregator reads these files; it never scrapes prose. A phase
 that dies before writing its file is recorded by the aggregator as `missing` —
 distinct from `skipped` — and named in the report's machinery note.
+
+The `.yaml` file contains no Markdown fences; fences in skill examples are
+documentation formatting, not file content. Preserve the result fields below.
 
 ```yaml
 phase: retroactive-linking          # the phase name
