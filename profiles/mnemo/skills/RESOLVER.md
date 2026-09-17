@@ -173,6 +173,7 @@ two audit skills.
 |---|---|
 | "Commit and push this work", "save my edits", "review uncommitted changes", or a completed persistent-writing operation | `skills/git-ops/SKILL.md` |
 | "Create a skill", "improve this skill" | `skills/skill-creator/SKILL.md` |
+| "Ask / tell <agent>", an @agent handoff, or exchange shared artifacts | `agora-exchange` (platform `core/skills/agora-exchange/SKILL.md`); load the `agent-message` binding in platform `docs/harnesses/<harness>.md` for transport. |
 | Present options, gate on a user decision | `skills/ask-user/SKILL.md` |
 | "Migrate from Obsidian / Notion / Logseq", import an existing vault | `skills/migrate/SKILL.md` |
 | "Run user-model-reflect", "reflect on what I've been working on", "update the observations sidecar" — append a dated block of candidate observations about how your human is working to `USER/OBSERVATIONS.md`. Manual invocation only; no schedule wired. | `skills/user-model-reflect/SKILL.md` |
