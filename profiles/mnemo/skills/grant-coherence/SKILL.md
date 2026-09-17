@@ -7,6 +7,20 @@ triggers:
   - "does this hang together"
   - "is the framing consistent"
   - the pre-submission coherence gate
+eval_contract:
+  goal: |
+    Hold the whole application in view and return a prioritized, routed
+    issue list — contradictions, compliance failures, unflagged claims —
+    without rewriting prose.
+  dimensions:
+    - "WHOLENESS — the application is reviewed as one document, not per-section isolation"
+    - "COMPLIANCE — page limits, required sections, and section requirements checked NOFO-first, mechanism files second"
+    - "CITE-OR-FLAG — every substantive claim confirmed cited or flagged"
+    - "ROUTING — every issue is tagged with its section and its fixing skill"
+  hard_fails:
+    - Rewriting prose instead of diagnosing and routing.
+    - Treating a generic format default as a compliance failure against the NOFO.
+    - Softening or omitting a real flaw to make the draft look closer to done.
 ---
 
 # Grant coherence — hold the whole application in view
@@ -22,9 +36,10 @@ the one that holds the *whole* application in view (`VISION.md` §2.2). It
 > §4 (the machine-writing tells), `SOUL.md` §2 (cite-or-flag — and §3, never
 > suppress a substantive flaw to preserve rapport), `skills/conventions/quality.md`
 > (citation discipline), `skills/conventions/capabilities.md` (the harness contract),
-> `skills/grant-formats/` (page limits, required sections, mechanism fit),
-> `skills/grant-formats/section-style.md` (argument-level criteria for
-> sections). Routes fixes to `skills/grant-section/SKILL.md` and
+> `skills/grant-formats/` (page limits, required sections, mechanism fit).
+> Phase 5 loads the section guides and
+> `skills/grant-formats/section-style.md` (argument criteria, Aims page).
+> Routes fixes to `skills/grant-section/SKILL.md` and
 > `skills/grant-citations/SKILL.md`.
 
 ## Capabilities
@@ -55,12 +70,19 @@ the diagnosis log).
    against the Significance claim, a number or result stated two ways, the
    central hypothesis framed differently in the Aims, the Abstract, and the
    Approach. The innovation framing should be one framing, not three drafts'
-   worth.
+   worth. Compare the actual claims: an illustrative list introduced by
+   “including” is not an exhaustive scope statement, so differing list lengths
+   alone do not establish a contradiction.
 
 3. **Compliance pass.** Per-section page budgets, required sections present,
-   section structure — against the NOFO first. Mechanism fit: an R21 that
-   reads as a scaled-down R01 is miscast (`grant-formats/nih-r21.md`); an R01
-   Approach should carry the feasibility evidence its review factor needs
+   section structure — against the NOFO first. The section guides in
+   `grant-formats/` carry each section's requirement; check against them, but
+   do not fail a section for deviating from a guide's *craft defaults* —
+   paragraph counts, aim counts, sentence ranges, and label conventions are
+   preferences, not NIH mandates, and the author's judgment on this
+   application overrides them. Mechanism fit: an R21 that reads as a
+   scaled-down R01 is miscast (`grant-formats/nih-r21.md`); an R01 Approach
+   should carry the feasibility evidence its review factor needs
    (`nih-r01.md`).
 
 4. **Cite-or-flag pass.** Every substantive claim is cited or carries a
@@ -72,9 +94,17 @@ the diagnosis log).
    argument is muddy, where significance is asserted instead of shown
    (`STYLE.md` §4) or carried by statistics instead of logic
    (`grant-formats/section-style.md`), where a reviewer will find a gap and
-   punish it. Consult the
+   punish it. Load the section guides for the sections present — each carries
+   what that section's reviewers are instructed to look for — plus
+   `section-style.md` when an Aims page is in scope. Consult the
    `[!critique]` annotations on prior `grant` pages — what study sections
-   punished your human's earlier applications for is direct evidence here.
+   criticized in earlier applications supplies context. Distinguish exact
+   reviewer text from the brain's paraphrase or synthesis; open the original
+   summary statement when verifying a quotation. Where the
+   instance's `AGENTS.md` declares a grant-writing calibration index, its
+   notes for the sections present carry that author's known reviewer
+   context; without one, judge against the generic guides without pretending
+   to know a particular author's track record.
 
 6. **Report and route.** A prioritized issue list, each item tagged with its
    section and routed: prose, contradiction, and framing → `grant-section`;
@@ -86,8 +116,14 @@ the diagnosis log).
 
 A prioritized, section-tagged issue list. Each item: what is wrong, which
 section(s), and which skill fixes it. No rewritten prose — diagnosis and
-routing only. When the list is empty, the application has cleared the
-pre-submission coherence gate.
+routing only. Clear the pre-submission gate only when the required checks are
+complete and no issues remain; unavailable bibliography, source evidence, or
+rendered layout is an explicit verification gap, not a pass. Route citation
+verification to `grant-citations` and format/source gaps to their owner.
+
+If the diagnosis is saved, the completed unit is the verified issue list and
+its evidence; close through `skills/git-ops/SKILL.md`. A nested reviewer returns
+paths and findings to its parent and never changes the grant's prose.
 
 ## Anti-patterns
 
@@ -96,6 +132,9 @@ pre-submission coherence gate.
 - Flagging missing preliminary data on an R21 — the mechanism does not require
   it (`grant-formats/nih-r21.md`). An unsupported *factual* claim is still a
   flag; a thin evidence base on an exploratory grant is not.
+- Failing a section for breaking a craft default — paragraph counts, aim
+  counts, sentence ranges, or label conventions in the section guides are
+  preferences; only the NIH/NOFO requirement is compliance.
 - Checking only mechanics — page limits and section structure — and skipping
   the reviewer read, which is where the application is actually won or lost.
 - Treating a `grant-formats/` file as authoritative when a NOFO is in hand —

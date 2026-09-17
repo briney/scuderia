@@ -23,7 +23,7 @@ the kind). The science sections that the cluster drafts, with their limits:
 | Section | Limit | Notes |
 |---|---|---|
 | Project Summary / Abstract | 30 lines of text | Standalone; readable by a non-specialist. |
-| Project Narrative | 3 sentences | Public-health relevance, plain language. |
+| Project Narrative | At most 3 sentences | Public-health relevance, plain language (G.220 §8). |
 | Specific Aims | 1 page | The anchor — draft and lock this first. |
 | Research Strategy | 12 pages | Significance, Innovation, Approach (below). |
 | Bibliography & References Cited | no limit | Every Research Strategy citation, formatted. |
@@ -36,16 +36,20 @@ prose.
 
 ## Research Strategy structure
 
-Twelve pages, organized under three headers:
+Twelve pages, organized under three headers (section guides:
+`significance.md`, `innovation.md`, `approach.md`):
 
 - **Significance** — the problem, the gap, why solving it matters. What the
-  field gains.
+  field gains. Includes the strengths and weaknesses of the rigor of the
+  key prior research supporting the project.
 - **Innovation** — what is new: concept, approach, methodology, or
   instrumentation. Innovation is not novelty for its own sake (`SOUL.md` §3).
 - **Approach** — the experimental plan, aim by aim. Each aim states its
   rationale, design, expected outcomes, potential pitfalls and alternatives,
-  and a rigor/feasibility argument. Preliminary data lives here, tied to the
-  aim it supports.
+  and a rigor/feasibility argument. Experimental-design rigor and relevant
+  biological variables live here. Preliminary data lives in the Research
+  Strategy — usually in the Approach, tied to the aim it supports, or
+  integrated into the main sections.
 
 ## Review framework (2025 simplified framework)
 
@@ -61,10 +65,13 @@ to land — Significance and Innovation legible, Approach rigorous and feasible.
 
 ## Preliminary data
 
-Expected. The R01 is for an established line of work, and reviewers read
-preliminary data as the feasibility evidence for the Approach. A claim of
-feasibility with no data behind it is a `grant-coherence` flag. (This is the
-sharpest contrast with the R21 — see `nih-r21.md`.)
+Preliminary studies, data, and relevant experience support the feasibility
+case. The application guide says preliminary data can be essential, with
+mechanism-specific exceptions; it does not prescribe a fixed section length
+or evidence quota. Flag unsupported feasibility claims, not merely a missing
+heading. R21 preliminary data are not required, but feasibility still matters
+(`nih-r21.md`). See G.400, Research Strategy / Preliminary Studies:
+<https://grants.nih.gov/grants/how-to-apply-application-guide/forms-i/general/g.400-phs-398-research-plan-form.htm>.
 
 ## Citations
 

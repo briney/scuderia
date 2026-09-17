@@ -7,6 +7,20 @@ triggers:
   - "revise the Approach"
   - "redo Innovation"
   - applying your human's edits or grant-coherence flags to a section
+eval_contract:
+  goal: |
+    Draft or revise one section of an opened grant inside its page budget,
+    in your human's voice, with every claim cited or flagged and the
+    section's structural requirements honored.
+  dimensions:
+    - "VOICE — prose matches the human's measured voice, not invented mannerisms"
+    - "COMPLIANCE — section meets the NIH/NOFO requirement and page budget for its section"
+    - "CITE-OR-FLAG — every substantive claim cited or [needs-citation]-flagged"
+    - "LOCALITY — only the owned Draft subsection and revision log change; gaps remain explicit"
+  hard_fails:
+    - Inventing a citation or silently dropping a claim that needs one.
+    - Writing past the section's page budget and leaving overflow for others.
+    - Altering Verbatim or unrelated sections, or concurrent whole-file rewrites by section workers.
 ---
 
 # Grant section — draft one section in your human's voice
@@ -26,10 +40,10 @@ the machine-writing tells.
 > `skills/conventions/brain-first.md` (pull from the brain before going external),
 > `skills/conventions/capabilities.md` (the harness contract),
 > `skills/grant-formats/` (the section's page budget).
-> `skills/grant-formats/section-style.md` carries the argument-level criteria
-> for the section being drafted. Chains to `skills/query/SKILL.md`,
-> `skills/literature-research/SKILL.md`, and `skills/academic-verify/SKILL.md`
-> for substrate and grounding.
+> The section's structure guide loads per section below. For a Specific Aims
+> page, also `skills/grant-formats/section-style.md` (argument-level criteria).
+> Chains to `skills/query/SKILL.md`, `skills/literature-research/SKILL.md`, and
+> `skills/academic-verify/SKILL.md` for substrate and grounding.
 
 ## Capabilities
 
@@ -62,17 +76,21 @@ loaded into the draft pass).
    where the section needs it, `skills/academic-verify/SKILL.md` for a claim
    that must be grounded to source.
 
-3. **Draft, or revise.** Load `STYLE.md` and
+3. **Draft, or revise.** Load `STYLE.md`, the section's guide from
+   `skills/grant-formats/` (`specific-aims.md`, `significance.md`,
+   `innovation.md`, `approach.md`, `project-summary.md`,
+   `project-narrative.md` — only the one in scope), and any instance
+   calibration the section guide names. For a resubmission Introduction, use
+   the NOFO/mechanism instructions and prior critiques; none of the six guides
+   substitutes for that response. For a Specific Aims page, also load
    `skills/grant-formats/section-style.md`. Write as your human — match sentence
    rhythm, paragraph shape, and claim calibration from the `## Verbatim`
    sections of ingested `grant` pages; where that voice model is thin, lean on
    the universal standards (`STYLE.md` §3–§4), not a guessed mannerism. Delete
-   the tells (§4). For a Specific Aims page, build the significance argument
-   and Aim architecture against `section-style.md`. Stay inside the page
-   budget. For a **revision**, the input is your human's edits or `grant-coherence`
-   flags — your human's edits are the highest-value voice signal there is
-   (`STYLE.md` §2): apply them and carry what they teach into the rest of the
-   draft.
+   the tells (§4). Stay inside the page budget. For a **revision**, the input
+   is your human's edits or `grant-coherence` flags — your human's edits are
+   the highest-value voice signal there is (`STYLE.md` §2): apply them and
+   carry what they teach into the rest of the draft.
 
 4. **Cite or flag, every claim.** Each substantive claim gets a verifiable
    citation or an explicit `[needs-citation]` flag (`SOUL.md` §2). A claim with
@@ -92,24 +110,19 @@ parallel — `grant-plan`'s section plan says which. After a batch of sections,
 chain to `grant-coherence`. A resubmission Introduction is drafted here like
 any other section, working from the prior grant's `[!critique]` annotations.
 
-## Specific Aims page — construction principles
+## Personal calibration and write ownership
 
-The six argument-level construction principles — significance carried by
-logic not statistics, the clinically validated precedent promoted to the
-Aims page, feasibility fallbacks kept out of the Aims page, no feeder
-language, statistics verified against primary sources, associative
-evidence qualified explicitly — are **Bryan's standing writing
-judgments**, not this skill's local notes. Read them from
-`USER/<name>.md` §6 (the declared spine), which is where they are
-maintained. They apply to papers and abstracts too, not only grants.
+Read the author's declared writing judgments in `USER/<name>.md` and the
+measured voice in `USER/VOICE.md` when available. Do not assume another
+instance has the same principles, section numbering, or corpus history.
+The optional calibration binding is declared in the instance's `AGENTS.md`;
+load its index and only the current section's note. Without a binding, use
+the generic guide and available author-owned prose without inventing a voice.
 
-This section formerly carried the full text of those six principles and
-their source details (Peters 2011: 52% RA vs 2.9% controls; Wood
-2013: 64% vs 56%; the reinfection paradox; the bezlotoxumab/suvatroxumab
-contrast; the pertussis-toxin pilot). They were promoted to
-`USER/<name>.md` §6 so they fire on every document-producing skill, not
-only this one. The intermediary-paraphrase verification technique that
-surfaced principle 5 lives in `academic-verify` Phase 3.
+Distinct sections of one grant page are **not** safe simultaneous whole-file
+rewrites. When sections are drafted in parallel, each worker returns its
+section text or writes to its own scratch file; a single owner integrates the
+`## Draft` updates serially.
 
 ## Output
 
@@ -133,3 +146,6 @@ gaps handed to `grant-coherence` and `grant-citations`.
   else to cut.
 - Promoting `## Draft` into `## Verbatim` — only submission does that.
 - Blind-overwriting the grant page instead of updating the one section.
+- Two workers rewriting different sections of the same grant page
+  concurrently — section text is returned or scratch-written; the parent
+  integrates serially.

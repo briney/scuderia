@@ -7,6 +7,20 @@ triggers:
   - "plan this grant"
   - "new application for"
   - a funding announcement dropped with intent to apply
+eval_contract:
+  goal: |
+    Open one well-scoped grant engagement as a single grant page whose
+    Aims survived an honest go/no-go filter, with a section plan the
+    drafting cluster can execute against the actual NOFO.
+  dimensions:
+    - "SCOPING — mechanism, projects served, and feasibility pressure-test confirmed with the human"
+    - "NOFO-FIRST — the actual announcement governs; format files are fallback only"
+    - "BRAIN-FIRST — existing grant pages and substrate found before creating; brain state inventoried"
+    - "GO/NO-GO — a weak idea is shelved cheaply rather than expanded into a half-application"
+  hard_fails:
+    - Creating a duplicate grant page over an existing stub or prior submission.
+    - Proceeding to section drafting after the Aims design failed the filter.
+    - Committing the NOFO binary into git instead of archiving it to R2.
 ---
 
 # Grant plan — open and scope a grant-writing engagement
@@ -74,20 +88,23 @@ domain priors inform the Aims pressure-test), `raw-source-archive-upload`
    what is missing.
 
 4. **Design the Specific Aims — the go/no-go filter.** With your human, frame the
-   central hypothesis and two or three aims: the arc, each aim's goal, how the
-   aims stay independent yet connected. This is the character running a
-   brainstorm, given structure. Pressure-test it honestly (`SOUL.md` — no
-   fabricated confidence, never suppress a flaw): do the aims actually
-   separate; is the innovation real or merely incremental; for an R01 is the
-   feasibility evidence in hand, and for an R21 is the idea genuinely
-   exploratory (`grant-formats/`). If the idea does not hold — the aims collapse
-   into one, there is no real innovation, an R01 rests on preliminary data that
-   does not exist — **say so plainly** and go to 5b.
+   overall scientific question or objective and a tractable set of aims:
+   each aim's goal and how the aims stay independent yet connected. Choose
+   aim count by scope and duration; resource aims need not invent a hypothesis.
+   Pressure-test the design (`SOUL.md`): do the aims actually separate; is the
+   innovation real or merely incremental; for an R01 is there credible
+   feasibility evidence, and for an R21 is the idea genuinely
+   exploratory (`grant-formats/`). If the idea does not hold — proposed aims
+   duplicate one another, the innovation is unsupported, or the R01 lacks a
+   credible feasibility case — **say so plainly** and go to 5b.
 
 5a. **Lay out the section plan.** Idea holds → build the outline from the NOFO
    (or the format file): every section, its page budget, the brain pages
    feeding it, and the gaps — needs-citation, needs-data — flagged for
-   `grant-section` and `grant-citations`. Order it Aims-first.
+   `grant-section` and `grant-citations`. Order it Aims-first. The per-section
+   requirements the plan budgets against live in the section guides
+   (`grant-formats/section-structure.md` indexes them; load the guide for a
+   section only when budgeting or checking that section).
 
 5b. **Shelve, cleanly.** Idea does not hold → set `status: shelved`, clear
    `deadline`, and log the reason and date in `## Drafting log`. Starting the

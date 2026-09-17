@@ -23,7 +23,7 @@ Same `grant` page kind as the R01. The cluster-drafted science sections:
 | Section | Limit | Notes |
 |---|---|---|
 | Project Summary / Abstract | 30 lines of text | Standalone; readable by a non-specialist. |
-| Project Narrative | 3 sentences | Public-health relevance, plain language. |
+| Project Narrative | At most 3 sentences | Public-health relevance, plain language (G.220 §8). |
 | Specific Aims | 1 page | The anchor — draft and lock this first. |
 | Research Strategy | **6 pages** | Half the R01 — the defining structural difference. |
 | Bibliography & References Cited | no limit | Every Research Strategy citation, formatted. |
@@ -46,9 +46,12 @@ shelving it is cheap (`status: shelved`).
 **Not required.** Preliminary data may be included if available and can
 strengthen feasibility, but their absence is not a weakness — the mechanism
 exists precisely for ideas that do not yet have them. `grant-coherence` does
-**not** flag a missing-preliminary-data gap on an R21 the way it does on an R01
-(`nih-r01.md`). It still flags an unsupported *factual* claim — cite-or-flag is
-spine and mechanism-independent (`SOUL.md` §2).
+**not** flag a missing-preliminary-data gap on an R21 the way it does on an
+R01 (`nih-r01.md`). It still flags an unsupported *factual* claim —
+cite-or-flag is spine and mechanism-independent (`SOUL.md` §2) — and the
+application guide still asks early-stage projects how feasibility will be
+established and high-risk aspects managed: no preliminary data does not mean
+no credible design or feasibility story.
 
 ## Citations
 
