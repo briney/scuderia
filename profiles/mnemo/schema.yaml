@@ -32,7 +32,8 @@ kinds:
     # Optional free-text original producer; retain legacy/custom labels.
     # The linter permits extra page fields; optional documents presence, not
     # a closed vocabulary/type check. Lifecycle: conventions/paper-stubs.md.
-    optional: [stub_source]
+    # Source-backed provenance remains free text; no closed enum or migration.
+    optional: [stub_source, fulltext_source]
   method:
     dir: methods
   concept:

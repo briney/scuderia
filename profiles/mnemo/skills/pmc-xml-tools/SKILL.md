@@ -1,6 +1,6 @@
 ---
 name: pmc-xml-tools
-description: "Fix PMC XML ParseErrors and extract body text."
+description: "Use when PMC XML parsing or content extraction needs repair."
 triggers:
   - "PMC XML ParseError"
   - "ElementTree not well-formed PMC"
@@ -11,229 +11,141 @@ triggers:
   - "PMC XML references"
   - "PMC XML no back tag"
   - "NIHMS body references delimiter"
+eval_contract:
+  goal: Extract source-faithful PMC content and diagnose omissions without changing originals.
+  dimensions:
+    - "FIDELITY — body, references, tables, and captions retain source attribution and limitations"
+    - "REPAIR — diagnosed changes are made to a derived copy and checked against the original"
+  hard_fails:
+    - Claiming the helper sanitizes XML or supports a nonexistent reference flag.
+    - Accepting incomplete or repaired content without source read-back.
 ---
 
-# PMC XML entity-fixing and body-text extraction
+# PMC XML repair and extraction
 
-Reference companion to the `paper-ingest`
-vault skill. Covers the **recurring PMC XML parse failure** and the reusable
-parser script that handles it.
+Load when PMC XML cannot be parsed, or when body extraction omits references,
+tables, or captions. PubMed identity-field parsing belongs to paper-ingest's
+`references/pubmed-pmc-retrieval.md`; do not parse a PubMed root as PMC body XML.
 
-## The problem
+## Existing parser contract
 
-PMC XML returned by `efetch.fcgi?db=pmc` **frequently** breaks
-`xml.etree.ElementTree.fromstring()` / `ET.parse()` with:
+The helper is owned by paper-ingest at
+`skills/paper-ingest/scripts/pmc_xml_body_parser.py`. Invoke it with an XML
+filename and `--full` or `--range START END`; default output is only the
+first 15,000 characters. There is no `--refs` mode and no sanitization.
+It calls `fetch_fulltext.pmc_xml_to_text`, which uses `ET.fromstring` and
+returns empty on ParseError or missing body. Its successful exit is not
+proof that full text was extracted. It emits sections, paragraphs, and some
+captions, not table cells or a complete reference list; floats outside body
+can be omitted. Keep executable helpers/tests at their existing owner.
 
-```
-xml.etree.ElementTree.ParseError: not well-formed (invalid token): line 1, column NNNN
-```
+Save the complete XML to a unique file and parse it there. Terminal/read-tool
+output can truncate even when the file is intact. Read through the actual
+source with bounded chunks; check warnings and extracted coverage before use.
 
-This is **publisher-dependent**, not universal. Root causes when it occurs:
+## Repair only a diagnosed parse failure
 
-1. **`<!DOCTYPE>` declaration** referencing an external DTD that ElementTree
-   cannot resolve.
-2. **Undefined HTML entities** (`&alpha;`, `&beta;`, `&deg;`, `&times;`, etc.)
-   that are not declared in any DTD ElementTree knows about.
-3. **Raw `&` in attribute values** (e.g. `vocab="credit"` → `&credit;`
-   looks like an entity reference to the parser).
+Try direct stdlib ElementTree parsing first. Keep the downloaded original
+unchanged and work on a clearly named derived copy. Inspect the reported
+line/column: malformed/undefined entities and literal ampersands have caused
+ParseErrors, but a DOCTYPE alone does not prove corruption, and a paywall or
+HTML response is not XML to repair into a paper.
 
-**Publishers observed to produce clean XML (no sanitization needed):**
-MDPI (e.g., Denysenko 2025, PMC12371982, 137KB — `ET.parse()` succeeded
-on first try).
+For a diagnosed entity failure, replace only known HTML named entities with
+their intended Unicode characters (for example `&alpha;`→α, `&mu;`→μ,
+`&le;`→≤, `&ge;`→≥, `&times;`→×, `&plusmn;`→±). Preserve XML entities
+(`&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`) and numeric references. Escape a
+confirmed bare ampersand as `&amp;`; do not silently reinterpret an unknown
+entity or destroy inequalities/units. If a declaration itself must be removed,
+inspect its complete boundary, including any internal subset; a regex ending
+at the first `>` is not a general DOCTYPE parser. Do not fetch an untrusted
+external DTD to make the parse succeed.
 
-**Publishers observed to require sanitization:** Frontiers, some Wiley/Elsevier
-deposits, ATS Journals/OUP (which also restrict full-text XML download entirely).
+Reparse the derived copy and compare affected passages with the original or
+rendered paper. Record the repair and any unresolved loss. An available lxml
+recovery parser is an alternative, but its error log and recovered content
+still need review; neither silently dropped nodes nor fabricated replacement
+text are acceptable. Check installed dependencies instead of assuming lxml
+is universally present or absent.
 
-The parser script tries `ET.parse()` first and only sanitizes on failure,
-so it works for both clean and entity-laden XML.
+## References and table cells from a parsed PMC tree
 
-## The fix — sanitize before parsing (only when direct parse fails)
-
-Three-step sanitization, applied in order:
-
-```python
-import re, xml.etree.ElementTree as ET
-
-with open(xml_path, 'r', encoding='utf-8', errors='replace') as f:
-    xml_text = f.read()
-
-# 1. Remove DOCTYPE
-xml_text = re.sub(r'<!DOCTYPE[^>]*>', '', xml_text)
-
-# 2. Replace common HTML entities with Unicode
-entity_map = {
-    '&alpha;': 'α', '&beta;': 'β', '&gamma;': 'γ', '&delta;': 'δ',
-    '&epsilon;': 'ε', '&mu;': 'μ', '&deg;': '°', '&times;': '×',
-    '&le;': '≤', '&ge;': '≥', '&plusmn;': '±', '&sim;': '∼',
-    '&rarr;': '→', '&ndash;': '–', '&mdash;': '—',
-    '&lsquo;': '\u2018', '&rsquo;': '\u2019',
-    '&ldquo;': '\u201c', '&rdquo;': '\u201d',
-    '&nbsp;': ' ',
-}
-for entity, char in entity_map.items():
-    xml_text = xml_text.replace(entity, char)
-
-# 3. Escape remaining bare & (not part of a valid XML entity)
-xml_text = re.sub(
-    r'&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)',
-    '&amp;', xml_text
-)
-
-# 4. Parse
-root = ET.fromstring(xml_text)
-```
-
-## The parser script
-
-`scripts/pmc_xml_body_parser.py` — handles sanitization + section/paragraph
-extraction + pagination + reference extraction in one invocation. Tries
-direct `ET.parse()` first, falls back to sanitization only on ParseError.
-
-```bash
-# Step 1: download (curl -o, no pipe — tirith-safe)
-curl -sL "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&id=<PMCID>&rettype=xml" -o /tmp/paper.xml
-
-# Step 2: parse body text (first 15K chars by default)
-python3 scripts/pmc_xml_body_parser.py /tmp/paper.xml
-
-# Paginate
-python3 scripts/pmc_xml_body_parser.py /tmp/paper.xml --range 15000 30000
-
-# Full output
-python3 scripts/pmc_xml_body_parser.py /tmp/paper.xml --full
-
-# References only (for Phase 7 bibliography walk)
-python3 scripts/pmc_xml_body_parser.py /tmp/paper.xml --refs
-```
-
-The `--refs` mode extracts the `<ref-list>` with authors, title, DOI,
-year, and journal — useful for Phase 7 bibliography walks without separate
-inline parsing.
-
-## Inline parsing fallback (when script not available)
-
-When `scripts/pmc_xml_body_parser.py` is not available, use this stdlib-only
-inline pattern. For PubMed XML (metadata), direct `ET.parse()` works without
-sanitization. For PMC XML (body text), try `ET.parse()` first, sanitize on
-failure.
+This stdlib example handles ordinary non-namespaced JATS; inspect the root
+and adapt paths if the document uses namespaces. It reads the PMC file anew,
+not a PubMed metadata tree. Keep structural reference/table IDs as locators.
 
 ```python
 import xml.etree.ElementTree as ET
+root = ET.parse(xml_path).getroot()
 
-# PubMed XML — metadata extraction (Phase 1)
-tree = ET.parse('/tmp/pubmed.xml')
-root = tree.getroot()
-art = root.find('.//PubmedArticle/MedlineCitation/Article')
+def text_of(element):
+    return ''.join(element.itertext()) if element is not None else ''
 
-# Title, journal, year, DOI, PMCID, PMID, pubtypes
-title = art.findtext('.//ArticleTitle')
-journal = art.findtext('.//Journal/Title')
-year = art.findtext('.//Journal/JournalIssue/PubDate/Year')
-for el in art.findall('.//ELocationID'):
-    if el.get('EIdType') == 'doi': doi = el.text
-for artid in root.findall('.//PubmedData/ArticleIdList/ArticleId'):
-    if artid.get('IdType') == 'pmc': pmcid = artid.text
-    if artid.get('IdType') == 'pubmed': pmid = artid.text
+references = []
+for ref in root.iter('ref'):
+    citation = ref.find('element-citation')
+    if citation is None:
+        citation = ref.find('mixed-citation')
+    references.append({
+        'id': ref.get('id'),
+        'text': text_of(citation if citation is not None else ref),
+        'ids': [(x.get('pub-id-type'), text_of(x)) for x in ref.iter('pub-id')],
+    })
 
-# Authors with ORCIDs and affiliations
-for au in art.findall('.//AuthorList/Author'):
-    ln = au.findtext('LastName','')
-    fn = au.findtext('ForeName','')
-    orcid = ''
-    for id in au.findall('.//Identifier'):
-        if id.get('Source') == 'ORCID': orcid = id.text
-    aff = au.findtext('.//AffiliationInfo/Affiliation','')
-
-# Full abstract (all labeled sections)
-for ab in art.findall('.//Abstract/AbstractText'):
-    label = ab.get('Label','')
-    text = ''.join(ab.itertext())
-
-# PMC XML — body text extraction (Phase 4)
-body = root.find('.//body')
-def extract_text(elem):
-    texts = []
-    tag = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
-    if tag == 'sec':
-        title = elem.find('.//title')
-        if title is not None and title.text:
-            texts.append(f"\n## {title.text.strip()}\n")
-    elif tag == 'p':
-        text = ''.join(elem.itertext()).strip()
-        if text: texts.append(text + "\n")
-    for child in elem:
-        texts.extend(extract_text(child))
-    return texts
-
-# PMC XML — reference extraction (Phase 7)
-ref_list = root.find('.//ref-list')
-for i, ref in enumerate(ref_list.findall('.//ref'), 1):
-    citation = ref.find('.//element-citation') or ref.find('.//mixed-citation')
-    if citation is not None:
-        doi = None
-        for el in citation.findall('.//pub-id'):
-            if el.get('pub-id-type') == 'doi': doi = el.text
-        title = citation.findtext('.//article-title') or citation.findtext('.//source')
-        authors = [f"{au.findtext('given','')} {au.findtext('surname','')}" for au in citation.findall('.//name')]
-        year = citation.findtext('.//year','')
-        source = citation.findtext('.//source','')
+tables = []
+for table in root.iter('table-wrap'):
+    rows = []
+    for row in table.iter('tr'):
+        rows.append([text_of(cell) for cell in row if cell.tag in ('td', 'th')])
+    tables.append({'id': table.get('id'), 'caption': text_of(table.find('caption')), 'rows': rows})
 ```
 
-## Pitfall: terminal stdout truncation vs file size
+Do not infer DOI/PMID validity from extracted citation strings. Validate them
+through paper-ingest. Table text alone does not resolve rowspan/colspan,
+footnotes, superscripts, or image-only tables; inspect original layout for
+any result that depends on those relationships. Preserve lexical values and
+explicitly report content the extraction cannot represent.
 
-The Hermes `terminal` tool truncates stdout at 50KB. PMC XML files range
-from 50KB to 230KB+. When using `execute_code`'s `terminal()`, the returned
-`output` is truncated — but `curl -o file` writes the full content to disk.
-**Always** use `curl -o /tmp/file.xml` and read/parse the file, never rely on
-terminal stdout for the XML itself.
+## Body, references, and floats
 
-## Pitfall: NIHMS deposits with no `<back>` wrapper — body/references delimiter
+Prefer structural traversal of `<body>` and its sections, excluding reference
+nodes while extracting references separately. Some NIHMS deposits omit `<back>`
+or `<ref-list>`; `root.iter('ref')` still finds their individual references.
+Never slice to a missing delimiter's `-1` offset and call the result body.
+If a text-slice fallback is unavoidable, inspect `<body>`, closing body,
+reference, and floats boundaries, confirm their presence/order, and keep
+separate outputs. Do not assume every `<ref>` is preceded by a `<back>`.
 
-Some PMC XML deposits (particularly NIHMS manuscripts) have **no `<back>`
-element** and **no `<ref-list>` wrapper** around the references. The
-references (`<ref id="R1">`, `<ref id="R2">`, ...) sit directly in the
-body region or immediately after the body sections with no structural
-delimiter. A body-extraction strategy that slices `xml[body_start:back_start]`
-will grab the entire rest of the document (references + floats-group)
-when `back_start` returns -1.
+Inspect `<fig>`, caption, and `<floats-group>` content independently; a complete
+body parse can omit figures whose source elements are elsewhere. Source title,
+version, body coverage, and quantitative claims still require the main skill's
+acceptance checks.
 
-**The fix:** When `xml.find('<back>')` returns -1, fall back to finding
-the **first `<ref id=` element** after `<body>` — that is the reliable
-delimiter between body content and references:
+## Cell Press/resource-table quirks
 
-```python
-body_start = xml.find('<body>')
-ref_start = xml.find('<ref id=', body_start)
-if ref_start < 0:
-    ref_start = xml.find('<floats-group', body_start)  # figures come after refs
-body = xml[body_start + len('<body>'):ref_start]
-```
+In a 2026-09-04 extraction, flattened caption text ran into surrounding text
+as `Figure 1High-affinity...`. A marker such as `Figure\s(\d+)(?=[A-Z])`
+can locate candidates but also matches citations such as `Figure 1A`; verify
+the XML/context before classifying it as a legend. Wrapping a long paragraph
+for reading can reveal text hidden by line-display truncation; it cannot
+recover text absent from the source or parser output.
 
-Also check for `<floats-group>` as a secondary delimiter — figure
-captions in the floats-group can contain `<p>` and `<title>` tags that
-would pollute the body extraction if included.
+Legacy four-character PDB accessions can join the next word (`PDB: 8F9ECrystal...`).
+For that observed form, `PDB:\s*([0-9][A-Za-z0-9]{3})` prevents swallowing
+following letters; verify the extracted accession at its source. Do not use
+this as a universal identifier parser for other formats. Deposited-name typos
+shared by PubMed and publisher XML still need source-aware author resolution;
+keep the citable spelling and flag the ambiguity rather than silently guessing.
 
-**Observed instance (2026-08-05, Frasca 2020, PMCID PMC7371527):** The
-NIHMS deposit had `<body>` but no `<back>` or `<ref-list>`. References
-(174 entries) sat directly after the body sections. The initial
-`xml[body_start:back_start]` slice (with `back_start = -1`) grabbed
-49,906 chars including all references, polluting the body extraction
-with citation text. Fix: slice to `xml.find('<ref id=', body_start)` —
-body content was 13,018 chars, cleanly separated from references.
+## Scoped prior observations
 
-## When to use `lxml` instead
+| Date | Source | Observation |
+|---|---|---|
+| 2026-07-17 | PMC6935424 | Entity replacement was needed in the retrieved XML. |
+| 2026-07-25 | PMC9278498 | Entity replacement was needed. |
+| 2026-07-27 | PMC12057666 | ParseError required a manually repaired copy. |
+| 2026-07-30 | PMC12371982 | Direct parsing succeeded; no repair needed. |
+| 2026-08-05 | PMC7371527 | NIHMS references lacked the expected back/ref-list wrapper; delimiter-based extraction included reference text. |
 
-If `lxml` is available, `lxml.etree.XMLParser(recover=True)` handles
-malformed XML without manual entity-fixing. But `lxml` is **not installed**
-in the default Hermes Python environment. Prefer the stdlib sanitization
-approach unless lxml is confirmed available.
-
-## Session evidence
-
-| Date | Paper | PMCID | XML size | ParseError? | Fix |
-|------|-------|-------|----------|-------------|-----|
-| 2026-07-17 | Tan 2018 | PMC6935424 | ~100KB | Yes | Entity replacement |
-| 2026-07-25 | Leem 2022 | PMC9278498 | 128KB | Yes | Entity replacement |
-| 2026-07-27 | Molinos-Albert 2025 | PMC12057666 | 229KB | Yes (line 1, col 4363) | Full 3-step sanitization |
-| 2026-07-30 | Denysenko 2025 | PMC12371982 | 137KB | **No** (MDPI = clean XML) | Direct `ET.parse()` worked |
-| 2026-08-05 | Frasca 2020 | PMC7371527 | 50KB | **No** (Wiley NIHMS = clean XML) | No `<back>` — slice to `<ref id=` |
+These observations distinguish repair conditions; they do not classify every
+article from the corresponding publisher as malformed or inaccessible.

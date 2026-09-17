@@ -201,7 +201,7 @@ structures when a paper cites several PDB entries.
 
 ## See also
 
-- `references/brief-vs-fulltext-verification.md` — case studies of task
-  briefs whose framing (venue, terminology, "key findings") diverged
-  from the paper's actual full text, and the verification moves that
-  caught them.
+- `paper-ingest/references/brief-vs-fulltext-verification.md` (in the
+  base skill's references) — case studies of task briefs whose framing
+  (venue, terminology, "key findings") diverged from the paper's actual
+  full text, and the verification moves that caught them.

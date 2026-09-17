@@ -1,251 +1,69 @@
-# Nature subscription research journals — paywalled metadata extraction
+# Nature article access and metadata
 
-Session note (2026-08-17, Su et al. 2025, ProTrek, Nature Biotechnology,
-PMID 41039041, DOI 10.1038/s41587-025-02836-0):
+Load for nature.com body/metadata extraction or an ambiguous preview. Outcomes
+are article- and session-specific. Records from August–September 2026 include
+complete OA bodies, subscription previews, and institutional-browser access;
+none establishes a universal rule for a Nature journal or the flagship.
 
-## The problem
+## Establish the actual access state
 
-The paper-ingest Branch 2 note says "Nature research-article pages render
-reliably" via browser — `nature.com/articles/<doi-suffix>` yields the
-complete body. This is true for **open-access** Nature research articles
-(Nature, Nature Communications, etc.). It is **NOT true for subscription
-Nature research journals** like Nature Biotechnology, Nature Medicine
-(subscription articles), Nature Methods, Nature Structural & Molecular
-Biology, etc.
+1. Resolve the article URL from verified metadata/DOI redirect. Modern paths
+   often use the DOI suffix; older articles can use another local identifier.
+2. Retrieve direct HTML or navigate with the authorized browser. Compare its
+   title/DOI to the resolved identity. A “full access” banner is a lead, not
+   proof that the extracted body includes every section.
+3. Inspect `div.c-article-body` and the actual h2/h3 section structure. Nature
+   articles can use thematic headings rather than Introduction/Results.
+   Read body paragraphs through the article's end, check methods, captions,
+   tables and supplements, and distinguish body from reference/chrome blocks.
+   There is no minimum paragraph count that proves full text.
+4. If HTTP gives a preview but the existing institutional session supplies
+   body, extract from that live DOM rather than the saved preview. A blocked
+   browser route goes through publisher-blocks and the shared browser owner;
+   it does not authorize bypassing login or entitlement.
 
-For ProTrek (Nature Biotechnology, subscription, no PMCID, not OA), both
-jina reader and direct browser navigation returned only the abstract +
-"subscription content" paywall notice. The body text was unreachable.
+For a genuinely partial source, use only the abstract and other actually
+visible components, name their limits, and retain enrichment under the main
+closure contract. An extended-data caption can support its own stated result;
+it cannot license reconstruction of unseen Methods or Findings.
 
-## The technique: `citation_*` meta tags
+## Metadata and attribution
 
-Direct `curl -sL "https://www.nature.com/articles/<doi-suffix>"` succeeds
-(no Cloudflare block) and returns ~400 KB of HTML. The body is paywalled,
-but the `<head>` section contains a rich set of `citation_*` meta tags
-that provide structured metadata sufficient for a meaningful partial
-distillation:
+Read repeated `citation_*` metadata where present:
 
-| Meta tag | Content |
+| Fields | Use / caveat |
 |---|---|
-| `citation_title` | Full article title |
-| `citation_doi` | DOI |
-| `citation_author` | Each author name (one tag per author) |
-| `citation_author_institution` | Each author's affiliation (paired with author) |
-| `citation_journal_title` | Journal name |
-| `citation_volume`, `citation_issue` | Volume/issue |
-| `citation_firstpage`, `citation_lastpage` | Page range |
-| `citation_publication_date` | Print date (YYYY/MM) |
-| `citation_online_date` | Online date (YYYY/MM/DD) |
-| `citation_article_type` | Article type (e.g., "Brief Communication") |
-| `citation_reference` | Full reference list — each reference as a semicolon-delimited citation string |
-| `citation_pdf_url` | PDF URL (subscription-gated) |
-| `citation_issn` | ISSN |
+| `citation_title`, `citation_doi`, `citation_journal_title`, `citation_article_type` | Cross-check identity and article type with structured records. |
+| `citation_author`, `citation_author_institution` | Full byline and affiliation leads; do not blindly zip unequal or multi-affiliation lists. Verify associations in the author block/structured metadata. |
+| `citation_publication_date`, `citation_online_date`, volume/issue/firstpage/lastpage | Distinguish online and issue dates. Online-first values such as pages 1–9 may be internal PDF pagination; omit unverified bibliographic volume/pages. |
+| `citation_reference` | Reference strings may be semicolon-separated fields or free-text citations with DOI links. Preserve the literal citation; validate identifiers before dispatch. |
+| `citation_pdf_url`, source attachment links | Leads for separate original-PDF/supplement attempts, not proof of download. |
 
-Additionally, the HTML body contains:
-- **Figure captions** — `<figcaption>` elements with full caption text
-  (3 main + 6 extended-data captions extracted for ProTrek)
-- **Extended Data figure captions** — the full text of ED Fig captions
-  (often substantial: 300–1200 chars each, containing methodological detail)
-- **Data availability** section — full text (precomputed embedding URLs,
-  GitHub links, database sources)
-- **Code availability** section — full text (license, repository URLs,
-  Colab links)
-- **Author ORCIDs** — embedded in the author block with `orcid.org/<id>` links
+ORCIDs may be author-block links or structured fields. Associate each with the
+correct author; an unassigned ORCID list is not a wiring table. Check identifier
+shape including a possible X checksum and retain null when not verified.
 
-## Extraction recipe
+## Body, figures, and tables
 
-```bash
-curl -sL "https://www.nature.com/articles/<doi-suffix>" -o /tmp/nature_page.html
-```
+Extract headings, paragraphs, and lists in source order, saving full output
+before chunked reading. Preserve superscripts/subscripts, units, inequalities,
+and table coordinates; distinguish exponents from citation footnotes. Regex
+tag-stripping can concatenate values or truncate nested markup, so check
+quantitative claims against the rendered source/PDF.
 
-Then parse with Python:
+Inspect main `<figcaption>` elements and Extended Data figure sections; their
+placement differs between article templates. Inspect actual `<table>` cells
+or follow the observed “Full size table” links, often `/tables/<n>`. Some
+reviews expose full cells only there. Neither zero inline tables nor the
+presence of a table caption establishes that the table is absent or extracted.
 
-```python
-import re
+Data/code availability, funding, author information, and references may remain
+visible on paywall previews. They support those metadata claims, not a full
+body claim. A large reader response containing these sections is still partial
+when the scientific body is missing.
 
-with open('/tmp/nature_page.html') as f:
-    html = f.read()
-
-# Authors + affiliations (parallel lists)
-authors = re.findall(r'<meta name="citation_author" content="([^"]+)"', html)
-affs = re.findall(r'<meta name="citation_author_institution" content="([^"]+)"', html)
-
-# ORCIDs — in the HTML body, not meta tags
-orcid_matches = re.findall(r'orcid\.org/([0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{4})', html)
-
-# References — each in a citation_reference meta tag
-refs = re.findall(r'<meta name="citation_reference" content="([^"]+)"', html)
-
-# Figure captions
-fig_caps = re.findall(r'<figcaption[^>]*>(.*?)</figcaption>', html, re.DOTALL)
-for cap in fig_caps:
-    text = re.sub(r'<[^>]+>', ' ', cap)
-    text = re.sub(r'\s+', ' ', text).strip()
-
-# Data/Code availability — in content div/section elements
-sections = re.findall(r'<(?:div|section)[^>]*(?:data-test|class)="[^"]*(?:article|content|body|main)[^"]*"[^>]*>(.*?)</(?:div|section)>', html, re.DOTALL)
-for sec in sections:
-    text = re.sub(r'<[^>]+>', ' ', sec)
-    text = re.sub(r'\s+', ' ', text).strip()
-    if 'Data availability' in text or 'Code availability' in text:
-        # Extract the data/code availability text
-        pass
-```
-
-## When to use this
-
-When a Nature research-journal paper is:
-- Not open access (`isOpenAccess: N`)
-- Not in PMC (`inPMC: N`, no PMCID)
-- Jina reader returns only abstract + paywall notice
-- No bioRxiv preprint exists
-
-Set `needs-enrichment: true`, `fulltext_source: abstract-only`, and distill
-from: abstract + figure/ED captions + data/code availability + reference
-list + author affiliations/ORCIDs. This produces a page that is richer
-than abstract-only but still partial — the Findings section will need
-`[needs-citation]` markers for claims that require the full body text.
-
-## Which journals this applies to
-
-Confirmed: Nature Biotechnology (subscription), Nature Medicine
-(subscription), Nature Machine Intelligence (subscription).
-Likely applies to: Nature Methods, Nature Structural & Molecular Biology,
-Nature Chemical Biology, Nature Neuroscience, and other subscription
-Nature research journals (as distinct from Nature Reviews, which are
-already in the known-blocks table with a different failure mode — jina
-returns only the reference list, not even the abstract).
-
-Does NOT apply to: Nature (flagship), Nature Communications — these
-are either OA or render full body via browser (per the Branch 2 note).
-
-## Experimental & Molecular Medicine (confirmed 2026-09-01)
-
-Park, Im & Hwang, "Decoding T cell exhaustion in the tumour
-microenvironment," DOI 10.1038/s12276-026-01809-w (OA CC BY, published
-2026-08-31). EMM is Springer Nature-hosted (articles live at
-`nature.com/articles/s12276-*`). Direct curl returned ~647 KB HTML
-with the COMPLETE body — every section through Conclusion, the full
-reference list, and the author/affiliation block.
-`fetch_fulltext.py --doi --pmid --publisher-url` returned
-`publisher-jina` at 186,860 chars. OA EMM articles behave like Nature
-Communications: full body renders, no paywall extraction needed.
-Subscription-article behavior untested. Day-old-paper note: EPMC had
-no record at all (empty resultList) despite complete PubMed + Crossref
-records — see the EPMC-lag note in SKILL.md Phase 4 Branch 0.
-
-## Nature Machine Intelligence (confirmed 2026-08-19)
-
-Chen et al. 2026, "VITAL," *Nature Machine Intelligence*, DOI
-10.1038/s42256-026-01291-z — published same day (not yet in PubMed,
-EPMC, or Semantic Scholar). Direct curl on `nature.com/articles/
-s42256-026-01291-z` returned full HTML. The `<head>` carried
-`citation_*`, `dc.*`, and `prism.*` meta tags (title, DOI, authors,
-journal, publication date, first/last page, PDF URL). The embedded
-`dataLayer` JSON-LD carried the full author list, publication date
-(unix timestamp + string), journal metadata, and article type.
-
-**Jina reader returns more than abstract + paywall for Nature
-subscription research articles.** The existing note above says jina
-returns "abstract + subscription content paywall notice" — but for
-this Nature Machine Intelligence article, jina returned 67 KB including:
-the full abstract, the complete reference list (45 refs with DOIs and
-Google Scholar links), author affiliations with Chinese names, data
-availability (GitHub URL), code availability (GitHub + Zenodo DOI + web
-server URL), funding, contributions, competing interests, peer review
-information (named reviewer), Extended Data figure captions, and
-supplementary information links. This is substantially more than
-abstract-only and enabled a complete bibliography walk (45 references
-parsed with DOIs), author ledger entries (6 authors with affiliations),
-and a meaningful `needs-enrichment` distillation — without needing the
-`citation_*` meta tag extraction at all. **Try jina reader first; the
-meta-tag extraction is the fallback when jina's yield is insufficient.**
-The jina yield may vary by article — the ProTrek (Nature Biotech)
-session found jina returned only abstract + paywall, while this NMI
-article returned the full metadata sections. The difference may be
-journal-specific or article-specific; always check the jina output
-size and content before deciding whether the meta-tag extraction is
-needed.
-
-## Nature Medicine (confirmed 2026-08-18)
-
-PMID 32661391, Suriben et al. 2020, "Antibody-mediated inhibition of
-GDF15-GFRAL activity reverses cancer cachexia in mice" — Nature Medicine
-subscription article, no PMCID, EPMC gate all-N. Direct curl on
-`nature.com/articles/s41591-020-0945-x` returned 384 KB HTML. The `<head>`
-carried 105 `citation_*` meta tags (28 `citation_author`, full
-`citation_reference` list of 32 refs, journal/volume/issue/pages/dates).
-The HTML body contained the abstract, 4 figure captions, and the Data
-Availability section (PDB 6WMW, GEO GSE149263) — but no Methods/Results/
-Discussion body text (paywalled). Wayback CDX found one 200-status
-snapshot (2020-07-17, 51 KB) that was also a paywall preview (same
-abstract + figure captions + references, no body). The jina reader proxy
-returned the reference-list masquerade (30 KB, all references, no body).
-Distillation from abstract + figure captions + data availability +
-reference list + author/affiliation/ORCID metadata produced a richer
-page than pure abstract-only. The SKILL.md publisher table for Nature
-Medicine now cross-references this extraction recipe.
-
-## Distillation quality
-
-The extracted metadata enables a distillation that is substantially
-better than pure abstract-only:
-- **Findings**: figure/ED captions often contain specific quantitative
-  results and methodological detail — reconstruct findings from these,
-  marking claims that require body text with `[needs-citation]`
-- **Approach**: data/code availability sections reveal model architecture,
-  training data, evaluation datasets, and software stack
-- **Connections**: the full reference list enables identification of
-  brain-adjacent papers and prior work by the same group
-- **Author ledger**: complete author list with affiliations and ORCIDs
-- **Limitations**: note the paywall and mark `needs-enrichment: true`
-
-## Nature flagship, hybrid OA (confirmed 2026-09-05)
-
-Park et al. 2026, "Functional role of skull lymphoid structures in CNS
-immunosurveillance," DOI 10.1038/s41586-026-10951-4 (PMID 42618784) —
-Nature flagship research Article, hybrid OA (CC-BY), published
-2026-08-19. EPMC gate: no PMCID, `inPMC: N, inEPMC: N, isOpenAccess:
-N, hasPDF: N`. Unpaywall: `is_oa: true, oa_status: hybrid, license:
-cc-by, host_type: publisher`. No PMC copy exists, but the publisher
-copy is open — direct curl of
-`https://www.nature.com/articles/s41586-026-10951-4` returned 570 KB
-HTML with the COMPLETE body (all themed sections, Methods, 12 Extended
-Data caption blocks, 59 references). Tag `fulltext_source:
-nature-browser` — the enum's Nature value; there is no separate
-curl-vs-browser tag.
-
-**The standard masquerade grep FAILS here.** Nature flagship articles
-carry thematic section headings, not Introduction/Results/Discussion
-— grep for those returns ~0 on a complete body. Verify instead by
-extracting the `<h2>` set (Abstract / Main / themed Results sections /
-Discussion / Methods / Data availability / References / Extended data
-figures and tables) and counting `<p>` paragraphs inside the body div
-(264 paragraphs, ~104k chars for this Article).
-
-**Extraction recipe (regex only, no bs4):**
-
-- Body div: `re.search(r'<div[^>]*class="[^"]*c-article-body[^"]*"[^>]*>(.*?)(?:<section data-title="References"|<h2[^>]*>References</h2>)', html, re.DOTALL)` — then split on `(<h2>...</h2>)` for sections and `(<h3>...</h3>)` for Methods subsections, pulling `<p>(.*?)</p>` per section.
-- References: `citation_reference` meta tags — the full list, one
-  semicolon-delimited string per ref with DOIs, directly parsable for
-  the Phase 7 bibliography walk. Two shapes appear:
-  `citation_journal_title=...; citation_title=...; citation_doi=...`
-  and free-text `Author, A. et al. Title. Journal https://doi.org/...
-  (year).`
-- Authors + affiliations: `citation_author` /
-  `citation_author_institution` parallel meta lists.
-- ORCIDs: `orcid\.org/([0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{4})` over the
-  whole HTML — caught all 7 ORCID-bearing authors.
-- Main figure captions: `<figcaption>` inside the body div (dense
-  statistical detail — n values, tests, exact P values). Extended
-  Data captions: `Extended Data Fig. N` `<h3>` blocks later in the
-  page.
-- Markup cleanup before distillation: `<sup>x</sup>` → `^x` and
-  `<sub>x</sub>` → `_x` (gives readable `CD4^+`, `T_FH`, `IL-21–VFP`),
-  then strip remaining tags and unescape entities.
-
-**Volume/pages quirk:** on a freshly published online-first Article,
-`citation_volume`/`citation_issue` are empty and
-`citation_firstpage: 1` / `citation_lastpage: 9` are article-internal
-— omit volume/pages from the page frontmatter rather than recording
-misleading values.
+Keep source representation and route truthful: browser Nature HTML may use
+`nature-browser`; direct publisher HTML/PDF uses the corresponding actual
+label, with exact URL/method/version in the log. Preserve existing provenance
+labels rather than relabeling prior ingests. PDF acceptance and source closure
+remain in paper-ingest Phase 4.

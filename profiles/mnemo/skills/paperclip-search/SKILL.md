@@ -7,6 +7,14 @@ triggers:
   - "keyword search missed papers"
   - "corpus-wide grep for a term"
   - "recall-oriented paper search"
+eval_contract:
+  goal: Retrieve identifiable literature candidates without making the optional vendor a workflow dependency.
+  dimensions:
+    - "IDENTITY — titles, identifiers, dates, and source labels stay paired per result"
+    - "COVERAGE — search relevance and mirror completeness are checked rather than inferred from presence"
+  hard_fails:
+    - Treating a search snippet or stale mirror as verified full text.
+    - Blocking keyword discovery merely because the optional service is unavailable.
 ---
 
 # paperclip-search — semantic literature search via the Paperclip CLI
@@ -192,9 +200,10 @@ other result.
    review's named open questions and thin-evidence areas (Phase 5), and
    the supplementary pass's gap queries + jargon-upgraded queries
    (Phase 6) — queries that are awkward as PubMed keyword strings.
-2. **literature-sweep (candidate, not yet wired).** Semantic queries
-   alongside the keyword templates for watched topics. Wire after
-   result quality is confirmed on real sweep topics.
+2. **literature-sweep (wired — the semantic arm).** Semantic queries
+   run alongside the keyword templates for watched topics
+   (`literature-sweep` Phase 1 calls `paperclip search` with
+   `--since 35d --sort date`, gated on binary/key presence).
 3. **Targeted recall.** Corpus-wide grep for named entities during
    brainstorming ("every paper mentioning <antibody>").
 4. **paper-ingest full-text fallback (proven, manually invoked).**
@@ -232,6 +241,10 @@ other result.
   delete this skill's workflow hooks; the keyword-template fallback
   must always be the default path.
 - **Self-update reverts the shebang pin.** See Auth/install above.
+  The CLI can also silently auto-update itself between invocations
+  (a minor-version bump observed 2026-09-16 with no manual install);
+  treat the binary as externally managed and re-verify behavior after
+  an unexpected version change.
 - **2025–2026 arXiv mirrors: stale, abstract-only, and authorless.**
   Observed across dive 3 (2026-09-05, ~30 papers): brand-new papers
   (days old) return `Paper not found`; many 2026 arXiv mirrors carry

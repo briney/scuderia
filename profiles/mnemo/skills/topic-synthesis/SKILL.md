@@ -46,8 +46,8 @@ lower-recall caveat carried into the output.
 - The synthesis is grounded in `paper` pages that actually exist in the
   brain — never fabricated from general knowledge, never silently
   expanded with external lit.
-- The output is **one** page — a new `concept` or `hypothesis` (or an
-  update to an existing one when the topic is already covered).
+- The output is a new or updated `concept` or `hypothesis`; an explicitly
+  approved split produces the corresponding sibling pages.
 - Every substantive claim cites its source paper(s) by slug or DOI.
 - Counter-evidence is *included*, not suppressed: a `hypothesis` page
   carries `supports:` and `refutes:` typed edges; a `concept` page
@@ -187,7 +187,39 @@ without conflict.
   page whose axis they evidence — a load-bearing paper for both (e.g.
   a production harness with results) links from both. The split gate is
   the human's — present the axis evidence and let him call it, the same
-  ask-user gate as the existing-page check above.
+  ask-user gate as the existing-page check above. Preserve the applicable
+  source links and existing Shifts history. Do not bulk-repoint inbound
+  paper links during the split: both original and sibling paths resolve;
+  later retroactive-linking can update those edges deliberately.
+
+- **Supersede and redirect (extending to a broader scope).** When the
+  topic has genuinely outgrown the existing page — the synthesis scope
+  is broader than the page's and the old content is fully subsumed —
+  supersession is another human-approved option alongside update,
+  restructure, cancel, and split: (1)
+  author the new concept page at a new slug, folding the old page's
+  content into the broader scope; (2) replace the old page with a
+  redirect stub using `status: dormant` (NOT `superseded` — not a valid
+  frontmatter enum; the linter rejects it) plus `superseded_by:
+  concepts/<new-slug>` and a one-line redirect body; (3) do NOT
+  bulk-update inbound links inline — the redirect stub keeps them
+  resolving; a future `retroactive-linking` or `maintain` pass can
+  migrate them; (4) copy the old page's `links:` and
+  `related_concepts:` lists into the new page and append new entries;
+  (5) preserve the old page's Shifts log entries with their original
+  dates and add a new shift entry documenting the supersession. Gate
+  this on your human like the split.
+
+- **Verify links against the filesystem, not one path form.** After
+  writing or enriching the page, verify every frontmatter `links:` entry
+  and body wikilink resolves ON DISK, testing both forms —
+  `vault + "/" + target + ".md"` OR `vault + "/" + target` — because
+  `links:` values are extensionless. A verifier that checks only one
+  form reports EVERY link missing and looks like a total graph failure;
+  when a verification pass fails *wholesale*, suspect the verifier's
+  path convention before touching the artifact (the same
+  suspicion-the-verifier-first rule as the ledger's bare-slug
+  wiring-table bug).
 
 ## As a rem-cycle phase
 
@@ -217,7 +249,7 @@ and signals** instead:
 
 ## Output
 
-A single new (or updated) `concept` or `hypothesis` page, plus a short
+A new or updated topic page (or approved sibling split), plus a short
 report to your human: the topic, the page kind chosen and why, the count of
 source papers, any stubs flagged, the path to the new page. The page
 itself is the deliverable; the report is for traceability.

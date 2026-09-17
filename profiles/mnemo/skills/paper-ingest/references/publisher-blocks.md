@@ -1,216 +1,97 @@
-# Publisher-specific retrieval behavior
+# Publisher access and archive recovery
 
-Consult this reference when a publisher blocks the general retrieval tree
-(Phase 4 of paper-ingest). The general decision for ANY publisher:
+Load when publisher retrieval fails, a preview is returned, or original files
+need browser access. Paper-ingest Phase 4 is the sole acceptance/closure owner.
+The observations below select routes to try, not publisher-wide prohibitions
+or permission to stop at an abstract.
 
-1. PMCID present → try PMC XML → EPMC PDF render → Wayback CDX
-2. No PMCID → try jina reader on publisher URL → Wayback CDX → abstract-only
-3. Before declaring abstract-only: check paperclip mirror (bioRxiv/arXiv),
-   check S2 `openAccessPdf` (GREEN = lead to chase), validate body presence
+## Routing
 
-**Reference-list masquerade** (applies to all subscription Springer/Nature/
-Wolters Kluwer content): jina returns 50K+ chars that passes the size check
-but the content is entirely reference titles — no body paragraphs. Always
-grep for body section headings (Introduction, Methods, Results, Discussion)
-before tagging `fulltext_source: jina-reader`. If only references, treat as
-abstract-only.
+- Resolve the actual article URL/PII from verified metadata or DOI redirect.
+  Parentheses in a DOI require shell quoting; a publisher's path need not
+  equal the DOI suffix. Use original-page links for PDFs and supplements.
+- If a verified PMCID exists, try XML and applicable PDF/repository routes
+  under `pubmed-pmc-retrieval.md`. EPMC flags can lag; a PMCID or publisher-OA
+  lead warrants an attempt even when another flag says closed.
+- Try direct article/PDF access and applicable reader, authorized browser,
+  mirror, or repository routes. A Jina DOI-redirect failure does not establish
+  failure of the publisher's direct article URL. Jina wrappers are not JSON
+  API responses or original PDF bytes. Honor service credentials/Retry-After;
+  use bounded retries rather than repeatedly calling a failing endpoint.
+- S2 GREEN/BRONZE URLs and Unpaywall publisher/repository locations are leads,
+  not proof of retrieval. A 2026-09-05 Cell Press example was available via a
+  BRONZE lead despite EPMC/Unpaywall closed flags. Contradiction requires
+  checking the available copy, not choosing an index as universally correct.
+- A long response can be just abstract, references, page chrome, or challenge
+  HTML. Inspect the actual source body and relevant tables/figures; reject
+  previews as full text. Nature thematic headings need the Nature reference,
+  not a fixed Introduction/Results grep or paragraph-count threshold.
 
----
+## Original-file browser route
 
-## EPMC flag staleness
+When ordinary HTTP returns a wall, or a PDF viewer does not download, load
+`web/blocked-page-recovery` Route 5 if installed. That reference owns CDP
+attachment, normal navigation, download routing, bounded challenge attempts,
+and cookie-bridged recovery. For publisher-specific escalation, load
+`research/publisher-fulltext-workarounds/references/cdp-publisher-route-matrix.md`
+when that companion is installed. Otherwise use the harness's supported
+browser and the same acceptance/boundary rules; report unavailable capability.
 
-Europe PMC's `isOpenAccess`/`inPMC`/`hasPDF` flags are not always fresh.
-A PMCID present in the Phase-1 PubMed XML (`<ArticleId IdType="pmc">`)
-overrides stale EPMC flags — **always try `efetch db=pmc` when PubMed XML
-carries a PMCID, even if EPMC reports all-N.** This affects all publishers,
-not just OA-native ones (confirmed for Ivyspring, Springer Nature/Nature
-Aging, and others). Only declare abstract-only when `efetch db=pmc` itself
-returns front-matter-only or an error — not when EPMC merely says N.
+Use one controller for a shared browser; do not take over another session.
+A browser's existing institutional entitlement may expose a body that curl
+cannot. Login/MFA/payment or missing entitlement is a user-action boundary,
+not a CAPTCHA to bypass. Never log credentials or session cookies.
 
-The reverse also holds: the PubMed XML PMCID can itself be stale/superseded.
-If `efetch db=pmc` with the PubMed XML PMCID returns front-matter only
-(no `<body>` element, <10 KB), check the EPMC core record's `pmcid` field
-for a *different* PMCID and retry.
+Observe the article identity and each actual attachment href. Download with
+the browser's supported mechanism, verify file magic and native parsing, and
+check identity/association and coverage against the article. An HTML file
+named `.pdf`, or a browser page-print, is not the original manuscript. A first
+HTML download can succeed after normal navigation; keep rejected and accepted
+bytes distinct, and never infer cross-origin clearance. Attempt each supplement
+independently, including non-PDF types. Restore any changed download routing.
 
-## Unpaywall `closed` vs S2 `BRONZE` — attempt on contradiction, close on agreement
+## Wayback discovery and extraction
 
-The OA-status oracles can contradict each other, and the cheapest one to
-consult is not always right. Observed 2026-09-05 (Wang 2021, *Immunity*):
-Unpaywall reported `is_oa: false, oa_status: closed`, EPMC all-N — but S2
-`openAccessPdf.status: BRONZE` pointed at the publisher copy, and
-retrieval delivered the complete Cell Press body (89k chars, Highlights
-through STAR Methods, masquerade check passed). The brief's expected
-abstract-only closure was never legitimately satisfiable.
+Try `https://archive.org/wayback/available?url=<encoded-article-url>` and read
+the returned snapshot timestamp/URL. If needed, use CDX:
+`https://web.archive.org/cdx/search/cdx?url=<encoded-url>&output=json&filter=statuscode:200&limit=5`.
+Read the header row before interpreting returned columns. Try promising
+snapshots with bounded retries; 200, large stored length, and a timestamp
+alone do not establish full text. Preserve snapshot provenance/date and verify
+the article/version rather than presenting archived content as a live page.
 
-Rule: S2's `openAccessPdf` is an independent OA oracle, not a duplicate of
-Unpaywall — `BRONZE` means free-at-publisher without a license, and
-Unpaywall often misses these because bronze is publisher-discretionary and
-can lag. When the two disagree, ATTEMPT the retrieval (one
-`fetch_fulltext.py --publisher-url` call) rather than trusting either
-verdict; the three-source abstract-only closure requires S2 to say CLOSED
-or null, not merely for Unpaywall to say closed. Most exposed: subscription
-Cell Press journals (Immunity, Cell), where BRONZE free-to-read is common.
+Try observed URL variants (`/doi/full/`, `/doi/`, `.long`, content paths),
+including pre-migration domains. Remove scripts/style/chrome for reading,
+but do not discard short blocks: headings, numbers, and table cells matter.
+If CDX times out or returns 503, try another applicable route or report an
+unavailable archive. An archive outage is never abstract-only closure.
 
-The inverse pattern also exists: recent Nature subscription articles
-(observed 2026-02–2026-04 online dates) report closed in ALL FOUR sources
-(EPMC all-N, S2 CLOSED, Unpaywall closed, OpenAlex `is_oa: false`) with a
-hard paywall on the page itself — closure is real. The lesson is not "S2
-always wins" but "contradiction means attempt, agreement means closure."
+## Bounded route observations
 
----
+These summarize earlier retrieval records retained by the 2026-09 audit.
+Unless a date is stated, the original run date is unavailable here. They are
+not fresh tests of every article or current service availability.
 
-## NEJM Wayback timing
+| Source/pattern | Useful route or observed failure; what to check next |
+|---|---|
+| OUP/ATS; JCI Insight; CSHLP; AME; EMBO Press | Some PMC deposits returned metadata-only XML while EPMC PDF succeeded. EMBO EPMC XML also returned empty. Verify the individual article and representation. |
+| ASCO/JCO; Taylor & Francis | PMCID→EPMC PDF worked for some articles; without one, `/doi/full/` snapshots sometimes supplied body. Taylor & Francis Jina previews can contain only chrome/abstract. Browser is another route. |
+| Cell Press; JBC; JACI; Lancet | Direct article URLs using verified PIIs worked where DOI-reader routes failed. Obtain PII from the article's metadata/redirect; do not synthesize it from arbitrary DOI text. Cell Press `/fulltext/` can be free-to-read despite a closed OA flag. |
+| AHA | Jina was intermittent; some articles have PMC copies. Inspect both leads. |
+| Aging and Disease | Reader returned template chrome; S2 supplied a direct publisher PDF. Validate PDF content. |
+| NEJM | Older post-embargo snapshots sometimes contained body; tested recent-era snapshots contained previews. Snapshot date relative to publication is a search clue, not a fixed six-month access guarantee. |
+| AACR | Legacy `.long` snapshots sometimes contained body where other paths had chrome. Resolve actual domain/path and try browser access if necessary. |
+| Wiley | Some 2020–2021 snapshots carried full text despite misleading OA flags. Verify version and complete body. |
+| Portland Press | Legacy biochemsoctrans.org paths found snapshots missed under the migrated domain. Try both observed forms. |
+| ScienceDirect | Tested snapshots contained only JS-shell/preview text. This does not rule out live browser or repository retrieval. |
+| Nature family | Both complete OA/institutional bodies and subscription previews occurred. Load `nature-metadata-extraction.md`; classify the article's actual access state, not the journal name. |
+| Rockefeller/JEM | Earlier HTTP/reader/archive failures were followed by a reported successful CDP retrieval. Try authorized browser access; neither success nor failure is universal. Check PMCID/embargo metadata per article, not a fixed deposit-window rule. |
+| ASH/Blood; JAMA | Restricted PMC XML and missing EPMC PDFs occurred. Check remaining repository/publisher/browser leads. |
+| Thieme; ADA/Diabetes | Maintenance pages, missing snapshots, or archive errors occurred. Recheck applicable live routes; these are not permanent closure. |
+| AAI/J Immunol | An S2 PDF lead returned redirect HTML; legacy jimmunol.org full-text snapshots may help. Check actual bytes. |
+| SAGE/Atypon | Unpaywall 422 and S2 null occurred. An API error is not a closed-access finding. |
+| ProEd/Index Copernicus; Springer World J Surg; Wolters Kluwer/AAN; Karger | Prior attempts included Portico redirects, restricted XML, empty PDFs, reference-only readers, and challenges. Evaluate the specific article's remaining routes under the main closure contract. |
 
-NEJM articles are paywalled for ~6 months after publication, then become
-free on nejm.org. Wayback snapshots captured during the paywall window
-archive the preview page (abstract only). Snapshots captured after the
-embargo window archive the full-text page (38–50K chars body).
-
-- Papers published <6 months ago: don't expect full text from any Wayback
-  snapshot. Try S2 `openAccessPdf` first; if blocked, abstract-only.
-- Papers published 6–24 months ago: try latest snapshots first (most likely
-  post-embargo).
-- Recent (2024+) NEJM articles: ALL Wayback snapshots return abstract-only
-  regardless of era — the modern paywall preview page is what gets archived.
-
----
-
-## CDX extraction recipe (Python, stdlib only)
-
-```python
-import urllib.request, urllib.parse, json, re, html as html_mod
-
-def cdx_search(article_url):
-    cdx_url = (f"https://web.archive.org/cdx/search/cdx"
-               f"?url={urllib.parse.quote(article_url, safe='')}"
-               f"&output=json&limit=5&filter=statuscode:200")
-    with urllib.request.urlopen(cdx_url, timeout=60) as r:
-        rows = json.loads(r.read())
-    return rows[1:] if len(rows) > 1 else []  # skip header row
-
-def fetch_snapshot(article_url, timestamp):
-    snap_url = f"https://web.archive.org/web/{timestamp}/{article_url}"
-    with urllib.request.urlopen(snap_url, timeout=60) as r:
-        return r.read().decode("utf-8", "replace")
-
-def extract_article(html_text):
-    match = re.search(r"<article[^>]*>(.*?)</article>", html_text,
-                      re.DOTALL | re.IGNORECASE)
-    if match:
-        html_text = match.group(1)
-    html_text = re.sub(r"(?is)<(script|style|noscript)[^>]*>.*?</\1>", " ", html_text)
-    html_text = re.sub(r"(?i)</(p|div|section|article|h[1-6]|li|tr)>", "\n\n", html_text)
-    text = re.sub(r"<[^>]+>", "", html_text)
-    text = html_mod.unescape(text)
-    lines = [" ".join(l.split()) for l in text.splitlines()]
-    return "\n\n".join(l for l in lines if len(l) > 50)
-```
-
-CDX API guidance:
-- `&filter=statuscode:200` pre-filters at API level (more reliable than
-  client-side filtering — unfiltered queries can return only 301/302s).
-- Timeouts are transient — retry once after 10s. After 2 consecutive 503s,
-  the CDX service is down; declare abstract-only.
-- Multiple 200 snapshots can differ in completeness — try each in sequence
-  (largest `length` first), keep the one with the most body text.
-- Try multiple URL variants: `/doi/<doi>`, `/doi/full/<doi>`,
-  `/content/<vol>/<issue>/<page>`, `.long`.
-- For migrated domains, try BOTH old and new URL forms (e.g.
-  `biochemsoctrans.org` and `portlandpress.com`).
-
----
-
-## Publisher entries (by pattern)
-
-### Pattern: Branch 1b (PMCID present, XML body restricted, EPMC PDF works)
-
-These publishers deposit in PMC but restrict XML body download —
-`efetch db=pmc` returns front-matter only (~6–14 KB, no `<body>`).
-`europepmc.org/api/getPdf?pmcid=<PMCID>` delivers the full publisher PDF.
-Tag `fulltext_source: epmc-pdf`.
-
-| Publisher | Domain | Notes |
-|---|---|---|
-| OUP / ATS | academic.oup.com, atsjournals.org | Standard Branch 1b |
-| JCI Insight | insight.jci.org | EPMC PDF + jina reader both work |
-| CSHLP | cshperspectives.org, cshlpress.org | EPMC PDF: ~3.4 MB → 95K chars |
-| ASCO / JCO | ascopubs.org | EPMC PDF: ~541 KB → 58K chars. No PMCID → Wayback CDX on `/doi/full/` works (255 KB → 33K chars) |
-| AME Publishing | atm.amegroups.org, jgo.amegroups.org | EPMC PDF: ~223 KB → 23K chars |
-| Taylor & Francis | tandfonline.com | PMCID → EPMC PDF (~60K chars). No PMCID → Wayback CDX on `/doi/full/`. Jina returns 27–30 KB page chrome+abstract (validate body) |
-| EMBO Press | embopress.org | EPMC `fullTextXML` also fails (0 bytes, distinct from HTTP 404). EPMC PDF: ~730 KB → 34K chars |
-
-### Pattern: Jina works on direct/publisher article URL
-
-These publishers block curl/DOI-URL but jina reader succeeds on the correct
-direct article URL form.
-
-| Publisher | Domain | Working URL form | Notes |
-|---|---|---|---|
-| Elsevier / Lancet | thelancet.com | `thelancet.com/journals/<journal>/article/PIIS<id>/fulltext` | DOIs contain parens → 404 via jina. PIIS form: strip `10.1016/` prefix from DOI, prepend `PII` to the suffix. The "S" in "PIIS" comes from the DOI suffix — do NOT add an extra S |
-| Cell Press | cell.com | `cell.com/<journal>/fulltext/<PII>` | PII from PubMed XML `<ArticleIdList>` or `elink.fcgi?cmd=prlinks`. Use `/fulltext/` not `/pdf/`. Subscription Cell Press can be BRONZE free-to-read — check S2 `openAccessPdf` before declaring abstract-only (see the S2-vs-Unpaywall section above) |
-| ASBMB / JBC | jbc.org | `jbc.org/article/<PII>/fulltext` | Resolve DOI → PII via `linkinghub.elsevier.com/retrieve/pii/<PII>`. Jina on DOI URL returns 404 |
-| Elsevier / JACI | jacionline.org | `jacionline.org/article/S<PII>/fulltext` | Jina on DOI URL 404s. Try PIIS URL via jina before declaring abstract-only |
-| AHA Journals | ahajournals.org | `ahajournals.org/doi/<doi>` | Jina succeeds intermittently. Some Circ Res articles are in PMC (OA) and work normally via PMC XML |
-| Aging and Disease | aginganddisease.org | S2 `openAccessPdf` → direct PDF curl | JS-rendered CMS; jina returns template chrome. S2 provides PDF URL at `aginganddisease.org/EN/PDF/<DOI>`. Tag `fulltext_source: publisher-oa` |
-
-### Pattern: Wayback CDX is the reliable path
-
-These publishers block jina reader but Wayback CDX finds 200-status
-snapshots with full body text.
-
-| Publisher | Domain | CDX URL form | Notes |
-|---|---|---|---|
-| NEJM | nejm.org | `nejm.org/doi/full/<doi>` and `nejm.org/doi/<doi>` | Skip jina entirely (403s). Direct `urllib.request` on snapshot URL → 189–270 KB HTML → `<article>` extraction → 38–50K chars. See NEJM timing note above |
-| AACR | clincancerres.aacrjournals.org, cancerres.aacrjournals.org | `.long` URL variant | `.long` yields full body (219 KB → 27K chars); non-`.long` is page chrome |
-| Wiley | onlinelibrary.wiley.com | `onlinelibrary.wiley.com/doi/full/<DOI>` | 2020–2021 era snapshots → 500–600 KB HTML → 90–95K chars. Works for OA articles even when `isOpenAccess: N` |
-| Portland Press | portlandpress.com | Legacy `biochemsoctrans.org/content/<vol>/<issue>/<page>` | CDX returns nothing for `portlandpress.com` (post-migration) — must use old domain |
-| ScienceDirect | sciencedirect.com | N/A — **Wayback does NOT work** | Snapshots load successfully but body is JS-rendered (SPA) — only abstract, keywords, abbreviations present. This is a distinct failure mode from Cloudflare CAPTCHA |
-
-### Pattern: Nature subscription journals — metadata extraction
-
-Nature subscription research journals (Nature Biotechnology, Nature
-Medicine, Nature Methods, Nature Struct Mol Biol, Nature Machine
-Intelligence) and Nature Reviews (Immunology, Drug Discovery) are
-paywalled. The full extraction technique is in
-`references/nature-metadata-extraction.md`.
-
-- **Nature Reviews**: jina returns only the reference list. Direct curl
-  gets abstract + Key points + Glossary + figure captions + reference list.
-- **Nature subscription research**: direct curl on `nature.com/articles/
-  <doi-suffix>` succeeds (no Cloudflare block) — the HTML `<head>` carries
-  rich `citation_*` meta tags (authors, affiliations, ORCIDs, full
-  reference list, figure captions, data/code availability). Try jina
-  first (may return metadata sections); meta-tag extraction is fallback.
-  Paywall-preview pages still carry the full ED-figure captions, the
-  reference list, and the author block (observed 2026-09-05, Monaghan
-  2026 Nature: 495 KB direct curl + 84 KB jina, both preview-only but
-  carrying 10 ED captions + 59 refs — a rich abstract-only, not a bare
-  one).
-- **Nature OA research articles** (Nature, Nature Communications) render
-  full body via browser — distinct from subscription journals.
-
-### Pattern: All paths fail → abstract-only
-
-These publishers are genuinely unreachable from this host — all retrieval
-paths fail (Cloudflare/CAPTCHA on jina, no Wayback snapshots or
-abstract-only snapshots, no PMCID or PMCID-present-but-restricted).
-
-| Publisher | Domain | Notes |
-|---|---|---|
-| Rockefeller UP (JEM) | rupress.org | Cloudflare defeats jina, Wayback, and browser |
-| ASH Publications (Blood) | ashpublications.org | PMCID present but XML front-matter only, EPMC PDF returns "No PDF file found" |
-| JAMA Network | jamanetwork.com | No snapshots. PMCID-present variant: XML front-matter, EPMC PDF 404 |
-| Thieme | thieme-connect.com | German maintenance page; Wayback snapshots fail (403/498) |
-| ADA (Diabetes) | diabetesjournals.org | No Wayback snapshots |
-| AAI (J Immunol) | journals.aai.org, jimmunol.org | S2 `openAccessPdf` false positive (HTML redirect, not PDF). Legacy `jimmunol.org/cgi/content/full/` URL may work via Wayback |
-| SAGE / Atypon | journals.sagepub.com | Unpaywall 422 (DOI prefix 10.1177). S2 null |
-| ProEd / Index Copernicus | doi.org → Portico | DOI prefix 10.1358. All alternatives fail |
-| Springer / World J Surg | link.springer.com | PMCID present but ALL paths fail (XML metadata-only, EPMC PDF no PDF, fullTextXML 404, jina CAPTCHA, CDX 503) |
-| Wolters Kluwer / AAN | neurology.org | Jina reference-list masquerade (64–70 KB). Wayback snapshots are abstract-only. Some 2015+ articles may have PMCID — check EPMC |
-| Karger | karger.com | Cloudflare Turnstile |
-
-For all of these: three-source closure (EPMC all-N + Unpaywall closed + S2
-CLOSED/null), tag `fulltext_source: abstract-only`, `needs-enrichment: true`.
-PubMed structured abstract is the primary content source. The closure
-requires S2 to actually say CLOSED — see the S2-vs-Unpaywall section above
-for the BRONZE exception.
+Never convert this table into a list of publishers that can be declared
+abstract-only without attempts. Keep actual source URL, access/representation,
+failed routes, and accepted provenance in the paper's Ingest log.
