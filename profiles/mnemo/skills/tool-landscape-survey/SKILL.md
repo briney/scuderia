@@ -8,6 +8,17 @@ triggers:
   - "landscape research"
   - "ecosystem survey"
   - "what are we missing compared to"
+eval_contract:
+  goal: |
+    Produce a factual, URL-cited map of a tool ecosystem — how each system
+    works and what is worth adopting — with every claim checkable later.
+  dimensions:
+    - "SOURCE_GROUNDING — GitHub/HN/PyPI/vendor/paper evidence for each claim, URL cited"
+    - "WEAKNESS_VALIDITY — weaknesses come from real complaints (issues, HN, paper limitations), never hypothesized"
+    - "HONEST_UNCERTAINTY — verified-from-source vs inferred vs unverifiable explicitly labeled"
+  hard_fails:
+    - An uncited major claim, or a hypothesized weakness presented as real.
+    - Filling a blocked-source gap with guesses.
 ---
 
 # tool-landscape-survey — reconnaissance on a tool/agent ecosystem
@@ -72,10 +83,3 @@ usefulness to *our* system, each one actionable.
   sections) — not hypothesized ones.
 - Don't write to the user's vault; this is recon, output goes to the
   requester.
-
-## References
-
-- `references/scientific-literature-agent-systems.md` — condensed 2026-08
-  survey of PaperQA2, OpenScholar/ScholarQA, STORM, GPT-Researcher,
-  deep-research clones, Elicit/Undermind/Consensus: their techniques and
-  the ranked steal-list for a markdown-vault brain.

@@ -1,6 +1,6 @@
 ---
 name: cron-operations
-description: Diagnose and remediate the instance's scheduled cron jobs when they fail — the model-selection drift guard that skips unpinned jobs after a default-model swap, delivery failures (e.g. a messaging API DNS-sinkholed by an institutional network), and the general "why did this job fail this morning" diagnostic path. Use when a cron job reports last_status=error, stops delivering, or your human asks to investigate a scheduled-job failure.
+description: Use when scheduled jobs fail or stop delivering. Diagnose model resolution, delivery, and execution against the installed runtime.
 triggers:
   - "cronjob failed"
   - "cron job error"
@@ -9,6 +9,18 @@ triggers:
   - "why did the scheduled job fail"
   - "the cron isn't delivering"
   - a scheduled job reporting last_status=error
+eval_contract:
+  goal: |
+    Diagnose and remediate scheduled-job failures at the operational layer —
+    model resolution, delivery, execution — without breaking live state.
+  dimensions:
+    - "DIAGNOSIS_FROM_EVIDENCE — the failed run's ## Error block is read before any hypothesis; current runtime/docs checked before remediation"
+    - "STATE_SAFETY — jobs.json edits take the .jobs.lock flock and write atomically; live firing only per the incremental-validation rule"
+    - "POLICY_RESPECT — preserve the user's model-selection policy; do not re-pin jobs or re-enable a disabled guard"
+  hard_fails:
+    - Hand-editing jobs.json without the flock or outside the documented shape.
+    - Live-firing a graph-mutating job off-schedule just to test.
+    - Treating a version-scoped failure mechanism as timeless.
 ---
 
 # cron-operations — operating and troubleshooting the instance's cron jobs
@@ -44,29 +56,48 @@ this is what you load to fix the *job*.
 
 ## Failure mode 1 — model-selection drift guard (#44585)
 
-**Symptom:** `RuntimeError: Skipped to prevent unintended spend: global
+**Symptom (as observed on the Hermes runtime this skill was written against,
+2026-08):** `RuntimeError: Skipped to prevent unintended spend: global
 inference config drifted since this job was created (model 'X' -> 'Y'), and
 this job is unpinned. No inference call was made.`
 
-**Mechanism (this is a Hermes feature, not a bug):** when a job is created,
-`create_job` snapshots the model/provider an *unpinned* job would resolve to at
-that moment, into `provider_snapshot` / `model_snapshot` in jobs.json. At fire
-time, the guard in `scheduler.py` compares the current default against the
-snapshot; if an unpinned axis drifted, it **fails closed** — zero inference, a
-loud alert. The point is to stop an unpinned job silently switching to a pricier
-model (e.g. a free local default → a paid backstop). `no_agent` script jobs
-carry no snapshot and are exempt. Pinned jobs (explicit `model`/`provider`) are
-exempt.
+**Mechanism — version-dependent; read the installed runtime before acting.**
+When a job is created, `create_job` snapshots the model/provider an
+*unpinned* job would resolve to at that moment, into
+`provider_snapshot` / `model_snapshot` in jobs.json. What happens at fire
+time has changed across Hermes versions:
 
-**Why some jobs fail and others don't the same morning:** the guard keys on the
-snapshot, which is captured at *creation* time. A job created while GLM was the
-default snapshots `glm-5.2`; a job created after the Opus backstop became
-default snapshots `claude-opus-4-8`. Swap the default and only the first class
-fails. `cronjob action=update` re-snapshots an unpinned axis **only when an
-inference axis value actually changes** (`inference_fields_changed`).
+- **Older runtimes:** the guard in `scheduler.py` compares the current
+  global default against the snapshot; if an unpinned axis drifted, it
+  **fails closed** — zero inference, a loud alert (the symptom above).
+- **Current runtimes:** the snapshot is the unpinned axis's *effective pin*
+  (`_snapshot_pin` in `scheduler.py`) — a drifted job keeps running on the
+  model it was created under, logging one INFO line, and
+  `cron.model_drift_guard` no longer exists (config migration 41→42 removes
+  it). Resolution at fire time is per-job pin → `cron.model` fleet default
+  → creation snapshot → global default; the docs
+  (https://hermes-agent.nousresearch.com/docs/user-guide/features/cron)
+  describe the snapshot-as-effective-pin behavior.
+
+Check which behavior applies before remediating: read the installed
+scheduler (`~/.hermes/hermes-agent/cron/scheduler.py`, search
+`_snapshot_pin` / `model_drift_guard`) and the current cron docs. Never
+assume the fail-closed symptom is still the failure mode on an updated
+runtime. `no_agent` script jobs carry no snapshot and are exempt. Pinned
+jobs (explicit `model`/`provider`) are exempt.
+
+**Why some jobs fail and others don't the same morning (older runtimes):**
+the guard keys on the snapshot, which is captured at *creation* time. A
+job created while one model was the default snapshots that model; a job
+created after a backstop became default snapshots the other. Swap the
+default and only the first class fails. `cronjob action=update`
+re-snapshots an unpinned axis **only when an inference axis value actually
+changes** (`inference_fields_changed`).
 
 **Three remediations — pick by intent, they are NOT equivalent** (historical,
-pre-2026-08-14 policy; the standing policy below supersedes all three):
+pre-2026-08-14 policy; the standing policy below supersedes all three, and
+on current runtimes the snapshot is a pin to *clear or set*, not a
+failure to clear):
 
 - **Pin** (`cronjob action=update job_id=... provider=<p> model=<m>`): runs now,
   but pinned = no longer follows the default at all. You must manually repin when
@@ -74,22 +105,26 @@ pre-2026-08-14 policy; the standing policy below supersedes all three):
 - **Re-snapshot** (any inference-field update rewrites the snapshot to current):
   passes now, but re-breaks on the next swap in the other direction. Kicks the can.
 - **Clear the snapshots** (null both `provider_snapshot` and `model_snapshot` in
-  jobs.json): the guard's back-compat path means a snapshot-less job never
-  engages the guard — it follows the global default **in either direction**.
-  This is the only option that survives arbitrary future swaps. Cost: those jobs
-  permanently opt out of the spend guard.
+  jobs.json): the back-compat path means a snapshot-less job never
+  engages the old guard — it follows the global default **in either direction**.
+  On current runtimes this follows the global default only when per-job
+  pins and cron-fleet overrides are also absent. Clearing a snapshot opts
+  the job into subsequent global-default changes; do so only under the
+  user's standing policy or explicit authorization.
 
-**Standing policy (Bryan, 2026-08-14, superseding the same-day pin-to-local
-guidance):** the guard is DISABLED profile-wide — `cron.model_drift_guard:
-false` in this profile's config.yaml (only the literal YAML boolean `false`
-disables it; set via direct YAML surgery, not `hermes config set`, per the
-hermes-config-editing skill). All agent jobs are unpinned (`model`/`provider`
-null) and all `*_snapshot` fields are nulled, so every job follows the global
-default model and a default swap never blocks the fleet. Bryan accepts the
-spend risk explicitly: ending up on a paid model after a default swap is his
-deliberate decision, not something to guard against. **Do not "fix" a future
-model change by re-pinning jobs or re-enabling the guard.** If inference
-config looks drifted, that is the intended state.
+**Standing policy for this workflow:** the drift-guard behavior is DISABLED profile-wide on the
+runtime where it was a config option — `cron.model_drift_guard: false` in
+that profile's config.yaml (only the literal YAML boolean `false` disables
+it; set via direct YAML surgery, not `hermes config set`, per the
+hermes-config-editing skill). The intended end state holds on every runtime
+version: agent jobs follow the global default. Verify per-job model/provider
+pins and snapshots are null and no cron-fleet override changes that resolution.
+The user accepts the spend risk of changing the global default. Removing the
+old guard option does not establish this end state: newer runtimes still
+create snapshots. Check actual resolution when creating or editing jobs;
+do not change existing overrides without authorization.
+**Do not "fix" a future model change by re-pinning jobs or re-enabling a
+guard.** If inference config looks drifted, that is the intended state.
 
 **Validate incrementally** (your human's standing preference): clear + live-fire
 *one* light/idempotent job first (`cronjob action=run <job_id>`; confirm
@@ -129,8 +164,8 @@ DNS intact. Back up /etc/hosts first, flush the cache
 resolution returns the real IP and a live `cronjob action=run` on a
 Telegram-delivering job clears with `last_delivery_error: null`. Caveat: the pin
 is static — if Telegram retires that IP (rare, stable for years) re-pin to a
-current one. (The full account is an instance-private record.)
-diagnostic transcript.
+current one. The full account is an instance-private record and diagnostic
+transcript.
 
 ## Failure mode 3 — execution error mid-run
 
@@ -146,10 +181,17 @@ Never hand-edit jobs.json without the lock. `load_jobs` reads fresh from disk
 every call, so a lock-respecting edit is picked up on the next tick — but a
 concurrent ticker write (drop-watcher fires every 1 minute) can tear an
 unlocked write. Take the `.jobs.lock` flock (`~/.hermes/profiles/<instance>/cron/.jobs.lock`),
-preserve the `{"jobs": [...]}` top-level shape (a bare list triggers
-auto-repair), write atomically (tmp + `os.replace`), release. The
-`scripts/clear_cron_snapshot.py` helper does exactly this for the drift-guard
-remediation and is the template for any other field edit.
+preserve `{"jobs": [...]}` and all other top-level fields. Prefer the current
+`cronjob` tool or `hermes cron edit` for supported changes; inspect their
+schema/help and the installed `cron/jobs.py` before use.
+
+For an authorized field not exposed by those interfaces: acquire the profile's
+`.jobs.lock` flock, read the current file while holding it, select exact job
+IDs, and change only the approved fields. Preserve every unrelated value and
+write a temporary file in the same directory, then replace jobs.json atomically
+with `os.replace` before releasing the lock. Re-read the exact jobs and confirm
+the intended delta. Abort if the lock cannot be acquired. A protection refusal
+is not permission to use direct-file editing as a workaround.
 
 ## Anti-patterns
 

@@ -106,8 +106,10 @@ def determine_areas(target, indication, inn):
 
 ## Non-table entries (14 total)
 
-Approved antibody-derived therapeutics NOT in the Antibody Society mAb table.
-Source from domain knowledge with `source_quality: medium`:
+The historical candidate list below is not verified source metadata. For
+non-table products, verify identity and each field against regulatory documents
+or official disclosures before writing. Cite those sources; mark unsupported
+fields `Unknown`. Do not copy the listed names, brands, or targets as facts.
 
 ### Fc-fusions (8)
 - etanercept (Enbrel) -- TNF; immunology-inflammation

@@ -9,6 +9,18 @@ triggers:
   - "Tier A antibody"
   - "approved antibody list"
   - "references/therapeutic-antibodies"
+eval_contract:
+  goal: |
+    Build and maintain the molecule-level registry with one record per drug
+    product, correct tiering, and curated blocks that survive enrichment.
+  dimensions:
+    - "IDENTITY — one record per drug product/INN; extracted names are candidates, never merged on sequence identity alone"
+    - "BLOCK_DISCIPLINE — curated blocks intact in every enriched entry; machine-owned blocks written only by their owner skills"
+    - "SOURCE_HONESTY — unknown fields marked Unknown; no completeness claim beyond what the run record verifies"
+  hard_fails:
+    - Fabricating registry fields from domain knowledge instead of a source.
+    - An enriched entry losing its curated (`## Identity`-bearing) header blocks.
+    - Pointing at recipe files that no verified record backs.
 ---
 
 # therapeutic-antibody-registry — molecule-level therapeutic antibody corpus
@@ -182,8 +194,10 @@ table in a single `execute_code` pass. Key steps:
 4. **Write each entry** to `entries/<slug>.md` using the base template. Add
    appendix blocks for adc/bispecific/radioimmunoconjugate/withdrawn per the
    template files.
-5. **Add non-table entries** (Fc-fusions, CAR-T products) from domain knowledge
-   with `source_quality: medium`.
+5. **Add non-table entries** (Fc-fusions, CAR-T products) from verified
+   regulatory documents or official disclosures. Cite the source and mark
+   unverified fields `Unknown`; domain knowledge can suggest candidates,
+   not supply record fields.
 6. **Regenerate all six index files** + master index from the complete entry
    set by parsing each entry's `Therapeutic area(s)` field.
 7. **Update CHANGELOG** with the sweep statistics.
@@ -358,35 +372,39 @@ verification before they reach Tier A confidence.
 
 ## Tier B enumeration (active clinical)
 
-Tier B (active clinical, Phase 1-3) is a different scale problem from Tier A.
-The Antibody Society table gives ~168 approved molecules; Tier B needs
-1,200-1,800 distinct molecules. Two sources, combined:
+Tier B covers active clinical Phase 1–3 products that are not already
+approved or filed. Apply the corpus `master.md` definitions per product;
+regulatory-review rows belong to Tier A, not Tier B.
 
-1. **ATW 2026 tables** (regulatory review + late-stage clinical) — 46 entries
-   with target/format/indication. These are the highest-confidence Tier B
-   entries (late-stage or filed). Parse from the already-fetched
-   `_atw2026_fulltext.xml`. See `references/tier-b-recipe.md` for the full
-   extraction pattern including the new -art/-tug/-bart INN naming convention.
+1. **ATW annual tables:** parse late-stage clinical rows from the fetched
+   full-text XML's `<table-wrap>` elements. Use table captions and source
+   dates to distinguish clinical from approval/regulatory-review tables;
+   retain the source row for target, format, indication, and status.
+2. **ClinicalTrials.gov REST API v2:** trial intervention names supply
+   additional candidates. Before a fresh bulk enumeration, verify the
+   current API's filters, pagination, and response fields against a small
+   real response. Record query, retrieval date, and coverage; an active
+   trial can include approved comparators and does not establish Tier B.
 
-2. **ClinicalTrials.gov REST API v2** — paginate through all active/recruiting
-   mAb trials and extract unique -mab INNs from intervention names. This is
-   the bulk Tier B source (~100-150 additional molecules). See
-   `references/tier-b-recipe.md` for the pagination + INN extraction + dedup
-   pattern.
+Preserve raw intervention names. Extracted names, prefix-stripped forms,
+and fuzzy matches are lookup candidates only. Verify product identity and
+status against source records before creating or merging entries. Fold a
+confirmed spelling alias into its canonical record; do not merge based on
+fuzzy similarity or identical VH/VL alone. Preserve separate conjugates,
+radioisotope-labeled products, naked parents, and fixed-combination products
+according to the corpus identity rules. Do not discard a naked-parent
+candidate merely because a conjugate already has a record.
 
-**INN cleaning is critical.** ClinicalTrials.gov intervention names contain
-radioisotope prefixes (131i-, 177lu-), combination-therapy concatenations
-(FOLFOX+bevacizumab), code names (HX008), and misspellings (ipililumab,
-tocilicumab). Extract -mab-ending words with regex, strip prefixes, then
-fuzzy-match against existing Tier A entries (cutoff=0.85) to remove
-misspellings. Also manually filter Tier A parent names (brentuximab is the
-parent of brentuximab vedotin, already a Tier A entry).
+Do not restrict discovery to `-mab`: resolve code names and other antibody
+INNs from source tables and current WHO naming records. A suffix is a search
+aid, not evidence of product identity, modality, target, or clinical status.
 
-**New INN naming convention.** The WHO has shifted antibody INN suffixes:
--mab is being replaced by -art (antagonist/receptor), -tug (targeted
-inhibitor), -bart (antagonist), and other suffixes. ATW 2026 tables contain
-many of these (e.g., crusekitug, rademikibart, tozorakimab). Search for
-both -mab and the new suffixes when extracting INNs.
+This section supports source-backed individual entries and a bounded pilot;
+it is not a validated complete Tier B enumeration recipe. Existing extraction
+snapshots and campaign evidence, when available, remain in the instance
+corpus's `raw/` and `CHANGELOG.md`. For a new bulk run, verify extraction and
+identity handling on a representative pilot before scaling; report gaps
+rather than claiming that prior candidate lists establish complete coverage.
 
 ## Changelog
 
@@ -409,7 +427,8 @@ both -mab and the new suffixes when extracting INNs.
   ClinicalTrials.gov (100 INN-only, source_quality: low). 3,761 active mAb
   trials paginated, 263 INNs extracted, fuzzy-matched against Tier A,
   manually filtered. Fixed line-number prefix corruption in 5 Tier A
-  entries. Total corpus: 321 entries. See `references/tier-b-recipe.md`.
+  entries. Total corpus: 321 entries. The run record and extraction details
+  live in the corpus `references/therapeutic-antibodies/CHANGELOG.md`.
 
 - **2026-08-18 — full Tier A enrichment sweep (182 entries, all 3 blocks).**
   All 182 Tier A entries enriched via 35 delegated subagent batches. 162

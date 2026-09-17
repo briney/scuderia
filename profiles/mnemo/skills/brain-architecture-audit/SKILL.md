@@ -6,6 +6,18 @@ triggers:
   - "is <maintenance mechanism> optimal"
   - "how does knowledge propagate / get synthesized"
   - any proposed change to the brain's machinery, phases, or cron schedule
+eval_contract:
+  goal: |
+    Find where the brain's machinery diverges from its own claims, with
+    measured numbers, and turn the finding into a spec your human can act on.
+  dimensions:
+    - "MEASUREMENT — every load-bearing claim about behavior is tested against corpus/git numbers, not skill prose"
+    - "DIVERGENCE_FRAMING — plumbing vs circulation, structural vs tuning named separately, drain measured before throughput is scaled"
+    - "SPEC_DISCIPLINE — output is a spec carrying the measured numbers and an explicit out-of-scope section, not direct implementation"
+  hard_fails:
+    - Recommending a redesign from impressions instead of measurements.
+    - Proposing throughput scaling before a measured drain exists.
+    - Leaving the entry point pointing at companion files that do not exist.
 ---
 
 # Brain-architecture audit — measure the machine before redesigning it
@@ -17,10 +29,10 @@ no drain, its budget is a rounding error against ingest rate, or its declared
 edges are never written. The audit's job is to find that divergence with
 numbers, not impressions.
 
-Worked example of a full audit and the resulting spec:
-`references/measurement-battery.md` (the 2026-08-03 rem-cycle audit — keep
-its numbers as the baseline to diff future audits against). Spec house style:
-`templates/spec-skeleton.md`.
+The measurement procedure is in §2 and the spec format is in §5; neither
+requires a companion file. When the instance has a prior audit, compare
+against its recorded measurements and scope, then measure current behavior.
+Keep private audit evidence and specs in the instance.
 
 > **Conventions:** this skill governs *design evaluation*, not execution.
 > Implementation of what it produces touches vault skills and cron — that is
@@ -39,8 +51,8 @@ finding.
 ## 2. The measurement battery
 
 Run all of these for any propagation/maintenance audit (all verified; adjust
-paths to the page dirs involved). Full worked battery with the actual
-2026-08-03 numbers: `references/measurement-battery.md`.
+paths to the page dirs involved). The inline commands are the battery; work
+the results into the spec's measured-numbers section.
 
 **Throughput vs. capacity — per channel.**
 ```bash
@@ -134,7 +146,7 @@ What the numbers usually mean:
 
 ## 5. Writing the spec
 
-House style (`templates/spec-skeleton.md`): file
+House style: file
 `docs/specs/<YYYY-MM-DD>-<name>-design.md`; header block with Date / Status /
 Builds-on; motivation carrying the **measured numbers** (a spec without
 measurements is an opinion); numbered design sections; an **Open questions**
