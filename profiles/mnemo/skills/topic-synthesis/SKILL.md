@@ -8,6 +8,15 @@ triggers:
   - "consolidate the papers on"
   - "synthesize across papers on"
   - "what's the brain's view on"
+eval_contract:
+  goal: Synthesize verified existing paper evidence into a cited topic page, or signal ripe topics in unattended mode.
+  dimensions:
+    - "EVIDENCE — completed sources support every scientific claim and counterclaim"
+    - "SCOPE — queued work is not counted as verified evidence or filled by this skill"
+    - "OUTPUT — the page kind and existing-page updates follow the human gate"
+  hard_fails:
+    - Treating an incomplete queued page as completed evidence because a body exists.
+    - Fabricating source claims or authoring an unattended synthesis page.
 ---
 
 # topic-synthesis — consolidate paper pages into a durable concept or hypothesis
@@ -88,11 +97,13 @@ without conflict.
      means there isn't enough in the brain to synthesize. Tell your human
      plainly; offer `literature-research` to expand the brain first, or
      `query` if the question is conversational.
-   - **Flag stubs.** A `paper` page with `needs-ingest: true` is a stub —
-     it has frontmatter but no distilled body. Synthesizing from stubs
-     is risky. Either run `ingest-pending-papers` first to drain the
-     queue, or proceed with the caveat (noted in the output) that
-     evidence is preliminary.
+   - **Separate complete evidence from queued work.** Under
+     `skills/conventions/paper-stubs.md`, needs-ingest:true can mean a
+     citation-only stub or a PAGE_READY body awaiting parent verification
+     and wiring. Below-threshold stubs may be false, so also inspect the
+     stub tag/body. Count neither kind as a completed evidence page; defer
+     its use until the drain/parent finishes, or name it as an unresolved
+     coverage gap without deriving scientific claims from it.
 
 3. **Read and extract.** For each paper page (`brain-read`), pull:
    - The **claims** the paper actually makes (`## Findings`,
@@ -218,9 +229,9 @@ itself is the deliverable; the report is for traceability.
 - **Filing a `concept` when the synthesis is a testable claim.** If
   papers fall on both sides of a question, it is a `hypothesis`. Use the
   pro/con structure; do not hide the disagreement in concept prose.
-- **Synthesizing from stubs without flagging them.** A `needs-ingest:
-  true` paper page has no body to read from; treating it as ingested
-  silently inflates the evidence count.
+- **Counting queued or citation-only pages as complete evidence.** A
+  PAGE_READY body can exist while its source checks/wiring are unfinished;
+  the queue flag is not a statement that the body is absent.
 - **Fabricating connections that aren't in the source papers.** Every
   synthesis claim points back to a paper that actually makes it; "the
   literature converges on X" is fine only when X is something multiple

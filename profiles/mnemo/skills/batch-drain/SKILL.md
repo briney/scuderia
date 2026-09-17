@@ -15,7 +15,7 @@ eval_contract:
     committed in batches, zero truncation loops and zero silently dropped shards.
   dimensions:
     - "YIELD_AND_WAIT — does the orchestrator emit zero new dispatches while any prior batch is still in flight?"
-    - "REMAINDER_INTEGRITY — is every leftover shard (list size not a multiple of batch size) dispatched via a single-task call, never dropped, never pushed through batch mode?"
+    - "REMAINDER_INTEGRITY — is every leftover shard dispatched using the current schema’s valid single-item form or explicitly deferred?"
     - "DISK_VS_REPORT — is every shard's completion verified against the filesystem (files exist, content correct), never against the subagent's self-reported 'completed'?"
     - "COMMIT_BOUNDARY — does the parent close each coherent verified unit through git-ops, after required wiring, rather than commit merely because a dispatch batch returned?"
   hard_fails:
@@ -29,27 +29,22 @@ eval_contract:
 The one invariant that governs every task where the orchestrator breaks a large
 list of work items into `delegate_task` batches and dispatches them in waves.
 This is the *scheduling discipline only*. What each subagent *does* is specified
-by the calling skill (`literature-dive` ingests Tier 1 papers; `therapeutic-antibody-registry`
+by the calling skill (`ingest-pending-papers` fills eligible queued pages; `therapeutic-antibody-registry`
 enriches entry blocks; `retroactive-linking` re-links a shard of pages). This
 skill owns the loop that moves items through those workers without dropping any,
 re-dispatching early, or building on incomplete results.
 
 ## The core invariant
 
-> **After dispatching a batch, the orchestrator STOPS GENERATING until that
-> batch's consolidated result returns. Do not emit a new `delegate_task` while
-> any prior batch is in flight.**
+> **Never dispatch a new wave while a prior wave is in flight. Verify its
+> returned artifacts before advancing.**
 
-"In flight" and "returned" are different states. A batch has *returned* only when
-its consolidated result has re-entered the conversation as a new message — not
-when it was dispatched, not when a "Background N tasks running" notice appears.
-
-**Mechanics of waiting (this runtime).** There is no explicit blocking `wait()`
-to call here. Background child results *re-enter the conversation* as their own
-message when they finish. Therefore "yield and wait" is: **end your turn after
-dispatching.** Do not emit further tool calls and do not emit prose that would
-trigger another dispatch, until the consolidated result message arrives. In this
-runtime, yielding *is* waiting.
+Use the runtime's reported return mode. In a background runtime, a wave has
+returned when its consolidated result re-enters the conversation, not when the
+dispatch call prints a handle. Finish only independent foreground work permitted
+below, then end the turn so the result can arrive. Do not poll transcripts or
+artifact files as a substitute for yielding. A blocking runtime returns results
+in the dispatch call; inspect them before advancing.
 
 The most common failure — and the one this rule exists to kill — is the
 overeager loop: dispatch batch 1 → see "Background 3 tasks running" → emit batch
@@ -81,20 +76,19 @@ the thing that depends on the batch, the correct action is to yield and wait.
 
 ## Batch sizing
 
-- `delegate_task` enforces a `max_concurrent_children` ceiling (currently 3).
-  A batch larger than the ceiling is rejected at dispatch ("Too many tasks").
-  Size batches at or under the ceiling.
-- Batch in whole multiples. When the list size is not a multiple of the batch
-  size, the **remainder** is dispatched as a **single-task call** — never via
-  batch mode (batch mode rejects fewer than 2 tasks: a 1-item batch errors and
-  its item is dropped). A single-task call queues and runs when a slot frees.
-- Never drop a shard. Every item is either dispatched (whole batch, or remainder
-  as single-task) or explicitly recorded as deferred with its own slot.
+- Discover the current `max_concurrent_children` ceiling and call schema.
+  Size each wave at or below the ceiling; do not bake one deployment's number
+  into the domain skill or cron prompt.
+- Dispatch every remainder using the single-item form accepted by the current
+  tool. In a tasks-array API, `tasks: [{...}]` is a valid one-item wave when
+  the schema permits it; do not invent a separate single-task call signature.
+- Track each item through dispatch and verification. Rejected calls leave
+  their items undispatched; no shard disappears from final accounting.
 
 ## The drain loop
 
 1. **Size and shard** the item list into batches at or under the ceiling, with
-   the remainder held out as a single-task call.
+   the remainder retained for a valid final single-item wave.
 2. **Dispatch one batch.** Then yield and wait (see core invariant).
 3. **On return, verify on disk.** Count artifacts on the filesystem — files
    exist, frontmatter parses, required content present — never against the
@@ -107,7 +101,7 @@ the thing that depends on the batch, the correct action is to yield and wait.
    a complete unit; follow the domain caller's boundary. Children return paths
    and evidence, never stage/commit/push. Hold incomplete units explicitly.
 5. **Dispatch the next batch.** Repeat 2-4 until all batches are out. Dispatch
-   the remainder single-task call last (or fold it into the final wave).
+   every remainder via the supported call form (or fold it into the final wave).
 6. **Bulk read-back at the end.** After the last batch returns, one aggregate
    verification (a script checking every artifact at once) before declaring the
    campaign complete.
@@ -117,7 +111,7 @@ the thing that depends on the batch, the correct action is to yield and wait.
 | Syndrome | Cause | Fix |
 |---|---|---|
 | `finish_reason='length'` truncation storm | Overeager re-dispatch — new batches emitted while prior ones in flight, overflowing the completion API's output-token cap | Yield and wait (core invariant) |
-| `[Batch mode requires at least 2 tasks]` on a `1x` dispatch | Remainder shard pushed through batch mode | Dispatch the remainder as a single-task call |
+| Schema rejects a remainder call | Call shape does not match the installed runtime | Inspect the schema, use its valid single-item form, and retain the rejected item in accounting |
 | Item silently missing from final accounting | A shard dropped in a truncation or malformed batch | Verify count in/out at the end; re-run any shard with no disk artifact |
 | Reported "completed," no file on disk | Trusted the subagent's self-report | Verify on disk, not on the report |
 | Subagent timed out, files actually written | Assumed timeout == failure | Treat timeout as "check disk"; re-run only what's absent |
@@ -134,7 +128,9 @@ the thing that depends on the batch, the correct action is to yield and wait.
 
 Consumers (edit these to point here rather than restating the loop inline):
 
-- `skills/literature-dive/SKILL.md` — multi-batch ingestion during a deep dive.
+- `skills/ingest-pending-papers/SKILL.md` — eligible pre-created queue fills.
+- `skills/literature-dive/SKILL.md` — eligible queued segments of a deep dive;
+  this scheduling skill never grants fresh-source delegation permission.
 - `skills/therapeutic-antibody-registry/references/enrichment-sweep-recipe.md` —
   bulk enrichment sweeps of the antibody registry.
 - `skills/retroactive-linking/SKILL.md` and `skills/retroactive-linking-shard-worker/SKILL.md` —

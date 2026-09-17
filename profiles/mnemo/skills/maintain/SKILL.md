@@ -10,6 +10,15 @@ triggers:
   - "link audit"
   - "citation audit"
   - "recompute importance"
+eval_contract:
+  goal: Report and repair authorized brain-health defects while preserving scoped phase behavior and unfinished ingestion state.
+  dimensions:
+    - "COVERAGE — each requested health dimension is inspected and reported"
+    - "SAFETY — repairs preserve source content and require verified relationships"
+    - "SCOPE — pending ingests are counted, not completed or reclassified by maintenance"
+  hard_fails:
+    - Marking an unscanned dimension clean or treating queued bodies as absent by assumption.
+    - Deleting pages without authorization or exceeding the scheduled phase scope.
 ---
 
 # Maintain — brain health checks
@@ -117,12 +126,14 @@ Tag drift — `mab` vs `monoclonal-antibody`, `lm` vs `language-model`.
 
 ### Pending-ingest & unknown-status backlog (detect-only)
 
-Papers carrying `needs-ingest: true` (stubs awaiting fill) or `status: unknown`
-(publication status unresolved). Both are completed by **external I/O** — a
-DOI/PDF fetch (`ingest-pending-papers`) or a publication-status lookup — which is
-a **waking** concern, not a dream's. Here: **count and report** the backlog only;
-never fetch, never fill. This keeps the queue visible without pulling external
-I/O into an unattended run.
+Count papers with `needs-ingest: true` as queued ingest work: citation-only
+stubs or PAGE_READY bodies awaiting parent verification/wiring. The existing
+`pending_stubs` metric retains this queue count; do not infer body absence
+from the flag. Count `status: unknown` separately. Follow
+`skills/conventions/paper-stubs.md` for the lifecycle. Completion belongs to
+the drain/ingestion parent, not maintenance; it may need external retrieval
+or only remaining shared wiring. Here, count and report only: never fetch,
+fill, or clear the queue flag to make the backlog smaller.
 
 ### Importance recompute
 

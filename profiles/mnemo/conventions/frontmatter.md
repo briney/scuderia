@@ -48,20 +48,25 @@ peer-reviewed and preprint are one kind separated by this field, not by
 directory (`page-kinds.md`). `unknown` is the transient state for pages
 whose publication status the ingester could not determine; the `maintain`
 pass resolves them. Its identifiers are first-class: `doi` is the primary
-key (every paper and every bioRxiv/arXiv preprint has one); `pmid`, `pmcid`,
+key when assigned (some papers have no DOI; use explicit null after
+source verification); `pmid`, `pmcid`,
 `arxiv`, and `biorxiv` are carried where available.
 
 A `paper` may also carry queue and provenance fields:
 
 | Field | Meaning |
 |---|---|
-| `needs-ingest` | `true` if the page is a stub awaiting full ingestion; `false` (or absent) once `paper-ingest` has filled it in. Producers (`grant-ingest`, future `paper-ingest` redesign) set this; the consumer `ingest-pending-papers` drains the queue. |
-| `cited_by` | List of `grants/<slug>` and `papers/<slug>` references that cite this paper. Append-only across ingests — paper-ingest preserves the existing list when filling a stub. The future paper-side threshold logic reads this. |
+| `needs-ingest` | `true` for queued ingestion work, including a page-only distillation awaiting parent wiring; `false` after complete verified ingestion. Below-threshold stubs may also be false, distinguished by their stub tag/body. See `paper-stubs.md` for producer exceptions and the completion transition. |
+| `cited_by` | List of `grants/<slug>` and `papers/<slug>` references that cite this paper. Append-only across ingests; preserve order and valid concurrent additions on fills, and the union on merges. The paper-side threshold counts distinct citing source pages. |
 | `ingest_attempts` | Integer counter, bumped on each `paper-ingest` failure. |
 | `last_ingest_attempt` | Date of the most recent attempt. |
-| `needs-enrichment` | `true` if the distillation is partial — abstract-only, or from a preprint rather than the published version. Cleared when a full published full text is distilled. The embargo re-check sweep (`skills/paper-ingest/scripts/embargo_recheck.py`) re-tests these pages for newly available full text. |
+| `needs-enrichment` | `true` if the distillation is partial: abstract-only, or from a preprint substituted for an existing published version. A complete preprint with no published twin need not be flagged. Clear only after the required version is fully distilled. The embargo re-check sweep (`skills/paper-ingest/scripts/embargo_recheck.py`) re-tests these pages for newly available full text. |
 | `fulltext_source` | Provenance tag recording where the distilled full text came from: `pmc-xml` \| `epmc-pdf` \| `biorxiv-jina` \| `biorxiv-browser` \| `publisher-jina` \| `nature-browser` \| `wayback` \| `paperclip-biorxiv` \| `paperclip-arxiv` \| `paperclip` \| `arxiv-html` \| `provided-pdf` \| `abstract-only`. Printed by `skills/paper-ingest/scripts/fetch_fulltext.py` on every retrieval; paper-ingest Phase 4 copies it into the page. Enables targeted enrichment queries ("every page whose text is `biorxiv-jina` or `abstract-only`") in one grep instead of parsing Ingest logs. Absent on pages ingested before 2026-08-05. The `paperclip-*` tags (local mirror full text) and `arxiv-html` (direct arxiv.org/html curl + regex extraction) were added 2026-08-12; a source-agnostic `paperclip-full` tag was proposed and rejected in favor of source-specific tags. |
+| `stub_source` | Free-text original producer. New canonical labels: `paper-ingest`, `grant-ingest`, `literature-sweep`, `literature-dive`; preserve existing legacy/custom labels. Optional on legacy pages; preserve origin through fills and merges. Selection by a later producer adds provenance rather than overwriting origin. |
 | `tags: [stub]` | Marks a page that has only frontmatter + a placeholder body. Removed once filled. |
+
+Read `paper-stubs.md` for the shared minimal shape, producer queue decisions,
+provenance, failure accounting, and delegation boundary.
 
 Stubs are valid `paper` pages — they resolve to a real-world object via their
 citation entry even before DOI resolution — and they accumulate citation
@@ -300,6 +305,9 @@ are the **derived backlinks** of these edges — never written by hand.
   selected files. Sub-second. This is the producer self-lint and the
   pre-commit gate mode — it catches a bad write at the moment of writing,
   which is the only place a fix is cheap.
+
+Run relative `--paths` arguments from the brain root, or pass absolute file
+paths; `--instance` alone does not change the command’s working directory.
 
 A scoped run never reports link-existence findings for unselected files;
 those surface in the next full run. A scoped run that passes is therefore

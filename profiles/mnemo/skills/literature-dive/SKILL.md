@@ -7,6 +7,18 @@ triggers:
   - "comprehensive literature review of"
   - "deep dive into the literature on"
   - "systematic literature dive"
+eval_contract:
+  goal: Build a source-grounded literature corpus and synthesis through approved tiering and one informed supplementary pass.
+  dimensions:
+    - "SEARCH — expert curation, gap analysis, learned vocabulary, alternatives, and bounded expansion survive"
+    - "EVIDENCE — tiers and findings are attributed to sources actually read"
+    - "OWNERSHIP — fresh ingestion and eligible queue fills obey distinct explicit modes"
+    - "COMPLETION — bibliography decisions, shared wiring, verification, and synthesis are accounted for"
+  hard_fails:
+    - Treating a selected fresh citation as permission to delegate first-contact ingestion.
+    - Claiming skipped bibliography walks created stubs or unread review text established detailed discussion.
+    - Clearing enrichment on an abstract-only or substitute-preprint page.
+    - Synthesizing as if unwired or unverified intermediates were completed ingests.
 ---
 
 # literature-dive — deep literature exploration
@@ -36,7 +48,8 @@ synthesis — the second pass uses everything the first pass learned.
 > `skills/conventions/quality.md` (citations, forward-only linking),
 > `skills/conventions/capabilities.md` (the harness contract),
 > `skills/conventions/test-before-bulk.md` (validate before scaling),
-> `skills/conventions/preprint-retrieval.md` (bioRxiv full text).
+> `skills/conventions/preprint-retrieval.md` (bioRxiv full text),
+> `skills/conventions/paper-stubs.md` (queue/provenance and delegation boundary).
 
 ## Capabilities
 
@@ -83,26 +96,20 @@ handles this transparently. The `execute_code` path also lets you batch
 multiple PubMed searches in one call and parse results with the full
 Python stdlib.
 
-**Delegation rate-limit fallback (HTTP 429).** If the provider
-rate-limits all dispatched subagents (observed 2026-08-26, Nipah
-antibodies dive: 6/6 subagents across 2 batches hit HTTP 429 and wrote
-zero files), do NOT retry delegation — the rate limit persists for the
-session. Fall back to **direct orchestrator ingestion**: fetch abstracts
-via Europe PMC REST
-(`europepmc.org/webservices/rest/search?query=ext_id:PMID&resultType=core&format=json`
-— reliably returns `abstractText`, `title`, `authorList`, `pmcid`,
-`journalTitle`), distill and write the paper pages yourself.
-Abstract-only distillation (`fulltext_source: abstract-only`,
-`needs-enrichment: false`) is acceptable when full text is paywalled —
-the abstract plus the spine review's detailed discussion of the paper
-(Table entries, in-text citations with surrounding context) usually
-provides enough signal for a useful distillation. This is slower than
-delegation but reliable; a 25-paper dive can be completed in ~30 minutes
-of direct writing. For full text when available, Europe PMC
-`fullTextXML` works for some PMCIDs but 404s for others — fall back to
-jina reader (`https://r.jina.ai/https://pmc.ncbi.nlm.nih.gov/articles/PMC{id}/`)
-when XML fails, and note that the `PMC` prefix must NOT be duplicated
-(`/articles/PMCPMC123/` 404s; use `/articles/PMC123/`).
+**Provider/delegation failure.** An HTTP 429 or capacity error is not evidence
+that paper full text is unavailable. Inspect written files after workers have
+returned; preserve valid intermediates and defer failed/unstarted queued fills
+per `ingest-pending-papers`. Respect retry guidance without asserting that a
+single observed limit lasts for every session. Fresh sources remain primary-
+agent work under the execution modes below; an outage does not broaden
+permission to delegate or to inline-fill the queue.
+
+`paper-ingest` owns the retrieval ladder and source-completeness gates. Genuine
+abstract-only distillation sets `fulltext_source: abstract-only` and
+`needs-enrichment: true`; a substitute preprint also retains enrichment.
+Attribute review-derived context to the review, not to an unread primary
+paper. Do not use a provider failure to bypass manuscript/supplement attempts
+or the abstract-only closure gate.
 
 **Crash recovery.** If a dive crashes mid-flight: restart Hermes (clears
 FD leaks), `ulimit -n 4096` immediately, use `session_search` to
@@ -120,7 +127,7 @@ bibliography.
 
 | Tier | What it is | Ingestion path |
 |---|---|---|
-| **Tier 1 (primary)** | The review itself + primary literature the review discusses in detail | Full `paper-ingest` immediately. No stub. Bypass the threshold gate. |
+| **Tier 1 (primary)** | The review itself + primary literature the review discusses in detail | Priority `paper-ingest` by the primary agent for fresh sources; no citation threshold. Existing queued stubs retain their separate drain contract. |
 | **Tier 2 (secondary)** | Load-bearing citations from Tier 1 papers (methods, datasets, frameworks) | `paper-ingest` Phase 7 stub + threshold gate (5+ `cited_by`). Full ingest deferred to `ingest-pending-papers`. |
 | **Dropped** | Background/context citations | Not paged. |
 
@@ -133,13 +140,9 @@ that cites a paper once for a fact ("humans have ~10¹⁰ B cells [42]")
 does not. The typical review has 200–300 references; Tier 1 is usually
 10–20.
 
-**The ledger bypass.** Tier 1 papers bypass the `people/_ledger.yaml`
-threshold gate *for the paper itself* — they get a full `paper-ingest`
-immediately, not a stub. The **author ledger** still applies normally:
-Tier 1 authors go through the standard three-branch logic in
-`paper-ingest` Phase 8 (existing page → append `author_on`, ledger entry
-→ append citation, new → create ledger entry). The bypass is about the
-*paper's* ingestion priority, not the author pipeline.
+**Paper priority is not author promotion or delegation permission.** Tier 1
+bypasses the paper queue's citation threshold; author ledger/promotion rules
+still apply. Follow paper-ingest's execution modes and Phase 8 reference.
 
 ## Phases
 
@@ -199,7 +202,7 @@ search finds the frontier the survey missed. For fields where no adequate
 review exists, skip the review-anchored protocol entirely and build Tier
 1 directly from semantic search results, grouped by cluster: run 6–10
 semantic queries, dedup against the brain, present the cluster map +
-candidate count for scope approval, then dispatch ingestion batches.
+candidate count for scope approval, then ingest under Phase 4’s explicit modes.
 
 The two methods are complementary, not substitutes. Observed 2026-08-10
 (DLM dive): the spine survey provided the taxonomy but missed the entire
@@ -213,8 +216,8 @@ semantic search for the frontier. Confirmed at scale in a second dive
 whose load-bearing references form a near-complete causal chain —
 typically an ingested paper whose Ingest log names deferred anchor
 stubs — the dive can start from those anchors directly: resolve and
-validate every anchor identity (Phase 3.5 rules), ingest them in
-batches (Phase 4 protocol), and run the review-discovery search in
+validate every anchor identity (Phase 3.5 rules), ingest them under
+Phase 4’s explicit modes, and run the review-discovery search in
 parallel; the spine review, when one exists, is ingested as a
 supplementary paper rather than before the corpus (observed 2026-09-05,
 adaptive-immunity-CNS dive: the park-2026 anchor set was ingested
@@ -223,21 +226,14 @@ surfaced in the discovery search and landed mid-dive). Tier
 classification then runs against the anchors' own deferred-reference
 logs plus the review when it arrives.
 
-### 2. Review ingest (delegate with read-back)
+### 2. Review ingest (primary-owned)
 
-Ingest the selected review(s) with `paper-ingest`. When there is only
-one review, ingest it directly (spine — first contact with material
-entering the brain). When there are multiple reviews (your human's
-preference is often comprehensive — he chose "all five" when offered
-three), delegate the additional reviews as subagents to keep the
-orchestrator's context window clean.
-
-**Delegation vs. direct.** The first review (or the spine review — the
-one the tier classification builds on) is ingested directly. Additional
-reviews can be delegated with read-back verification, because the
-selection decision (your human chose them) is the vetted judgment that
-justifies delegation, just as the review's citation justifies
-delegating Tier 1 papers.
+Ingest each newly selected review yourself with `paper-ingest`; selection by
+the human does not turn a fresh review into a pre-created queue stub. This
+holds for both the spine review and additional reviews. Reuse an existing
+verified full page when possible. Pre-existing queued stubs may be filled by
+`ingest-pending-papers` under its separate contract; do not manufacture stubs
+inside the campaign to gain delegation permission.
 
 **Review full text is often paywalled.** Most high-impact review
 journals (Nature Reviews, Annual Reviews, Elsevier titles) do not have
@@ -287,40 +283,36 @@ Read the paper page back. Check that the distillation is complete and
 the reference list was obtained. If the quality is good, proceed to
 Phase 3. If not, fix the approach before scaling to additional reviews.
 
-**Do NOT walk the bibliography (Phase 7) for review papers.** The
-literature-dive orchestrator handles tier classification separately
-(Phase 3). Instruct delegated subagents to skip Phase 7 — the
-orchestrator will classify the review's references and dispatch Tier 1
-papers itself.
+**Review bibliography ownership.** Skip paper-ingest's automatic Phase 7
+stub creation for the review; the dive primary classifies the fetched reference
+list in Phase 3. Save its source and identifiers. No stubs are assumed to exist
+as a result of the skipped phase.
 
 ### 3. Tier classification
 
-After the review is ingested, read its full text (or the reference list
-obtained via Phase 2) against the stubs Phase 7 created. Reclassify the
-bibliography into three tiers.
+Read the review's full discussion where available and its fetched reference
+list; compare candidates against existing brain pages, not imaginary Phase 7
+stubs. Classify the full reference list, including candidates beyond the
+primary-paper anchor test.
 
-**Tier 1 — promote to immediate ingest.** A citation is Tier 1 if the
-review discusses it in detail: devotes a paragraph or more to the paper's
-findings, methods, or implications, or cites it repeatedly across
-multiple sections. These get full `paper-ingest` now — no stub, no
-threshold gate.
+**Tier 1 — priority ingest.** A reference qualifies when the review discusses
+its findings/methods/implications in detail or repeatedly across sections.
+Read that discussion to establish the bar. A reference list alone cannot show
+how a paper was discussed; if the review body is unavailable, use the alternate
+review or targeted-search path below and state that basis explicitly.
+Fresh approved Tier 1 sources go to primary-owned ingestion; existing full
+pages are reused, and pre-created queued pages retain their drain contract.
 
-**Identify Tier 1 that Phase 7 missed.** Phase 7's anchor test is tuned
-for primary papers, which cite more narrowly than reviews. A review's
-bibliography is broader, and some citations that pass the "discusses in
-detail" bar may not have triggered Phase 7's anchor test. Scan the
-review's full reference list — not just the stubs Phase 7 created — for
-additional Tier 1 candidates.
+**Tier 2 — threshold-gated stubs.** Create or update source-grounded
+load-bearing references (methods, datasets, frameworks) using
+`skills/conventions/paper-stubs.md`. During Tier 1 ingestion, the primary or
+queue-drain parent performs each paper's Phase 7 walk; page-only leaves do not
+create these stubs. A deferred walk is an explicit outstanding obligation,
+not confirmation that stubs are in place.
 
-**Tier 2 — leave as stubs.** Citations that are load-bearing for Tier 1
-papers (a method they use, a dataset they analyze, a framework they
-extend) but are not discussed in detail by the review itself. These
-stay as the stubs Phase 7 created. The standard threshold gate applies:
-when 5+ independent sources cite a stub, `ingest-pending-papers` drains
-it.
-
-**Dropped — not paged.** Context citations ("humans have ~10¹⁰ B cells
-[42]") that neither the review nor its Tier 1 papers anchor on.
+**Dropped — not paged.** Background/context references do not become stubs.
+Neither topic relevance nor campaign selection creates a `cited_by` edge;
+only verified citation relations do.
 
 **Dedup against the brain.** Before presenting, check each Tier 1 DOI
 against existing `papers/` pages — some may already be ingested.
@@ -332,7 +324,7 @@ the brain does not already hold, and does it add something a sibling
 Tier 1 paper in the same dive does not already cover? A review that
 "discusses in detail" a topic the brain already ingested in a prior dive
 does **not** need a second full ingest — note it as already-covered and
-drop it from the dispatch list. The Tier 1 bar is "discusses in detail
+drop it from the ingestion list. The Tier 1 bar is "discusses in detail
 AND adds new signal," not "discusses in detail" alone. When the dive
 spans multiple axes (diversity, mechanism, evolution, intervention),
 prefer one load-bearing paper per axis over several papers that
@@ -358,8 +350,8 @@ because there is no expert curation: "directly defines or extends the
 molecular mechanism for a lifecycle stage / axis of the target topic."
 
 **Output of this phase:** a list of Tier 1 papers (DOI + title +
-one-line reason for tier classification) and confirmation that Tier 2
-stubs are in place. Present the Tier 1 list to your human for a quick
+one-line reason and source basis for tier classification), plus the Tier 2
+stubs actually created and any explicitly pending bibliography decisions. Present the Tier 1 list to your human for a quick
 sanity check before ingesting — this is the one gate in the process
 where a human glance is cheap and valuable.
 
@@ -383,8 +375,9 @@ in hand (~2s per citation). Present your human the *validated* list:
 identifiers (recovery replaces wrong identifiers with PubMed-verified
 ones); `HOLD` entries flagged for manual resolution, never silently
 dispatched. Any entry flagged `retracted: true` is surfaced to your
-human explicitly, not dispatched. Phase 4 dispatches using the
-validator's `dispatch` list — never the raw bibliography identifiers.
+human explicitly, not ingested unattended. Phase 4 uses the validator’s
+`dispatch` output as the validated candidate list, not as delegation
+authorization; never use the raw bibliography identifiers.
 
 **PubMed batch verification for HOLD entries.** The validator's
 title-matching heuristic is conservative — older papers (1990s–2000s)
@@ -392,7 +385,8 @@ with slightly different PubMed title formatting can fail the
 title-similarity threshold even when the PMID is correct. When the
 validator returns HOLD entries with PMIDs, verify them via a single
 PubMed `esummary` batch call: if PubMed returns the expected title for
-each PMID, the PMID is correct and the paper can be dispatched. Do NOT
+each PMID and the other identity fields agree, the paper can proceed under
+Phase 4’s execution modes. Do NOT
 discard a paper solely because the validator's title-match heuristic
 failed (astrovirus dive, 2026-08-07: 17 of 33 Tier 1 papers flagged
 HOLD; all 17 PMIDs verified correct via PubMed batch, all dispatched
@@ -415,211 +409,60 @@ paper carrying an older author-manuscript PMCID (same dive, Antila
 record, not a mis-mapping; `efetch db=pmc` + title match settles it
 before the identifier is discarded.
 
-### 4. Tier 1 ingest (delegate with read-back)
+### 4. Tier 1 ingest (explicit execution mode)
 
-Ingest each Tier 1 paper. The review's citation is the vetted decision
-that this paper belongs in the brain — the equivalent of the upstream
-stub-creation decision that justifies the `paper-ingest` queue-drain
-carve-out (`SOUL.md` §2). Delegation is appropriate here: spawn
-subagents in small batches, then read the resulting pages back to
-verify before declaring success.
+Use the primary-agent/full mode in `paper-ingest` for fresh approved Tier 1
+sources. Read the source, distill it, and complete required bibliography,
+author, graph, and propagation work before counting it complete. Approval of
+a citation is a priority decision, not permission to delegate its first ingest.
+If context limits block completion, record remaining candidates and resume in
+a fresh session rather than weakening that boundary.
 
-**Delegation protocol — follow `batch-drain`.** The dispatch/yield/verify
-loop for large dives is the `skills/batch-drain/SKILL.md` primitive; load it and
-follow it for every multi-batch dive. The dive-specific bits below override only
-the *content* of each subagent task, never the scheduling discipline.
+For a campaign segment consisting of pre-created queued stubs, invoke
+`ingest-pending-papers` under the shared stub contract; its leaves use page-only
+mode and its parent completes all shared writes. Reuse existing full pages.
+Do not mix a new stub producer and its drain in the same session. These modes
+apply at every corpus size; there is no 5/15-paper ownership threshold.
 
-- Batch at most 3 (the concurrent delegation pool limit — a 4-paper
-  `delegate_task` call is rejected at dispatch with "Too many tasks:
-  max_concurrent_children is 3"). The remainder (list size not a multiple of 3)
-  is dispatched as a single-task call, never via batch mode.
-- **Yield and wait after each dispatch.** Do not emit new dispatches while a
-  batch is in flight (see `batch-drain` — the core invariant). This is the fix
-  for the truncation loop (`finish_reason='length'`) and the dropped-remainder
-  failure seen on prior dives.
-- Pass each subagent the *validated* DOI/PMID from the Phase 3.5 dispatch list
-  (never the raw bibliography identifiers) and the context that this is a Tier 1
-  paper from a literature dive (so the subagent knows to do a full
-  `paper-ingest`, not a stub fill).
-- The subagent inherits `paper-ingest` and does the full pipeline: resolve
-  identity, dedup, distill, file, wire, bibliography walk.
-- On return, verify files on disk and finish required parent-owned wiring.
-  Close a coherent unit through git-ops before advancing past that unit; do
-  not treat a returned scheduling batch as automatically complete.
-  After the last batch returns, do a bulk read-back verification (a Python script
-  checking all files at once — frontmatter parses, DOIs present, authors
-  populated, body sections present). Never trust the subagent's "completed"
-  report — disk is truth.
+**Scheduling when delegation is eligible.** Load `skills/batch-drain/SKILL.md`
+for runtime batch sizing, call shape, and yield/return discipline. It owns the
+loop, not this campaign. No new wave while another remains in flight. Briefs
+carry validated identifiers, a pre-existing input path, campaign purpose,
+unique scratch prefix, and the explicit page-only scope/return record from
+paper-ingest. Children never stage, commit, pull, or push.
 
-**Foreground work during ingestion batches (narrow and gated).** Permitted
-*only* when it does not depend on the in-flight batch's outputs (see
-`batch-drain`). The legitimate class is: read the existing related concept pages
-to map what the brain already knows, use the spine review's framework as the
-organizing structure, and compile a working document at `working-docs/<topic>-*
--list.md` (e.g. every virus family, its entry mechanism, receptor, endocytic
-route). This working doc is NOT a brain page (no frontmatter) — it is a
-transitory document that informs the Phase 7 synthesis. It proceeds in parallel
-only because it does not consume the running results. **Do not build the Phase 7
-concept page (or any downstream synthesis) while its evidence papers are still
-ingesting** — that artifact depends on the in-flight batch and gets rebuilt.
+**Briefs are source-grounded inputs, not primary evidence.** Authorship,
+cohorts, and findings in a brief must come from the source metadata/abstract
+read for that input, not recollection. The worker still verifies the brief
+against the retrieved paper. Use paper-ingest's source-specific metadata
+ladder: jina may drop bylines and mirrors may be incomplete or stale; author
+identity is not inferred from the available body text alone.
 
-**Context management.** Each subagent runs in an isolated context, so
-the orchestrator's context window does not accumulate 10–20 full paper
-distillations. The orchestrator receives only the final summary per
-paper. The read-back verification is a single `brain-read` per page —
-cheap.
+**Parent wiring.** The queue-drain parent reads each PAGE_READY page and its
+source metadata/bibliography, then performs paper-ingest Phases 7–9. The shared
+procedure is `paper-ingest/references/author-ledger-mutation.md`: it owns
+name/slug resolution, ORCIDs, new versus existing entries, promotion,
+plain-text mutation, and read-back. Do not reconstruct the wiring table from
+a truncated subagent summary or duplicate its mutation algorithm here.
 
-**Subagent task construction rules.**
-- Specify frontmatter status values: "use `status: preprint` for all
-  preprints and arXiv papers, `status: published` only for papers in
-  published journal/conference proceedings. Never use `withdrawn`,
-  `accepted`, `in review`, or other non-enum values" — the linter only
-  accepts `preprint`, `published`, `unknown`. Withdrawal/acceptance
-  status is a body detail, not a frontmatter enum.
-- Remind subagents the identifiers provided are validated but identity
-  verification against PubMed is still Phase 1 of their ingest.
-- Do not include arXiv API curl commands (blocked — see Environment
-  preflight). Point them at paperclip meta.json + fetch_fulltext.py
-  instead. `paperclip cat --full /papers/<id>/content.lines` is a proven
-  third-tier full-text fallback when `fetch_fulltext.py` fails
-  (Cloudflare blocks, jina misses, new bioRxiv DOI prefixes, arXiv HTML
-  not rendered); use `fulltext_source: paperclip-biorxiv` (for bioRxiv) or
-  `paperclip-arxiv` (for arXiv) accordingly.
-- **arXiv-dive dispatch-brief clauses (dive 3, 2026-09-05, seven
-  batches).** Each clause prevented a real failure: (a) require a
-  unique `/tmp/<prefix>_<slug>` artifact prefix per subagent —
-  siblings share `/tmp` and collide on generic names (write-collision
-  warning, batch 1); (b) subagents must use `check_authors.py` for
-  slug-existence checks, never bare grep — trailing whitespace makes
-  grep report a taken slug as free (MemoHarness: an anchored grep said
-  `zhao-yue` was free; `check_authors.py` correctly reported EXISTING
-  against a different AWS author); (c) warn that jina renders drop
-  first-author bylines — recover authorship from `citation_author`
-  meta or `ltx_personname` spans in versioned raw HTML (hit on 5 of 7
-  batches); (d) paperclip mirrors lag arXiv by days-to-weeks —
-  abstract-only `content.lines` and empty `meta.json` `authors` fields
-  are common for 2026 papers, so the abs page is the authorship
-  authority, and S2 citation counts drift upward within days (record
-  live counts in the Ingest log); (e) name collisions with existing
-  ledger entries resolve by institution-suffixed slugs
-  (`zhang-xinyu-fudan` vs biomedical `zhang-xinyu`), never merges —
-  collect the flags for central entity-resolution. (f) **Git ownership:** children return changed paths and validation;
-  they never stage, commit, pull, or push. The parent closes coherent verified
-  units through `skills/git-ops/SKILL.md`.
-- For large dives (>15 papers): instruct subagents to write ONLY their
-  paper page — no `people/_ledger.yaml` edits, no concept/method-page
-  links, no rem-cycle inbox appends. Subagents return their author lists
-  (name + slug + affiliation) in their summary; the orchestrator
-  performs all ledger entries and concept/method-page wiring centrally
-  after each batch. This eliminates concurrent-write races on shared
-  files. For small dives (≤5 papers), subagents do their own wiring as
-  in the standard `paper-ingest` pipeline.
-- **Dispatch briefs are brief-vs-fulltext hazards.** A context note
-  written from recollection can assert facts the paper lacks (observed
-  2026-09-05: a brief claimed the Kolabas Cell 2023 skull-BM atlas had
-  a WashU consortium, migraine/cancer cohorts, and
-  CNS-antigen-experienced cells — it is a Helmholtz Munich/LMU/DZNE/
-  Charité consortium with AD/tau/stroke/MS cohorts and no
-  antigen-experienced-cell finding; the subagent caught all three).
-  Every factual claim in a dispatch brief — authorship cluster, cohort
-  composition, key findings — comes from the PubMed abstract or EPMC
-  record read at dispatch time, never from memory. The subagent's
-  brief-verification step is the backstop, not the plan.
+**Verification and failure recovery.** Follow paper-ingest Phase 10 and the
+drain's per-item accounting. Check every returned item on disk regardless of
+reported success/failure: a provider can fail before writing or after a useful
+intermediate is written. Neither file existence, headings, nor author count
+alone establishes a completed ingest. A page-only result stays queued until
+parent wiring is complete. Confirm the actual canonical path after any
+parent-owned merge; source-check conflicting identifier resolutions. If a
+write contains `read_file` line prefixes such as `1|---`, repair only verified
+prefix corruption from preserved text and repeat parsing/source checks; do
+not strip arbitrary text from a scientific source. Do not inspect an in-flight
+leaf's missing authors as a final failure or mutate shared state on that basis.
 
-**Centralized ledger wiring pitfalls (large dives).**
-- *Misplaced citations.* When appending a citation to an existing
-  author's ledger entry, the `- papers/<slug>` line must go inside the
-  entry's `citations:` block. **Bound the entry FIRST** (full rules in
-  paper-ingest Phase 8 "Branch 2 mechanics"): entries begin at any
-  0-indent `- ` list line — key order inside entries is arbitrary, and
-  legacy entries can START with `- citations:` before `name:`/`slug:` —
-  so an entry block spans from its 0-indent start line to the next
-  0-indent `- ` line or EOF. Never bound by walking back from the slug
-  line to `\n- name:` — that grabs the PREVIOUS entry when the target
-  begins `- citations:` (observed 2026-09-05: batch citation appends
-  landed under the wrong authors). With the block correctly bounded,
-  find the last `- papers/…` line WITHIN it and insert the new citation
-  after it. **Match the entry's citation indent**: legacy entries use
-  2-space `  - papers/` lists, newer blocks use 4-space — a mismatched
-  indent still YAML-parses but the citation silently drops out of the
-  parsed list. After writing, `yaml.safe_load()` the ledger and check
-  the target entry actually gained the citation.
-- *Batch wiring.* Collect every (position, text) splice against the
-  ORIGINAL raw string, sort descending by position, apply in a single
-  pass. Never recompute `find()` offsets inside a mutation loop — stale
-  offsets compound into a quadratic blowup (observed 2026-09-05: a
-  4.8 MB ledger ballooned to 1.85 GB before the process was killed).
-- *Citation shape — the `papers/` prefix is load-bearing.* A citation
-  inserted as `- <slug>` (no prefix) still YAML-parses into the entry's
-  list, so a membership test written against the same bare-slug
-  convention passes — writer and verifier share the defect and neither
-  catches it. The independent gate is the platform linter
-  (`lint-frontmatter.py --paths people/_ledger.yaml`), whose shape
-  check rejects `citations` values not shaped `papers/<slug>` (observed
-  2026-09-05, adaptive-immunity-CNS dive: 7 appends were committed
-  through a red lint before the fix). Run that lint after every wiring
-  pass, read its output, and gate the commit on exit 0 — piping the
-  lint through `tail` masks its exit code, and sequencing it before
-  `git commit` with `;` commits straight through a red lint.
-- *Normalize citation values once, use the constant everywhere.*
-  Build the wiring table with `papers/<slug>`-prefixed values for both
-  writer and verifier. A bare-slug wiring table makes a CORRECT ledger
-  look broken (the verifier's membership test compares
-  `fitzpatrick-2024-…` against `papers/fitzpatrick-2024-…` and fails
-  every append) — the inverse of the prefix bug above; both observed
-  in the same dive. When a verification pass fails wholesale, suspect
-  the verifier's value convention before touching the ledger.
-- *Wire from durable sources, not subagent summaries.* Return
-  summaries are context-trimmed in transit ("[SUMMARY TRUNCATED]"),
-  and a page's Ingest log can record a count ("ORCIDs captured: 22 of
-  25") without the values. Build the wiring table from each paper
-  page's frontmatter `authors:` slugs plus the EPMC core record's
-  `authorList` (names and ORCIDs — authoritative and re-fetchable),
-  merged across the dive so shared authors get one entry carrying all
-  the dive's citations.
-- *Duplicate entries.* If an author was added to the ledger by a
-  subagent during the dive AND the orchestrator's new-entry code also
-  finds that slug, a duplicate results — one with real affiliations,
-  one with `affiliations: []`. After insertion, count slug occurrences;
-  remove empty-affiliation duplicates and merge their citations into the
-  real entry.
-- *Never `yaml.dump` the ledger.* Whole-file rewrites (dedup,
-  promoted-entry removal) produce 7000+-line diffs. Use targeted
-  `patch` string replacement against the specific entry block.
-
-**Subagent failures — the filesystem is ground truth.**
-- *Reported success, no file.* A subagent can report "completed"
-  without writing the file (empty model output, timeout after partial
-  work). After each batch returns, check the filesystem (`ls
-  papers/<expected-slug>*`). Missing files must be re-dispatched or
-  ingested directly.
-- *Reported failure, file written (provider-cap-after-write).* A
-  subagent can hit a provider usage cap (HTTP 403) AFTER writing the
-  page but BEFORE generating its return summary. The reported status
-  says "failed" but the file is complete on disk. Check `head -1`,
-  `grep -c '^## '`, and author count — if sections are present, the
-  ingest succeeded regardless of the report. Do not re-dispatch a file
-  that is already there.
-- *Wrong identity despite validation.* Even a successfully written file
-  may have been resolved under a corrected PMID/DOI different from the
-  one tasked. On return, verify the written page's PMID/DOI against
-  what the subagent's summary actually resolved to. If multiple
-  subagents return different corrected PMIDs for the same paper, one is
-  still wrong — re-check both against PubMed.
-- *Line-number prefix corruption.* Subagents using `execute_code` to
-  write files can bake `read_file`-style line prefixes (`1|---`) into
-  the file, breaking frontmatter parsing. The read-back checks the first
-  line of each file — if it starts with `1|` (not `---`), strip the
-  prefixes before committing.
-- *The ledger read-back race.* A subagent can write the paper page
-  before it writes the author ledger entries. If the orchestrator
-  checks the ledger mid-flight, finds authors "missing," and appends
-  them, it duplicates entries the subagent adds moments later. The safe
-  pattern: wait until the batch's consolidated result message has
-  arrived, THEN check the ledger. Treat an early "authors missing" as
-  "not yet written," not "failed" — never append on an early negative.
-  (For large dives this race is designed out entirely by centralized
-  wiring.)
+**Foreground work during an eligible wave.** Only work independent of its
+outputs may proceed: read existing concept pages, design searches from the
+already-read review, or compile a scratch map. Do not synthesize from unfinished
+papers, judge their coverage before read-back, or start another dispatch.
+Close coherent verified ingestion units through git-ops after required wiring;
+wave completion alone is not the commit boundary.
 
 ### 5. Review-inspired search
 
@@ -653,7 +496,7 @@ language rather than keyword syntax. Use `-s abstracts` for recall
 beyond the full-text corpus (paywalled journals appear there as
 abstracts). New papers surfaced this way go through the same Tier 1 /
 Tier 2 classification — and Tier 1 candidates get identifier
-validation per Phase 3.5 before dispatch. If the binary or key is
+validation per Phase 3.5 before ingestion. If the binary or key is
 absent, skip silently: keyword templates are always the default path.
 
 **Stopping criterion.** One round of targeted searches per open
@@ -664,15 +507,14 @@ nothing new, that is itself informative — the review was comprehensive.
 
 New papers found in this phase that clear the Tier 1 bar ("directly
 addresses an open question with new primary evidence") are ingested
-immediately via the same delegation protocol as Phase 4. Papers that
+under the same explicit execution modes as Phase 4. Papers that
 are Tier 2 become stubs.
 
-**Run Phases 4 and 5 concurrently.** The review-inspired search
-(Phase 5) can run while Tier 1 papers from Phase 4 are still being
-ingested by subagents. The orchestrator can run PubMed searches in
-the foreground while delegations run in the background. This is the
-right pattern — the search is a read-only operation that does not
-conflict with the writes the subagents are doing.
+**Concurrent search is conditional.** While an eligible queue-fill wave is
+running, searches derived solely from the already-read review may proceed.
+Searches or coverage judgments that require the wave's unread outputs wait
+for its return and verification. Fresh primary-owned ingestion does not imply
+background workers exist.
 
 ### 6. Informed supplementary pass
 
@@ -756,7 +598,7 @@ vocabulary; (3) dedup against the vault; (4) quantify new-vs-known.
 A high new fraction (>90%) is evidence the initial pass had a
 structural blind spot and a supplementary dive on that axis is
 warranted before synthesis. If the new axis has grown to rival the
-original, split the concept page FIRST, then dispatch the dive — see
+original, split the concept page FIRST, then begin ingestion — see
 the split pattern in Phase 7.
 
 **Prong 3 — informed snowball.** Read the bibliographies of the dive's
@@ -802,7 +644,7 @@ review, a second supplementary pass requires your human's explicit
 approval. State clearly what was found and let him decide. This is the
 guard against recursive expansion.
 
-#### 6.4 Consolidation and dispatch
+#### 6.4 Consolidation and ingestion
 
 1. Merge the candidates from all three prongs (and any re-anchor).
 2. Dedup against the brain and against the dive's existing corpus.
@@ -811,9 +653,9 @@ guard against recursive expansion.
 4. Present the consolidated list to your human, with the reason each
    candidate was surfaced (which gap, which prong, which re-anchored
    review). This is the approval gate.
-5. Ingest approved candidates via the Phase 4 delegation protocol
-   (batches of 3, read-back verification, centralized wiring if the
-   batch is large).
+5. Ingest approved candidates via Phase 4’s explicit execution modes:
+   primary-owned fresh ingestion or eligible pre-created queue fills, with
+   parent-owned shared wiring and source/read-back verification.
 
 **Hard rules.**
 - Phase 6 executes exactly once per dive.
@@ -828,8 +670,9 @@ guard against recursive expansion.
 Tier 2 papers — from the initial pass and the supplementary pass alike —
 stay as stubs created by `paper-ingest` Phase 7. The standard threshold
 gate applies: when 5+ independent sources cite a stub,
-`ingest-pending-papers` drains it. Confirm the stubs are correctly
-tagged with `needs-ingest: false` and move on. Do not inline-ingest
+`ingest-pending-papers` drains it. Confirm each stub’s queue flag follows the shared stub contract: false
+below threshold unless another producer already queued it; true at threshold.
+Never reset an already queued stub to false. Do not inline-ingest
 Tier 2 — that is the exploding paper tree the threshold gate exists to
 prevent. (Phase 6's informed snowball is the judgment-driven exception:
 papers it promotes are reclassified Tier 1 by human approval, not
@@ -873,7 +716,7 @@ existing page with the newly ingested literature.
 dive reveals that a concept page is carrying two literatures that cite
 each other sparsely and are searched with different vocabulary (the
 application/harness split), ask whether to split into sibling pages
-BEFORE dispatching the supplementary dive's batches. Rationale: pages
+BEFORE ingesting the supplementary corpus. Rationale: pages
 wired once into the right concept are cheaper than pages re-sorted
 afterward, and a single page carrying both axes buries each. The split
 protocol: (1) create the new concept page with the orthogonal axis's
@@ -933,9 +776,9 @@ dive is not complete until the concept page is written.
 - Tier 2 papers — load-bearing but not foundational — follow the
   standard stub + threshold gate, so the brain does not grow stubs
   faster than it can fill them.
-- Delegation for Tier 1 ingest keeps the orchestrator's context
-  window clean; read-back verification (filesystem as ground truth)
-  ensures each page is actually filled.
+- Fresh sources remain primary-owned. Eligible pre-created queue fills use
+  isolated leaves with parent verification and wiring; page-only output is
+  never mistaken for a complete ingest.
 - The review-inspired search catches what the review missed: open
   questions, thin evidence, post-review developments.
 - The informed supplementary pass catches what the *uninformed
@@ -968,15 +811,13 @@ dive is not complete until the concept page is written.
   threshold gate and `ingest-pending-papers` own the fill. Inline
   ingest of Tier 2 is the "exploding paper tree" the threshold gate
   exists to prevent.
-- **Skipping the read-back.** Delegated Tier 1 ingest is
-  delegation-with-oversight. The oversight is reading the page back —
-  and checking the filesystem regardless of what the subagent reported.
-  Reported success with no file and reported failure with a complete
-  file are both observed failure modes.
-- **Trusting subagent "completed" status.** See the full failure-mode
-  list in Phase 4: missing files, provider-cap-after-write, wrong
-  resolved identity, line-number prefix corruption, ledger read-back
-  race. Verify on the filesystem after every batch.
+- **Skipping the read-back.** Fresh primary-owned ingests and eligible
+  queued fills both require source and artifact verification. A child’s
+  PAGE_READY or failure report is not the final outcome; the parent checks
+  every returned item under paper-ingest Phase 10 and the drain’s accounting.
+- **Trusting file presence as completion.** Phase 4’s verification/recovery
+  rules require identity, source, body, and wiring checks after eligible
+  workers return; never repair shared state while a leaf is still writing.
 - **Skipping the supplementary pass.** A dive that goes straight from
   Phase 5 to synthesis locks in the blind spots of the uninformed
   discovery pass. Phase 6 is a standard component of every dive, not an
@@ -1003,53 +844,3 @@ dive is not complete until the concept page is written.
   4900+-entry ledger (for dedup or promoted-entry removal) produce
   7000+-line diffs. Use targeted `patch` string replacement against the
   specific entry block.
-
-## Changelog
-
-- **2026-09-05 (evening, harness dive 3) — subagent git discipline +
-  concept-verifier path convention.** Dispatch-brief clause (f): no
-  amend, no force-push; leave snapshotter commits untouched (batch-13
-  divergence, reconciled by rebase after md5 identity check).
-  Concept-page link verification: extensionless `links:` values need
-  both-forms path checks — a wholesale verification failure means
-  suspect the verifier's path convention first.
-
-- **2026-09-05 — axis-reframed queries + concept-page split
-  (autoresearch dive 3).** Prong 2b: semantic queries reframed on the
-  orthogonal axis (how systems are built, not what they do) surfaced a
-  self-named field invisible to two application-seeded dives —
-  machinery-layer vocabulary often originates in industry posts, so
-  mine the anchor paper's related-work section for the practice-naming
-  citations. Concept-page split protocol added to Phase 7: when one
-  page carries two sparsely-interciting literatures, split BEFORE
-  dispatching the supplementary dive so new papers wire into the right
-  page from the start; do not bulk-repoint inbound links.
-- **2026-09-05 — centralized-wiring hardening (adaptive-immunity-CNS
-  dive).** papers/-prefix citation shape rule + platform-linter gate on
-  wiring passes; single normalized citation representation for writer
-  and verifier; wiring tables built from frontmatter+EPMC rather than
-  subagent summaries; seed-corpus (anchor-set) dive entry;
-  hyphenated-surname and curly-apostrophe false-HOLDs; odd-but-valid
-  author-manuscript PMCIDs; dispatch-brief facts from records not
-  recollection.
-- **2026-08-12 — consolidation + Phase 6.** Folded all ten dated patch
-  skills (2026-08-04 through 2026-08-10d) into this file and deleted
-  them; patch provenance lives in git history. Added Phase 6 (informed
-  supplementary pass: gap map, gap/jargon/snowball prongs, single
-  re-anchor on review rediscovery), renumbering synthesis to Phase 7
-  and superseding the Phase 5b gap-fill patch. Gap-map criteria and the
-  snowball's judgment-over-thresholds selection are your human's
-  explicit design decisions from the 2026-08-12 brainstorm.
-- **Prior history** (from the deleted patches, all validated in live
-  dives): batching/pool limits, non-duplicative selection, and the
-  ledger race (2026-08-04, bacterial-toxins dive); FD limit, SS PMID
-  caution, REST templates, 429 handling, multi-batch delegation,
-  auto-snapshotter race, working-doc pattern (2026-08-05, entry-mechanisms
-  dives); identifier unreliability (2026-08-05, ebolavirus dive);
-  OpenAlex ladder, HOLD verification, line-prefix corruption, empty-
-  bibliography fallbacks, PubMed-driven Tier 1, concept supersession,
-  yaml.dump hazard (2026-08-07, astrovirus + filovirus dives);
-  provider-cap-after-write, centralized ledger wiring and its pitfalls,
-  paperclip full-text fallback, arXiv curl block, fast-moving-field
-  discovery, no-survey path, gap-fill pattern, frontmatter status enum
-  (2026-08-10, DLM + structure-tokenization dives).

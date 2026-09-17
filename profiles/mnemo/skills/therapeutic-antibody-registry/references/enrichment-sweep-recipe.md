@@ -32,8 +32,9 @@ conclusion. This cost a full diagnostic cycle in the 2026-08-19 resumption.
    blocks, not enrichment. Flag CAR-T (modality: car-t) — they get not-public blocks.
 2. **Build batches of 4-5 entries** each. Group alphabetically; the pipeline is
    uniform per entry so grouping by area is not necessary.
-3. **Count**: enrichable entries / 5 per batch = N batches. With
-   max_concurrent_children=3, that's ~N/3 sequential waves.
+3. **Count the actual shards**, including a short final shard. Use
+   batch-drain’s current runtime ceiling and call schema to plan waves;
+   entries per worker and workers per wave are different quantities.
 
 ## Delegation wave pattern — follow `batch-drain`
 
@@ -143,7 +144,8 @@ follows a specific assessment-then-continue pattern:
    instructions to only write the missing block.
 
 5. **Delegate in parallel batches.** Same pattern as the original sweep:
-   batches of 4-5 entries, 3+ concurrent subagents, each running the chained
+   batches of 4-5 entries, with concurrent workers bounded by the runtime
+   ceiling in batch-drain, each running the chained
    pipeline (sequences -> structures -> IP). For entries missing only IP,
    the subagent skips steps 1-2.
 

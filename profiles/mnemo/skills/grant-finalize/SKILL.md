@@ -43,8 +43,9 @@ propagation is therefore **shared with `grant-ingest`**, not reinvented here.
 > `skills/conventions/quality.md` (the notability gate on new pages),
 > `skills/conventions/capabilities.md` (the harness contract).
 > **Shared procedure:** `skills/grant-ingest/SKILL.md` phase 7 — the graph
-> propagation, referenced not restated. Chains to `skills/enrich/SKILL.md`,
-> `skills/paper-ingest/SKILL.md`.
+> propagation, referenced not restated. `grant-ingest` Phase 8 and
+> `skills/conventions/paper-stubs.md` own citation-stub production; paper
+> fills remain a later operation. Entity enrichment uses `skills/enrich/SKILL.md`.
 
 ## Capabilities
 
@@ -97,7 +98,8 @@ as-submitted package).
 6. **Propagate into the graph.** Run the propagation of `grant-ingest` phase 7
    — Specific Aims → `project` pages; preliminary data → `concept` / `method`
    evidence callouts; methods and concepts → pages; foundational references →
-   `skills/paper-ingest/SKILL.md`; funder → `institution` and program officers
+   queued stubs via grant-ingest Phase 8 (no inline paper fills); funder →
+   `institution` and program officers
    → `person` via `skills/enrich/SKILL.md`. Follow that procedure; do not
    restate it here.
 

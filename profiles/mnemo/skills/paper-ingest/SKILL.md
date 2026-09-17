@@ -9,6 +9,18 @@ triggers:
   - "stub fill"
   - "ingest this DOI"
   - "add this paper to the brain"
+eval_contract:
+  goal: Resolve and faithfully distill one paper, then complete its required bibliography, author, and graph integration.
+  dimensions:
+    - "IDENTITY — title, identifiers, version, and complete individual authors match verified sources"
+    - "EVIDENCE — findings and limitations reflect the retrieved source and its completeness"
+    - "OWNERSHIP — fresh sources stay with the primary; queued children return page-only intermediates"
+    - "COMPLETION — citation provenance, author wiring, propagation, and final checks all land"
+  hard_fails:
+    - Delegating fresh-source ingestion by treating a selected citation as a pre-created queue stub.
+    - Declaring an unwired page-only result a complete ingest.
+    - Clearing enrichment on abstract-only or substitute-preprint distillation.
+    - Losing citing edges or wiring to a known wrong author identity.
 ---
 
 # paper-ingest — single-paper ingestion pipeline
@@ -18,23 +30,49 @@ full text, distill it into a `papers/<slug>` page, walk its bibliography
 into stubs, wire its authors into the people ledger, link it into the
 graph, and verify the result.
 
-This skill is per-paper. Its callers:
+This skill is per-paper. Direct requests and fresh review/Tier 1 sources in a
+`literature-dive` are ingested by the primary agent. `ingest-pending-papers`
+may delegate fills of stubs created by an upstream producer in a prior session,
+subject to the instance's `SOUL.md`. A human-selected review or citation is not
+by itself a queue-stub delegation exception. Do not create a stub merely to
+manufacture eligibility.
 
-- **Direct** — your human shares a DOI, PDF, link, or PMID.
-- **`literature-dive`** — dispatches Tier 1 papers to subagents running
-  this pipeline.
-- **`ingest-pending-papers`** — drains the stub queue (papers with
-  `needs-ingest: true`), one invocation of this pipeline per stub.
+## Execution modes and ownership
 
-First contact with material entering the brain is spine work (`SOUL.md`
-§2): when you are the agent that decided this paper exists, run this
-pipeline yourself. When an upstream vetted decision already exists (a
-review's Tier 1 citation, a queued stub), delegation with read-back
-verification is sanctioned.
+| Mode | Paper work | Shared work and completion |
+|---|---|---|
+| Standalone/full | Primary reads sources, resolves identity, distills, and writes. | The same primary owns bibliography stubs, authors, graph wiring, propagation, and final checks. |
+| Page-only queued fill | Leaf fills one pre-created queued page; performs source/identity checks and author-slug alignment. | Parent owns all shared writes and final completion. Child returns PAGE_READY, not a complete ingest. |
+
+Parallel fills use page-only mode regardless of batch size. No implicit
+worker-owned wiring at small sizes and no threshold gap between modes. A
+legacy instruction such as 'do not create ledger entries' must be resolved to
+an explicit owner for every branch before work starts; do not guess its scope.
+
+A page-only leaf writes only its assigned paper page and uniquely prefixed
+scratch/source files. It does not rename/delete another paper, create citation
+stubs, mutate the ledger/person/concept pages, or enqueue propagation. It
+records bibliography candidates and source paths for the parent, but the
+parent re-reads the source bibliography before deciding new stubs exist.
+Still resolve authors against existing people/ledger identities; unresolved
+identity ambiguity is a HOLD, not permission to use the wrong person's slug.
+
+After distillation, remove the stub tag but retain `needs-ingest: true` until
+the parent has finished required wiring and checks. This keeps an interrupted
+fill discoverable. A complete standalone ingest or parent-finalized fill sets
+it false. `needs-enrichment` is independent of this completion flag.
+
+Return a compact record: `status` (PAGE_READY, SUCCESS, FAILURE, or SKIP),
+`input_path`, `canonical_path`, `changed_paths`, `remaining_obligations`, and
+`diagnostic`. Supply the actual canonical path after a parent-owned merge or
+rename; never infer merge success from the disappearance of the input. Source
+metadata belongs in saved source files or re-fetchable records, not only in a
+possibly truncated return summary. Children never perform Git operations.
 
 > **Conventions:** `skills/conventions/frontmatter.md` (paper-kind
 > schema, `fulltext_source` enum), `skills/conventions/author-ledger.md`
-> (Phase 8), `skills/conventions/page-kinds.md` (slug forms),
+> (Phase 8), `skills/conventions/paper-stubs.md` (producer/consumer lifecycle),
+> `skills/conventions/page-kinds.md` (slug forms),
 > `skills/conventions/graph-and-links.md` (typed edges, forward-only
 > linking), `skills/conventions/quality.md`.
 
@@ -74,13 +112,15 @@ via the profile symlink into the scuderia checkout
   → `lo-surdo-paola`), and short-surname token filtering for ledger
   searches. `--pubmed-xml <file>` for batch; `--family`/`--given` for
   single; `--filter-surname` with `--ledger-file` for token-match queries.
-- **`check_authors.py`** — the definitive Phase 8 pre-write existence
+- **`check_authors.py`** — the ledger-based Phase 8 pre-write existence
   check (added 2026-09-02). Greps miss ledger entries two ways —
   name-order variants, and the 0-indent `- name:` entry-start shape that
   indent-anchored greps skip — so this script `yaml.safe_load`s the whole
   ledger and compares full-name token sets order-independently. Per
   author: EXISTING (slug, person-page presence, affiliations, citations)
   or NEW, plus same-surname entries as conflation-review candidates.
+  It does not search person-page identities independently; inspect those and
+  abbreviated/particle-name candidates per the Phase 8 reference.
   `--ledger <vault>/people/_ledger.yaml`, names as args or stdin.
 - **`ledger-append.py`** — the Phase 8 Branch-3 single-writer append
   (read → dedup-check → candidate build + YAML validation → atomic
@@ -110,7 +150,9 @@ via the profile symlink into the scuderia checkout
   canonical list (PubMed individuals; collectives don't count), and
   surface retractions. `--offline` skips the network phase for
   airgapped work — do not use it to wave a failing check through;
-  re-run online before commit.
+  re-run online before commit. Add `--require-filled` for the completed-page
+  contract below; use `--page-only --require-filled` for intermediate child
+  validation, followed by full mode after parent wiring.
 
 **Environment notes:**
 - **tirith blocks `curl | python3` pipes** — use the two-step
@@ -118,9 +160,8 @@ via the profile symlink into the scuderia checkout
   `python3 -c "...parse the file..."`. It also blocks multi-line
   `python3 -c` AND heredocs (`python3 - <<'EOF'` is rejected with a
   false "uses '&' backgrounding" error even when the body contains no
-  `&`). For any "atomic python3 heredoc" procedure below
-  (`people/_ledger.yaml` appends especially): `write_file` the script
-  to `/tmp/<name>.py`, then run `python3 /tmp/<name>.py`.
+  `&`). For ledger mutation, use the owned helper or a temporary script
+  file per the Phase 8 reference; do not replace it with a heredoc.
 - **tirith also hardline-blocks nested `$(...)` command substitution** —
   `sed -n "$(grep -n 'X' f | cut -d: -f1),+8p" f` is rejected as a
   malformed payload and auto-saved to `cache/blocked-scripts/`.
@@ -466,10 +507,9 @@ STAR★Methods key-resources table run into the next sentence
 pattern `PDB:\s*([0-9][A-Za-z0-9]{3})`, never `([0-9A-Z]+)`.
 
 After fetching PMC XML, **verify the article title matches the PubMed
-record** before using the body. If titles diverge, the PMCID maps to a
-different article — tag `fulltext_source: abstract` and do not use the
-mismatched body. (The mismatched content may still be useful context in
-the Notes section.)
+record** before using the body. If titles diverge, the retrieved body is not verified as this paper.
+Do not use it; resolve the mismatch and try the remaining routes. Only the
+abstract-only closure gate below permits final abstract-only distillation.
 
 **Branch 1b — Europe PMC PDF render (embargoed, `inPMC: Y`).** When PMC
 XML returns front matter only and the PMC browser page is blocked:
@@ -611,7 +651,9 @@ ATTEMPT the retrieval; only agreement (all sources closed, S2 actually
 saying CLOSED or null) licenses the abstract-only call. See
 `references/publisher-blocks.md` § "Unpaywall `closed` vs S2 `BRONZE`".
 Record the closure in the Ingest log. Set `needs-enrichment: true` — this
-is the ONLY case where that flag is appropriate.
+retain it also when a preprint substitutes for a published version.
+A provider/delegation failure never justifies clearing this flag or skipping
+the retrieval closure checks.
 
 **Known publisher blocks.** See `references/publisher-blocks.md` for
 the full table of publisher-specific retrieval behavior, CDX recipes,
@@ -712,11 +754,12 @@ angle while missing a co-equal result that the abstract states in a
 single sentence. When distilling from abstract-only, there is no second
 chance to find it in the full text.
 
-**Stub replacement / slug renaming.** When the task specifies a
-different slug than an existing stub for the same paper (same DOI):
-create the page at the task-specified slug, copy the stub's `cited_by`
-into the new page (append-only, preserve all entries), delete the old
-stub, log the rename, and grep the vault for inbound references.
+**Stub replacement / slug renaming.** Confirm identity and preserve citing
+edges/provenance per `skills/conventions/paper-stubs.md`. Prefer updating the
+existing canonical page rather than creating a duplicate at the task's slug.
+A page-only child reports a proposed merge/rename and canonical target; only
+the parent performs the cross-page operation and repairs inbound references.
+Re-read the canonical page before deleting a duplicate or counting a merge.
 
 **Frontmatter.** `fulltext_source:` from the retrieval provenance;
 `needs-enrichment: true` ONLY for genuine abstract-only (branch 3) or
@@ -725,16 +768,11 @@ preprint-in-place-of-published distillation; `status:` is
 or `in review` (linter rejects). Every author goes in `authors:` as
 `people/<slug>` (Phase 8).
 
-**Stub fills do not reset failure counters (observed 2026-09-06).** A
-stub created by `literature-sweep` carries only `needs-ingest`,
-`cited_by`, `stub_source`, `tags` — no `ingest_attempts`, no
-`last_ingest_attempt`. When the fill succeeds on the first try, carry
-the queue/provenance fields the *schema* defines (`ingest_attempts: 0`,
-`last_ingest_attempt` if other siblings in the vault set it) rather
-than only the stub's original fields, so the page's frontmatter matches
-its filled siblings and the counter semantics stay uniform. The linter
-does not catch this — a filled page silently missing `ingest_attempts`
-passes every graph invariant and the schema lint.
+**Queue metadata preservation.** Follow `skills/conventions/paper-stubs.md`:
+preserve `cited_by`, origin/provenance, and failure history. Success does not
+reset `ingest_attempts`; initialize a genuinely absent failure count to zero,
+not an existing count. Actual failures increment it and record the attempt
+date/diagnostic. A page-only result stays queued until parent completion.
 
 **Ingest log on success-with-deviation.** A fill that succeeded via a
 non-standard path is not "clean": append a timestamped log entry
@@ -747,10 +785,11 @@ Walk the ingested paper's reference list and create **stubs** for
 load-bearing citations. The anchor test: "the paper would lose its
 argument without this reference" — a method it depends on, a dataset it
 analyzes, a framework it extends. Not context citations.
-Stubs carry `needs-ingest: false` and accumulate `cited_by`; when a stub crosses 5+
-independent citing sources, `ingest-pending-papers` fills it. This
-threshold gate is what prevents the exploding paper tree — do not
-inline-ingest walk results.
+Use `skills/conventions/paper-stubs.md` for the minimal shape, producer
+exceptions, and five-distinct-source queue gate. Do not inline-ingest walk
+results or reset an already queued stub to false. In page-only mode, the
+parent performs this phase after reading the source reference list; the leaf
+returns the source path and candidate references, not new stub pages.
 
 **Deferred-stubs option for direct ingests (observed 2026-09-05).**
 When a human-handed single paper opens a thread the vault may not
@@ -789,201 +828,22 @@ copy of record, never the summary text.
 
 ### 8. Author ledger
 
-Every author on the paper goes into the paper's `authors:` list as
-`people/<slug>` — the COMPLETE list, paged or ledger-only. Three
-branches per author:
+Every individual author belongs in `authors:` as `people/<slug>`, whether
+paged or ledger-only. Resolve identities before page writing in both modes;
+load `references/author-ledger-mutation.md` for the canonical source/slug
+alignment procedure. It covers abbreviated names, name order, ORCIDs,
+collisions, existing-page checks, and all mutation branches.
 
-- **Branch 1 — existing person page:** append the paper to the page's
-  `author_on:`.
-- **Branch 2 — existing ledger entry:** append the citation to the
-  entry's `citations:`.
-- **Branch 3 — new:** append a ledger entry (slug, name, orcid,
-  affiliations, citations).
+A standalone primary or page-only fill's parent then performs that reference's
+shared mutation procedure: existing person → `author_on`; existing ledger
+entry → `citations`; new author → append entry; threshold reached → enrich
+and remove the promoted entry. Children never perform shared mutations. The
+new-entry append helper is not an updater for existing entries.
 
-A task instruction "do NOT create author ledger entries" scopes to
-Branch 3 only — Branch 1 `author_on:` updates on existing person pages
-are still required. The stronger scope "Write ONLY the paper page"
-skips ALL of Phase 8 (no person-page or ledger mutations), Phase 7
-(bibliography walk), and Phase 9 (graph wiring) — the orchestrator owns
-all post-page wiring. Still perform the pre-write slug alignment below
-so the `authors:` list uses correct existing slugs. Return the complete
-author list in the task summary. `verify_ingest.py` will report
-unresolved authors — this is **expected** for this scope, not a failure.
-
-**Pre-write slug alignment (mandatory).** Before writing `authors:` or
-appending anything, search BOTH the ledger and person pages by SURNAME:
-`grep -i "name:.*<LastName>" people/_ledger.yaml` and
-`ls people/ | grep -i '<surname>'`. Use the existing entry's exact slug;
-mint a new one only when nothing matches. For short surnames (Yi, Hom,
-Li, Wu, etc.), use `slugify_name.py --filter-surname` for token-match
-filtering — bare grep returns dozens of substring false positives.
-**Name-order pitfall (observed 2026-08-31):** a ledger `name:` can be
-stored in either order — `"Gilchrist Cameron L M"` (surname-first) or
-`"Yi Zhou"` (given-first) — and one grep pattern catches only one
-order. Run BOTH `grep -i "name:.*<Surname>"` AND
-`grep -i "name: <GivenName> <Surname>"` (or grep the surname token
-alone and eyeball the hits) before concluding an author is new; a
-missed match produces a duplicate-slug append that Phase 10 rejects.
-When the search is large (surname Zhou/Wang/Li with hundreds of
-hits), a small python filter over `yaml.safe_load` output, keyed on
-affiliation, is cheaper than eyeballing grep output.
-
-**Ledger indentation-shape pitfall (observed 2026-09-02):** `name:`
-lines come in two shapes — 2-space `  name: X` mid-entry and 0-indent
-`- name: X` at entry start — and an indent-anchored grep
-(`grep -E "^  name:"`) silently skips every 0-indent entry. Three
-existing authors were wrongly declared "new" this way during the
-Lightman ingest (their entries sat at 0-indent) before a full-ledger
-scan caught them. Never anchor a surname grep to an indent level; run
-`scripts/check_authors.py` for the definitive answer — a whole-ledger
-`yaml.safe_load` comparing full-name token sets order-independently
-which also surfaces same-surname conflation candidates in the same pass.
-
-**Abbreviated-name blindspot in `check_authors.py` (observed 2026-09-05,
-Park et al. ingest).** The NEW verdict compares full-name token sets —
-but legacy ledger entries store abbreviated names (`Kipnis J`,
-`Smirnov I`, `Jackson S. Turner`), so the paper's `Jonathan Kipnis`
-fails the match and reports NEW for an EXISTING person. Three authors
-were wrongly reported NEW this way in one ingest. The surname-review
-candidates list is the designed rescue: READ it, and grep the ledger
-for `Surname <initial>` forms (punctuation variants — `Jackson S.
-Turner` vs `Jackson S Turner` — also break token matching) before
-minting. Two confirmation signals when an abbreviated entry looks
-like the same person: (a) exact ORCID match against the paper's
-author ORCIDs; (b) shared citation lineage — the entry's `citations:`
-includes related papers from the same lab. Do not trust the per-author NEW
-verdict until the surname-review list has been eyeballed.
-
-**Conflation check (mandatory).** When the pre-write alignment finds an
-existing ledger entry OR person page matching by surname, do NOT assume
-it's the same person — compare the paper's PubMed affiliation against
-the entry's `affiliations:` or the person page's `affiliation:`/body.
-If they disagree on institution or geography, the entry conflates two
-different people. Under the stronger scope, flag prominently in the
-Ingest log (name both people, propose a disambiguated slug). Otherwise,
-create a NEW disambiguated entry
-(`slugify_name.py` handles slug derivation) and log a normalization-pass
-flag for `entity-resolution`.
-
-**Slug derivation.** Use `slugify_name.py` — it handles diacritic
-folding (Ł→l, ø→o, ß→ss), PubMed name misparsing (Korean,
-Italian-particle), and corporate authorship. When a pre-existing entry
-uses a misspelled or non-convention slug: merge via Branch 2, align
-frontmatter to the EXISTING slug, never rename the ledger entry.
-
-**The frontmatter `authors:` list and the ledger `slug:` field MUST use
-identical slugs** — the lint resolves by exact string match. Build the
-slug list once, use it for both. The ledger `name:` display field
-retains diacritics.
-
-**ORCID capture (three lines, then stop):**
-1. PubMed XML `<Identifier Source="ORCID">` — often senior-author only.
-2. Europe PMC REST core search (the branch-0 gate call):
-   `resultList.result[0].authorList.author[].authorId` (type `ORCID`).
-   Guard with `isinstance(..., str)` before string ops — `authorId` can
-   be a dict.
-3. CrossRef preprint deposit: `api.crossref.org/works/<preprint-doi>` →
-   `message.author[].ORCID` — carries junior/middle-author ORCIDs
-   PubMed lacks.
-
-Union all three. When all empty, `orcid: null` — never fabricate ORCIDs.
-
-**Inline promotion.** When a ledger entry hits 5 citations mid-ingest:
-create `people/<slug>.md` (kind: person, orcid from the ledger,
-`author_on:` = every citation in the entry); remove the ledger entry via
-targeted `patch` of its whole block (NEVER `yaml.dump` the ledger);
-verify the ledger parses, the slug is absent, no duplicates.
-
-**Ledger append mechanics.** Appending to `people/_ledger.yaml` is the
-most failure-dense operation. The file's top level is a mapping with a
-single `entries:` key — `yaml.safe_load` returns a dict, and the entry
-list is `data['entries']`, NOT a bare top-level list (a custom append
-script that iterates the load result directly raises `TypeError: string
-indices must be integers`). The canonical procedure is one
-single-writer script execution: under a deterministic `fcntl.flock` on
-a hash of the resolved ledger path (temp dir), read → check for missing
-slugs → build the full candidate text → validate it (`yaml.safe_load` +
-duplicate-slug check + author-count check) → publish atomically via a
-temp sibling file + `os.replace` → read-back verify, all in a single
-run (see `scripts/ledger-append.py` for the ready-to-copy form — write
-it to `/tmp/` and run it; heredocs are blocked, see Environment notes;
-POSIX only — the flock requires `fcntl`). Parallel paper-ingest workers
-are serialized by the lock: the second invocation for the same slug
-rereads the new ledger and aborts on the dedup check without changing
-it. Splitting append and verify across
-tool calls leaves a window in which a sibling's full-ledger rewrite
-silently drops your entries. Re-verify at Phase 10 and re-append
-atomically if missing. Never append via `cat >>` heredoc. **The append
-itself must be a plain-text append of pre-rendered blocks, never
-`yaml.safe_dump` of the re-loaded file** — a `yaml.safe_dump` round-trip
-re-flows every long line and re-orders keys, turning a 9-entry append
-into a whole-file rewrite that can clobber siblings. If damage occurs,
-preserve the current file and compare against a known-good version; recover
-only the damaged entries after accounting for concurrent edits, per git-ops.
-Never restore the shared ledger wholesale as an automatic recovery. When patching
-an existing entry, anchor `old_string` on the entry's unique `slug:` line
-plus a distinguishing field — generic anchors can silently match the
-wrong entry.
-
-**String-interpolation trap in appended blocks (observed twice
-2026-08-31).** Every line in a pre-rendered block is plain text — an
-unexpanded `slug: {slug}` (a Python f-string mistakenly written as a
-plain string) silently appends 10 entries whose `slug:` YAML-parses as
-a nested mapping, and the breakage surfaces only at the next
-`safe_load`. Symptom when it slips through: `TypeError: unhashable
-type: 'dict'` from the duplicate-slug check. Rule: after ANY ledger
-mutation, `yaml.safe_load` must succeed AND
-`isinstance(entry['slug'], str)` must hold for the tail entries before
-declaring the append verified. Write blocks with explicit per-author
-text, not a shared template string.
-
-**Branch 2 (append citation to existing entry) mechanics.** Entry
-blocks come in two shapes: `citations:` may be a 2-space
-`  citations:` mid-entry key or a 0-indent `- citations:` entry-start
-key (older entries). A matcher that handles only the 2-space form
-reports `not found` on the other shape. Bound the entry FIRST: entries
-begin at any 0-indent `- ` list line — key order inside entries is
-arbitrary, and legacy entries can START with `- citations:` before
-`name:`/`slug:` — so an entry block spans from its 0-indent start line
-to the next 0-indent `- ` line or EOF. Never bound by walking back from
-the slug line to `\n- name:` — that grabs the PREVIOUS entry when the
-target begins `- citations:`; this can place citations under the wrong
-author and make a later repair remove correct citations. With the
-block correctly bounded, find the last `- papers/…` line WITHIN it and
-insert the new citation after it (alphabetical is not enforced; append
-order is fine).
-
-**Match the entry's citation indent.** Legacy entries use 2-space
-`  - papers/` lists; newer blocks use 4-space `    - papers/`. A 4-space
-insert under a 2-space list still YAML-parses but the citation silently
-drops out of the parsed list — the file loads, the count check fails,
-nothing looks broken (observed 2026-09-05). Read the indent of the last
-citation line in THAT entry and match it.
-
-**Batch wiring: collect all edits, apply bottom-up once.** Gather every
-(position, text) splice against the ORIGINAL raw string, sort descending
-by position, apply in a single pass. Never recompute `find()` offsets
-inside a mutation loop — stale offsets compound into a quadratic blowup
-(observed 2026-09-05: a 4.8 MB ledger ballooned to 1.85 GB / 66.8M lines
-before the process was killed).
-
-**Verification** (all three, per paper): re-load and check `PAPER in
-entry['citations']` for the target entry; check `PAPER` is absent from
-every OTHER entry (a mis-anchored append shows up as a citation gained
-by the wrong author); duplicate-slug and string-type checks on the tail
-entries. Recovery follows the scoped, non-destructive git-ops procedure; a
-validation failure is not permission to overwrite concurrent ledger changes.
-
-**Same-name disambiguation convention (observed 2026-08-31).** When a
-new author's natural slug (`zhou-yi`) is already taken by a DIFFERENT
-person (the BioMap Yi Zhou, not the PolyU one), mint an
-institution-suffixed slug (`zhou-yi-polyu`) for the NEW entry, keep the
-incumbent untouched, use the suffixed slug in the page `authors:` list
-AND the ledger, and flag the pair in the Ingest log as an
-`entity-resolution` candidate. Suffix choice: short, stable,
-institution-anchored (`-polyu`, `-biomap`), never a year. The
-ORCID-bearing entry wins any future merge; until then both entries
-carry their own citations.
+Verify the paper citation on every author's page/entry, not only that each
+slug resolves. Follow the convention's manual-promotion/migration exceptions.
+A disputed identity holds completion; do not wire a page to a known conflation
+and call it commit-ready.
 
 ### 9. Graph wiring and propagation
 
@@ -1010,39 +870,73 @@ it. Verify with `yaml.safe_load` after the append.
 
 ### 10. Verification
 
-Run `scripts/verify_ingest.py <paper-slug>` (auto-detects the brain root
-from `papers/` + `people/`, or `--instance <path>`). Five graph invariants:
+This is the completed-fill contract shared by queue drains and dives. A
+subagent report never substitutes for reading the actual page and sources.
 
-1. Paper frontmatter parses as valid YAML.
-2. All `links:` targets exist as pages on disk.
-3. All `authors:` slugs resolve to `people/` pages OR ledger entries.
-4. All `cited_by:` targets exist.
-5. The ledger parses and has no duplicate slugs.
+**Page checks.** Require valid YAML; `kind: paper`; slug/filename agreement;
+nonblank title and venue; positive integer-valued year (integer or decimal string, not boolean); status in
+`published`/`preprint`/`unknown`; explicit DOI key (a verified bare DOI, or
+null with source-confirmed absence); a complete, distinct list of individual
+`people/<slug>` authors; no stub tag; and recorded `fulltext_source`.
+`needs-ingest` must be false for a completed ingest and true for an intermediate
+page-only fill. `cited_by` contains actual papers/grants only and preserves
+all input entries and concurrent valid additions; merges preserve the union.
 
-Plus a **canonical-identity phase** (network; `--offline` skips it):
+**Exceptions require evidence, not a relaxed blanket gate.** A no-DOI paper
+can have `doi: null`; confirm the absence and title/year against its canonical
+record and note it in the Ingest log. `authors: []` is valid only when the
+source names no individuals (collective-only or anonymous authorship); record
+that evidence. A missing metadata key, dropped named authors, or an unknown
+source is not this exception. No DOI/PMID usable by the helper yields
+UNVERIFIED; obtain independent source verification and report the unresolved
+machine check rather than claiming it passed.
 
-6. The page's real-world identity reads back against canonical sources —
-   the DOI resolves and its title matches the page title (wrong-DOI
-   defects land silently without this: a DOI can resolve cleanly to a
-   *different* paper), the PMID's DOI agrees with the page DOI, the
-   author list is complete against PubMed (truncated lists are the
-   classic silent failure — an ingest that resolved the first few
-   authors and stopped passes every graph check), and retractions are
-   surfaced. A page whose `authors: []` is collective-only
-   (trial-group authorship) passes — collectives are excluded from the
-   canonical count.
+**Body and provenance.** Read nonempty Abstract, Context, Approach, Findings,
+Limitations, Analysis, Citation, and Ingest log sections against the source.
+For an editorial without an abstract, say so in Abstract and use its body;
+for unavailable methods/results, state the limit rather than inventing them.
+`fulltext_source: abstract-only` requires `needs-enrichment: true`; so does a
+preprint substituted for the published article. Review-derived context stays
+attributed to the review, never presented as primary-paper findings. Neither
+heading presence nor source-byte count establishes a faithful distillation.
 
-**Name-based duplicate check** across all newly added ledger entries —
-slug-based verification misses same-person entries under
-spelling/middle-initial variants. Merge any found (keep the
-ORCID-bearing entry, union citations and affiliations).
+Run the read-only helper, using the bare slug (with or without `.md`):
+
+```bash
+python3 skills/paper-ingest/scripts/verify_ingest.py <slug> \
+  --instance <brain> --require-filled
+```
+
+For a task that explicitly names a ledgerless satellite, first load
+`paper-ingest-vault-modes`; its `--ledgerless` option is distinct from page-only
+ownership and must not hide an unexpectedly missing main-brain ledger.
+
+A page-only child adds `--page-only`; only unresolved well-shaped author
+references are deferred. Other graph, metadata, and identity failures remain
+failures. After parent wiring and setting the completion flag false, run full
+mode without `--page-only`. Offline mode checks local structure only, not
+canonical identity; it is not a shortcut around an online failure.
+
+The helper checks internal link/cited-by targets, ledger parse/slug integrity,
+author resolution, and canonical DOI/PMID title/year/count agreement. External
+HTTP(S) URLs are labeled as not filesystem-checked. The parent also checks
+source identity, complete authorship, every required `author_on`/`citations`
+edge, source omissions, bibliography decisions, and propagation. Count equality
+alone cannot establish that the right people are on the page.
+
+**Name-based duplicate review.** Slug checks can miss a person filed under
+spelling/initial variants. Confirm equivalent identities from source evidence
+before merging, then preserve verified identifiers, citations, and affiliations
+under the canonical slug. ORCID presence alone neither proves equivalence nor
+determines the survivor; unresolved cases go to entity-resolution.
 
 **Schema lint (required, non-delegable).** The invariants above are
 graph-level; they do not check the schema. A page with a missing
 `status:` or a slug that mismatches its filename passes all five and
 lands in CI red (this exact gap shipped chomicz-2026 without `status`
 on 2026-08-30). After `verify_ingest.py`, run the platform linter in
-scoped mode on exactly the files this ingest touched:
+scoped mode on exactly the files this ingest touched. Run from the brain
+root for relative `--paths`, or pass absolute paths:
 
 ```bash
 python3 <platform-repo>/core/tools/lint-frontmatter.py \
@@ -1072,39 +966,20 @@ wiring obligations; the parent owns the completed commit and push. A partial
 child result is not a complete standalone ingest. Never amend or force-push
 existing history to improve a commit message.
 
-**External URLs in `links:` always report as MISSING** — this is a false
-positive. Paper pages conventionally carry the DOI URL as their sole
-`links:` entry. Only treat `links:` MISSING as actionable when the
-target is an internal path, not an `https://` URL.
-
-**Delegated ingests that skip the author ledger.** Two scopes exist:
-
-- **"do NOT create author ledger entries"** — scopes to Branch 3 only.
-  `verify_ingest.py` reports only authors with no ledger entry and no
-  person page.
-- **"Write ONLY the paper page"** — stronger scope: skips ALL of Phase 8,
-  Phase 7, and Phase 9. `verify_ingest.py` reports authors with NO
-  pre-existing entry as unresolved — **this is expected, not a bug.**
-  Triage the UNRESOLVED list; check the other four invariants; if those
-  pass, the page is commit-ready. Log: "Phase 10: N authors unresolved —
-  deferred to parent per task constraint."
-
-**Resolved-but-conflated slugs.** A resolved slug is not necessarily
-correct. Under the stronger scope, manually review each resolved slug's
-`affiliations:` against the paper's PubMed affiliations. Flag any
-conflation in the Ingest log; the page is still commit-ready, but the
-flag must be visible so the orchestrator doesn't silently wire to the
-wrong person.
+A PAGE_READY result is not commit-ready as a completed ingest. Keep its
+remaining bibliography, author, graph, and propagation obligations with the
+parent's accounting. If an identity or source disagreement remains, hold it;
+never waive a known conflation merely because the slug resolves.
 
 ## Concurrency hazards (parallel sibling ingests)
 
-`ingest-pending-papers` and `literature-dive` run this pipeline in
-parallel; siblings share `people/_ledger.yaml`,
-`docs/rem-cycle/inbox.yaml`, person pages, and concept pages.
+Eligible queue fills can run in parallel in page-only mode. One parent
+serializes writes to the ledger, inbox, people, and concept pages after each
+returned wave; batch size never transfers shared ownership to children.
 
 | Shared file | Mutation rule | Verification |
 |---|---|---|
-| `people/_ledger.yaml` | Atomic python3 heredoc (read→append→verify in one call). NEVER `yaml.dump` (whole-file rewrites produce unreadable diffs and clobber siblings) | `yaml.safe_load` + duplicate-slug check + author-count check |
+| `people/_ledger.yaml` | Parent-only mutation via `references/author-ledger-mutation.md`; append-new helper and existing-entry updates are distinct; no heredocs or whole-file YAML dumps | Parse, unique string slugs, target citation membership, unchanged untargeted entries |
 | `docs/rem-cycle/inbox.yaml` | `patch` on unique `- id:` anchor, never `write_file` | `yaml.safe_load` + item count +1 + no duplicate keys |
 | Person pages (`author_on:`) | `patch`, never `write_file` | YAML well-formed after patch |
 | `cited_by:` / `links:` | `patch` on shared frontmatter | Re-read after sibling warning |

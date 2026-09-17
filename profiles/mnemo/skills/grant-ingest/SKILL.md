@@ -6,6 +6,17 @@ triggers:
   - "process this grant"
   - a grant document or application package in _drop/
   - a summary statement or reviewer critique to attach to a grant
+eval_contract:
+  goal: Preserve and distill one grant package with source-verified verbatim prose, review annotations, graph propagation, and citation stubs.
+  dimensions:
+    - "PRESERVATION — science prose and captions survive source-to-page verification"
+    - "IDENTITY — package grouping, personnel, and citation seeds come from actual documents"
+    - "INTEGRATION — graph updates and queued key citations are complete and validated"
+    - "ISOLATION — paper stubs are produced here and filled later in a separate context"
+  hard_fails:
+    - Losing verbatim source prose or inventing missing citation/personnel information.
+    - Delegating grant extraction or running inline paper fills from the producer.
+    - Leaving a grant-selected below-threshold stub unqueued.
 ---
 
 # Grant ingest — distill a grant application package
@@ -44,8 +55,7 @@ to drain later (the producer/consumer split).
 Every other ingest skill distills and discards the source text. This one keeps
 it. Two reasons. A grant is your human's own writing, and `skills/conventions/quality.md`
 forbids paraphrasing his prose — his voice is a source the brain learns from,
-and paraphrase destroys it. And the future grant-writing skills (`RESOLVER.md`,
-deferred) learn that voice from exactly this corpus. The grant page therefore
+and paraphrase destroys it. And the grant-writing skills (`RESOLVER.md`) learn that voice from exactly this corpus. The grant page therefore
 carries both: the mind's distilled analysis *and* the preserved verbatim, in
 clearly separated sections doing different jobs.
 
@@ -68,7 +78,9 @@ clearly separated sections doing different jobs.
 
 `grant-ingest` is a specialization of `ingest`, parallel to `paper-ingest`. The
 `ingest` router sends a grant document or package here. It is *not* the
-grant-writing cluster (deferred) — it is the input side that feeds it.
+grant-writing cluster — it is the input side that feeds it. Review-only
+material for an existing grant routes to `grant-review-synthesis`; this skill
+owns new packages and first creation of a grant page.
 
 ## A grant is a package
 
@@ -219,13 +231,11 @@ role*, never against a required checklist. Roles seen so far:
      sufficient evidence that the person is Key Personnel on this grant;
      they may be a method-source citation rather than a co-I.
 
-8. **Key citations — stubs out, no inline paper-ingest.** This is the phase
-   that used to chain to `paper-ingest`. It no longer does, for two reasons:
-   running paper-ingest inline stacks an unbounded number of paper
-   distillations on top of an already-large grant ingest (compaction risk —
-   the dominant historical failure mode), and the right model for routine
-   paper distillation is cheaper than the model needed for grant ingest. The
-   producer/consumer split fixes both.
+8. **Key citations — stubs out, no inline paper-ingest.** Follow
+   `skills/conventions/paper-stubs.md` for the shared shape, producer
+   exceptions, citation provenance, and later drain. The fresh-session split
+   prevents unbounded paper extraction from accumulating inside a grant
+   ingest; it is not permission to choose a cheaper model.
 
    **Identify key citations.** A key citation is a reference that introduces a
    core method, a foundational concept, or a dataset the grant builds on.
@@ -279,9 +289,10 @@ role*, never against a required checklist. Roles seen so far:
      `stub` tag). Append `grants/<slug>` to its `cited_by` frontmatter list
      if not already present. Do not modify anything else on the page.
 
-   - **Existing stub** (`needs-ingest: true` or `tags: [stub]`). Append
-     `grants/<slug>` to `cited_by`. The flag is already set; the next run
-     of `ingest-pending-papers` will pick it up.
+   - **Existing stub or queued intermediate.** Append `grants/<slug>`
+     to `cited_by`, retain original provenance, and set `needs-ingest: true`
+     even if the stub was below threshold. The grant rule queues every key
+     citation; false alone does not identify a completed paper.
 
    - **No existing page.** Create a new stub at `papers/<topical-slug>.md`
      with the page shape under "Stub paper page shape" below. The
@@ -340,9 +351,9 @@ role*, never against a required checklist. Roles seen so far:
 
 12. **Hand off to `ingest-pending-papers`.** As the closing line of the
     ingest, tell your human: "N stubs created, M existing pages updated. Run
-    `ingest-pending-papers` in a fresh session to fill them in — optionally
-    switch the TUI to a cheaper/faster model first; routine paper ingest
-    doesn't need Opus." Do *not* invoke the worker.
+    `ingest-pending-papers` in a fresh session to fill them in." Do not
+    invoke the worker or prescribe a model switch; report only the actual
+    new/updated queue items.
 
 Ingesting a backlog of historical submissions is expected. For more than a
 handful, follow `skills/conventions/test-before-bulk.md`: ingest 3-5, read the output,
@@ -448,39 +459,14 @@ from. One subsection per science document, intact, figure captions kept.
 
 ## Stub paper page shape
 
-A stub `paper` page is what `grant-ingest` writes for a key citation that
-does not yet have a page. It is a valid `paper` page (`paper-ingest` will
-fill it in via the UPDATE path), distinguished by `needs-ingest: true`,
-`tags: [stub]`, and the minimal body.
-
-```markdown
----
-kind: paper
-slug: <topical-slug>
-title: "<full title from the citation entry>"
-status: unknown            # paper-ingest fills this when it resolves DOI
-needs-ingest: true         # grant rule — set unconditionally for grant-cited stubs
-cited_by:
-  - grants/<grant-slug>
-authors: []                # paper-ingest fills these
-venue: ""
-year: null
-importance: 0.0
-tags: [stub]
-sources: []                # no R2 source yet — paper-ingest pulls the PDF
----
-
-# <Title from citation>
-
-> [!info] Stub
-> This page was created by `grant-ingest` as a key citation of
-> [[grants/<grant-slug>]]. It will be filled in by `ingest-pending-papers`
-> (or `paper-ingest` directly if you run that against this page manually).
-
-## Citation
-
-> <verbatim citation entry copied from the citing grant>
-```
+Load `skills/conventions/paper-stubs.md` when writing citation stubs; its
+minimal paper shape is canonical. For a new grant-cited stub, use
+`stub_source: grant-ingest`, `needs-ingest: true`, and the verified
+`grants/<grant-slug>` citation in `cited_by`. Retain metadata available in
+the source citation; unresolved fields stay unknown/null. Copy the real
+citation entry into `## Citation` and name the citing grant in provenance.
+An existing stub retains its original `stub_source`; append the grant's
+provenance and queue it. Do not fabricate a PDF/archive pointer.
 
 ## Anti-patterns
 

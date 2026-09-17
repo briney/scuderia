@@ -49,12 +49,15 @@ Two repos can sit side by side with near-identical layouts:
 - **Main brain** — `papers/`, `people/` *with* `_ledger.yaml`, full graph
   machinery, the default target of every phase.
 - **Satellite vault** — own git remote, own `papers/` and `people/`
-  (person pages only, **no `_ledger.yaml`**), where dive subagents write
-  paper pages; the parent orchestrator later adds person pages and commits.
+  (person pages only, **no `_ledger.yaml`** by declared design). Fresh sources
+  remain primary-owned; eligible queued page-only fills leave person-page
+  creation to their parent.
 
 A bare `ls` will not distinguish them. Check for `people/_ledger.yaml` and
 read the recent commits — dive briefs name the vault explicitly, and the
-task's path always outranks the default brain.
+task’s path always outranks the default brain. Confirm that ledger absence
+is intentional from the task/vault contract; a missing ledger alone does not
+establish a satellite topology or authorize skipping a damaged main ledger.
 
 ### What changes in the ledger-less vault
 
@@ -62,9 +65,9 @@ task's path always outranks the default brain.
 |---|---|
 | 2 (dedup) | Unchanged — run `dedup_check.py` from inside the vault; it scans that vault's `papers/`. |
 | 4 (full text) | Unchanged. |
-| 7 (bibliography walk) | Skipped per task scope (parent owns). |
+| 7 (bibliography walk) | Parent-owned in page-only mode; primary-owned for a full direct ingest. |
 | 8 (author ledger) | `check_authors.py` crashes (`FileNotFoundError` on `--ledger`). Substitute the person-page title scan (below). |
-| 10 (verify) | `verify_ingest.py` prints `Ledger: FAIL (people/_ledger.yaml not found)` + UNRESOLVED authors — the expected signature for "paper page only" scope, not a failure. |
+| 10 (verify) | For explicitly declared ledgerless topology, use `--ledgerless --require-filled`; add `--page-only` for an eligible queued intermediate. Ledger absence is then labeled not applicable, not FAIL. Other failures remain failures. |
 
 ### Person-page title scan (check_authors substitute)
 
@@ -85,18 +88,21 @@ Match rules: normalized equality → EXISTING (use that slug verbatim, even
 where it drops middle initials `slugify_name.py` would add — observed
 `haynes-barton` and `saunders-kevin`); surname + given-name token overlap →
 conflation-review candidate; otherwise NEW. Record ORCIDs (PubMed XML +
-EPMC core record union) in the page's Ingest log — the parent wires person
-pages from that log. Subagents leave pages uncommitted; the parent owns the
-dive commit.
+EPMC core record union) in saved source metadata, with an Ingest-log pointer.
+The parent uses the source values, not a captured-count summary, to wire
+person pages. Page-only results retain needs-ingest:true until parent
+completion. Full verification without --page-only requires every author
+reference to resolve to a person page; --ledgerless refuses an existing ledger
+so it cannot be used to hide malformed data. Git ownership follows the base skill.
 
 **Cross-vault surname conflation guard.** A glob of `people/*<surname>*`
 can return a different person. For example, Neil P. King (protein design)
 and Christopher L. King (malaria research) share a surname but are not the
 same author. When a surname
 matches, read the candidate page's frontmatter `affiliation:`/`title:` and
-body BEFORE reusing its slug; an institution + domain mismatch means mint
-a new slug (`king-christopher-l`) and note the pair as a non-conflation
-(two distinct people, no merge needed) in the Ingest log. Surname-only
+body BEFORE reusing its slug. An institution/domain mismatch requires
+identity investigation, not an automatic split; after confirming distinct
+people, mint a disambiguated new slug and note the pair in the Ingest log. Surname-only
 hits in a multi-domain vault are the norm, not the exception — never wire
 an author to a same-surname page without the affiliation check.
 

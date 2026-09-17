@@ -29,6 +29,10 @@ kinds:
     required: [status]
     enums:
       status: [published, preprint, unknown]
+    # Optional free-text original producer; retain legacy/custom labels.
+    # The linter permits extra page fields; optional documents presence, not
+    # a closed vocabulary/type check. Lifecycle: conventions/paper-stubs.md.
+    optional: [stub_source]
   method:
     dir: methods
   concept:

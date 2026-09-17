@@ -197,6 +197,7 @@ two audit skills.
 - `skills/conventions/brain-first.md` — check the brain before going external
 - `skills/conventions/quality.md` — citations, forward-only linking, the notability gate
 - `skills/conventions/author-ledger.md` — `people/_ledger.yaml`; paper-author page creation is threshold-gated, not judgment-gated
+- `skills/conventions/paper-stubs.md` — shared stub shape, producer exceptions, citation provenance, and queue completion/delegation boundary
 - `skills/conventions/rem-cycle-contract.md` — the rem-cycle phase interface: structured phase result, the two commit tiers, run mode, protected classes
 - `skills/conventions/test-before-bulk.md` — never batch without testing one first
 - `skills/conventions/skill-hygiene.md` — the eval contract, the no-regression law, the scheduled-run gate; governs every edit to a skill

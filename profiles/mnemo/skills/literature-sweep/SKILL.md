@@ -8,6 +8,17 @@ triggers:
   - "brain coverage gaps"
   - "what's missing from the brain"
   - a scheduled run (daily sweep + gap rotation)
+eval_contract:
+  goal: Discover source-grounded on-topic papers and produce deduplicated queued stubs without performing their full ingestion.
+  dimensions:
+    - "RELEVANCE — queries and selections derive from the research program"
+    - "IDENTITY — each source record retains its own matched title and identifiers"
+    - "PROVENANCE — stubs record their query, origin, and correct citation semantics"
+    - "COVERAGE — mode rotation and lenient inclusion remain intact"
+  hard_fails:
+    - Inventing identifiers or pairing a title with another search result's DOI.
+    - Omitting required stub fields or fabricating cited_by edges from relevance.
+    - Running full paper ingestion inside the sweep.
 ---
 
 # literature-sweep — standing scan + brain coverage audit
@@ -46,8 +57,9 @@ gracefully when absent).
   support.
 - Nothing the brain already holds is re-stubbed (DOI-checked against
   `papers/` before any stub is written — stubs count as held).
-- Every stub carries a resolvable identifier (DOI required; PMID when
-  available) and provenance (`stub_source`, the query that found it).
+- Every stub carries a source-verified identity lead and query provenance:
+  DOI for Mode 1; Mode 2 also permits the documented PMCID fallback. The
+  shared stub convention defines the fields and queue behavior.
 - Stubs bypass the 5-citation threshold gate (set `needs-ingest: true`
   directly, like `grant-ingest`), per the lenient bar.
 - Mode 2 rotates: every concept page is swept on a cycle, not just the
@@ -161,40 +173,19 @@ papers missing from a concept that had been deliberately dived).
 
 ## Stub format
 
-Stubs follow the paper-kind frontmatter schema
-(`skills/conventions/frontmatter.md`) with the sweep additions shown:
+Load `skills/conventions/paper-stubs.md` when writing stubs; it owns the
+minimal frontmatter shape and producer/consumer contract. New sweep stubs use
+`stub_source: literature-sweep`, `needs-ingest: true`, and `cited_by: []`.
+Include `status` (unknown until verified) plus known title, identifiers, venue,
+and year; unresolved metadata is not a reason to omit the required shape.
+Mode 2 adds the relevant concept to `links`, not `cited_by`.
 
-```markdown
----
-kind: paper
-slug: <author>-<year>-<descriptive>
-title: "<title>"
-authors: []                # filled by the drain's paper-ingest
-doi: <doi>
-pmid: <pmid or omit>
-needs-ingest: true
-cited_by: []
-stub_source: literature-sweep
-tags: [stub]
-links:
-  - concepts/<concept>     # Mode 2 only — the concept this was found for
----
-
-## Citation
-
-<one-line citation as resolved: FirstAuthor et al., Journal Year. DOI.>
-
-## Sweep provenance
-
-Found by literature-sweep {mode} on {date}.
-Query: "<the exact query that surfaced this paper>"
-{Mode 1: matched domain/thread from RESEARCH.md}
-{Mode 2: load-bearing or supplementary for [[concepts/<concept>]]}
-```
-
-The `links:` entry and provenance note are how the drain (and your human)
-know why the stub exists. `cited_by` stays empty — citation edges
-accumulate from real citing papers later.
+Below the source-derived `## Citation`, add `## Sweep provenance` with the
+mode, date, exact query, and matched research domain/thread or concept. In
+Mode 1, retain the DOI admission rule; Mode 2 may use a source-verified PMCID
+lead when the DOI is absent. Record PMCID in its own field, never as a DOI.
+Existing pages keep original producer provenance. A search hit is not a citing
+paper, so do not invent citation-count edges to accelerate ingestion.
 
 ## Output
 

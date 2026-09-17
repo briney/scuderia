@@ -10,7 +10,9 @@ back them, so promotion to a real page is a counted decision rather than a
 fuzzy one.
 
 Authoritative source: `DESIGN.md` §2.4 (the graph layer) and `paper-ingest`
-Phase 8 (the producer).
+Phase 8 (the producer). Mutation and identity-resolution mechanics live in
+`skills/paper-ingest/references/author-ledger-mutation.md`; load that reference
+when performing author wiring, rather than copying a local update recipe.
 
 ## Why the ledger exists
 
@@ -144,10 +146,12 @@ frontmatter), disambiguate by suffix:
   (`wilson-ian-oxford` vs. `wilson-ian-cambridge`). Page-kinds.md already
   documents this form.
 
-When a slug under either form is created, the existing entry's slug is
-**also** rewritten to its disambiguated form. Two `wilson-ian` entries
-become `wilson-ian-oxford` and `wilson-ian-cambridge` — never one
-disambiguated and one bare.
+During ingestion, preserve the incumbent slug and disambiguate only the
+new, verified different identity. Renaming an incumbent requires an explicit
+entity-resolution operation that repairs all affected references; it is not
+an automatic side effect of adding a paper. A changed affiliation alone does
+not prove a different person, and an ORCID-bearing record does not win a merge
+unless the identities are first confirmed equivalent.
 
 ## Lifecycle
 
@@ -209,10 +213,8 @@ against.
   cost is one field write; the value is real disambiguation when the
   collision arrives. Capturing ORCID retroactively requires re-walking
   the source papers' metadata.
-- **Mixing ORCID-disambiguated slugs with bare slugs for the same
-  collision pair.** Both members of the collision get disambiguated
-  together; otherwise the bare slug looks ambiguous and the
-  disambiguated one looks aliased.
+- **Renaming an incumbent slug during routine ingestion.** Preserve its
+  existing references; a coordinated rename belongs to entity-resolution.
 - **Auto-promoting in bulk during the Stage 3 migration.** The
   migration populates the ledger from existing orphan refs; some
   authors will already exceed the threshold by virtue of cumulative
