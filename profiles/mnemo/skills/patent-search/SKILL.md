@@ -70,17 +70,19 @@ Distinct from `antibody-sequence-search` (Sequences block) and
 3. **Sequence-derived CoM candidates.** Pull VH/VL from the entry's
    `## Sequences` block (run `antibody-sequence-search` first if absent).
    Two passes, in order:
-   a. **PLAbDab first pass (local, instant).** PLAbDab (Oxford OPIG's Patent
-      and Literature Antibody Database, ~177k paired chains) is
-      antibody-specific and curated — it is the first place to look:
+   a. **PLAbDab first pass.** Search the local paired-chain mirror from
+      Oxford OPIG's Patent and Literature Antibody Database:
       ```bash
       python3 skills/patent-search/scripts/plabdab_lookup.py --vh <VH> --vl <VL> --resolve 12
       ```
       Exact chain matches against the local mirror
       (`references/therapeutic-antibodies/raw/mirrors/plabdab_paired_sequences.csv.gz`,
-      ~11 MB gz — the full 5 GB DB tarball is NOT mirrored). `--resolve` maps
+      not the full database distribution). The helper reports the parsed
+      `mirror_rows` count. `--resolve` maps
       GenBank-accession-shaped IDs to patent numbers via NCBI efetch (PDB and
-      literature-name IDs don't resolve — by design). For fuzzy / CDR-region
+      literature-name IDs don't resolve — by design). Resolution defaults to
+      ten accessions and uses the network; pass `--resolve 0` for local-only
+      lookup. For fuzzy / CDR-region
       search use the full PLAbDab package (`pip install .` from
       github.com/oxpig/PLAbDab) — exact match is the v1 default.
    b. **pataa BLAST (broader net, queued).** Catches what PLAbDab's pairing
@@ -131,27 +133,22 @@ Distinct from `antibody-sequence-search` (Sequences block) and
 
 - **PLAbDab VH-only hits can resolve to patent numbers.** The
   `plabdab_lookup.py` script reports `paired_hits` (both VH+VL match in the
-  same row) and `vh_hits` (VH-only). The `--resolve` flag maps accession-shaped
+  same row) and `vh_hits` (all VH matches, including the paired subset). The `--resolve` flag maps accession-shaped
   IDs to patent numbers via NCBI efetch. Resolved patents can come from
-  VH-only hits, not just paired hits — in the 2026-08-25 pilot, 2 of 3
-  entries with resolved patents (fresolimumab: US10730936, US9783604) got
-  their patent numbers from VH-only hits, not from paired hits. When
-  composing the block, always check the `resolved` dict from ALL hits
+  VH-only hits, not just paired hits. When composing the block, check
+  the `resolved` dict from ALL hits
   (paired + VH-only), and include a "Resolved patent numbers" subsection
-  listing every accession → patent mapping, noting whether it came from a
-  paired or VH-only hit.
+  listing each US accession → patent mapping, noting whether it came from a
+  paired or VH-only hit. Resolution can return non-US patent numbers; do not
+  include those as US results.
 
-- **PLAbDab patent-number resolution rate is low (~30%).** In the
-  2026-08-25 pilot, only 3/10 entries had any accessions resolve to patent
-  numbers via NCBI efetch. Many PLAbDab IDs are PDB instance IDs or
-  literature names that don't resolve by design. The `reference_title`
-  field is the fallback — it carries the patent title, which identifies the
-  patent family even without a number. Always include the reference titles
-  in the block even when resolution fails.
+- **Mixed PLAbDab identifiers.** PDB instance IDs and literature names do not
+  resolve as GenBank accessions. Preserve `reference_title` when resolution
+  fails, as a source-search lead; a title alone does not verify a patent
+  number or family. Do not turn unresolved IDs into negative patent evidence.
 
-- **Google Patents 503 is intermittent, not permanent.** In the pilot,
-  4/10 queries succeeded and 6 returned 503 — not the "throughout" pattern
-  seen in the Tier A sweep. Retry later or in smaller batches; the 503 is
-  a rate-limit on bursts, not a service outage. When it hits, fall back to
-  PLAbDab-only and flag the gap honestly — do not burn budget retrying
-  in the same run.
+- **Google Patents 503 is not a negative search.** The 2026-08-25 pilot
+  had both successful requests and 503 responses; that does not establish
+  the cause or a permanent outage. After the helper's bounded retries,
+  retain available sequence-derived candidates and flag the name-search gap.
+  Retry later or in smaller batches, not in an unbounded same-run loop.

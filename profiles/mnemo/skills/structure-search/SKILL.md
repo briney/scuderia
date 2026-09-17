@@ -57,8 +57,10 @@ never catch. Distinct from `antibody-sequence-search` (Sequences block) and
      "https://sabdab.opig.stats.ox.ac.uk/api/download/all-summary" \
      -o <mirror>.new
    ```
-   Validate before replacing: header starts with `INSTANCE,` and row count
-   exceeds 20,000. Canonical host is `sabdab.opig.stats.ox.ac.uk` — the
+   Validate the `INSTANCE` header, required columns, and parsed rows before
+   replacing; compare counts with the prior snapshot and inspect unexpected
+   losses. The helper reads comma-separated data despite the `.tsv` suffix.
+   Canonical host is `sabdab.opig.stats.ox.ac.uk` — the
    `/webapps/newsabdab/api/...` path 301-redirects and downgrades POSTs to
    GETs; use the canonical host everywhere. Log refreshes in
    `_mirror-manifest.md`.
@@ -121,10 +123,8 @@ never catch. Distinct from `antibody-sequence-search` (Sequences block) and
 
 ## Anti-patterns
 
-- Name search only — code-name deposits are the norm for therapeutics, and
-  skipping sequence search silently halves recall. In the 2026-08-25 Tier B
-  pilot, name search found **0/10** entries; sequence search found **7/10**.
-  The mandatory sequence search is not a backup — it is the primary path.
+- Declaring no structures after name search alone; run sequence search when
+  sequences are available and state the lower recall when they are not.
 - Treating computed contacts as database annotations, or database fields
   (SAbDab has no epitope annotation) as contacts.
 - Committing `.sabdab-cif-cache/` or any mmCIF to git.
@@ -165,13 +165,10 @@ never catch. Distinct from `antibody-sequence-search` (Sequences block) and
   positives — the epitope contacts from the parent-antigen complex are
   directly relevant to the fusion protein's binding arm. Label them as
   parent-derived in the block (analogous to ADC parent-derived sequences).
-  For ficerafusp-alfa: 27 cetuximab structures, 3 with EGFR complexes
-  (1yy9, 4kro, 4krp), contacts computed and directly relevant to the
-  EGFR-binding arm.
+  Verify that the matched binding arm and antigen support that attribution;
+  do not describe a parent complex as a structure of the complete fusion.
 
-- **Name search hit-rate is near zero for Tier B.** In the 2026-08-25 pilot
-  (10 Tier B entries), name search returned 0 hits for all 10 — every
-  structure was found via sequence search. This is expected: Tier B
-  molecules are rarely deposited under their INN. Do not treat a zero name
-  search as a failure or skip sequence search; the mandatory sequence search
-  is the actual retrieval path.
+- **Code-name deposits.** The 2026-08-25 Tier B pilot recovered structures
+  by sequence where INN name searches missed. A zero name result is not
+  evidence of absent structures; the pilot does not establish a universal
+  hit rate.

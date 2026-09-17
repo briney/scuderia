@@ -47,7 +47,7 @@ machine-generated block.
 - Multispecifics get one arm group per binding specificity; cocktails get one
   per component; ADCs inherit the parent mAb's arms, labeled as parent-derived.
 - `sequence_status` reflects reality: `complete` | `partial` | `not-found` |
-  `not-public` | `not-applicable` (Fc-fusions have no Fv).
+  `not-public` | `not-applicable` (construct has no Fv).
 - Only the `## Sequences` block is written; the rest of the entry is untouched.
 
 ## Phases
@@ -61,19 +61,19 @@ machine-generated block.
      "https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/static/downloads/TheraSAbDab_SeqStruc_OnlineDownload.csv" \
      -o <mirror>.new
    ```
-   Validate before replacing: first line must start with `Therapeutic,` and row
-   count must exceed 1000. A failed fetch (404 HTML, truncation) must never
-   overwrite a good mirror. Log the refresh in `_mirror-manifest.md`.
+   Validate the `Therapeutic` header, required sequence columns, and parsed
+   rows before replacing; compare counts with the prior snapshot and inspect
+   unexpected losses. HTML or truncated downloads must not overwrite a good
+   mirror. Log the source, retrieval date, and measured count in `_mirror-manifest.md`.
 
 2. **Resolve identity.** Read the entry's Identity + Relations blocks. Modality
-   gate first: `fc-fusion` → `not-applicable` (no Fv); `car-t`/`car-nk` →
+   gate first: an Fc-fusion with no Fv → `not-applicable`; `car-t`/`car-nk` →
    expect `not-public` (verify in mirror anyway). Then run the lookup script in
    this skill's `scripts/` directory:
    ```bash
    python3 skills/antibody-sequence-search/scripts/therasabdab_lookup.py <INN-or-slug>
    ```
-   (profile-root-relative path — on Hermes, under
-   `~/.hermes/profiles/<instance>/skills/atticus/antibody-sequence-search/`.)
+   Resolve the profile-relative script path through the active skills binding.
    The script implements the ladder: exact → suffix-strip → cocktail-split.
    For ADCs (`modality: adc`/`immunoconjugate`), look up the curated
    `Parent antibody` and label arms `parent-derived: <parent slug>`.
@@ -97,6 +97,10 @@ machine-generated block.
    reported, never counted. The acceptance bar and source-independence
    classes are defined in the template's Sequences spec; Thera-SAbDab +
    PLAbDab agreement is ONE vote (both patent-derived), never two.
+   Inspect the returned `checks`: the helper tests exact variable-domain
+   containment in entities from the same PDB, not the stated H/L pairing or
+   product identity. Some mismatches return `unconfirmed`, not `conflict`;
+   neither that verdict nor a request error resolves a provenance discrepancy.
 
 3. **Fallback ladder (only if the mirror misses).** (a) PLAbDab keyword
    search — `python3 skills/patent-search/scripts/plabdab_lookup.py --keyword

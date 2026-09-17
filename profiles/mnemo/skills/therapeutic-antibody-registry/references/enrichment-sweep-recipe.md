@@ -1,222 +1,81 @@
-# Bulk enrichment sweep recipe
+# Bulk enrichment and resumption
 
-Proven pattern for enriching antibody entries with sequences, structures,
-and IP blocks via delegated subagent batches. Validated on Tier A (2026-08-18)
-and Tier B (2026-08-19). Covers fresh sweeps and interrupted-sweep resumption.
+Load for a bulk sequence/structure/IP sweep or its resumption. The umbrella
+owns scope and block boundaries; the three enrichment skills own retrieval,
+acceptance, and block schemas. This reference owns their orchestration.
 
-## Prerequisites
+## Prepare and assign
 
-- Entries exist in `entries/` with curated blocks (Identity, Provenance, etc.)
-- Three enrichment skills installed: `antibody-sequence-search`, `structure-search`, `patent-search`
-- Three mirrors populated in `raw/mirrors/`: TheraSAbDab CSV, SAbDab summary TSV, PLAbDab paired sequences
-- Entry template has the three machine-owned block specs (Sequences, Structures, IP & exclusivity)
+1. Read the corpus contract, entry template, and mirror manifest. Inventory
+   the selected entries, exact machine-block headers from the umbrella,
+   statuses, refresh dates, and source evidence. Headers locate blocks; they
+   do not prove a successful search or intact curated content. Classify work
+   as verified/current, missing, stale, conflicted, or awaiting a source.
+2. The parent validates/refreshes shared mirrors and updates their manifest
+   once before dispatch; workers use the same snapshot read-only. Validate
+   formats and actual parsed rows, not historical row counts. Preserve the
+   existing mirror if a download is HTML, truncated, or otherwise invalid.
+3. Assign disjoint entry paths and the blocks each worker may change. Keep a
+   pre-write copy or diff base for each entry's protected content. The parent
+   owns shared mirrors, manifests, indexes, corpus history, and Git. Workers
+   must not update them or their skill instructions; report discovered issues.
+4. Choose batch sizes from the pilot workload and service limits, counting
+   the short final batch. When delegating multiple batches, load
+   `skills/batch-drain/SKILL.md` for its dispatch/yield/verify loop and runtime
+   ceiling. Give workers absolute entry/helper/mirror paths, source inputs,
+   requested blocks, and ownership. Do not impose a fixed worker count here.
 
-## Block header reference
+## Run the per-entry owners
 
-The three machine-owned block headers (use these EXACT strings in any scan):
+- Run `antibody-sequence-search` first, including identity/target checks,
+  source-independence rules, and structure verification. A bulk
+  `therasabdab_lookup.py` pre-check can supply candidates, not final verdicts:
+  misses still require the skill's parent/component and fallback searches.
+  Sparse Tier B targets do not justify accepting an unverified ladder match.
+- Then run the requested `structure-search` and `patent-search` passes.
+  Name and sequence searches follow those owners; a missing sequence limits
+  recall but does not excuse available name searches. Patent work includes
+  PLAbDab and pataa BLAST as specified by `patent-search`; record unavailable,
+  deferred, or pending searches explicitly rather than silently skipping them.
+- Determine modality outcomes from the actual construct and source search.
+  A construct without an Fv can have `not-applicable` sequences; that does
+  not establish absent structures or patents. CAR binders are not automatically
+  `not-public`. Do not write placeholder blocks in place of the owner skills.
+- One worker writes a given entry at a time. Independent structure/IP research
+  may run from the verified sequence snapshot, but separate block ownership
+  does not make concurrent whole-file replacement safe. Replace each requested
+  level-two section only up to the next level-two heading; preserve everything
+  else, including appendices after machine blocks. Re-read before writing.
 
-| Block | Header | Owner skill |
-|---|---|---|
-| Sequences | `## Sequences` | `antibody-sequence-search` |
-| Structures | `## Structures` | `structure-search` |
-| IP & exclusivity | `## IP & exclusivity` | `patent-search` |
+Workers return exact changed paths, block statuses, source-linked evidence,
+conflicts, and uncompleted searches. A service error or timeout is not a
+negative result; follow the owner's bounded fallback and report the gap.
 
-**Pitfall:** The IP block is `## IP & exclusivity`, NOT `## Patents`. Scanning
-for `## Patents` will find zero matches and produce a false "no entries have IP"
-conclusion. This cost a full diagnostic cycle in the 2026-08-19 resumption.
+## Verify, recover, and close
 
-## Batch planning
+1. Read the actual files and source-linked results. Check exact headers,
+   status meaning, sequence provenance/arm assignments, structure chains and
+   contact evidence, and patent search/expiry labels as applicable. Open
+   original source passages or records when needed; do not accept the worker
+   summary or an all-blocks-present count as verification.
+2. Require `## Identity` and compare **all non-owned content** with the
+   pre-write copy/diff, including ADA, sources, and modality/failure appendices.
+   Header presence is only a minimal corruption alarm. If content was lost,
+   preserve the current file, recover only the proven missing content from
+   the latest verified copy/history, and reconcile intervening edits. Do not
+   restore a whole old file or concatenate everything before/after Sequences:
+   block order may differ and later curated edits must survive. Reverify.
+3. Correct malformed status presentation only within the responsible owner's
+   block, preserving notes; do not apply broad replacements across the corpus.
+   Exclude owned scratch and coordinate caches from commits; never remove
+   unrelated files. The parent regenerates indexes from verified records and
+   records actual per-status coverage, denominators, and unresolved work.
+4. Close coherent verified entry/index units through `skills/git-ops/SKILL.md`.
+   Children return evidence; the parent stages/commits only completed owned
+   changes. Source-limited results must retain their limitations.
 
-1. **Scan all entries** for existing machine-owned blocks. Skip entries that already
-   have all three. Flag Fc-fusions (modality: fc-fusion) — they get not-applicable
-   blocks, not enrichment. Flag CAR-T (modality: car-t) — they get not-public blocks.
-2. **Build batches of 4-5 entries** each. Group alphabetically; the pipeline is
-   uniform per entry so grouping by area is not necessary.
-3. **Count the actual shards**, including a short final shard. Use
-   batch-drain’s current runtime ceiling and call schema to plan waves;
-   entries per worker and workers per wave are different quantities.
-
-## Delegation wave pattern — follow `batch-drain`
-
-Load `skills/batch-drain/SKILL.md` and follow its dispatch/yield/verify loop
-for the whole sweep; the per-entry pipeline below overrides only *what* each
-subagent does, never the scheduling discipline. Specifically:
-
-Each wave dispatches batches of 4-5 entries. Each subagent:
-1. Reads its entry files + the template
-2. Runs `therasabdab_lookup.py` for each entry's INN
-3. Runs `verify_sequence.py` to confirm against PDB structures
-4. Runs `sabdab_lookup.py` (name + sequence search) for each entry
-5. Runs `compute_contacts.py` for each complex structure found
-6. Runs `plabdab_lookup.py` (exact VH/VL match) for patent candidates
-7. Runs `google_patents_lookup.py` (name search; 503 is transient — fall back to PLAbDab)
-8. Optionally runs `blast_pat.py` (NCBI pataa BLAST for CoM — slowest step, queued)
-9. Writes only the three machine-owned blocks into each entry file
-
-**Yield and wait between waves.** Do not dispatch a new wave while the prior
-one is in flight (see `batch-drain` — the core invariant). A wave's result has
-*returned* only when its consolidated result re-enters the conversation, not
-when its dispatch notice appears. This is the fix for the truncation loop and
-the dropped-remainder failure seen in the 2026-08-19 Tier B run.
-
-**Context passed to each subagent**: working directory, entry names, script paths,
-mirror paths, modality-specific instructions (ADC parent lookup, bispecific per-arm,
-cocktail per-component, CAR-T not-public), and the "if Google Patents 503, use
-PLAbDab only" fallback.
-
-## Post-sweep cleanup (mandatory)
-
-After all waves complete:
-
-1. **Check disk, not subagent reports.** Subagents can timeout (1800s) while
-   having successfully written files. Count blocks on disk:
-   ```python
-   blocks = sum(["## Sequences" in text, "## Structures" in text, "## IP & exclusivity" in text])
-   ```
-   Any entry with <3 blocks needs re-dispatch or manual completion.
-
-2. **Normalize status values.** Subagents produce inconsistent formats:
-   - Backtick-wrapped: `` `complete` `` -> `complete`
-   - Trailing periods: `complete.` -> `complete`
-   - Parenthetical notes in status field: move to next line
-   Run a normalization pass with string replacements across all entry files.
-
-3. **Write not-applicable blocks for Fc-fusions** (8 entries in Tier A). These have no Fv
-   domain — sequence_status = `not-applicable`, structure_status = `none-found`,
-   ip_status = `not-searched`. Write directly, do not delegate.
-
-4. **Write not-public blocks for CAR-T** (6 entries in Tier A). scFv sequences are
-   proprietary. sequence_status = `not-public`, structure_status = `none-found`,
-   ip_status = `not-searched` (or `candidates-found` if name-based patents exist).
-   Write directly, do not delegate.
-
-5. **Clean up temp files.** Subagents leave JSON dumps in the working directory
-   (`blast_results.json`, `enrichment_cache/`, `.enrichment_tmp/`, etc.). Add
-   these to `.gitignore` and `git rm --cached` them before committing.
-
-6. **Regenerate index files** with enrichment coverage columns (Seq | Struct | IP
-   status per molecule).
-
-7. **Verify curated-block integrity.** A subagent may overwrite the entire file
-   with only enrichment blocks, destroying the curated header (Identity,
-   Provenance, Mechanism, Sources). This is not caught by step 1 (which only
-   checks for machine-owned block presence). Run a check that every enriched
-   entry still has `## Identity` — if any are missing, the subagent clobbered
-   the header. Recovery: `git show <skeleton-commit>:<path>` retrieves the
-   original content; split the current file at `## Sequences` to isolate the
-   enrichment blocks, then reassemble as
-   `original_header.rstrip() + "\n\n" + enrichment_blocks`. This happened to
-   5 entries during the Tier A sweep and was only detected when the index
-   regeneration showed "Unknown" modality for those entries.
-
-## Resuming an interrupted sweep
-
-When a sweep is interrupted (API flake, timeout, session end), resumption
-follows a specific assessment-then-continue pattern:
-
-1. **Inventory block coverage on disk.** Write a Python script (not a shell
-   one-liner — complex grep/awk logic triggers the command-size blocker) that
-   scans every entry file for the three machine-owned block headers. The
-   exact headers are `## Sequences`, `## Structures`, and `## IP & exclusivity`.
-   Categorize entries as: all-3-present, partial (some blocks missing), or
-   none (bare skeleton). This triage is the only reliable way to know what the
-   interrupted sweep actually completed — subagent reports and git status
-   are not sufficient.
-
-2. **Close verified units.** Inspect the actual entry changes, finish and
-   verify coherent units, and close them through `skills/git-ops/SKILL.md`.
-   The sweep parent owns commits/pushes; children return paths and evidence.
-   Unfinished or unrelated changes remain outside those commits.
-
-3. **Pre-check Thera-SAbDab hits for all pending entries.** Before writing
-   delegation context, run a single batch `therasabdab_lookup.py` call with all
-   pending INNs. This flags:
-   - Exact hits (most entries) — subagent can proceed directly
-   - Cocktail splits (e.g., relatlimab-nivolumab, zeleciment-rostudirsen) —
-     tell the subagent to look up each component separately
-   - Not-founds (e.g., zebetuzumab) — subagent writes not-found block, skips
-     to name-only patent search
-   This pre-check takes seconds and dramatically improves delegation quality.
-
-4. **Group remaining entries by what they need.** Partially-enriched entries
-   (e.g., have Sequences + Structures but missing IP) need only the missing
-   block, not the full 3-step pipeline. Dispatch them as a separate batch with
-   instructions to only write the missing block.
-
-5. **Delegate in parallel batches.** Same pattern as the original sweep:
-   batches of 4-5 entries, with concurrent workers bounded by the runtime
-   ceiling in batch-drain, each running the chained
-   pipeline (sequences -> structures -> IP). For entries missing only IP,
-   the subagent skips steps 1-2.
-
-### Pitfall: Tier B entries are sparser than Tier A
-
-Tier B skeletons from ClinicalTrials.gov carry `Target(s): Unknown` and
-`source_quality: low` — they have INN and therapeutic area but little else.
-The enrichment scripts work fine with this (Thera-SAbDab keys by INN, not
-target), but do not expect the curated blocks to be populated. The
-enrichment blocks are often the first substantive data in the entry.
-
-## Coverage results — Tier A (2026-08-18)
-
-- 182/182 entries with all 3 blocks
-- Sequences: 162 complete (89%), 8 not-applicable, 6 not-public, 5 not-found, 1 partial
-- Structures: 97 complex with computed epitope contacts (53%), 7 unliganded-only, 78 none-found
-- IP: 162 candidates-found (89%), 12 not-searched, 8 none-found
-- Google Patents 503 throughout — PLAbDab + BLAST fallback used exclusively
-- 199 files changed, 16,739 insertions in the commit
-
-## Coverage results — Tier B (2026-08-19, complete)
-
-- 134/134 entries with all 3 blocks
-- Sequences: 112 complete/partial (84%), 22 not-found, 1 not-applicable (Fc-fusion)
-- Structures: 8 with complex structures + computed epitope contacts, 126 none-found
-- IP: 108 candidates-found, 26 none-found/not-searched
-- Google Patents 503 throughout both waves — PLAbDab + NCBI efetch used as fallback
-- 5 entries from the Tier A sweep had clobbered curated headers — recovered
-  from skeleton commit and merged with enrichment blocks (see step 7)
-- Final corpus: 321 entries (182 Tier A + 139 Tier B), all enriched
-- First wave: 117 files committed (74d869af), second wave: 40 files (4e73816c)
-
-## Coverage results — Tier B structure+patent pilot (2026-08-25)
-
-Pilot of 10 Tier B entries (all had NaturalAntibody-derived sequences, no
-Structures or IP blocks). Run directly (not delegated) to test the pipeline
-on the next cohort before committing to the full ~409 Tier B + 241 Tier D sweep.
-
-**Structure hit-rate: 7/10 (70%)**
-- All 7 found via sequence search ONLY (name search: 0/10 — confirms
-  code-name deposition is universal for Tier B)
-- 7/10 with complex structures + computed epitope contacts (4.5 Å)
-- 3/10 none-found (spartalizumab, imgatuzumab, acasunlimab) — expected
-- Edge cases: diabody chain mapping (magrolimab/5iwl), fusion protein
-  parent-derived structures (ficerafusp-alfa → 27 cetuximab structures)
-
-**Patent hit-rate: 10/10 (100%)**
-- PLAbDab paired hits: 10/10 (100%) — universal
-- PLAbDab patent-number resolution: 3/10 (30%) — low; reference titles
-  are the fallback for the other 70%
-- Google Patents name search: 4/10 succeeded (40%) — 6 returned 503
-  (intermittent, not the "throughout" pattern seen in Tier A)
-- BLAST pataa: 3 submitted, pending (queued NCBI service)
-
-**Scaling recommendation**: the full 409 Tier B + 241 Tier D sweep is worth it.
-- Structure pipeline scales: ~5 min for 10 entries (SAbDab API); full 409
-  would take ~3-4 hours of API time in batched runs
-- Patent pipeline scales: PLAbDab is local (instant); Google Patents 503
-  is intermittent — retry in smaller batches
-- BLAST should be selective for the full sweep: run only for entries where
-  PLAbDab found no paired hits or where CoM confirmation is specifically
-  needed — not for every entry (queued NCBI service, minutes per query)
-- For Tier D: expect lower structure hit-rate (pre-clinical, rarely
-  deposited) but PLAbDab should still find patent listings; patent
-  landscape is the primary value for Tier D
-
-## Time budget
-
-- Each subagent batch (4-5 entries): 400-1100s (BLAST patent search is the bottleneck)
-- Full Tier A sweep (35 batches, 12 waves): ~30 minutes wall clock
-- Post-sweep cleanup: ~5 minutes
-- Total: ~35 minutes for 182 entries
-- Tier B pilot (10 entries, direct not delegated): ~10 minutes total
-  (5 min structure search + 4 min patent search + 1 min contact computation)
+For resumption, repeat the inventory and verification above on the actual
+changed entries. Complete only missing/stale/invalid blocks; do not rerun good
+blocks unnecessarily. Close verified units, leave unfinished or unrelated dirt
+alone, and dispatch the remaining work under the same ownership. Neither Git
+status, old run totals, nor block presence determines completion.
