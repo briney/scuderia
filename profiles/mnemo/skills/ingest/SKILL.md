@@ -78,8 +78,8 @@ page. Do not route the individual package documents separately. For a review-onl
 arrival, first locate the application in `grants/`; an existing page routes
 to `grant-review-synthesis`. If no matching page exists, use `grant-ingest`
 to establish it. Hold ambiguous application matches rather than creating a
-duplicate. Routing invokes a skill; it does not override `SOUL.md` limits on
-delegating source ingestion.
+duplicate. Delegate the routed work when context isolation or independent
+execution helps; give each worker the specialist skill and an explicit scope.
 
 ## What every ingest specialist shares
 

@@ -244,9 +244,8 @@ For each new meeting, assemble the input for `meeting-ingestion`:
 
 Then chain into `skills/meeting-ingestion/SKILL.md` and let it handle the
 distillation, attendee enrichment, institution enrichment, and action-item
-promotion. Invoke `meeting-ingestion` in the same agent; skill chaining is
-not permission to delegate fresh-source distillation to a child. Follow the
-instance’s `SOUL.md` delegation limits.
+promotion. Delegate independent meeting distillations when useful; assign
+non-overlapping writes and verify each returned page before advancing state.
 
 When chaining, pass the `granola_id` and the `sources:` entry explicitly so
 `meeting-ingestion` includes them in the frontmatter of the page it writes.

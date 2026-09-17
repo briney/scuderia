@@ -14,10 +14,9 @@ eval_contract:
   dimensions:
     - "IDENTITY — title, identifiers, version, and complete individual authors match verified sources"
     - "EVIDENCE — findings and limitations reflect the retrieved source and its completeness"
-    - "OWNERSHIP — fresh sources stay with the primary; queued children return page-only intermediates"
+    - "OWNERSHIP — each worker owns its assigned paper; shared writes have one owner"
     - "COMPLETION — citation provenance, author wiring, propagation, and final checks all land"
   hard_fails:
-    - Delegating fresh-source ingestion by treating a selected citation as a pre-created queue stub.
     - Declaring an unwired page-only result a complete ingest.
     - Clearing enrichment on abstract-only or substitute-preprint distillation.
     - Losing citing edges or wiring to a known wrong author identity.
@@ -30,30 +29,26 @@ full text, distill it into a `papers/<slug>` page, walk its bibliography
 into stubs, wire its authors into the people ledger, link it into the
 graph, and verify the result.
 
-This skill is per-paper. Direct requests and fresh review/Tier 1 sources in a
-`literature-dive` are ingested by the primary agent. `ingest-pending-papers`
-may delegate fills of stubs created by an upstream producer in a prior session,
-subject to the instance's `SOUL.md`. A human-selected review or citation is not
-by itself a queue-stub delegation exception. Do not create a stub merely to
-manufacture eligibility.
+This skill handles one paper, whether new or already stubbed. Delegate paper
+retrieval and distillation when context isolation or parallel work helps;
+a direct request or the calling workflow already determines what to ingest.
+No extra eligibility review, prerequisite stub, or session restart is needed.
 
 ## Execution modes and ownership
 
 | Mode | Paper work | Shared work and completion |
 |---|---|---|
-| Standalone/full | Primary reads sources, resolves identity, distills, and writes. | The same primary owns bibliography stubs, authors, graph wiring, propagation, and final checks. |
-| Page-only queued fill | Leaf fills one pre-created queued page; performs source/identity checks and author-slug alignment. | Parent owns all shared writes and final completion. Child returns PAGE_READY, not a complete ingest. |
+| Inline/full | One agent reads sources, resolves identity, distills, and writes. | The same agent owns bibliography stubs, authors, graph wiring, propagation, and final checks. |
+| Delegated/page-only | Worker ingests one assigned new or existing paper, including source/identity checks and author alignment. | Parent owns shared writes and final completion. Worker returns PAGE_READY, not a complete ingest. |
 
-Parallel fills use page-only mode regardless of batch size. No implicit
-worker-owned wiring at small sizes and no threshold gap between modes. A
-legacy instruction such as 'do not create ledger entries' must be resolved to
-an explicit owner for every branch before work starts; do not guess its scope.
+Parallel paper workers use page-only mode to avoid shared-write races. An
+inline ingest uses full mode; choose execution for the work, not the paper’s age.
 
 A page-only leaf writes only its assigned paper page and uniquely prefixed
 scratch/source files. It does not rename/delete another paper, create citation
 stubs, mutate the ledger/person/concept pages, or enqueue propagation. It
-records bibliography candidates and source paths for the parent, but the
-parent re-reads the source bibliography before deciding new stubs exist.
+records source-linked bibliography candidates for the parent to verify before
+creating shared stubs; the parent opens original passages as needed.
 Still resolve authors against existing people/ledger identities; unresolved
 identity ambiguity is a HOLD, not permission to use the wrong person's slug.
 
@@ -63,7 +58,8 @@ fill discoverable. A complete standalone ingest or parent-finalized fill sets
 it false. `needs-enrichment` is independent of this completion flag.
 
 Return a compact record: `status` (PAGE_READY, SUCCESS, FAILURE, or SKIP),
-`input_path`, `canonical_path`, `changed_paths`, `remaining_obligations`, and
+`input_path` (when updating), `canonical_path`, `changed_paths`,
+`remaining_obligations`, and
 `diagnostic`. Supply the actual canonical path after a parent-owned merge or
 rename; never infer merge success from the disappearance of the input. Source
 metadata belongs in saved source files or re-fetchable records, not only in a
@@ -788,8 +784,8 @@ analyzes, a framework it extends. Not context citations.
 Use `skills/conventions/paper-stubs.md` for the minimal shape, producer
 exceptions, and five-distinct-source queue gate. Do not inline-ingest walk
 results or reset an already queued stub to false. In page-only mode, the
-parent performs this phase after reading the source reference list; the leaf
-returns the source path and candidate references, not new stub pages.
+parent verifies the worker’s source-linked candidates and performs shared
+stub writes; the leaf returns candidates and evidence, not new stub pages.
 
 **Deferred-stubs option for direct ingests (observed 2026-09-05).**
 When a human-handed single paper opens a thread the vault may not
@@ -930,7 +926,7 @@ before merging, then preserve verified identifiers, citations, and affiliations
 under the canonical slug. ORCID presence alone neither proves equivalence nor
 determines the survivor; unresolved cases go to entity-resolution.
 
-**Schema lint (required, non-delegable).** The invariants above are
+**Schema lint (required).** The invariants above are
 graph-level; they do not check the schema. A page with a missing
 `status:` or a slug that mismatches its filename passes all five and
 lands in CI red (this exact gap shipped chomicz-2026 without `status`

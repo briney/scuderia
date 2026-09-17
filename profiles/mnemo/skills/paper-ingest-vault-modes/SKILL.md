@@ -49,9 +49,8 @@ Two repos can sit side by side with near-identical layouts:
 - **Main brain** — `papers/`, `people/` *with* `_ledger.yaml`, full graph
   machinery, the default target of every phase.
 - **Satellite vault** — own git remote, own `papers/` and `people/`
-  (person pages only, **no `_ledger.yaml`** by declared design). Fresh sources
-  remain primary-owned; eligible queued page-only fills leave person-page
-  creation to their parent.
+  (person pages only, **no `_ledger.yaml`** by declared design). Delegated
+  paper workers leave person-page creation to their parent.
 
 A bare `ls` will not distinguish them. Check for `people/_ledger.yaml` and
 read the recent commits — dive briefs name the vault explicitly, and the
@@ -67,7 +66,7 @@ establish a satellite topology or authorize skipping a damaged main ledger.
 | 4 (full text) | Unchanged. |
 | 7 (bibliography walk) | Parent-owned in page-only mode; primary-owned for a full direct ingest. |
 | 8 (author ledger) | `check_authors.py` crashes (`FileNotFoundError` on `--ledger`). Substitute the person-page title scan (below). |
-| 10 (verify) | For explicitly declared ledgerless topology, use `--ledgerless --require-filled`; add `--page-only` for an eligible queued intermediate. Ledger absence is then labeled not applicable, not FAIL. Other failures remain failures. |
+| 10 (verify) | For explicitly declared ledgerless topology, use `--ledgerless --require-filled`; add `--page-only` for a delegated intermediate. Ledger absence is then labeled not applicable, not FAIL. Other failures remain failures. |
 
 ### Person-page title scan (check_authors substitute)
 

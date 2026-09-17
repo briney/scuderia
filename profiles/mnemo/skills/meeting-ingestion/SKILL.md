@@ -63,10 +63,9 @@ needed. For a supplied source bundle, preserve its provided identity and
 archive metadata; do not repeat a verified upload. Resolve missing content
 through the adapter before distilling.
 
-For a batch, resolve recurring attendees across the batch before creating
-person pages and apply the notability gate once per identity. Invoke the
-source-reading and distillation steps yourself unless the instance's
-`SOUL.md` explicitly permits delegation of that input.
+For a batch, delegate independent meeting distillations when useful. Resolve
+recurring attendees across the batch before creating person pages; give
+shared entity/task updates one owner and verify the returned pages.
 
 ## What this guarantees
 

@@ -12,10 +12,10 @@ eval_contract:
     - "PRESERVATION — science prose and captions survive source-to-page verification"
     - "IDENTITY — package grouping, personnel, and citation seeds come from actual documents"
     - "INTEGRATION — graph updates and queued key citations are complete and validated"
-    - "ISOLATION — paper stubs are produced here and filled later in a separate context"
+    - "ISOLATION — delegate package or paper work without accumulating unbounded extraction in one context"
   hard_fails:
     - Losing verbatim source prose or inventing missing citation/personnel information.
-    - Delegating grant extraction or running inline paper fills from the producer.
+    - Losing source fidelity or overlapping shared writes when delegating package work.
     - Leaving a grant-selected below-threshold stub unqueued.
 ---
 
@@ -41,14 +41,19 @@ distill-don't-dump.
 > `skills/conventions/test-before-bulk.md` (a backlog of historical grants),
 > `skills/conventions/capabilities.md` (the harness contract).
 
+Delegate package extraction or independent grant sections when useful,
+with explicit output ownership. Keep one coherent grant page and give shared
+person/project updates one owner across concurrent workers. Verify preserved
+prose and source evidence regardless of who performed the extraction.
+
 ## Capabilities
 
 `brain-search`, `brain-read`, `brain-write`, `raw-source-archive-upload`
 (the application package — research strategy, summary statement, etc.),
 `user-model-query` (your human's blind spots inform what the analysis section
-should call out). Does **not** delegate paper-ingest inline; instead,
-sets `needs-ingest: true` on cited paper stubs for `ingest-pending-papers`
-to drain later (the producer/consumer split).
+should call out). Citation stubs are produced separately from paper extraction;
+paper workers or `ingest-pending-papers` can process them once their inputs
+are ready, without restarting the session.
 
 ## Why verbatim, here
 
@@ -184,7 +189,7 @@ role*, never against a required checklist. Roles seen so far:
      See Phase 8 for the full procedure. The grant page gets a `## Key
      citations` section; each cited paper gets a stub page or an updated
      `cited_by` edge. Full distillation is deferred to
-     `skills/ingest-pending-papers/SKILL.md`, which runs in a fresh session.
+     `skills/ingest-pending-papers/SKILL.md` or assigned paper workers.
    - **Funder → `institution`; program officers → `person`** (notability-gated)
      → chain to `skills/enrich/SKILL.md`.
    - **Key Personnel → `person` pages.** Enumerate the PI, every
@@ -231,11 +236,11 @@ role*, never against a required checklist. Roles seen so far:
      sufficient evidence that the person is Key Personnel on this grant;
      they may be a method-source citation rather than a co-I.
 
-8. **Key citations — stubs out, no inline paper-ingest.** Follow
+8. **Key citations — stubs and paper handoff.** Follow
    `skills/conventions/paper-stubs.md` for the shared shape, producer
-   exceptions, citation provenance, and later drain. The fresh-session split
-   prevents unbounded paper extraction from accumulating inside a grant
-   ingest; it is not permission to choose a cheaper model.
+   exceptions, citation provenance, and later drain. Prefer isolated paper
+   workers so unbounded extraction does not accumulate inside the grant
+   context. Follow the configured runtime without changing model pins.
 
    **Identify key citations.** A key citation is a reference that introduces a
    core method, a foundational concept, or a dataset the grant builds on.
@@ -349,11 +354,11 @@ role*, never against a required checklist. Roles seen so far:
     `## Drafting log` entry for the ingest so a future audit can spot
     silent regressions.
 
-12. **Hand off to `ingest-pending-papers`.** As the closing line of the
-    ingest, tell your human: "N stubs created, M existing pages updated. Run
-    `ingest-pending-papers` in a fresh session to fill them in." Do not
-    invoke the worker or prescribe a model switch; report only the actual
-    new/updated queue items.
+12. **Hand off paper work.** Report the actual stubs created and existing
+    pages updated. The parent may run `ingest-pending-papers` or dispatch
+    paper workers immediately once their inputs are ready, or leave them
+    for the scheduled drain. No session restart is required. If a worker
+    cannot delegate further, return these follow-ups to its parent.
 
 Ingesting a backlog of historical submissions is expected. For more than a
 handful, follow `skills/conventions/test-before-bulk.md`: ingest 3-5, read the output,
@@ -481,9 +486,8 @@ provenance and queue it. Do not fabricate a PDF/archive pointer.
   job, run after a batch of grants is in.
 - Ingesting every cited reference — only key citations earn a stub, and even
   those are not distilled inline. Fact-sourcing citations are dropped.
-- Running `paper-ingest` inline from grant-ingest — that is exactly the
-  compaction-risk shape this skill split was designed to remove. Stubs out,
-  worker drains them later.
+- Accumulating unnecessary paper extraction in the grant context instead
+  of using independent paper workers for a substantial citation batch.
 - Splitting one grant package into several pages, or filing each package
   document separately.
 - Committing a binary package document into git instead of archiving it to R2.

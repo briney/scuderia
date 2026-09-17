@@ -12,10 +12,9 @@ eval_contract:
   dimensions:
     - "SEARCH — expert curation, gap analysis, learned vocabulary, alternatives, and bounded expansion survive"
     - "EVIDENCE — tiers and findings are attributed to sources actually read"
-    - "OWNERSHIP — fresh ingestion and eligible queue fills obey distinct explicit modes"
+    - "OWNERSHIP — independent paper workers have clear scope; the parent owns shared writes"
     - "COMPLETION — bibliography decisions, shared wiring, verification, and synthesis are accounted for"
   hard_fails:
-    - Treating a selected fresh citation as permission to delegate first-contact ingestion.
     - Claiming skipped bibliography walks created stubs or unread review text established detailed discussion.
     - Clearing enrichment on an abstract-only or substitute-preprint page.
     - Synthesizing as if unwired or unverified intermediates were completed ingests.
@@ -49,7 +48,7 @@ synthesis — the second pass uses everything the first pass learned.
 > `skills/conventions/capabilities.md` (the harness contract),
 > `skills/conventions/test-before-bulk.md` (validate before scaling),
 > `skills/conventions/preprint-retrieval.md` (bioRxiv full text),
-> `skills/conventions/paper-stubs.md` (queue/provenance and delegation boundary).
+> `skills/conventions/paper-stubs.md` (queue/provenance).
 
 ## Capabilities
 
@@ -100,9 +99,8 @@ Python stdlib.
 that paper full text is unavailable. Inspect written files after workers have
 returned; preserve valid intermediates and defer failed/unstarted queued fills
 per `ingest-pending-papers`. Respect retry guidance without asserting that a
-single observed limit lasts for every session. Fresh sources remain primary-
-agent work under the execution modes below; an outage does not broaden
-permission to delegate or to inline-fill the queue.
+single observed limit lasts for every session. Use another available execution path or defer the affected papers without
+weakening source checks; a provider failure does not establish source closure.
 
 `paper-ingest` owns the retrieval ladder and source-completeness gates. Genuine
 abstract-only distillation sets `fulltext_source: abstract-only` and
@@ -127,7 +125,7 @@ bibliography.
 
 | Tier | What it is | Ingestion path |
 |---|---|---|
-| **Tier 1 (primary)** | The review itself + primary literature the review discusses in detail | Priority `paper-ingest` by the primary agent for fresh sources; no citation threshold. Existing queued stubs retain their separate drain contract. |
+| **Tier 1 (primary)** | The review itself + primary literature the review discusses in detail | Priority paper-ingest, normally in isolated workers; no citation threshold or prerequisite stub. |
 | **Tier 2 (secondary)** | Load-bearing citations from Tier 1 papers (methods, datasets, frameworks) | `paper-ingest` Phase 7 stub + threshold gate (5+ `cited_by`). Full ingest deferred to `ingest-pending-papers`. |
 | **Dropped** | Background/context citations | Not paged. |
 
@@ -140,7 +138,7 @@ that cites a paper once for a fact ("humans have ~10¹⁰ B cells [42]")
 does not. The typical review has 200–300 references; Tier 1 is usually
 10–20.
 
-**Paper priority is not author promotion or delegation permission.** Tier 1
+**Paper priority and author promotion are separate.** Tier 1
 bypasses the paper queue's citation threshold; author ledger/promotion rules
 still apply. Follow paper-ingest's execution modes and Phase 8 reference.
 
@@ -226,14 +224,11 @@ surfaced in the discovery search and landed mid-dive). Tier
 classification then runs against the anchors' own deferred-reference
 logs plus the review when it arrives.
 
-### 2. Review ingest (primary-owned)
+### 2. Review ingest
 
-Ingest each newly selected review yourself with `paper-ingest`; selection by
-the human does not turn a fresh review into a pre-created queue stub. This
-holds for both the spine review and additional reviews. Reuse an existing
-verified full page when possible. Pre-existing queued stubs may be filled by
-`ingest-pending-papers` under its separate contract; do not manufacture stubs
-inside the campaign to gain delegation permission.
+Use `paper-ingest` for selected reviews, delegating to isolated workers when
+helpful. Reuse existing verified pages. Review selection already authorizes
+the work; no prerequisite stub or separate delegation approval is needed.
 
 **Review full text is often paywalled.** Most high-impact review
 journals (Nature Reviews, Annual Reviews, Elsevier titles) do not have
@@ -300,8 +295,8 @@ its findings/methods/implications in detail or repeatedly across sections.
 Read that discussion to establish the bar. A reference list alone cannot show
 how a paper was discussed; if the review body is unavailable, use the alternate
 review or targeted-search path below and state that basis explicitly.
-Fresh approved Tier 1 sources go to primary-owned ingestion; existing full
-pages are reused, and pre-created queued pages retain their drain contract.
+Approved Tier 1 sources use the same paper-ingest workers whether new or
+already stubbed; reuse existing full pages.
 
 **Tier 2 — threshold-gated stubs.** Create or update source-grounded
 load-bearing references (methods, datasets, frameworks) using
@@ -409,27 +404,21 @@ paper carrying an older author-manuscript PMCID (same dive, Antila
 record, not a mis-mapping; `efetch db=pmc` + title match settles it
 before the identifier is discarded.
 
-### 4. Tier 1 ingest (explicit execution mode)
+### 4. Tier 1 ingest
 
-Use the primary-agent/full mode in `paper-ingest` for fresh approved Tier 1
-sources. Read the source, distill it, and complete required bibliography,
-author, graph, and propagation work before counting it complete. Approval of
-a citation is a priority decision, not permission to delegate its first ingest.
-If context limits block completion, record remaining candidates and resume in
-a fresh session rather than weakening that boundary.
+Delegate one selected paper per isolated paper-ingest worker; new papers and
+existing stubs use the same page-only mode. A small standalone ingest can run
+inline. The dive’s existing selection/tiering rules are sufficient; add no
+eligibility classifier, approval manifest, or mandatory session boundary.
 
-For a campaign segment consisting of pre-created queued stubs, invoke
-`ingest-pending-papers` under the shared stub contract; its leaves use page-only
-mode and its parent completes all shared writes. Reuse existing full pages.
-Do not mix a new stub producer and its drain in the same session. These modes
-apply at every corpus size; there is no 5/15-paper ownership threshold.
-
-**Scheduling when delegation is eligible.** Load `skills/batch-drain/SKILL.md`
-for runtime batch sizing, call shape, and yield/return discipline. It owns the
-loop, not this campaign. No new wave while another remains in flight. Briefs
-carry validated identifiers, a pre-existing input path, campaign purpose,
-unique scratch prefix, and the explicit page-only scope/return record from
-paper-ingest. Children never stage, commit, pull, or push.
+Load `skills/batch-drain/SKILL.md` for runtime sizing and dispatch/return
+handling. Give each worker the source identifier, assigned output path,
+campaign purpose, and unique scratch prefix. Workers read and distill their
+sources, return PAGE_READY and source-linked bibliography candidates, and do
+not mutate shared files or perform Git operations. The parent verifies each
+result and completes shared wiring before clearing the queue flag or counting
+completion. Save campaign progress between waves; do not accumulate every
+worker’s full extraction transcript in the parent.
 
 **Briefs are source-grounded inputs, not primary evidence.** Authorship,
 cohorts, and findings in a brief must come from the source metadata/abstract
@@ -438,8 +427,9 @@ against the retrieved paper. Use paper-ingest's source-specific metadata
 ladder: jina may drop bylines and mirrors may be incomplete or stale; author
 identity is not inferred from the available body text alone.
 
-**Parent wiring.** The queue-drain parent reads each PAGE_READY page and its
-source metadata/bibliography, then performs paper-ingest Phases 7–9. The shared
+**Parent wiring.** The parent verifies each PAGE_READY page and source-linked
+bibliography candidates, opening original passages as needed, then performs
+paper-ingest Phases 7–9. The shared
 procedure is `paper-ingest/references/author-ledger-mutation.md`: it owns
 name/slug resolution, ORCIDs, new versus existing entries, promotion,
 plain-text mutation, and read-back. Do not reconstruct the wiring table from
@@ -457,7 +447,7 @@ prefix corruption from preserved text and repeat parsing/source checks; do
 not strip arbitrary text from a scientific source. Do not inspect an in-flight
 leaf's missing authors as a final failure or mutate shared state on that basis.
 
-**Foreground work during an eligible wave.** Only work independent of its
+**Foreground work during a wave.** Only work independent of its
 outputs may proceed: read existing concept pages, design searches from the
 already-read review, or compile a scratch map. Do not synthesize from unfinished
 papers, judge their coverage before read-back, or start another dispatch.
@@ -510,11 +500,10 @@ addresses an open question with new primary evidence") are ingested
 under the same explicit execution modes as Phase 4. Papers that
 are Tier 2 become stubs.
 
-**Concurrent search is conditional.** While an eligible queue-fill wave is
+**Concurrent search is conditional.** While a paper-ingest wave is
 running, searches derived solely from the already-read review may proceed.
 Searches or coverage judgments that require the wave's unread outputs wait
-for its return and verification. Fresh primary-owned ingestion does not imply
-background workers exist.
+for its return and verification.
 
 ### 6. Informed supplementary pass
 
@@ -653,9 +642,8 @@ guard against recursive expansion.
 4. Present the consolidated list to your human, with the reason each
    candidate was surfaced (which gap, which prong, which re-anchored
    review). This is the approval gate.
-5. Ingest approved candidates via Phase 4’s explicit execution modes:
-   primary-owned fresh ingestion or eligible pre-created queue fills, with
-   parent-owned shared wiring and source/read-back verification.
+5. Ingest approved candidates through the same Phase 4 paper workers,
+   with parent verification and shared wiring.
 
 **Hard rules.**
 - Phase 6 executes exactly once per dive.
@@ -776,9 +764,8 @@ dive is not complete until the concept page is written.
 - Tier 2 papers — load-bearing but not foundational — follow the
   standard stub + threshold gate, so the brain does not grow stubs
   faster than it can fill them.
-- Fresh sources remain primary-owned. Eligible pre-created queue fills use
-  isolated leaves with parent verification and wiring; page-only output is
-  never mistaken for a complete ingest.
+- Isolated paper workers prevent full extraction conversations from
+  accumulating in the parent; verification and shared wiring remain explicit.
 - The review-inspired search catches what the review missed: open
   questions, thin evidence, post-review developments.
 - The informed supplementary pass catches what the *uninformed
@@ -811,12 +798,12 @@ dive is not complete until the concept page is written.
   threshold gate and `ingest-pending-papers` own the fill. Inline
   ingest of Tier 2 is the "exploding paper tree" the threshold gate
   exists to prevent.
-- **Skipping the read-back.** Fresh primary-owned ingests and eligible
-  queued fills both require source and artifact verification. A child’s
+- **Skipping the read-back.** Inline and delegated ingests require source
+  and artifact verification. A child’s
   PAGE_READY or failure report is not the final outcome; the parent checks
   every returned item under paper-ingest Phase 10 and the drain’s accounting.
 - **Trusting file presence as completion.** Phase 4’s verification/recovery
-  rules require identity, source, body, and wiring checks after eligible
+  rules require identity, source, body, and wiring checks after
   workers return; never repair shared state while a leaf is still writing.
 - **Skipping the supplementary pass.** A dive that goes straight from
   Phase 5 to synthesis locks in the blind spots of the uninformed

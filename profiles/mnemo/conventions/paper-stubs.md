@@ -3,7 +3,7 @@
 Read when creating, promoting, filling, or merging a paper stub. This is the
 shared producer/consumer contract; `paper-ingest` owns per-paper extraction,
 execution modes, and final verification. `ingest-pending-papers` owns draining
-pre-created queue entries; `batch-drain` owns scheduling; `git-ops` owns closeout.
+queue entries; `batch-drain` owns scheduling; `git-ops` owns closeout.
 
 ## Identity and minimal shape
 
@@ -40,7 +40,7 @@ location, or the sweep query and date. No R2 source is claimed before archival.
 are `paper-ingest`, `grant-ingest`, `literature-sweep`, and `literature-dive`;
 retain existing legacy/custom labels without rewriting history. It is optional on legacy pages and
 survives fills/merges; it does not identify the last editor. Document a newly adopted producer’s queue policy before relying on its label;
-the label alone grants neither queue priority nor delegation permission.
+the label alone does not change queue priority.
 When an existing stub is selected by another producer, retain its origin and
 append the new provenance rather than overwriting it.
 
@@ -51,7 +51,7 @@ append the new provenance rather than overwriting it.
 | paper-ingest bibliography walk | Stub only load-bearing methods, datasets, and frameworks. Set `needs-ingest: false` below five distinct citing papers/grants; promote to true at five or more. Never inline-ingest the resulting tree. |
 | grant-ingest key citation | Set true immediately, including on an existing below-threshold stub. Fact-only citations are not stubs. |
 | literature-sweep | Set true immediately. Mode 1 requires a resolved DOI; Mode 2 also permits a source-verified PMCID lead, with the DOI unresolved until identity validation. Record the query and matching domain/concept. |
-| literature-dive | Tier 1 priority bypasses the citation threshold, not the delegation policy. Fresh approved Tier 1 papers are ingested by the primary agent. Tier 2 load-bearing references become ordinary threshold-gated stubs. |
+| literature-dive | Tier 1 papers go to paper-ingest without the citation threshold; use isolated workers for batches. Tier 2 load-bearing references become ordinary threshold-gated stubs. |
 
 Do not reset an already-queued stub to false when a later producer sees fewer
 than five citing sources. A filled paper stays filled; another citation adds
@@ -66,16 +66,11 @@ The review's citation contributes an edge only when verified in its reference
 list; unavailable review discussion cannot establish the 'discussed in detail'
 Tier 1 bar by itself.
 
-## Delegation boundary
-
-The instance's `SOUL.md` controls delegation. Under the queue-stub carve-out,
-only fills of stubs created by an upstream producer before the current drain
-may be delegated. A chosen fresh review, Tier 1 citation, or citation in a task
-brief is not equivalent to a queued stub. Do not create stubs inside a dive
-merely to manufacture delegation eligibility. Queue producers finish first;
-the drain runs in a fresh context. A dive may reuse full pages or ingest fresh
-sources itself; if context prevents completion, record remaining work and
-resume later instead of broadening the carve-out.
+The source request or producer’s existing rules determine what to ingest.
+Delegation adds no selection gate: new papers and queued stubs use the same
+paper-ingest worker. Producers and drains may run in the same session, after
+the relevant inputs are ready. Prefer isolated workers for larger workloads;
+small jobs can run inline.
 
 ## Fill, failure, and merge lifecycle
 

@@ -12,6 +12,15 @@ triggers:
   - "distill concepts from the projects"
   - "bootstrap the concepts"
   - "build the concept layer"
+eval_contract:
+  goal: Bootstrap approved source-grounded concepts from the existing applied corpus, with required graph links.
+  dimensions:
+    - "GROUNDING — each concept and candidate hypothesis is supported by the source pages"
+    - "SCOPE — the approved inventory governs output, regardless of execution mode"
+    - "INTEGRATION — distinct page ownership, verification, and applied-layer links are complete"
+  hard_fails:
+    - Authoring concepts outside the approved inventory or writing hypothesis pages in this skill.
+    - Losing source evidence, duplicating existing concepts, or overlapping concurrent writes.
 ---
 
 # concept-seeding — birth the concept layer by backward distillation
@@ -32,13 +41,12 @@ the instance's private `docs/specs/`.
 > conversational bootstrap, so its candidates land in the inventory for
 > your human's approval, not in any queue), `test-before-bulk.md` (test the
 > extraction on a sample first),
-> `skills/conventions/capabilities.md`. Character: `SOUL.md` — **ingest with your own hands** (author
-> concepts yourself; delegate only the ephemeral scan), propose-not-auto,
-> cite-or-flag.
+> `skills/conventions/capabilities.md`. Character: `SOUL.md`; retain the
+> inventory approval and cite-or-flag requirements when delegating.
 
 ## Capabilities
 
-- **Required:** `brain-read`, `brain-write`, `spawn-subagent` (Phase 1 scan only).
+- **Required:** `brain-read`, `brain-write`, `spawn-subagent`.
 - **Optional:** `brain-search` (bottom-up clustering; degrades to keyword scan
   under Claude Code — accept wider, noisier candidates).
 
@@ -55,9 +63,8 @@ in the vault — it fetches nothing.
   your human approves the inventory**; bottom-up candidates ride in the same
   inventory (clearly marked) and materialize only on approval. Nothing is
   auto-authored.
-- **Authoring is never delegated.** Subagents do the Phase-1 scan (ephemeral
-  reconnaissance over already-ingested material); the mind authors every durable
-  concept page itself (`SOUL.md`).
+- **Delegate independent work.** Workers may scan sources or author approved
+  concepts; assign distinct pages and verify their source-grounded results.
 - **Never writes `hypotheses/`.** Output is concept pages only. Candidate
   hypotheses land as Frontier bullets; the proving-ground is populated later by
   explicit promotion.
@@ -98,7 +105,7 @@ in the vault — it fetches nothing.
    bottom-up — approved or pruned in the same conversation. Author nothing
    until the inventory is approved.
 
-4. **Author approved concepts** *(the mind, own hands).* For each approved
+4. **Author approved concepts** *(delegate independent pages when useful).* For each approved
    umbrella, author the canonical concept page (`synthesis-layer-pages.md`):
    `## Thesis` = the umbrella framing; `## Frontier` = the candidate hypotheses as
    bullets with maturity markers (`*fuzzy*` / `*sharpening*`) — **always a
@@ -138,8 +145,6 @@ in the vault — it fetches nothing.
   hypothesis** — that is a topic, not a concept; drop it.
 - Writing a `hypotheses/` page. This skill produces concepts only; sharp bets are
   Frontier bullets until an explicit promotion.
-- Delegating the *authoring* to a subagent — the Phase-1 scan is delegable, the
-  concept prose is not (`SOUL.md`).
 - Materializing any concept before your human approves the inventory.
 - Duplicating or blind-overwriting the 2 existing concepts instead of folding /
   reformatting them.

@@ -29,7 +29,7 @@ eval_contract:
 The one invariant that governs every task where the orchestrator breaks a large
 list of work items into `delegate_task` batches and dispatches them in waves.
 This is the *scheduling discipline only*. What each subagent *does* is specified
-by the calling skill (`ingest-pending-papers` fills eligible queued pages; `therapeutic-antibody-registry`
+by the calling skill (`paper-ingest` handles assigned papers; `therapeutic-antibody-registry`
 enriches entry blocks; `retroactive-linking` re-links a shard of pages). This
 skill owns the loop that moves items through those workers without dropping any,
 re-dispatching early, or building on incomplete results.
@@ -128,9 +128,8 @@ the thing that depends on the batch, the correct action is to yield and wait.
 
 Consumers (edit these to point here rather than restating the loop inline):
 
-- `skills/ingest-pending-papers/SKILL.md` — eligible pre-created queue fills.
-- `skills/literature-dive/SKILL.md` — eligible queued segments of a deep dive;
-  this scheduling skill never grants fresh-source delegation permission.
+- `skills/ingest-pending-papers/SKILL.md` — queued paper work.
+- `skills/literature-dive/SKILL.md` — batches of selected papers, new or existing.
 - `skills/therapeutic-antibody-registry/references/enrichment-sweep-recipe.md` —
   bulk enrichment sweeps of the antibody registry.
 - `skills/retroactive-linking/SKILL.md` and `skills/retroactive-linking-shard-worker/SKILL.md` —

@@ -66,7 +66,7 @@ A `paper` may also carry queue and provenance fields:
 | `tags: [stub]` | Marks a page that has only frontmatter + a placeholder body. Removed once filled. |
 
 Read `paper-stubs.md` for the shared minimal shape, producer queue decisions,
-provenance, failure accounting, and delegation boundary.
+provenance, failure accounting, and completion state.
 
 Stubs are valid `paper` pages — they resolve to a real-world object via their
 citation entry even before DOI resolution — and they accumulate citation

@@ -8,10 +8,10 @@ triggers:
   - "drain the paper-ingest queue"
   - a scheduled queue-drain run
 eval_contract:
-  goal: Drain pre-created queued papers with verified per-item outcomes and complete parent-owned wiring.
+  goal: Drain queued papers with verified per-item outcomes and complete parent-owned wiring.
   dimensions:
     - "ACCOUNTING — every original input has a verified outcome and canonical path"
-    - "ISOLATION — leaves fill only eligible pages; parent owns all shared writes"
+    - "ISOLATION — workers fill assigned pages; parent owns all shared writes"
     - "VERIFICATION — source-backed exceptions and completed-page checks agree with paper-ingest"
     - "RECOVERY — incomplete work stays queued and provider errors do not erase completed writes"
   hard_fails:
@@ -24,11 +24,10 @@ eval_contract:
 
 > **Git closeout:** Follow `skills/git-ops/SKILL.md`. The drain parent closes each verified group of fills, required wiring, and propagation packets; children never perform Git operations. Incomplete fills remain outside the completed unit. The final accounting identifies any local-only commits or held changes.
 
-Drain pre-created queue entries in isolated contexts, one paper per leaf.
-`skills/conventions/paper-stubs.md` owns stub shape, producer exceptions,
-provenance, failure counters, and the fresh-session boundary; read it first.
-This consumer never creates stubs merely to delegate their first ingestion.
-It also resumes page-only fills left queued while parent wiring is incomplete.
+Drain queue entries with the same paper-ingest workers used for direct
+requests and dives. Read `skills/conventions/paper-stubs.md` for provenance
+and lifecycle. The drain can follow a producer in the same session and can
+resume page-only results awaiting shared wiring; no new selection gate applies.
 
 > **Conventions:** `skills/conventions/frontmatter.md` (the `needs-ingest`,
 > `cited_by`, `ingest_attempts`, `last_ingest_attempt` fields on `paper`),
@@ -48,7 +47,7 @@ Each delegated subagent in turn needs `paper-ingest`'s capabilities.
 
 - The queued pages created upstream by the supported producers get
   distilled and wired into complete `paper` pages without
-  ever burdening the producer's session.
+  accumulating full extraction conversations in the producer’s context.
 - A single failed ingest does **not** halt the queue. The skill continues
   through the remaining stubs and reports per-paper status at the end.
 - Failures are recorded on the failing page (via `paper-ingest`'s
@@ -73,16 +72,11 @@ yield/return discipline, and remainder accounting. Use the current tool schema
 and configured ceiling, never a frozen pool size or a nonexistent `toolsets`
 parameter. Do not dispatch a new wave while one remains in flight.
 
-Each eligible queued page is filled by a leaf in paper-ingest's page-only mode.
-The parent owns bibliography decisions and every shared-file mutation, including
-author wiring, propagation, and merges. A short queue does not switch to direct
-or worker-owned shared writes. A provider outage defers failed/unstarted entries;
-it does not authorize inline queue fills or switching model policy.
-
-The carve-out buys context isolation, not an assumed cost reduction. Follow
-`SOUL.md` and the current runtime's delegation configuration; do not select a
-cheaper model or change pins as a workaround. A model API gaining another
-option does not itself authorize a new ingestion policy.
+Prefer one isolated page-only worker per queued paper. The parent owns
+bibliography decisions and shared-file writes, including author wiring,
+propagation, and merges. Inline work is also possible when small or when
+delegation is unavailable; keep the same verification and completion checks.
+Follow the runtime’s configured models and limits without changing pins.
 
 ## Phases
 
@@ -161,7 +155,7 @@ option does not itself authorize a new ingestion policy.
    deleting a duplicate; include this original input in final accounting.
    Title-only matches are REVIEW, not identity verdicts.
 
-3. **Delegate one page-only fill per eligible queue item.** Use batch-drain
+3. **Delegate one page-only fill per queue item.** Use batch-drain
    and include the existing absolute input path, source citation, validated
    identifiers, input `cited_by` and provenance snapshot, expected canonical
    target, and a unique scratch prefix. Tell the leaf to load paper-ingest,
@@ -185,7 +179,7 @@ option does not itself authorize a new ingestion policy.
 
    Apply the canonical completed-page checks in paper-ingest Phase 10, using
    `verify_ingest.py <bare-slug> --instance <brain> --require-filled
-   --page-only` for the intermediate. Read the source and page yourself:
+   --page-only` for the intermediate. Verify the page against source evidence:
    identity, complete individual authors, substantive body sections, and
    enrichment provenance must agree. Explicit null DOI and collective-only
    empty authors are evidence-backed exceptions defined there; do not restore
@@ -206,8 +200,8 @@ option does not itself authorize a new ingestion policy.
    before adding a parent diagnostic so one attempt is not counted twice.
 
 5. **Complete parent-owned wiring and final verification.** For each
-   PAGE_READY item, perform paper-ingest Phases 7–9: read the source
-   bibliography and decide anchor stubs, resolve/write every author citation
+   PAGE_READY item, perform paper-ingest Phases 7–9: verify source-linked
+   bibliography candidates and decide anchor stubs, resolve/write every author citation
    using `paper-ingest/references/author-ledger-mutation.md`, and finish
    graph links plus the propagation packet. Parent-owned merges use the
    canonical path throughout; no shared file is edited by an in-flight leaf.
@@ -261,8 +255,6 @@ option does not itself authorize a new ingestion policy.
 
 ## Anti-patterns
 
-- **Running this skill in the same session as `grant-ingest`.** It defeats
-  the entire point of the producer/consumer split. Always a fresh session.
 - **Halting the queue on a single failure.** A bad DOI on stub #3 should
   not block stubs #4 through #N. `paper-ingest` logs the failure on the
   per-paper page; this skill reports it in the summary and moves on.
@@ -280,21 +272,10 @@ option does not itself authorize a new ingestion policy.
   edges or invent citations from topic relevance.
 - **Changing delegation model settings to rescue a drain.** Model policy is
   user-owned; provider failures do not justify new pins or cheaper models.
-- **Skipping the verification step in Phase 4.** A subagent returning
-  `SUCCESS` is a self-report, not a fact. The carve-out in `SOUL.md` §2
-  that lets this skill delegate at all is contingent on read-back
-  verification of every claimed fill. If verification is skipped, the
-  spine is being violated; do not skip it for speed.
+- **Skipping Phase 4 verification.** Worker reports are self-reports;
+  verify the artifacts and source evidence before counting completion.
 - **Ignoring the current runtime schema or ceiling.** Follow batch-drain
   and account for rejected dispatches explicitly; no silently lost items.
-- **Inline-chaining when the queue is small.** "Only three stubs, I'll
-  just do them here in the orchestrator" is the most common way the
-  delegation discipline breaks. The producer/consumer split is a *contract*
-  about context isolation, not an optimization that's optional when the
-  queue is short. Delegate even when the queue is one stub: Phase 3 is the
-  contract regardless of N. The user can verify this is happening from the
-  tool stream (see "Running this skill — kickoff and monitoring" below).
-
 ## Running this skill — kickoff and monitoring
 
 This section is for the *user* invoking the drain, not for the orchestrator
@@ -303,17 +284,14 @@ running it. The orchestrator already has its instructions above.
 ### Kickoff prompt (paste verbatim at session start)
 
 ```
-Run ingest-pending-papers on the existing upstream queue. Use one page-only
-leaf per eligible paper and the current runtime schema/ceiling; never fill
-the queue inline. Read back every returned item, including failures and
-PAGE_READY results. The parent completes shared wiring and final checks
-before clearing needs-ingest or counting SUCCESS. State whether eligible
-items will be delegated, or report the blocker if delegation cannot run.
+Run ingest-pending-papers. Prefer isolated paper workers and the current
+runtime schema/ceiling. Read back returned artifacts, including failures and
+PAGE_READY results. Complete shared wiring and final checks before clearing
+needs-ingest or counting SUCCESS. Report any work deferred by the run budget.
 ```
 
-The opening status should distinguish a real delegated drain from a blocked
-one. Verify execution in the tool stream; a promise of delegation alone does
-not establish that a leaf ran.
+Verify execution in the tool stream; a promise of delegation alone does
+not establish that a worker ran.
 
 ### Monitoring signals from the tool stream
 
@@ -321,15 +299,15 @@ Three observable invariants tell you the orchestrator is doing what it
 claims, regardless of what its prose says:
 
   1. **One `delegate_task` call per batch.** The tool-call telemetry is
-     authoritative. Every eligible item must appear in a dispatched wave
+     authoritative. Every selected item must appear in a dispatched wave
      or an explicit hold/defer record; use the runtime ceiling, not a fixed
      batch-size formula. A drain claiming delegated fills without any
      delegation calls did not execute its contract.
-  2. **Orchestrator context stays flat.** Context grows by the stub list at
-     the top (small) and the per-batch return summaries (small), and *not*
-     by the leaf's entire extraction conversation. Parent page/source
-     read-backs are required verification, not evidence of forbidden inline
-     filling; inspect who performed the actual per-paper extraction/write.
+  2. **Full extraction stays in workers.** The parent receives result paths
+     and reads the evidence needed for verification, rather than duplicating
+     each worker’s entire extraction conversation. Parent page/source
+     read-backs are required verification, not evidence of unnecessary repeated
+     extraction; inspect who performed the actual per-paper extraction/write.
   3. **Phase 4 read-backs are visible.** After each batch returns, you
      should see `read_file` calls against the just-filled stub pages — one
      per returned item, including PAGE_READY and reported failures. No
