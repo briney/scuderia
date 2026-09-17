@@ -12,6 +12,15 @@ triggers:
   - "conflicting claims"
   - "stale facts"
   - "audit the hypothesis graph"
+eval_contract:
+  goal: Surface genuine contradictions and expired facts across the graph without destroying either side of a conflict.
+  dimensions:
+    - "DISTINCTION — genuine conflicts distinguished from succession, updates, and hedged disagreement"
+    - "EVIDENCE — each conflict carries both spans and sources, never a silent winner"
+    - "STALENESS — time-sensitive facts checked against their validity window"
+  hard_fails:
+    - Deleting or rewriting one side of a conflict to make it disappear.
+    - Reporting a contradiction without both verbatim spans.
 ---
 
 # Consistency check — contradictions and expired facts
@@ -104,7 +113,7 @@ actually are.
 ## As a rem-cycle phase
 
 Runs as its own cron job under `rem-cycle-contract.md` (binary gate). Emit the
-fenced-yaml phase result — `committed[]` (unambiguous `stale` flags only),
+raw-YAML phase result — `committed[]` (unambiguous `stale` flags only),
 `notable[]` (every contradiction with **both** spans, plus detect-only status
 flips), `metrics` (`hypothesis_conflicts`, `attribute_conflicts`,
 `stale_flagged`, `dropped`, `pages_scanned`). Cheap scanning (grep the
@@ -121,7 +130,7 @@ phase 5).
 
 ## Output
 
-- **As a phase:** the fenced-yaml phase result.
+- **As a phase:** the raw-YAML phase result.
 - **Standalone:** the conflicts surfaced inline with both sides, plus any
   `stale` flags applied.
 

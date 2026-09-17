@@ -212,27 +212,19 @@ Summary: {N} stubs created, {M} already-held dropped, {K} links repaired
 Flag standout papers worth immediate attention ("→ worth reading now")
 rather than relying on the drain's queue order.
 
-## Self-lint before declaring the sweep done
+## Validate owned output before closeout
 
-The stub template above is what a correct stub looks like; the sweep
-writes dozens per run and a field dropped under pressure (missing
-`status:`, slug/filename mismatch, a raw string in `authors:`) lands in
-CI red without anyone noticing for days. After writing the batch, run
-the platform linter in scoped mode over exactly the stubs written this
-run:
+Run `core/tools/lint-frontmatter.py --instance <brain> --paths <absolute-owned-paths...>`
+from the platform checkout on every stub and concept/cursor page changed by this
+sweep. `--changed-since <start-rev>` is an alternative only when that range
+contains exactly the owned work. The linter also checks global structure;
+separate unrelated baseline failures from defects introduced here.
 
-```bash
-python3 <platform-repo>/core/tools/lint-frontmatter.py \
-  --instance <brain> \
-  --changed-since <rev-before-this-sweep>
-```
-
-Structure is checked everywhere, field checks on the sweep's files
-only — sub-second on a 10k-page brain. Exit 0 = the sweep is done.
-Any error means the stub is an unfinished write: fix it before the run
-ends, not as future debt. The stubs are born red, not red-later: the
-2026-08 lint-debt burndown was 4,191 errors that originated as exactly
-this class of producer gap.
+Read the exit code and findings. Missing `status`, a slug/filename mismatch or
+malformed authorship is unfinished output, not deferred debt. Lint alone does
+not establish source identity or completeness. Retain the sweep's domain
+checks and let `git-ops` own scoped closeout; do not add a second validation
+framework here.
 
 ## Anti-patterns
 

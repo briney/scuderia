@@ -8,6 +8,17 @@ triggers:
   - "who is this person"
   - "look up this lab"
   - "a new collaborator or funder is mentioned"
+eval_contract:
+  goal: Turn a named person or institution into a brain page with real, cited content, gated correctly by how it arrived and scaled to its importance.
+  dimensions:
+    - "GATING — ledger-promoted authors page deterministically; every other entity passes the judgment gate"
+    - "LEDGER DISCIPLINE — paper authors below threshold stay in the ledger; page-or-entry, never both"
+    - "PROVENANCE — every substantive fact is cited or flagged; the human's own assessments are never overwritten"
+    - "TIERING — effort matches the entity's load-bearingness"
+  hard_fails:
+    - Creating a paper-author page without a satisfied promotion condition or explicit human override, or racing another writer's ledger pass.
+    - Leaving a promoted author's source ledger entry in place, or writing the page without `author_on:` from `citations:`.
+    - Overwriting your human's own words with external boilerplate.
 ---
 
 # Enrich — person and institution pages
@@ -41,91 +52,55 @@ lookups when warranted — PubMed for publications, institutional sites).
 - your human's own assessments are never overwritten with external boilerplate.
 - Links run forward only — wikilinks in prose, typed edges in frontmatter.
 
-## Two entry paths, two gates
+## Entry and identity
 
-Page creation reaches `enrich` two ways. The gate it applies depends on
-how it arrived.
+- **Normal enrichment:** identify whether the subject is a person or institution;
+  search existing pages and, for paper authors, the ledger before going external.
+  Existing page → UPDATE. New subject → apply `quality.md`'s notability gate.
+  Collaborators, grant personnel and research-relevant institutions have their
+  own source-backed roles; incidental author mentions do not bypass the ledger.
+- **Ledger promotion:** the paper-ingestion parent supplies the fixed slug and
+  seed (`name`, `orcid`, `affiliations`, `citations`) after the threshold in
+  `author-ledger.md` fires, or after an explicit human override. Do not reapply
+  the judgment gate. An existing ledger entry does not prove it is below
+  threshold; inspect its verified citations and the caller's authorization.
 
-**Promote-from-ledger (paper-ingest, deterministic).** When
-`skills/paper-ingest/SKILL.md` Phase 8 Branch 2 sees an author's ledger
-entry cross the 5-citation threshold, it chains here with the slug and
-the seed data (`name`, `orcid`, `affiliations`, `citations`) from the
-ledger entry. **The gate has already fired** — citation count is the
-operational rule for paper authors (`skills/conventions/author-ledger.md`).
-Do not re-apply a judgment-style notability check; create the page,
-write the `author_on:` field from `citations:`, and signal back to
-paper-ingest so it can remove the ledger entry. Effort is the **notable**
-tier (a recurring author by definition — five papers in the brain
-agree).
+For promotion, load `skills/paper-ingest/references/author-ledger-mutation.md`
+and perform this operation under the parent's exclusive mutation ownership:
 
-**Judgment gate (every other caller).** When `enrich` is invoked
-directly, or chained from a non-paper-ingest source — meeting attendees,
-grant program officers, idea entities, signal-detector mentions,
-institutions — apply the gate in `skills/conventions/quality.md`:
+1. Verify the source entry and identity against the cited papers and any
+   available ORCID, name variants, and affiliations. Each citation must really
+   name this author; count alone is not identity evidence. Keep the verified
+   incumbent slug; conflicts return to the parent for resolution, not re-slugging.
+2. Recheck the ledger and exact person-page path immediately before writing.
+   If another writer owns the pass, hold. If the page now exists, verify the
+   same identity and UPDATE, unioning verified authorship without losing its
+   existing content. Otherwise gather and CREATE as below.
+3. Carry every verified ledger citation into `author_on:` and preserve supplied
+   ORCID/affiliation evidence. Read back its YAML, source claims and complete
+   `author_on:` list; return its exact path, slug and outstanding obligations.
+4. The parent verifies the page and removes only the source ledger entry using
+   the shared mutation procedure, then reads back the transition and unrelated
+   entries. Run scoped frontmatter lint on the page and ledger after that
+   transition: the linter rejects their temporary coexistence even with
+   `--paths`. A written person page alone is not a completed promotion. A
+   standalone manual-override run owns that parent work itself.
 
-- **A person** — a collaborator, student, postdoc, or an author whose
-  work recurs on your human's threads. Not every name in an acknowledgements
-  list. For paper authors specifically, defer to the ledger threshold
-  rather than judging directly; the ledger flow exists so this gate is
-  not a hot-path decision.
-- **An institution** — a lab, university, consortium, or funder that
-  sits on the research program: somewhere your human collaborates, a funder
-  he applies to, a lab whose output he tracks.
+Paper authors below threshold remain in the ledger unless a deliberate human
+promotion or independently established non-author role authorizes their page.
+No concurrent worker writes the ledger or creates authors out of band.
 
-When in doubt, do not create. A missing page is cheap; a junk page
-buries the ones that matter.
+## Scale and source gathering
 
-## Scale to importance
-
-Match effort to how load-bearing the entity is:
-
-| Tier | Who | Effort |
+| Tier | Subject | Effort |
 |---|---|---|
-| Key | Close collaborator, a co-PI, a funder your human actively applies to | Full page — research focus, key papers, collaboration context, an assessment |
-| Notable | A recurring author (or a ledger-promoted author), a lab whose work your human tracks | Moderate — who they are, the relevant work, a forward link or two |
+| Key | Close collaborator, co-PI, or active funder | Research focus, relevant papers, collaboration context, and a sourced assessment |
+| Notable | Recurring author or tracked institution | A substantive identity/relevance summary and selected forward links |
 
-Two tiers, not three. The old "Light" tier (a few honest lines for an
-occasional author so the graph resolves) is now the **ledger's** job —
-non-paged authors are tracked in `people/_ledger.yaml` and only
-materialize as a page when the citation threshold fires. If you find
-yourself reaching for the light tier, the right move is to leave the
-author in the ledger and stop, not to write a thin page.
+Ledger promotion defaults to Notable; a separately established key role can
+justify more. Do not create a thin author page merely to resolve a graph edge.
 
-## The protocol
-
-### 1. Identify the entry path
-
-How `enrich` was invoked determines the rest of the flow:
-
-- **Promote-from-ledger** — paper-ingest passed a slug plus seed data
-  from a ledger entry whose citation count crossed the threshold.
-  Skip the brain-first dedup against the ledger (paper-ingest already
-  resolved that the page doesn't exist), skip the notability gate (it
-  fired in `author-ledger.md`), and go directly to step 3 with the
-  ledger seed in hand. The slug is fixed by the ledger entry — do not
-  re-slug from the name.
-- **Direct or non-paper-ingest call** — name the entity from the
-  incoming signal (a message, a meeting, a grant package, a free-form
-  "look up this lab"). Distinguish a person from their lab; both may
-  earn a page.
-
-### 2. Search the brain first
-
-For each entity from a non-promote call, run `brain-search`. Does a
-page already exist?
-
-- **Page exists** → UPDATE path.
-- **No page** → CREATE path, after the judgment gate. For a person,
-  if the entity is a paper author, check `people/_ledger.yaml` first
-  — if an entry exists, the citation count hasn't crossed the
-  threshold yet; do not create a page out-of-band. The ledger is the
-  staging area for paper authors; circumventing it for one judgment
-  call defeats the curation discipline.
-
-Brain-first is not optional (`skills/conventions/brain-first.md`). The brain — and pages
-that already mention the entity — is often the richest source.
-
-### 3. Gather what the tier needs
+### Gather what the tier needs
 
 Stop as soon as you have enough signal for the entity's tier.
 
@@ -143,7 +118,7 @@ Stop as soon as you have enough signal for the entity's tier.
 Cite every external fact (`skills/conventions/quality.md`). The brain is the floor;
 external research fills the gap.
 
-### 4. Write the page
+## Write the page
 
 #### CREATE path
 
@@ -154,13 +129,12 @@ external research fills the gap.
    the surname token), readable short form for institutions. Never use
    `<firstname-surname>` for a person; the back-link wiring in
    `paper-ingest` and `grant-ingest` depends on surname-first. For a
-   promote-from-ledger call, the slug arrives pre-fixed — use it as-is.
+   promote-from-ledger call, the verified slug from the promotion
+   operation arrives pre-fixed — use it as-is.
 2. Set the shared frontmatter spine and per-kind fields (`skills/conventions/frontmatter.md`).
    Set a reasonable initial `importance`, or leave it for the recompute pass.
-   For a promote-from-ledger person page, **populate `author_on:` from
-   the ledger entry's `citations:`** — the typed authorship edge
-   materializes the moment the page exists. Copy `orcid` and
-   `affiliations` from the ledger seed when present.
+   For a promote-from-ledger person page, `author_on:`, `orcid`, and
+   `affiliations` come from the ledger seed per the promotion operation.
 3. Write the body to the template below — depth matched to tier.
 4. Cite every substantive fact, or flag it `[needs-citation]`.
 5. Link forward: wikilink the papers, labs, and projects the entity connects to;
@@ -168,11 +142,6 @@ external research fills the gap.
    `links:` for everything else).
 6. Omit a section rather than filling it with boilerplate. A short honest page
    beats a padded one.
-7. For a promote-from-ledger call: after the page is written
-   successfully, **signal back to paper-ingest** so it can remove the
-   source ledger entry. The two writes are paired — a page exists or a
-   ledger entry exists for the slug, never both
-   (`skills/conventions/author-ledger.md`).
 
 #### UPDATE path
 
@@ -186,11 +155,21 @@ external research fills the gap.
    citations — do not silently pick one.
 5. Add any new forward links the update implies.
 
-### 5. Cross-link
+## Cross-link
 
 When enriching a person, update their lab's `institution` page if new signal
 surfaced, and vice versa. Link forward only — never hand-write a backlinks
 section; inbound edges are derived (`skills/conventions/graph-and-links.md`).
+
+## Close out with the parent
+
+A chained enrich (from `paper-ingest`, `grant-ingest`, `academic-verify`, or any
+other parent that owns a ledger pass or a batch) reports back to that parent:
+the exact paths created or updated, the verification results (read-back,
+scoped lint), and — for a ledger promotion — the signal that the parent must
+remove the source ledger entry and verify the removal. The parent owns the
+coherent commit; this skill's own standalone runs close their pages through
+`skills/git-ops/SKILL.md` as usual.
 
 ## Page templates
 
@@ -201,7 +180,7 @@ Templates are a ceiling, not a quota. Drop any section you have nothing real for
 ```markdown
 ---
 kind: person
-slug: jane-researcher
+slug: researcher-jane
 title: "Jane Researcher"
 role: PI                                     # or Staff Scientist | postdoc | student | collaborator | etc.
 affiliation: institutions/example-university # primary institutional home
@@ -221,7 +200,6 @@ works_on:                                    # typed edge to projects — same p
 links: [institutions/example-university, projects/repertoire-modeling]   # everything that isn't authorship or works_on
 tags: []
 ---
-```
 
 # Jane Researcher
 
@@ -256,7 +234,7 @@ kind: institution
 slug: example-lab
 title: "Example Lab, University of Somewhere"
 importance: 0.5
-links: [people/jane-researcher]
+links: [people/researcher-jane]
 tags: []
 ---
 
@@ -283,24 +261,10 @@ tracks, or a funding relationship.
 
 ## Anti-patterns
 
-- **Creating a `people/` page for a paper author who hasn't crossed
-  the ledger threshold.** Paper authors are gated by the ledger
-  citation count, not by judgment. If an entry exists in
-  `people/_ledger.yaml` for the slug, the right thing to do is let
-  the next paper-ingest pass accumulate citations until promotion
-  fires — not to short-circuit the gate from here.
-- **Leaving the source ledger entry in place after a successful
-  promote-from-ledger create.** The pairing is a hard contract from
-  `author-ledger.md`: page exists *or* ledger entry exists, never
-  both. Signal back to paper-ingest so it removes the entry in the
-  same write.
-- **Failing to populate `author_on:` from `citations:` on a
-  promote-from-ledger page.** The typed authorship edge is the whole
-  reason for the ledger split; writing the page without it loses the
-  citation data the threshold was built on.
-- Creating a thin page with no real content (the old "light tier" —
-  use the ledger instead for paper authors; for institutions or
-  non-author people, judge the gate and skip if marginal).
+- Calling promotion complete before the identity, authorship, and parent-owned
+  ledger transition in the promotion operation are verified.
+- Creating a thin author page to resolve an edge rather than retaining a ledger
+  entry; apply the normal notability gate to non-author people and institutions.
 - Going external before searching the brain.
 - Writing a fact with neither a citation nor a `[needs-citation]` flag.
 - Overwriting your human's own assessment with external boilerplate.

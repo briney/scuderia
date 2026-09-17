@@ -20,7 +20,7 @@ eval_contract:
     - "COMPLETION — accounting, evidence, cursor, and write ownership agree"
   hard_fails:
     - Unsupported edges, frozen-text edits, fabricated evidence, or hand-written backlinks.
-    - Scheduled extraction delegates writing pages or a result naming the destination as the edited page.
+    - Scheduled read-only extraction delegates writing pages or a result naming the destination as the edited page; a phase may explicitly assign page-writing shard work only under its own contract.
 ---
 
 # Retroactive linking — connect a page to the graph it now lives in

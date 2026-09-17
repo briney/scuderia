@@ -5,7 +5,7 @@ triggers:
   - "ingest this grant"
   - "process this grant"
   - a grant document or application package in _drop/
-  - a summary statement or reviewer critique to attach to a grant
+  - review material accompanying a new grant package or requiring first creation of its grant page
 eval_contract:
   goal: Preserve and distill one grant package with source-verified verbatim prose, review annotations, graph propagation, and citation stubs.
   dimensions:
@@ -60,7 +60,8 @@ are ready, without restarting the session.
 Every other ingest skill distills and discards the source text. This one keeps
 it. Two reasons. A grant is your human's own writing, and `skills/conventions/quality.md`
 forbids paraphrasing his prose — his voice is a source the brain learns from,
-and paraphrase destroys it. And the grant-writing skills (`RESOLVER.md`) learn that voice from exactly this corpus. The grant page therefore
+and paraphrase destroys it. And the grant-writing skills (`grant-plan`,
+`grant-section`, and their cluster) learn that voice from exactly this corpus. The grant page therefore
 carries both: the mind's distilled analysis *and* the preserved verbatim, in
 clearly separated sections doing different jobs.
 
@@ -117,26 +118,15 @@ role*, never against a required checklist. Roles seen so far:
    **figure caption verbatim**, and where the prose had a figure leave a marker
    — `[Figure N — image omitted; original in R2]`. The analysis may describe a
    figure's content when a preliminary-data claim depends on it and the caption
-   is thin; use Hermes vision on the R2 original, sparingly.
-
-   **`.docx` carve-out — figure captions live in textboxes, not paragraphs.**
-   In NIH-style grants authored in Word, figure captions are commonly placed
-   in *floating textboxes* (`<w:txbxContent>` in the OOXML), and a naive
-   `Document(path).paragraphs` walk through `python-docx` will **silently
-   miss every caption** even when the body text is fully recovered. Always
-   iterate `doc.element.body.iter('{...wordprocessingml...}txbxContent')` and
-   harvest `<w:t>` text from each, deduplicating (mc:Choice/Fallback
-   duplicates are common). Insert each recovered caption block as
-   `[Figure N — image omitted; original in R2]\n*<caption>*` placed after the
-   first paragraph in the body text that references `Fig N` / `Figure N`.
-
-   **Re-ingest from R2.** If `_drop/` is empty but originals exist on R2
-   (a re-ingest, or someone else already cleared `_drop/`), pull them back
-   via `rclone copyto <instance>-r2:<instance>-drops/<r2_key> /tmp/<workdir>/`
-   using each `sources[].r2_key` from the existing page's frontmatter. If
-   `rclone listremotes` returns empty, the agent's HOME is shimmed — export
-   `RCLONE_CONFIG=/Users/<user>/.config/rclone/rclone.conf` once. See
-   `skills/conventions/raw-source-archive.md` "Watch the agent's HOME" pitfall.
+   is thin; use Hermes vision on the R2 original, sparingly. Format-specific
+   extraction rules (`.docx` textbox captions, `_with-refs.docx` reference
+   verification, re-ingest from R2) live in
+   `references/docx-and-reingest.md` — load it when the package contains
+   `.docx` inputs or when `_drop/` is empty but originals exist on R2.
+   For every format, check the actual source for complete prose, captions,
+   bibliography and personnel evidence; a successful extraction or present
+   section headers do not prove completeness. Retain source files until
+   archival and source-to-page checks pass.
 
 3. **Brain-first dedup.** Run `brain-search` for an existing `grant`
    page — a grant may already be stubbed as planned, or this may be a
@@ -199,16 +189,16 @@ role*, never against a required checklist. Roles seen so far:
      `<surname-firstname>` (e.g. `people/doe-jane`,
      `people/de-carvalho-renan` — particles stay with the surname token), per
      `skills/conventions/page-kinds.md`. Never `<firstname-surname>`; the brain
-     keys back-links on the citation form, which leads with surname — a grant
-     doc's "Firstname Lastname" personnel list is "Given Family" order, so the
-     **last** token is the surname (`page-kinds.md` "Deriving the slug"). Set
+     uses the citation form, which leads with surname. Resolve family/given
+     names from structured personnel evidence and the page-kind convention,
+     preserving particles; do not reduce every family name to its last token.
+     Confirm ambiguous names rather than guessing. Set
      `role:` (PI | co-PI | co-I | consultant) and `affiliation:` from the
      biosketch — do not guess affiliations from prose. Then add every
      personnel slug to the grant page's own `links:` block, so the typed
-     edge is symmetric. A grant whose co-Is were silently skipped is a
-     graph hole the cross-grant collaborator view depends on, and it is
-     the failure mode this bullet exists to prevent (ENDURE R01AI000000,
-     2026-05).
+     edge is symmetric. A real ingest hit exactly this failure mode: a
+     grant whose co-Is were silently skipped leaves a graph hole the
+     cross-grant collaborator view depends on.
 
      **Where to find personnel — in priority order.** Body prose is the
      *last* place to look, not the first. The names live in structured
@@ -254,32 +244,9 @@ role*, never against a required checklist. Roles seen so far:
    `research-strategy` document. Extract the full citation entry (authors,
    year, title, venue, DOI if present) for each key citation. Do *not*
    parse the entire bibliography — only the key citations identified above.
-
-   **A pitfall worth the named warning: `_with-refs.docx` may not actually
-   contain references.** NIH grant packages often ship the research strategy
-   in two flavors — one without references, one with — and the latter is
-   named something like `<grant>_research_strategy_with-refs.docx`. The
-   *filename* is a promise, not a guarantee. The references may live in
-   `endnotes.xml`, in a separate paragraph block at the end of the body, or
-   simply nowhere at all (some grants are submitted with references in a
-   bibliography manager that never round-trips back into the docx). Before
-   spending time reverse-engineering citation numbers from prose context,
-   verify the references are actually parseable:
-
-   ```python
-   # Quick check after unzipping <doc>.docx:
-   # - endnotes.xml non-trivial?
-   # - last N body paragraphs match r'^\d{1,3}\.\s+[A-Z]'?
-   ```
-
-   If both checks fail, the references are not in the document. Stop and
-   ask your human for a standalone bibliography file — it almost certainly
-   exists as a separate doc in the original NIH submission. Drop it into
-   `_drop/`, archive it to R2 with `role: bibliography`, and append the new
-   `sources:` entry to the grant page frontmatter retroactively (use
-   provenance like `"uploaded retroactively to support Phase 8 key-citation
-   backfill, YYYY-MM-DD — the original research-strategy_with-refs.docx in
-   the package did not contain a parseable references list"`).
+   For `.docx` packages whose reference list may not be where the filename
+   promises, apply the verification steps in `references/docx-and-reingest.md`
+   before declaring references absent or requesting a missing bibliography.
 
    Do *not* try to recover citation entries by matching numbers in the
    verbatim prose against external CrossRef / PubMed lookups based on
@@ -346,9 +313,14 @@ role*, never against a required checklist. Roles seen so far:
     the R2 original and rewrite the block from the freshly held text, then
     re-check.
 
-    The 95% floor allows for legitimate whitespace normalization but flags
-    any real prose loss. A block at 100% of source bytes is the expected
-    norm; anything below 95% is the *failure case*, not an edge case.
+    The 95% floor is a truncation screen, not proof of fidelity: different
+    text can have identical byte length, and smaller omissions can pass.
+    Compare the actual source paragraphs and their order, check each caption
+    separately, and verify that source references/personnel evidence were not
+    omitted by the extractor. Exclude inserted formatting consistently from
+    the byte comparison; never excuse changed prose as normalization.
+    For re-ingest, preserve prior Verbatim until the replacement is verified;
+    the distilled Review is not the original summary statement.
 
     Record the per-document byte counts (source vs. preserved) in the
     `## Drafting log` entry for the ingest so a future audit can spot
@@ -364,9 +336,10 @@ Ingesting a backlog of historical submissions is expected. For more than a
 handful, follow `skills/conventions/test-before-bulk.md`: ingest 3-5, read the output,
 fix the approach, then run the rest in committed batches.
 
-Before declaring the ingest done, run the platform linter in scoped mode
-on every page this ingest wrote or edited (grant page, updated project and
-institution pages):
+Before declaring completion, run the platform linter on every owned changed
+page (grant, people, projects, institutions, methods/concepts and citation
+stubs). Use exact absolute `--paths` in a shared worktree; `--changed-since`
+is suitable only when that range contains precisely this operation:
 
 ```bash
 python3 <platform-repo>/core/tools/lint-frontmatter.py \
@@ -374,93 +347,16 @@ python3 <platform-repo>/core/tools/lint-frontmatter.py \
   --changed-since <rev-before-this-ingest>
 ```
 
-Sub-second; exit 0 = done. A page failing its own lint is an unfinished
-write — fix before the run ends.
+Inspect the exit code and findings; fix owned failures before closeout.
+Lint does not replace source-fidelity, archival or graph checks. Shared Git
+ownership remains with `skills/git-ops/SKILL.md`.
 
 ## Page shape
 
-```markdown
----
-kind: grant
-slug: <slug>
-title: "<grant title>"
-funder: institutions/<slug>
-mechanism: "R01"            # or the foundation program — free text, not an enum
-role: PI                    # PI | co-PI | co-I | consultant
-status: scored-not-funded   # full lifecycle enum in skills/conventions/frontmatter.md
-score: 34                   # impact score, if reviewed — else omit
-percentile: 22              # if scored — else omit
-submitted: YYYY-MM-DD
-decision_date: YYYY-MM-DD   # if reviewed — else omit
-deadline: YYYY-MM-DD        # next actionable deadline — the attention contract reads this
-importance: 0.0
-links: [people/<pi-slug>, people/<co-i-slug>, projects/<slug>, methods/<slug>, concepts/<slug>]
-tags: []
-sources:
-  - role: research-strategy
-    hash: sha256-...
-    r2_key: grants/....pdf
-    filename: "..."
-    ingested: YYYY-MM-DD
-    provenance: "ingested grant package, YYYY-MM-DD"
-  - role: summary-statement
-    hash: sha256-...
-    r2_key: grants/....pdf
-    filename: "..."
-    ingested: YYYY-MM-DD
-    provenance: "ingested grant package, YYYY-MM-DD"
----
-
-# <Title>
-
-## Summary
-The project summary, distilled — against what the brain already holds.
-
-## Specific Aims
-Each aim's goal, in the mind's words. The verbatim aims sit in `## Verbatim`.
-
-## Significance & Innovation
-What the grant claims is significant and new, distilled.
-
-## Preliminary Data
-Each preliminary result, tied to its figure or caption — and where it
-propagated (which `concept` or `method` page).
-
-## Approach
-The key methods and experimental designs, linked to `method` / `concept` pages.
-
-## Future Directions
-Work the grant proposes beyond the current period.
-
-## Review
-Scores, percentile, outcome. Critique themes paraphrased. Actionable
-resubmission concerns called out separately. Omit the section if unreviewed.
-
-## Analysis
-Where this lands on your human's active threads — what it advances, what it
-contradicts, what it opens. What your human would not have noticed.
-
-## Key citations
-One bullet per key citation. Each bullet has three pieces: the wikilink to the
-paper page (a stub or a full page), a one-line why-foundational, and the
-verbatim citation entry as a blockquote child.
-
-- [[papers/<slug>]] — <one-line why this is foundational to the grant>.
-  > <Authors>. <Title>. <Venue>. <Year>;<volume>(<issue>):<pages>.
-  > doi:<doi-if-present>
-
-## Verbatim
-your human's preserved prose — the corpus the grant-writing skills learn their voice
-from. One subsection per science document, intact, figure captions kept.
-
-### Specific Aims (verbatim)
-> ...
-
-### Research Strategy (verbatim)
-> ...the prose, with critiques interleaved:
-> [!critique] Reviewer 2 — Approach
-> "Aim 3 is overambitious for the timeline." Recurs in R21-XXXXXX review.
-```
+Load `templates/grant-page.md` when writing the grant page; it owns the full
+frontmatter spine, the analysis sections, the `## Key citations` bullet
+shape, and the `## Verbatim` section layout with interleaved critique
+callouts.
 
 ## Stub paper page shape
 

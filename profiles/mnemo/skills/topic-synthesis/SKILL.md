@@ -243,7 +243,7 @@ and signals** instead:
   sources in the entry so two half-overlapping pages aren't both authored
   later. The authoring happens in conversation (a waking `topic-synthesis`
   run), never in the dream.
-- **Output.** The fenced-yaml phase result — an empty `committed[]` (this
+- **Output.** The raw-YAML phase result — an empty `committed[]` (this
   delegate writes nothing unattended), `notable[]` ripe-topic signals,
   `metrics` (`topics_ripe`, `papers_scanned`). No chaining.
 

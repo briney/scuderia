@@ -11,6 +11,15 @@ triggers:
   - "coalesce concept stubs"
   - "which stubs should become concepts"
   - "promote my concept stubs"
+eval_contract:
+  goal: Aggregate a verified concept-stub cluster into one facts-only concept page, or leave the stubs alone.
+  dimensions:
+    - "CLUSTERING — stubs grouped by genuine same-idea signals, not keyword overlap alone"
+    - "GATE — ≥3 independent sourced signals plus a stated so-what precede any page creation"
+    - "FACTS ONLY — the page records what sources showed; no opinion, no hypothesis"
+  hard_fails:
+    - Creating a hypothesis page or authoring interpretation.
+    - Aggregating stubs whose signals are not independent or not sourced.
 ---
 
 # concept-coalesce — from stubs to sourced concepts
@@ -90,14 +99,19 @@ Only when **both** clear does coalesce auto-create. The floor is deliberately lo
 
 ## As a rem-cycle phase
 
-The weekly phase (5c; `rem-cycle-contract.md`). The orchestrator passes `mode`;
-this skill returns the fenced-yaml phase result:
+The weekly phase (5c; `rem-cycle-contract.md`) returns raw YAML without
+Markdown fences. The scheduled primary owns writes and closeout.
 
-- **Mode:** `normal` (auto-create clearing clusters) or `dry-run` (report
-  intended creations in `committed[]`, write nothing). `proposed[]` is empty —
-  there is no propose lane for a mechanical aggregation.
-- **`committed[]`** — the creations (`category: concept-create`), each with the
-  `sources:` (stub + source page slugs) and the "so what" justification span.
+- **Normal execution:** create only clusters clearing both gates. An explicitly
+  requested standalone dry-run describes intended work conversationally and
+  writes no graph pages; `committed[]` remains empty if a scratch result is
+  requested. Never place unwritten plans in a production phase result or add
+  the retired `proposed[]` field.
+- **`committed[]`** — actual creations (`category: concept-create`), with
+  `target` naming the created page, `sources` naming the stub/source pages,
+  and `evidence` quoting sourced factual text from the page after writing.
+  Record the "so what" reason in `change`; do not pretend a decision rationale
+  is a verbatim page span when it is not in the page.
 - **`metrics`** — `stubs_scanned`, `clusters_found`, `concepts_created`,
   `no_ops` (below-floor or failing "so what").
 

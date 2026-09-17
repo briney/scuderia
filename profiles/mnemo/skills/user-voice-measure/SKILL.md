@@ -8,6 +8,16 @@ triggers:
   - "refresh the writing fingerprint"
   - "measure my voice"
   - "voice profile"
+eval_contract:
+  goal: Derive a faithful statistical fingerprint of the human's own submitted prose and validate it blind, without ever touching the human-owned spine.
+  dimensions:
+    - "CORPUS — only ## Verbatim first-party prose is measured; ## Draft and third-party text never enter"
+    - "FIDELITY — reported statistics match what the measurement actually computes"
+    - "SEPARATION — narrative vs structured prose is distinguished, and each claim states which pool it came from"
+    - "BLIND CHECK — the profile is not called current until it survives the interleaved draft test"
+  hard_fails:
+    - Writing to USER/<name>.md or any file other than USER/VOICE.md in a production run (an explicitly authorized scratch/output-path run is the sanctioned exception).
+    - Reporting a statistic the script does not compute.
 ---
 
 # User-voice measure — the writing fingerprint into `USER/VOICE.md`
@@ -22,11 +32,6 @@ from the human's own writing and written to `USER/VOICE.md`. Where a measured
 fact conflicts with a generic default in `STYLE.md` §4–§5, the measured fact
 wins: the corpus is the human's actual prose, not a hypothetical.
 
-This is the scuderia analogue of the GBrain `draft-in-voice` skill's
-"building a voice profile" half, adapted to a single-user brain where the
-subject is the human themselves and the corpus already exists in the brain
-(no consent step, no corpus-gathering step — see "What we changed").
-
 > **Conventions:** `skills/conventions/capabilities.md` (the harness
 > contract), `skills/conventions/quality.md` (honest flagging),
 > `skills/conventions/brain-first.md` (pull from the brain before going
@@ -35,7 +40,8 @@ subject is the human themselves and the corpus already exists in the brain
 
 ## Capabilities
 
-- **Required:** `brain-read`, `brain-write` (only on `USER/VOICE.md`).
+- **Required:** `brain-read`, `brain-write` (only on `USER/VOICE.md`, or on an
+  explicitly authorized scratch/output path for rehearsal runs).
 - The measurement script is pure stdlib Python — no external dependency.
 
 ## What this guarantees
@@ -43,10 +49,8 @@ subject is the human themselves and the corpus already exists in the brain
 - Extracts the fingerprint **only from `## Verbatim` sections** — the
   human's preserved submitted prose — never from `## Draft` (that is the
   mind's writing) and never from third-party description.
-- Separates narrative prose from list/scaffold-heavy verbatim; sentence-length
-  statistics come from narrative prose only.
-- Writes only `USER/VOICE.md`. Never edits `USER/<name>.md` — the spine
-  stays under the human's hand.
+- Writes only `USER/VOICE.md` in a production run. Never edits
+  `USER/<name>.md` — the spine stays under the human's hand.
 - Reports where the corpus teaches something that *contradicts* a `STYLE.md`
   default, rather than silently applying the generic rule.
 - Runs a blind validation check (below) before calling the profile current.
@@ -71,33 +75,57 @@ python3 skills/user-voice-measure/scripts/measure_voice.py \
     --instance <instance-root> --out USER/VOICE.md
 ```
 
-The script (stdlib only):
+**Helper contract — actual behavior (verified against the script):**
 
-- Splits `## Verbatim` into narrative vs. structured prose (median sentence
-  length ≥ ~18 words marks narrative; anything shorter is list/scaffold-heavy
-  and excluded from length statistics, still scanned for tells).
-- Strips citation markers (`[1,2]`), ALL-CAPS section headers, figure
-  captions, and source-hash preamble lines before counting.
-- Computes: sentence-length distribution (median / mean / p10–p90 / p95,
-  narrative only), em-dash density per 1,000 words, and counts of the
-  tell-phrases from `STYLE.md` §4–§5 (`leverage`, `in order to`, `not
-  only … but also`, `it is important to note`, `pivotal`, `paradigm shift`,
-  etc.).
+- **CLI arguments.** `--instance` and `--brain` are accepted aliases for
+  the instance root; `--out` defaults to `USER/VOICE.md` and accepts
+  relative or absolute paths (an explicitly authorized `--out` scratch
+  path is a sanctioned rehearsal run — it is not a violation of the
+  write-scope rule, which protects `USER/<name>.md`, not scratch output).
+  If the CLI fails before any file write, treat invocation as blocked:
+  do not paper over it by editing the script inline during a measurement
+  run, and do not report a measurement as performed when invocation was
+  blocked.
+- **Rewrite scope.** `rewrite_section` replaces everything from the
+  `## The fingerprint` header to end-of-file with the new fingerprint plus a
+  `## Provenance` section. Any static content placed after the fingerprint
+  header would be discarded on a successful run. Keep `USER/VOICE.md`
+  structured so the fingerprint and provenance are the trailing sections.
+- **Tell-scan pool.** Tell-phrase counts are computed over the **narrative**
+  sentence pool only; structured (list/scaffold-heavy) sentences are
+  classified but not scanned for tells. The script's own output labels
+  this ("narrative corpus only") — trust that label over any broader claim.
+- **Reported statistics.** The script computes median, p10–p90, p95, and
+  em-dash density (indexed sorted-sample percentiles); it does not compute a mean
+  sentence length. Read the emitted table, not a remembered field list.
+- **Pre-count stripping.** Before counting, the script strips **certain
+  specific noise classes** — bracketed citation markers (`[1,2]`-style),
+  ALL-CAPS section headers, figure-caption lines, and source-hash preamble
+  lines. This is not a blanket removal of all third-party material: text
+  that is neither a caption line nor one of those marker classes passes
+  through to the pools. To know exactly which pages and sentences were
+  eligible in a given run, inspect the corpus the script reports (or a
+  filtered scratch copy), not this summary.
+
+The script otherwise (stdlib only):
+
+- Splits `## Verbatim` pages into narrative vs. structured prose (median
+  sentence length ≥ ~18 words marks narrative).
 - Emits the `## The fingerprint` section of `USER/VOICE.md` plus a
-  provenance block (grant count, sentence count, date).
+  provenance block (page count, sentence counts, date).
 
 ### 3. Interpret against `STYLE.md`
 
 Read the numbers against the generic defaults. The load-bearing move: a
-corpus-count that *contradicts* a `STYLE.md` ban (e.g. "leverage" at
-22/98k words means do not blanket-ban it) is a **finding**, surfaced in the
-report — not a reason to silently override the default either way. The
-measured fact wins, and the skill says so explicitly in `VOICE.md`.
+corpus-count that *contradicts* a `STYLE.md` ban (e.g. "leverage"
+appearing hundreds of times means do not blanket-ban it) is a **finding**,
+surfaced in the report — not a reason to silently override the default
+either way. The measured fact wins, and the skill says so explicitly in
+`VOICE.md`.
 
 ### 4. Blind validation — the discriminating test
 
-The profile is not "current" until it survives a blind check, mirroring the
-GBrain builder's validation step:
+The profile is not "current" until it survives a blind check:
 
 1. Hold out 5 real sentences the fingerprint's numbers were **not** derived
    from (pull them from `## Verbatim` sections in grants/papers excluded from
@@ -117,33 +145,12 @@ Write the fingerprint and provenance. Never touch `USER/<name>.md`. Report a
 terse confirmation: corpus size, the headline numbers, and the one-or-two
 findings that override a `STYLE.md` default.
 
-## What we changed from GBrain `draft-in-voice`
-
-GBrain's builder is for ghostwriting *another person* — it requires a consent
-step (Step 0), a 20+-sample / 6+-month corpus-gathering bar, and a
-per-person `people/<slug>-voice` page. Here the subject is the **human
-themselves**, and the corpus **already lives in the brain** (`## Verbatim`
-sections, first-party by construction). So:
-
-- **No consent step** — it is the human's own published/submitted writing, and
-  the artifact (`USER/VOICE.md`) is never posted or sent by the mind; it only
-  informs how the mind writes *for* the human. GBrain's consent exists to
-  stop impersonation; there is no impersonation here.
-- **No corpus-gathering bar** — the bar GBrain enforces (20+ samples, 6+
-  months) is for assembling a stranger's voice from scattered posts. The
-  `## Verbatim` corpus is already threshold-satisfying where it exists, and
-  the skill refuses cleanly where it does not.
-- **No per-person page** — one human, one brain, one `USER/VOICE.md`. The
-  `people/<slug>-voice` page is a multi-subject abstraction we do not need.
-- **The blind check is the one thing we kept wholesale** — it is the piece
-  worth stealing, the test that would reveal a fake fingerprint.
-
 ## Output
 
 - An updated `USER/VOICE.md` (fingerprint + provenance, with
   `validated`/`not-validated` recorded).
-- A terse session report: corpus size, headline sentence-length stats, and the
-  findings that override a `STYLE.md` default.
+- A terse session report: corpus size, headline sentence-length stats, and
+  the findings that override a `STYLE.md` default.
 
 ## Anti-patterns
 
@@ -156,3 +163,5 @@ sections, first-party by construction). So:
 - Inventing a signature move or tell the measurement did not actually find.
 - One draft in the blind check instead of three — a single foil hides the
   voice-vs-angle tradeoff.
+- Reporting a statistic the helper does not compute (e.g. a mean sentence
+  length) — read the emitted table.

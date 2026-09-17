@@ -38,7 +38,7 @@ serves as the `rem-cycle` delegate for **phase 1 (hygiene)** and **phase 7
 > backlinks), `skills/conventions/importance-scoring.md` (the salience score),
 > `_brain-filing-rules.md` (where a page belongs),
 > `skills/conventions/capabilities.md` (the harness contract),
-> `skills/conventions/rem-cycle-contract.md` (the phase result + commit tiers, when
+> `skills/conventions/rem-cycle-contract.md` (the phase result + binary commit gate, when
 > run as a rem-cycle phase).
 
 ## Capabilities
@@ -201,7 +201,7 @@ runs, what commits, and what it emits:
   value is a **no-op**: don't write, count only in `metrics.recomputed`. The
   recompute is a holistic judgment over the three signals
   (`importance-scoring.md`), not a formula.
-- **Output.** Emit the fenced-yaml phase result (`rem-cycle-contract.md`) — not
+- **Output.** Emit the raw-YAML phase result (`rem-cycle-contract.md`; no Markdown fences in the file) — not
   the health-report table. Populate `metrics` with the counts the health delta
   needs: for `hygiene`, `orphans` / `dead_links` / `pending_stubs` /
   `unknown_status` / fixes applied; for

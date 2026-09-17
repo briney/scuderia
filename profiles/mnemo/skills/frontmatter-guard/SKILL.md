@@ -7,6 +7,15 @@ triggers:
   - "fix frontmatter"
   - "frontmatter audit"
   - "brain lint"
+eval_contract:
+  goal: Detect and mechanically repair frontmatter shape defects without changing page content or meaning.
+  dimensions:
+    - "SCHEMA — fences, YAML parse, spine fields, and kind-directory agreement checked per page"
+    - "MECHANICAL ONLY — repairs derive values mechanically; anything ambiguous is flagged, not guessed"
+    - "SLUG FORM — people/ surname-first slug audit catches the wiring-breaking inversion"
+  hard_fails:
+    - Guessing a field value that is not mechanically derivable.
+    - Rewriting body prose under the frontmatter banner.
 ---
 
 # Frontmatter guard — keep the schema honest
@@ -24,7 +33,7 @@ health lives in `maintain`, citation-claim health lives in `citation-fixer`.
 > `skills/conventions/quality.md` (citations — separate audit; see
 > `skills/citation-fixer/SKILL.md`),
 > `skills/conventions/capabilities.md` (the harness contract),
-> `skills/conventions/rem-cycle-contract.md` (the phase result + commit tiers, when run
+> `skills/conventions/rem-cycle-contract.md` (the phase result + binary commit gate, when run
 > as a rem-cycle phase-1 delegate).
 
 ## Capabilities
@@ -146,7 +155,7 @@ under `skills/conventions/rem-cycle-contract.md`:
 - **Drop** — anything whose correct value is not mechanically derivable: an
   ambiguous `YAML_PARSE`, a `MISSING_OPEN` / `EMPTY_FRONTMATTER` page whose
   content yields no spine values. Counted in `metrics.dropped`, never queued.
-- **Output.** Emit the fenced-yaml phase result — `committed[]`, `notable[]`,
+- **Output.** Emit the raw-YAML phase result — `committed[]`, `notable[]`,
   `metrics` (`pages_scanned`, counts per validation class, `fixes_applied`,
   `dropped`); no `cursor`. No chaining — surface a slug/identity duplicate as a
   `notable:` entry for `entity-resolution` rather than acting on it.

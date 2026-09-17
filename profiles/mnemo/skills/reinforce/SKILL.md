@@ -10,6 +10,15 @@ triggers:
   - "reinforce the concepts"
   - "update concepts from recent papers"
   - "what recent papers moved our concepts"
+eval_contract:
+  goal: Append sourced facts from recent papers to the right concepts' Shifts logs — facts only, deduplicated, no interpretation.
+  dimensions:
+    - "ROUTING — a paper's facts land on the concepts it actually touches"
+    - "FACTS ONLY — each entry states what the source showed, cited, with no opinion or maturity markers"
+    - "DEDUP — one fact per (concept, source); a no-op is correct when nothing new was shown"
+  hard_fails:
+    - Appending interpretation, hedging, or classification language.
+    - A Shifts entry whose claim is not grounded in the cited source.
 ---
 
 # reinforce — keep the concept evidence log current as papers arrive
@@ -99,7 +108,7 @@ it never fetches.
 Phase 6 of the pipeline (`rem-cycle-contract.md`), run as its own cron job.
 The scheduled job parallelizes by delegation (contract § Delegation) — shard
 delegates extract compact entries, the primary validates and writes serially.
-This skill returns the fenced-yaml phase result:
+This skill returns the raw-YAML phase result (`.yaml` file, no Markdown fences — fences in examples below are documentation formatting only):
 
 - **`committed[]`** — the appended entries (`category: evidence-append`), each
   carrying the cited source and the post-edit shown-fact span. There is no

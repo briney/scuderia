@@ -6,6 +6,16 @@ triggers:
   - should X be a page
   - scope expansion proposal (can the brain also track ...)
   - directory or frontmatter schema restructuring
+eval_contract:
+  goal: Turn a schema or scope proposal into a deliberate architecture decision that preserves identity, wiring, and the documented scope line.
+  dimensions:
+    - "SCOPE — crossing exclusions is surfaced as a north-star revision, not a schema tweak"
+    - "EXTENSION — existing kinds and frontmatter fields are extended before new kinds are added"
+    - "ROLLOUT — schema, linter, and templates change in one unit, pilot-first with human review"
+    - "PRIVACY — instance-specific design records stay in the instance, not in these template files"
+  hard_fails:
+    - Adding a page kind that a frontmatter field or existing kind already expresses.
+    - Declaring a migration complete without a human-reviewed pilot.
 ---
 
 # Brain schema evolution
@@ -15,9 +25,14 @@ triggers:
 The highest-blast-radius change the brain can take. A page kind is forever:
 directories, the linter, ingest wiring, and every skill's templates all bind
 to it. Treat every proposal as an architecture decision, not a feature
-request. Worked examples: `references/lab-management-expansion-2026-07.md`,
-`references/email-modality-2026-08-01.md`,
-`references/hitlist-concept-promotion-2026-08-18.md`.
+request. Load only the worked example matching the proposal:
+
+- Membership/expertise/project-state scope: `references/lab-management-expansion-2026-07.md`.
+- Communication source or kind rename: `references/email-modality-2026-08-01.md`.
+- Structured compendium or reference corpus: `references/hitlist-concept-promotion-2026-08-18.md`.
+
+Each contains a reusable decision, not private organization, rollout state or
+new execution authorization. Current conventions/schema govern actual fields.
 
 ## Step 1 — Read the scope boundary before designing anything
 

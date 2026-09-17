@@ -168,7 +168,7 @@ def main():
 
     fp = fingerprint(narrative, structured)
     prov = provenance(pages, narrative, structured)
-    out_path = os.path.join(args.brain, args.out)
+    out_path = os.path.join(args.instance, args.out)
     rewrite_section(out_path, fp, prov)
 
     print(fp)

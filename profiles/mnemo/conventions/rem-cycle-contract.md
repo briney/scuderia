@@ -167,16 +167,21 @@ High-throughput phases (retro, reinforce) parallelize by delegation:
 
 1. The primary assembles the work list (inbox packets first, then the
    rotating slice / date window), up to the phase's item cap.
-2. The primary spawns delegates in batches (default: 4 batches × 3 delegates
-   × 5 items = 60 items). Each delegate receives explicit item identifiers
+2. The primary spawns delegates in batches sized against the current runtime
+   ceiling per `skills/batch-drain/SKILL.md` (which owns wave sizing and the
+   yield/remainder discipline — do not bake a fixed multiplier here or in a
+   job prompt). Each delegate receives explicit item identifiers
    and the full extraction procedure, and returns **compact structured
    entries only** (~100 words each: target, change, evidence span) — never
    raw prose, or the primary compacts mid-run.
-3. **Delegates never write.** The primary validates every returned entry
+3. **Scheduled extraction delegates never write; explicitly assigned writable
+   shards follow their own contract.** The primary validates every returned entry
    (target exists, span verbatim, not already present, dedup on
    target+change), then applies all writes **serially** — this eliminates
    both git races and read-modify-write clobbering when two delegates return
-   edits to the same page.
+   edits to the same page. (A phase that explicitly assigns page-writing
+   shard work does so under its own named contract — the assignment defines
+   the write scope.)
 4. The primary refreshes the phase lock between batches, writes the phase
    result, validates the coherent unit, then commits and pushes through
    `skills/git-ops/SKILL.md`. Release the phase lock in cleanup even if push
@@ -226,8 +231,8 @@ sections via `git diff` on the phase's commit.
 The aggregator writes two reports per run, both to `docs/rem-cycle/history/`,
 and delivers only the concise one.
 
-**Concise** — `history/<YYYY-MM-DD>-<tier>.md`, delivered to the Reports
-channel + Buzz DM, skimmable in under ten seconds:
+**Concise** — `history/<YYYY-MM-DD>-<tier>.md`, delivered to the configured
+report destinations, skimmable in under ten seconds:
 
 ```markdown
 # Dream Report — <YYYY-MM-DD> (<tier>)

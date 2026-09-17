@@ -8,22 +8,33 @@ triggers:
   - "trace how this idea evolved"
   - "canon vs riff"
   - "deduplicate the concept stubs"
+eval_contract:
+  goal: Reduce the ambient concept-stub corpus to a deduplicated, tiered, mapped intellectual layer without losing a distinct idea or inventing one.
+  dimensions:
+    - "DEDUP — merges fold aliases and edges; no two pages survive as the same idea"
+    - "TIERING — tiers derive from frequency/timespan/breadth signals, never attention or popularity"
+    - "SYNTHESIS — T1/T2 bodies capture evolution, verbatim-anchored, not repetition"
+    - "MAP — concepts/README.md names real clusters and genealogies"
+  hard_fails:
+    - Merging two concepts that are not verifiably the same idea.
+    - Hallucinating a quote, a date, or a Shifts entry.
+    - Authoring synthesis prose inside a scheduled rem-cycle run.
 ---
 
 # concept-synthesis — from raw stubs to an intellectual map
 
-Ambient capture (`signal-detector`, `idea-ingest`, `voice-note-ingest`) files a
-`concept` page for nearly every idea your human articulates. Over months that
-produces hundreds of stubs — many of them near-duplicates of each other, none
-tiered, none clustered. This skill turns that raw material into a curated map
-of your human's recurring research ideas and how they sharpened over time.
+Curate existing concepts and ambient concept-stub notes by deduplicating,
+tiering and mapping their source-grounded ideas. Ambient capture follows
+`concept-stub-capture.md`; this skill does not assume every idea already has
+a concept page. `concept-coalesce` owns mechanical stub-cluster aggregation;
+`topic-synthesis` owns a named literature synthesis.
 
 > **Conventions:** `skills/conventions/quality.md` (citations, forward-only linking,
 > the notability gate), `skills/conventions/graph-and-links.md` (edge forms),
 > `_output-rules.md` (verbatim-quote fidelity), `skills/conventions/test-before-bulk.md`
 > (test the dedup pass on a sample before running the corpus),
 > `skills/conventions/capabilities.md` (the harness contract),
-> `skills/conventions/rem-cycle-contract.md` (the phase result + tiers, when run as a
+> `skills/conventions/rem-cycle-contract.md` (the phase result and binary gate, when run as a
 > rem-cycle phase-5 delegate).
 
 ## Capabilities
@@ -82,94 +93,46 @@ span; no concept is T4 with a span over ~3 months.
 ### 3. Synthesize T1 and T2
 
 For the T1 and T2 concepts only, read the concept page and its source pages, and
-write the canonical concept body — `Thesis`, `Frontier`, `Open questions`,
-`Shifts` — per `skills/conventions/synthesis-layer-pages.md`. Capture **evolution, not
-repetition**: how the idea was first framed and how it sharpened becomes dated
-`Shifts` entries; the current best statement is the `Thesis`. Use your human's
-verbatim quotes for the sharpest articulations (`_output-rules.md`) — never
-paraphrase, never invent a quote or a date. T3 and T4 stay as stubs.
+write the canonical concept body per `skills/conventions/synthesis-layer-pages.md`
+— load the owning anatomy when authoring. The current synthesis and any
+interpretation of how the idea changed belong in Thesis/Frontier; Shifts
+uses only the canonical dated Source/Shown factual entries. Preserve earlier
+entries, source dates and exact human quotations; never invent a quote or
+date. T3/T4 remain stubs. Scheduled runs skip this authoring step.
 
 ### 4. Cluster and map
 
 Group the tiered concepts into intellectual clusters — domains within your human's
-research program at the immunology × AI interface. Name each cluster
-concretely; "various topics" means the cluster is not real. Write a master map
-at `concepts/README.md`: the clusters, their member concepts, and the idea
-genealogies (concept A sharpened into concept B). Link forward with
-`[[concepts/slug]]` wikilinks throughout.
+research program. Name each cluster concretely; "various topics" means the cluster
+is not real. Write a master map at `concepts/README.md`: the clusters, their member
+concepts, and the idea genealogies (concept A sharpened into concept B). Link
+forward with `[[concepts/slug]]` wikilinks throughout.
 
 ## Output formats
 
-### A T1 concept page (post-synthesis)
+### A synthesized concept page
 
-The body follows the canonical concept anatomy in
-`skills/conventions/synthesis-layer-pages.md` — `Thesis` / `Frontier` / `Open questions`
-/ `Shifts`. The tiering signals this skill computes ride in frontmatter and a
-header line; the idea's *evolution* is captured as dated `Shifts` entries (the
-old standalone `Evolution` table folds into `Shifts`), and the sharpest verbatim
-articulation anchors the `Thesis`.
+The body and its section definitions are owned by
+`skills/conventions/synthesis-layer-pages.md` — load it when authoring; do not
+restate its anatomy here. What this skill adds on top of the canonical anatomy
+are its own tiering signals, which ride in frontmatter and a header line, with
+the sharpest verbatim articulation anchoring the `Thesis`:
 
-```markdown
----
-kind: concept
-slug: <concept-slug>
-title: "<concept name>"
-importance: 0.75
-status: active
-tier: 1
-tier_label: Canon
-mention_count: 18
-distinct_months: 8
-first_mention: YYYY-MM-DD
-last_mention: YYYY-MM-DD
-aliases: ["alternate phrasing"]
-related_concepts: [concepts/sibling-concept]
----
-
-# <concept name>
-
-**Tier 1 — Canon** | 18 mentions across 8 months
-
-## Thesis
-Two to four paragraphs: the current best statement of the bet, what it means in
-your human's program, and what it argues against. Anchor the sharpest point on a
-verbatim quote — `> "…" [Source: your-human, <context>, YYYY-MM-DD]`.
-
-## Frontier
-Fuzzy, not-yet-applied spurs, each with a maturity marker (*fuzzy* / *sharpening*).
-
-## Open questions
-The discriminating, mechanism-hungry questions.
-
-## Shifts
-### YYYY-MM-DD — <what changed>
-**Trigger:** [[papers/<slug>]] (or the source of the shift)
-**Reasoning:** what the source showed vs. what it means for this concept, and the
-edge it does not yet establish.
-```
+Use the canonical concept frontmatter and add `tier`, `tier_label`,
+`mention_count`, `distinct_months`, `first_mention`, `last_mention`, and
+verified `aliases`/`related_concepts`. A header line reports the computed
+tier, mention count and months; never copy example values as measurements.
 
 ### The cluster map at `concepts/README.md`
 
-```markdown
-# Intellectual map
+This is this skill's own output artifact (not a page anatomy) — the map spec:
 
-## Canon (T1) — N concepts
-Recurring frameworks that span the research program.
-
-### <Cluster name>
-- [[concepts/slug]] — one-line characterization
-
-## Developing (T2) — N concepts
-## Speculative (T3) — N concepts
-## Riff (T4) — N concepts
-
-## Genealogies
-- [[concepts/early-idea]] → sharpened into [[concepts/later-idea]]
-
-## Stats
-- Total concepts: N | T1: N | T2: N | T3: N | T4: N
-- Earliest source: YYYY-MM-DD | Latest: YYYY-MM-DD
-```
+- One section per tier (`Canon (T1)` … `Riff (T4)`), each naming its
+  clusters; under each cluster, one bullet per member concept —
+  `[[concepts/slug]] — one-line characterization`.
+- A `## Genealogies` section: `[[concepts/early-idea]] → sharpened into
+  [[concepts/later-idea]]`.
+- A `## Stats` line: total concepts per tier; earliest/latest source dates.
 
 ## As a rem-cycle phase
 
@@ -192,8 +155,17 @@ Runs as its own cron job as part of **phase 5 (consolidation)**, under
   basis — inbound edge count, shift count, grant/project `rests_on:` usage.
   The consolidation phase recomputes tiers weekly regardless of whether
   ambient stubs exist; only the dedup/merge side stays stub-driven.
-- **Output.** The fenced-yaml phase result — `metrics` (`concepts_scanned`,
+- **Output.** The raw-YAML phase result — `metrics` (`concepts_scanned`,
   `merged_auto`, `retiered`, `dropped`). No chaining.
+
+## Closeout and verification
+
+Read back all changed pages, preserved quotes/edges and map counts; validate
+frontmatter and any merge's inbound repairs. The completed standalone unit is
+the verified concept changes plus map; use `git-ops`. In a scheduled or nested
+run the owning primary closes the unit, and children return paths/checks only.
+Procedure edits exercise a bounded real-source map/phase output in scratch per
+`skill-hygiene.md`, with no test delivery or production consolidation.
 
 ## Anti-patterns
 

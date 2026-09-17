@@ -1,39 +1,42 @@
-# Fetching bot-protected funder pages — confirmed case (2026-08-10)
+# Fetching bot-protected funder pages — conditional fallback
 
-Task: ingest https://genesisopenmodels.anl.gov/ (DOE Genesis Open Models
-contributor portal) as a funding opportunity.
+Load when a configured funder's page fails normal retrieval (browser
+challenge, 403 on curl, search-engine blocks). One confirmed case anchors
+this guidance (2026-08-10, a DOE contributor portal); the fallback pattern
+generalizes.
 
-## What failed
+## What failed (dated route observations, 2026-08-10 — that one site)
 
-- `browser_navigate` — Cloudflare "Performing security verification" challenge
-  page; the checkbox iframe did not clear the site itself.
-- `curl -sL -A <browser UA>` — HTTP 403, 5.6KB challenge body.
-- Google (browser) — `/sorry` IP block.
-- DuckDuckGo (browser + html.duckduckgo.com + lite.duckduckgo.com) — captcha.
-- Bing (browser) — Cloudflare checkbox; after clearing it, results were
-  irrelevant (phrase query ignored). Result pages are readable via
-  `browser_console` DOM extraction, but the index had nothing for the query.
+- `browser_navigate` — Cloudflare challenge page; the checkbox iframe did
+  not clear the site itself.
+- `curl -sL -A <browser UA>` — HTTP 403, small challenge body.
+- Google (browser) — `/sorry` IP block; DuckDuckGo (browser + html/lite) —
+  captcha.
+- Bing (browser) — Cloudflare checkbox; after clearing it, the phrase query
+  was ignored (irrelevant results); result pages were readable via DOM
+  extraction.
+
+Treat these as scoped negative evidence for that site on that date, not
+permanent provider-wide prohibitions — retry the normal route first on a
+new page.
 
 ## What worked
 
-- `curl -sL "https://r.jina.ai/https://genesisopenmodels.anl.gov/"` — HTTP 200,
-  full rendered page as clean markdown, no API key. Same for subpages
-  (`/apply-now/`, `/about-gs1/`) and for `energy.gov` announcement pages.
-- `https://s.jina.ai/<query>` (search endpoint) — HTTP 401
-  `AuthenticationRequiredError`. Reader works unauthenticated; search does not.
+- `curl -sL "https://r.jina.ai/<full-url>"` — HTTP 200, full rendered page
+  as clean markdown, no API key. Also worked for subpages and for
+  energy.gov announcement pages.
+- The reader's search endpoint (`s.jina.ai/<query>`) — HTTP 401: the reader
+  works unauthenticated; search does not.
 
 ## Notes
 
-- Reader output preserves tables, headings, and links — good enough to extract
-  deadline tables and program structure verbatim.
-- For .gov sites the reader also returns `Published Time` metadata when the
-  page carries it — useful for dating announcements.
+- Reader output preserves tables, headings, and links — good enough to
+  extract deadline tables and program structure verbatim.
+- For .gov sites the reader also returns `Published Time` metadata when
+  present — useful for dating announcements.
 - energy.gov newsroom search pages are JS-rendered ("Loading search
-  results...") even through the reader — navigate known listing pages instead
-  of the search UI.
-
-## Cross-class note
-
-The jina reader fallback is cross-class (funding, research, media-ingest —
-anything that fetches arbitrary URLs). If a general fetch-fallback skill is
-ever created, move this material there and leave a pointer in funding-sweep.
+  results...") even through the reader — navigate known listing pages
+  instead of the search UI.
+- The reader fallback is cross-class (any skill fetching arbitrary URLs).
+  If the active profile installs a general blocked-page-recovery skill,
+  prefer it; do not assume every mnemo deployment installs one.

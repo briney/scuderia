@@ -9,6 +9,17 @@ triggers:
   - "validate this citation"
   - "has this been replicated"
   - "is this retracted"
+eval_contract:
+  goal: Record an honest, source-grounded verdict on a research claim, traced to primary data rather than the citing author's characterization.
+  dimensions:
+    - "TRACE — publication, methodology, raw data, and replication are each checked at a primary source"
+    - "INTERMEDIARIES — claims cited through another paper are re-anchored to the primary before verdicting"
+    - "HONESTY — 'unverifiable' is recorded when the figure cannot be traced; a shallow search is not"
+    - "FILING — the verdict lands where the subject lives, with a cited trace table"
+  hard_fails:
+    - Inventing a lookup or a citation instead of fetching real sources.
+    - Saying "verified" without raw-data availability or independent confirmation.
+    - Quoting an intermediary's paraphrase as primary evidence.
 ---
 
 # academic-verify — trace a claim to its source
@@ -86,31 +97,23 @@ chain to `literature-research`.
 paper B paraphrasing a figure from paper A ("approximately X% as
 reported in [A]"), do not stop at B's wording:
 
-- Pull B's reference list (full text if needed) and identify A's
-  PMID/DOI.
+- Pull B's actual reference entry and resolve A by title, authors, year and
+  verified identifiers where available. Identifier agreement alone does not
+  excuse a title mismatch, and absence of a DOI does not make a source unreal.
 - Fetch A itself and locate the figure in A's own text.
 - Paraphrase distortion is a documented failure mode: intermediaries
-  round, reframe, or silently drop the qualifying contrast. Observed
-  2026-08-03: Maselli 2018 paraphrased Wood 2013 as "approximately
-  50% of hospitalized children with acute exacerbation of asthma had
-  detectable CARDS toxin," but Wood's abstract reports 64% detection
-  in acute-asthma children *and 56% in healthy controls* — the
-  contrast the paraphrase implied does not survive the primary
-  source. The exact figure Maselli meant presumably sits in Wood's
-  body, unreachable from the abstract.
+  round, reframe, or silently drop the qualifying contrast. A short
+  worked counterexample: a review paraphrasing a primary as
+  "approximately half of the subjects were positive" is not quotable
+  when the primary's own abstract reports a majority in the subjects
+  *and a nearly as large fraction in the controls* — the contrast the
+  paraphrase implied does not survive the primary source.
 - If the figure exists only in the primary source's body and full
-  text is inaccessible, the verdict is **unverifiable** as stated;
+  text is inaccessible, the verdict is **unverifiable as stated**;
   anchor the downstream claim to a different, verifiable primary
   source and record the discrepancy on the intermediary's or
   primary's brain page so the paraphrase is never quoted uncritically
   again.
-
-Session evidence: grounding an epidemiology sentence on a real R01
-Specific Aims page. The clean anchor became Peters 2011 (Chest,
-PMID 21622549 — 52% of refractory-asthma adults positive vs 2.9%
-healthy controls, verified against PMC3148797 full text); Wood 2013
-(PMID 23622002) was filed as a stub with an explicit caution flag
-against quoting its pediatric figure without full-text verification.
 
 ### 4. Decide the verdict
 
@@ -155,6 +158,13 @@ author who lacks a `person` page.
 One to two paragraphs on *why* the verdict, with specific evidence. Then an
 honest caveat: what could not be verified, what would change the verdict.
 ```
+
+## Closeout
+
+The completed unit is the source-grounded verdict, trace and its owned page
+updates, read back and schema-checked. Use `skills/git-ops/SKILL.md`; a child
+returns exact paths, checks and unresolved evidence to its parent rather than
+performing Git operations.
 
 ## Anti-patterns
 

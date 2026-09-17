@@ -13,6 +13,15 @@ triggers:
   - "audit the author ledger"
   - "resolve entities"
   - "are these two the same"
+eval_contract:
+  goal: Merge or split identity-keyed pages and ledger entries only when identity is verified, preserving edges and provenance through the merge.
+  dimensions:
+    - "VERIFICATION — merges rest on exact identifier or corroborated identity, never name similarity alone"
+    - "PRESERVATION — aliases, edges, tags, and provenance survive the merge; inbound references are repaired"
+    - "SPLIT SAFETY — a fused entry splits only with mechanical disambiguation evidence"
+  hard_fails:
+    - An unverified merge or split that loses citations, edges, or history.
+    - Rewriting the ledger outside the ledger discipline.
 ---
 
 # Entity resolution — one real-world thing, one node
@@ -132,7 +141,7 @@ referents — never a page edit.
 ## As a rem-cycle phase
 
 Runs as its own cron job under `rem-cycle-contract.md` (binary gate). Emit the
-fenced-yaml phase result — `committed[]` (verified merges, mechanical splits,
+raw-YAML phase result — `committed[]` (verified merges, mechanical splits,
 exact-duplicate ledger cleanup, each with evidence), `notable[]` (unverifiable-
 but-important pairs, key-conflicts, promotion-eligible ledger entries),
 `metrics` (`clusters_examined`, `merges_committed`, `splits_committed`,
@@ -149,7 +158,7 @@ in-lane.
 
 ## Output
 
-- **As a phase:** the fenced-yaml phase result.
+- **As a phase:** the raw-YAML phase result.
 - **Standalone:** the verified merges/splits committed (with the diff shown),
   and the notable observations reported inline.
 

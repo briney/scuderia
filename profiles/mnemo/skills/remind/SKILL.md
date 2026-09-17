@@ -1,11 +1,22 @@
 ---
 name: remind
-description: Create a time-based reminder — "remind me to X at TIME" creates a cron job that delivers across all gateways and logs to working-docs/reminders-log.md.
+description: Create a time-based reminder — "remind me to X at TIME" creates a cron job and logs to working-docs/reminders-log.md. Delivery goes to an explicitly supported connected destination when the user asks for a notification.
 triggers:
   - "remind me to"
   - "remind me at"
   - "set a reminder"
   - "remind me"
+eval_contract:
+  goal: Turn a conversational time-based nudge into a scheduled delivery with a durable, readable log record — nothing more.
+  dimensions:
+    - "PARSING — time, timezone, and content are extracted exactly; the default timezone is the human's local one"
+    - "DELIVERY — the destination is set explicitly and only to a destination the installed runtime actually supports"
+    - "RECORD — the log line is appended (never blind-overwritten) with fire time, slug, content, status, and job ID"
+    - "SCOPE — a research-program deliverable with a deadline is promoted to a task, not kept here"
+  hard_fails:
+    - Creating a reminder with no clear, actionable content string.
+    - Blind-overwriting the log or omitting the cron job ID from it.
+    - Promising a live message to a destination that was never configured.
 ---
 
 # Remind — lightweight time-based reminders
@@ -24,78 +35,70 @@ a durable record. If a reminder turns out to be research-program-relevant, it
 can be promoted to a `task` page — same promotion pattern as other
 working-docs content.
 
-> **Conventions:** `working-docs/README.md` (the log is not a brain page),
-> `brain-ops` (never blind-overwrite the log — read before appending).
+> **Conventions:** `working-docs/README.md` (log, not graph data),
+> `brain-ops` (read before appending), `skills/git-ops/SKILL.md` (owned-log
+> closeout). For a scheduling/delivery failure, load `cron-operations`.
 
 ## Capabilities
 
-`cronjob` (create the delivery job), `file` (append to the log). The cron
-job runs with `deliver=all` (gateway-agnostic) and `attach_to_session=true`
-(conversational — the user can reply and the agent has context).
+`schedule-job`, `deliver-message`, `read-file`, `edit-file`. Hermes binds these
+through the installed cron management tool; inspect its current schema before
+creating a job. A missing notification channel is a real delivery limitation.
 
-## What this guarantees
+## Procedure
 
-- Every reminder fires across all connected gateways (Telegram, Buzz, future
-  platforms) — no per-gateway configuration.
-- Every reminder is logged to `working-docs/reminders-log.md` with the fire
-  time, content, and a status field that updates when the reminder fires.
-- One-shot reminders clean up after firing (the cron job runs once; the log
-  entry persists).
-- Recurring reminders ("every Monday at 9am") use a recurring cron schedule;
-  the log entry records the recurrence.
-- The reminder is conversational: `attach_to_session=true` means the user can
-  reply and the agent has the reminder's context.
+1. **Resolve time and content.** Preserve the requested reminder text. Check the
+   actual clock and the user's configured timezone; clarify an unresolved
+   timezone, ambiguous wall time, or missing content. For "in N minutes/hours,"
+   use the tool's explicit one-shot relative form (Hermes: `in 2h`), not its
+   recurring interval form (`2h`). For an absolute time, compute an ISO timestamp
+   with the intended timezone; use the stated recurrence for recurring jobs.
+2. **Resolve delivery.** Prefer the originating messaging conversation when it
+   is a supported destination. From CLI, `local` saves output and `origin`
+   does not create a live terminal-message channel. If notification is wanted,
+   use a user-approved, connected destination; ask when the destination is
+   unknown. `all` broadcasts to connected home channels only when that fan-out
+   is intended. Do not change gateway configuration to make a reminder work.
+   Delivery is one-way unless supported session attachment was explicitly
+   enabled; broadcasts are never attached. Record any no-delivery-path notice.
+3. **Create and verify the job.** Set schedule, destination, descriptive
+   `reminder-<slug>` name, and a self-contained prompt. One-shot jobs use the
+   one-shot schedule/default or `repeat: 1`; recurring jobs omit `repeat`
+   unless a finite integer count was requested. Never pass `repeat: forever`
+   to an integer field. The prompt includes exact reminder text and the log
+   location/entry identity; its final response is delivered by the scheduler,
+   not sent a second time by the agent. Follow-up actions require their own
+   authorization; a reminder alone does not authorize a backfill or other work.
+   Read back the exact returned job ID, schedule/next fire time, recurrence and
+   destination. Do not claim success from a create response with an unresolved
+   warning or a mismatched read-back.
+4. **Append and verify the log.** Read `working-docs/reminders-log.md`, append
+   one line, and read back that entry while preserving existing content:
 
-## Phases
-
-1. **Parse the request.** Extract the time and the content from natural
-   language:
-   - "remind me tomorrow at 9:30am to check on Spark" → one-shot, 2026-08-03T09:30
-   - "remind me every Monday at 9am to review the funding sweep" → recurring
-   - "remind me in 2 hours to email Dennis" → one-shot, now + 2h
-   - "remind me at 3pm" → one-shot, today 15:00 (content from context)
-
-   Convert to an ISO 8601 timestamp with timezone. Default timezone is
-   your human's local timezone (America/Los_Angeles). For relative times
-   ("tomorrow", "in 2 hours"), compute from the current time.
-
-2. **Create the cron job.** Use `cronjob` with:
-   - `schedule`: ISO timestamp for one-shot, or cron expression for recurring.
-   - `deliver`: `all` (gateway-agnostic).
-   - `attach_to_session`: `true` (conversational — replies come back to the
-     agent with context).
-   - `prompt`: a self-contained instruction to deliver the reminder. Include
-     the reminder content verbatim, plus any context the agent needs to act
-     on the reply (e.g., "if Spark is up, re-run the backfill script at X").
-   - `name`: `reminder-<short-slug>` for identification.
-   - For recurring reminders, `repeat=forever` and a cron schedule.
-
-3. **Append to the log.** Read `working-docs/reminders-log.md` first (never
-   blind-overwrite), then append a new line:
-
-   ```
-   - 2026-08-03 09:30 | spark-check | Check if Spark Desktop is running, re-run backfill if up | status: scheduled | job: 13a653d2c68a
+   ```text
+   - <fire time with timezone or recurrence> | <slug> | <verbatim content> | status: scheduled | job: <actual job ID> | deliver: <destination>
    ```
 
-   Fields, pipe-separated:
-   - **fire time** — ISO timestamp (local timezone, readable)
-   - **slug** — short identifier for the reminder
-   - **content** — the reminder text, verbatim from the request
-   - **status** — `scheduled` → `fired` → `completed` (or `cancelled`)
-   - **job** — the cron job ID (for reference; the job is the delivery
-     mechanism, the log is the record)
+   Keep existing log records unchanged; the destination is an explicit suffix
+   on new records. A log-write failure does not undo an existing job: report
+   the partial state and repair the log without creating a duplicate reminder.
+5. **Confirm and close.** State what will fire, when and where, including
+   local-only output when applicable. Validate the owned log change and use
+   `git-ops` under repository authorization; a nested run returns paths and
+   verification to its parent. Never stage unrelated working documents.
 
-4. **Confirm.** Tell your human plainly: the reminder is set, when it fires, and
-   what it will say. No preamble.
+## At fire time
 
-## When the reminder fires
+The job reads the exact log entry and returns the reminder as its final
+response. Mark that entry `fired` only when execution occurs; use `completed`
+only for a separately authorized follow-up that actually completed, or
+`cancelled` when the reminder was cancelled. Preserve the rest of the log.
+Execution and delivery are separate: a fired status does not prove the message
+reached its destination. One-shot completion is scheduler-managed; do not
+promise physical deletion of its historical job record.
 
-The cron job's prompt should instruct the agent to:
-1. Deliver the reminder content to your human.
-2. If the reminder has an actionable follow-up (e.g., "re-run the backfill"),
-   offer to do it or do it if the context is clear.
-3. Update the log entry's status from `scheduled` to `fired` (or `completed`
-   if the action was taken).
+Procedure edits use an isolated scheduling/parser/log rehearsal with captured
+output, not a production reminder or test message.
 
 ## Promotion to task
 
@@ -107,26 +110,7 @@ yes, it's a `task`. If it's a nudge with no deliverable, it's a reminder.
 
 ## Anti-patterns
 
-- Creating a `task` page for a lightweight nudge — use the log instead.
-- Using `deliver=origin` or a single gateway — reminders should be
-  gateway-agnostic (`deliver=all`).
-- Omitting `attach_to_session` — the user should be able to reply and have
-  the agent act on the reply with context.
-- Blind-overwriting the log — read before appending (`brain-ops`).
-- Not recording the cron job ID in the log — the ID is how you find and
-  cancel a reminder later.
-- Creating a reminder without a clear, actionable content string — "remind
-  me about that thing" is not a reminder; clarify before creating.
-
-## Future expansion: per-reminder gateway selection
-
-Currently all reminders use `deliver=all` (fan out to every connected
-gateway). This is correct while there is only one real gateway (Telegram).
-When multiple gateways are live (Buzz, Slack, etc.), the user may want to
-target a reminder to a specific gateway — e.g., a work-related reminder to
-Buzz, a personal one to Telegram. Implementation is deferred until there
-are multiple gateways to select from; the `deliver` parameter on `cronjob`
-already supports per-platform targeting (`deliver='telegram:...'`,
-`deliver='buzz:...'`), so the plumbing exists — only the skill-level
-parsing ("remind me on Buzz to...") and the log format (add a gateway
-field) need to be added when the time comes.
+- Turning a lightweight nudge into a graph task without a research deliverable.
+- Promising delivery or reply continuity that the verified job does not support.
+- Creating a duplicate job after only the log write failed.
+- Executing follow-up work merely because its name appears in a reminder.

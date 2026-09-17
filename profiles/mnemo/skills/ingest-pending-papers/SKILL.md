@@ -59,11 +59,11 @@ Each delegated subagent in turn needs `paper-ingest`'s capabilities.
 ## Why this is its own skill rather than a flag on `paper-ingest`
 
 A single-paper invocation (`paper-ingest`) and a queue-drain invocation are
-different jobs with different failure semantics, different reporting
-formats, and — eventually — different scheduling profiles. The queue drainer
-is a thin orchestrator; `paper-ingest` is the per-paper worker. Conflating
-them puts `paper-ingest` in the awkward position of needing to know whether
-it was called for one paper or for many.
+different jobs with different failure semantics and different reporting
+formats. The queue drainer is a thin orchestrator; `paper-ingest` is the
+per-paper worker; the shared producer/consumer contract, including why
+producers queue rather than distill inline, is owned by
+`skills/conventions/paper-stubs.md` — read it rather than restating it here.
 
 ## Concurrency and ownership
 
@@ -276,46 +276,13 @@ Follow the runtime’s configured models and limits without changing pins.
   verify the artifacts and source evidence before counting completion.
 - **Ignoring the current runtime schema or ceiling.** Follow batch-drain
   and account for rejected dispatches explicitly; no silently lost items.
+
 ## Running this skill — kickoff and monitoring
 
-This section is for the *user* invoking the drain, not for the orchestrator
-running it. The orchestrator already has its instructions above.
-
-### Kickoff prompt (paste verbatim at session start)
-
-```
-Run ingest-pending-papers. Prefer isolated paper workers and the current
-runtime schema/ceiling. Read back returned artifacts, including failures and
-PAGE_READY results. Complete shared wiring and final checks before clearing
-needs-ingest or counting SUCCESS. Report any work deferred by the run budget.
-```
-
-Verify execution in the tool stream; a promise of delegation alone does
-not establish that a worker ran.
-
-### Monitoring signals from the tool stream
-
-Three observable invariants tell you the orchestrator is doing what it
-claims, regardless of what its prose says:
-
-  1. **One `delegate_task` call per batch.** The tool-call telemetry is
-     authoritative. Every selected item must appear in a dispatched wave
-     or an explicit hold/defer record; use the runtime ceiling, not a fixed
-     batch-size formula. A drain claiming delegated fills without any
-     delegation calls did not execute its contract.
-  2. **Full extraction stays in workers.** The parent receives result paths
-     and reads the evidence needed for verification, rather than duplicating
-     each worker’s entire extraction conversation. Parent page/source
-     read-backs are required verification, not evidence of unnecessary repeated
-     extraction; inspect who performed the actual per-paper extraction/write.
-  3. **Phase 4 read-backs are visible.** After each batch returns, you
-     should see `read_file` calls against the just-filled stub pages — one
-     per returned item, including PAGE_READY and reported failures. No
-     read-back means no verified outcome.
-
-These three signals are independent of model size, prompt fidelity, and
-the orchestrator's own narration. When they all hold, the drain is honest.
-
+The user-facing kickoff prompt and the tool-stream monitoring signals live
+in `references/kickoff-and-monitoring.md`. Load that reference when the
+human invokes the drain from chat or asks how to verify a running drain;
+the orchestrator itself does not load it.
 
 ## Procedure-change verification
 

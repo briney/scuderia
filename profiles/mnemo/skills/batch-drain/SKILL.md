@@ -134,6 +134,6 @@ Consumers (edit these to point here rather than restating the loop inline):
   bulk enrichment sweeps of the antibody registry.
 - `skills/retroactive-linking/SKILL.md` and `skills/retroactive-linking-shard-worker/SKILL.md` —
   corpus sharding for re-link passes.
-- `skills/rem-cycle/SKILL.md` — nightly phases dispatched 4x3x5.
+- `skills/rem-cycle/SKILL.md` — scheduled phase jobs; batch shapes discovered at runtime, not fixed here.
 - `references/antibody-target-hitlist/templates/full-run-prompt.md` — target-profile
   build at scale (reference corpus, not a skill).

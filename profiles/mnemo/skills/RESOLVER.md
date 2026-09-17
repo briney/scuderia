@@ -87,6 +87,10 @@ silence what does not, escalate with stakes.
 | Morning prep, meeting context, planning the day | `skills/daily-task-prep/SKILL.md` |
 | Task add / complete / defer / review | `skills/daily-task-manager/SKILL.md` |
 | "Remind me to", "remind me at", "set a reminder" — lightweight time-based nudge (not a research task); creates a cron job + logs to `working-docs/reminders-log.md` | `skills/remind/SKILL.md` |
+| Standing funding-opportunity sweep — "any new funding opportunities", "what grants should I look at"; reads `FUNDING-PROFILE.md` and maintains `last-surfaced` | `skills/funding-sweep/SKILL.md` |
+| Keep `RESEARCH.md` synchronized with the brain — "refresh research topics", "RESEARCH.md is stale"; weekly cron or on demand | `skills/refresh-research-topics/SKILL.md` |
+| Feed cards — "emit feed cards", "rebuild the feed outbox"; the host's independent feed-refresh job invokes the producers, brain skills never do | `skills/feed-emit/SKILL.md` |
+| Feed decisions mailbox — "drain the mailbox", "apply feed decisions"; applies phone-tapped dismiss/snooze with apply-time validation | `skills/mailbox-drain/SKILL.md` |
 
 ## Brain-building and upkeep
 
@@ -105,19 +109,23 @@ Filling the knowledge graph, and keeping it healthy.
 | A meeting transcript | `skills/meeting-ingestion/SKILL.md` |
 | "Pull meetings from Granola", "sync Granola meetings", cron-driven daily meeting sync | `skills/granola-meeting-sync/SKILL.md` |
 | A voice memo | `skills/voice-note-ingest/SKILL.md` |
+| An email thread or work email sync — Spark-CLI-driven work-mail ingestion | `skills/email-ingest/SKILL.md` |
 | Capture a discussion — "capture this convo", "record what we just discussed", "save this discussion" | `skills/conversation-capture/SKILL.md` |
 | Create or update a person / institution page | `skills/enrich/SKILL.md` |
 | Restructure a raw-text or stub page into a useful one | `skills/restructure-thin-page/SKILL.md` |
 | Draw a relationship or process as a diagram — "make a diagram", "flowchart", "visualize the pipeline" (renders as a Mermaid block in Obsidian; sidecar to the page-authoring skills, never standalone) | `skills/mermaid-diagrams/SKILL.md` |
 | Deep semantic re-linking — re-read pages against the current graph and add forward edges that weren't possible at ingest ("link this page", "re-link the brain") | `skills/retroactive-linking/SKILL.md` |
-| Bootstrap the concept layer — one-time backward distillation of umbrella concepts from the existing projects/grants/papers ("seed the concept layer", "distill concepts from the grants") — distinct from `concept-synthesis` (which dedups/tiers/maps ambient idea-stubs) | `skills/concept-seeding/SKILL.md` |
+| Bootstrap the concept layer — one-time backward distillation of umbrella concepts from the existing projects/grants/papers ("seed the concept layer", "distill concepts from the grants"); a populated concept layer first triggers a human confirmation, not a re-run. Distinct from `concept-synthesis` (which dedups/tiers/maps ambient idea-stubs) | `skills/concept-seeding/SKILL.md` |
 | Update concepts from recent papers — the autonomous reinforce pass that appends **facts-only** `## Shifts` evidence entries (what a source showed, cited; no opinion) ("reinforce the concepts", "what recent papers moved our concepts"); runs as rem-cycle phase 6 or standalone. The directed lane (an explicit concept call-out at ingest) lives in `paper-ingest` | `skills/reinforce/SKILL.md` |
 | Single highest-value attention target — the daily intersect pass; scans the whole brain and surfaces ONE cross-cutting thing (a hypothesis to consider, a grant idea, a dive-trigger) into the dream report's "One thing" section, labeled opinion, never a page ("find concept intersections", "what's the one thing I should look at", "surface the highest-value idea"); rem-cycle phase 8 or standalone | `skills/intersect/SKILL.md` |
 | Concept-stub coalescence — the weekly pass that reads `is_concept_stub: true` notes and (≥3 independent signals + "so what") auto-aggregates a cluster into a `concept` page — facts only, never a hypothesis ("coalesce the concepts", "which stubs should become concepts"); rem-cycle phase 5c or standalone. Distinct from `intersect` (below) | `skills/concept-coalesce/SKILL.md` |
 | Shard a large list across `delegate_task` batches — the dispatch/yield/verify loop any multi-batch campaign shares (enrichment sweeps, deep dives, corpus backfills, rem-cycle phases); loaded alongside the consuming skill's domain-specific phase | `skills/batch-drain/SKILL.md` |
-| Scheduled offline consolidation — "run a rem cycle", "dream", the nightly/weekly maintenance job that runs phases as subagents and writes a dream report | `skills/rem-cycle/SKILL.md` |
+| Scheduled offline consolidation — "run a rem cycle", "dream", the nightly/weekly/monthly maintenance jobs, each phase its own cron job writing a machine-readable result, with a thin aggregator assembling the dream report | `skills/rem-cycle/SKILL.md` |
 | Duplicate/merge/split of the identity-keyed kinds + the author ledger — "find duplicate pages", "dedupe the brain", "audit the author ledger", "are these two the same" | `skills/entity-resolution/SKILL.md` |
 | Contradictions + expired facts — "find contradictions", "check consistency", "conflicting claims", "stale facts", "audit the hypothesis graph" | `skills/consistency-check/SKILL.md` |
+| Concept-thesis ripeness — "refresh the concepts", "which concepts outran their thesis"; in the scheduled rem-cycle (phase 5b) a detection-only pass that emits `notable:` signals and never drafts, while standalone it is explicitly authorized to draft the refreshed Thesis in conversation with your human | `skills/concept-refresh/SKILL.md` |
+| PMC XML parse failure or repair — "PMC XML ParseError", "efetch XML parsing", "PMC XML entity fixing"; conditional companion loaded by `paper-ingest` when XML breaks | `skills/pmc-xml-tools/SKILL.md` |
+| Semantic literature search beyond keyword templates — "semantic literature search", "keyword search missed papers"; Paperclip CLI reference companion for the retrieval skills | `skills/paperclip-search/SKILL.md` |
 
 ### Reference-corpus cluster
 
@@ -129,6 +137,7 @@ block and rewrite it wholesale.
 | Trigger | Skill |
 |---|---|
 | "Build / extend the therapeutic antibody registry", "antibody molecule database", Tier A–D sweep of `references/therapeutic-antibodies/` | `skills/therapeutic-antibody-registry/SKILL.md` |
+| "Stand up a new references/ corpus" — "build a reference for", "new reference corpus", "compendium dataset"; the pattern-umbrella for durable non-graph corpora | `skills/reference-corpus/SKILL.md` |
 | "Get sequences for <antibody>", "enrich sequences", "refresh the sequence block" — VH/VL from the Thera-SAbDab mirror into the machine-owned `## Sequences` block | `skills/antibody-sequence-search/SKILL.md` |
 | "Get structures for <antibody>", "enrich structures", "compute the epitope contacts" — SAbDab mirror + sequence-similarity search + computed contacts into the machine-owned `## Structures` block | `skills/structure-search/SKILL.md` |
 | "Patent search for <antibody>", "enrich patents", "what's the IP situation" — Google Patents XHR + pataa BLAST into the machine-owned `## IP & exclusivity` block (US-only; estimated expiries always labeled) | `skills/patent-search/SKILL.md` |
@@ -176,6 +185,11 @@ two audit skills.
 | "Ask / tell <agent>", an @agent handoff, or exchange shared artifacts | `agora-exchange` (platform `core/skills/agora-exchange/SKILL.md`); load the `agent-message` binding in platform `docs/harnesses/<harness>.md` for transport. |
 | Present options, gate on a user decision | `skills/ask-user/SKILL.md` |
 | "Migrate from Obsidian / Notion / Logseq", import an existing vault | `skills/migrate/SKILL.md` |
+| "Should X be a page", a new page kind or scope-expansion proposal — the schema-evolution architecture gate | `skills/brain-schema-evolution/SKILL.md` |
+| "Examine / improve how the brain works", "is this maintenance mechanism optimal" — auditing or redesigning the brain's machinery | `skills/brain-architecture-audit/SKILL.md` |
+| "Survey the landscape", "what tools exist for X" — OSS-tool recon recipe for a domain (distinct from a head-to-head of two named tools) | `skills/tool-landscape-survey/SKILL.md` |
+| Compare our implementation with one named tool, or a supplied tool URL | `tool-head-to-head` when installed (deployment-local); check availability rather than silently substituting a broad survey. |
+| "Cron job failed", "cronjob error", a scheduled job stopped delivering — diagnose model resolution, delivery, and execution against the installed runtime | `skills/cron-operations/SKILL.md` |
 | "Run user-model-reflect", "reflect on what I've been working on", "update the observations sidecar" — append a dated block of candidate observations about how your human is working to `USER/OBSERVATIONS.md`. Manual invocation only; no schedule wired. | `skills/user-model-reflect/SKILL.md` |
 | "Measure my writing voice", "build a voice profile", "update VOICE.md" — extract the writing fingerprint (sentence length, tell-frequency) from the `## Verbatim` corpus into `USER/VOICE.md`, then run a blind validation check. Manual invocation only; no schedule wired. | `skills/user-voice-measure/SKILL.md` |
 
@@ -199,7 +213,7 @@ two audit skills.
 - `skills/conventions/quality.md` — citations, forward-only linking, the notability gate
 - `skills/conventions/author-ledger.md` — `people/_ledger.yaml`; paper-author page creation is threshold-gated, not judgment-gated
 - `skills/conventions/paper-stubs.md` — shared stub shape, producer exceptions, citation provenance, and queue completion
-- `skills/conventions/rem-cycle-contract.md` — the rem-cycle phase interface: structured phase result, the two commit tiers, run mode, protected classes
+- `skills/conventions/rem-cycle-contract.md` — the rem-cycle phase interface: structured phase result, the binary commit gate, run mode, protected classes
 - `skills/conventions/test-before-bulk.md` — never batch without testing one first
 - `skills/conventions/skill-hygiene.md` — the eval contract, the no-regression law, the scheduled-run gate; governs every edit to a skill
 - `skills/conventions/concept-stub-capture.md` — capture-cheap/decide-later: file transient ideas as `is_concept_stub: true` notes, defer the concept/hypothesis judgment to `concept-coalesce`
@@ -251,9 +265,10 @@ When multiple skills could match:
    One page's obvious gap → `maintain`; "re-link the brain", or the deep pass,
    → `retroactive-linking`.
 9. `maintain` is a single, on-demand health sweep you read the results of now;
-   `rem-cycle` is the scheduled orchestrator that *runs* maintenance phases
-   (including `maintain` and `retroactive-linking`) as subagents and writes a
-   dream report to `docs/rem-cycle/`. "Is the brain healthy right now?" →
+   `rem-cycle` is the scheduled machinery that *runs* maintenance phases
+   (including `maintain` and `retroactive-linking`) as separate per-phase cron
+   jobs and assembles a
+   dream report in `docs/rem-cycle/`. "Is the brain healthy right now?" →
    `maintain`; "run the nightly/weekly consolidation", "dream" → `rem-cycle`.
 10. `remind` and `daily-task-manager` both create time-based nudges, but split
     by *scope and weight*: `daily-task-manager` creates `task` pages for
@@ -301,7 +316,8 @@ When multiple skills could match:
     highest-value idea" → `intersect`; otherwise per rules 11 and 13.
 15. `synthesis-briefing` and `rem-cycle`'s dream report both live under
     `docs/rem-cycle/` and read like "the weekly report", but split by audience: the **dream report**
-    (`history/<date>.md`) is *a ten-second glance* — One thing + Done + Flags —
+    (`history/<date>.md`) is *a ten-second glance* — One thing + Done + a
+    Machinery note only when something broke —
     for confirming the dream ran and spending your attention on the one thing; the
     **synthesis briefing**
     (`briefings/<week>.md`) is *reading-shaped* — the week's precipitated hypotheses
