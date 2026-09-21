@@ -268,6 +268,9 @@ from a truncated child summary or a count-only Ingest log.
 The primary/parent searches existing concept/project pages and adds relevant
 forward typed edges according to the graph convention. Use targeted patches
 on shared lists, not whole-page rewrites. Do not create backlinks sections.
+When no relevant target exists, leave `links: []` and record the search
+outcome in the ingest log; never link an unrelated page to avoid an empty
+list.
 
 Append a deduplicated propagation event under `items:` in
 `docs/rem-cycle/inbox.yaml`, preserving the existing list's indentation:
@@ -317,8 +320,13 @@ Run the platform `lint-frontmatter.py` with the target instance and exact
 changed paths, from the brain root or with absolute `--paths`. Inspect its
 output and exit code; passing the ingest helper is not schema validation.
 Do not mask a failing exit in a pipeline or commit through it. A known wrong
-author/source remains a hold even if mechanical checks pass. Identity merges
-outside this ingest route to entity-resolution with preserved evidence.
+author/source remains a hold even if mechanical checks pass. The converse
+also occurs: a canonical-identity FAIL where DOI, venue, and authors all
+match and only the title differs in one index is a metadata-variant
+artifact (a publisher landing-page H1 against the proceedings title page);
+record the variant and the authoritative source in the ingest log rather
+than treating it as a wrong paper. Identity merges outside this ingest
+route to entity-resolution with preserved evidence.
 
 **Closeout:** use `skills/git-ops/SKILL.md`. The standalone primary/parent
 closes the verified paper and required shared work as a coherent unit, not

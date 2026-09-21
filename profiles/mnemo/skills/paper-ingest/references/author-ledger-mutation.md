@@ -79,11 +79,18 @@ validates it, and publishes through a temporary sibling and `os.replace`.
 Use `yaml.safe_load` for validation only; never `safe_dump` the entire ledger.
 Validate each proposed slug is a string and every citation has the `papers/`
 prefix before calling the helper. An unexpanded `{slug}` can parse as a mapping,
-so parse success alone does not establish a valid entry.
+so parse success alone does not establish a valid entry. In hand-written append
+scripts, build entry blocks from plain local variables; a conditional
+expression inline inside an f-string produces malformed YAML that only the
+pre-publication parse-and-count assert will catch.
 
 The lock coordinates only cooperating local writers. It does not protect
-against external editors or sync writes. Stop on detected concurrent changes;
-re-read and rebuild from the current file rather than overwriting them.
+against external editors or sync writes. Sibling sessions appending between
+a pre-flight check and the script run are expected, not damage: read the
+baseline inside the lock, assert your own entry-count delta rather than an
+absolute total, and leave the sibling growth intact. Stop on detected
+mid-write concurrent changes; re-read and rebuild from the current file
+rather than overwriting them.
 The helper's printed success is not the final check: independently re-read
 and verify the intended slugs and citations after it returns.
 
@@ -102,10 +109,24 @@ it performed this branch.
    to the next same-indent entry or EOF. Existing files may use column-zero
    entries, while the convention permits indented entries. Never locate the
    start by walking back to `- name:`: an entry may start with `- citations:`.
-3. Add within that entry's `citations` list, matching its indentation. A
-   mismatched indent can still YAML-parse while changing the citation value.
-   Handle an empty list explicitly rather than searching for a nonexistent
-   last citation. Remove an entry only by its fully bounded unique block.
+   The forward walk fails the same way: anchoring on a single field and
+   searching ahead for the citation list assumes citations follow the slug,
+   and in entries where citations precede name/slug the walk crosses into
+   the next entry and splices there. Anchor on a unique multi-line block
+   that ends at the target's own last citation, and assert the anchor is
+   unique before replacing.
+3. Add within that entry's `citations` list, matching its indentation. The
+   ledger mixes citation styles across entries (2-space and 4-space
+   `- papers/` lines), so detect citation lines indent-agnostically — match
+   on the lstripped `- papers/` prefix, never a hardcoded indent — and build
+   the inserted line from the neighbor citation line's exact leading
+   whitespace. Any transformation that strips or reformats that prefix
+   yields a 0-indent line that YAML reads as a new top-level list item,
+   breaking the entry at its next key; only the pre-publication parse
+   catches it. A mismatched indent can
+   still YAML-parse while changing the citation value. Handle an empty list
+   explicitly rather than searching for a nonexistent last citation. Remove
+   an entry only by its fully bounded unique block.
 4. For multiple splices, compute offsets against the original string, sort
    descending, and apply once. Recomputing offsets against a changing string
    previously caused runaway growth; do not use a mutation loop with stale

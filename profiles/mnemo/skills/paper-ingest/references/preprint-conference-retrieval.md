@@ -41,13 +41,44 @@ A DBLP HTTP 200 bot-challenge body was observed 2026-09-16; unavailable JSON
 is not a negative result. Confirm acceptance/publication rather than submission.
 
 When the published version has its own verified DOI, prefer that identity.
-For a venue without a separate article DOI, the existing convention retains
+The brain may already hold the preprint as a stub under the preprint DOI or
+arXiv ID, and dedup run with the published identifiers can return clean
+while that stub exists; search the vault for the preprint identity too and
+fill the existing stub rather than creating a second page. A preprint-era
+page can also hold a FULL distillation, not a stub: dedup on the published
+DOI matches that page by title, and the request is a publication transition,
+not a new page. Update the existing page in place — move frontmatter
+status/DOI/venue/year to the published identity, keep the preprint DOI in
+a `biorxiv`/`arxiv` field and the slug unchanged, add a source entry for
+the accepted-version document, and append a publication note recording
+what the published version changed or that content is unchanged from the
+distilled preprint revision. While there, audit the preprint ingest's
+author wiring: verify every byline author's ledger entry cites the page —
+a preprint-era ingest can wire only a subset of the byline, with the rest
+citing only a related sibling paper; backfill the missed edges. Flag
+preprint-era same-person slug duplicates for entity-resolution rather than
+merging mid-transition, and record the transition as a propagation event
+so rem-cycle phases see the update. For a venue
+without a separate article DOI, the existing convention retains
 the verified arXiv DOI while recording the confirmed conference venue/year
 and using that year in the slug. Log the preprint/publication distinction;
 do not silently rewrite every older in-text citation. Reconcile display-name
 variants against the source authors rather than creating duplicate people.
 If no published twin is established, retain preprint status and the search
 limitation; an inaccessible index does not justify claiming exhaustive absence.
+
+## Proceedings repositories (ACL Anthology and similar)
+
+Anthology-style proceedings sites serve complete metadata and open full
+text: the landing page carries `citation_title`, repeated `citation_author`,
+conference title, publication date, DOI, `citation_pdf_url`, and page
+numbers as meta tags, plus the abstract in the page body. Use
+`citation_pdf_url` rather than guessing a filename; the PDF serves with a
+plain request. Watch for title variants: a landing-page H1 can differ from
+the PDF title page and even from the site's own `citation_title`. The
+proceedings document (PDF title page) is the authoritative title; record
+the variant in the ingest log, because open indexes may carry the
+landing-page H1 and a canonical-identity check will compare against it.
 
 ## Text, PDFs, and mirrors
 
@@ -96,7 +127,12 @@ input actually supplied by the user.
    publisher article URL rather than a DOI redirect. Respect authentication,
    Retry-After, and bounded challenge handling from the publisher reference.
    Older Cloudflare failures do not justify forbidding all future direct
-   PDF requests. Proxy-rendered PDF text is not original PDF bytes.
+   PDF requests. Proxy-rendered PDF text is not original PDF bytes. Treat a
+   Cloudflare 1015 page or a 0-byte API response as a transient rate limit,
+   not a block: wait 45-60 s and retry the same direct URL before routing
+   around it. Versioned URLs rate-limit independently, so one version can
+   serve while another 1015s; retry the requested version after the wait
+   rather than silently substituting an older one.
 5. Inspect all named individual authors even if the record also has a
    collective/corporate name. Only genuinely individual-free authorship
    warrants an empty author list; the corresponding author is not a substitute

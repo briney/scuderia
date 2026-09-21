@@ -86,7 +86,7 @@ not fresh tests of every article or current service availability.
 | ScienceDirect | Tested snapshots contained only JS-shell/preview text. This does not rule out live browser or repository retrieval. |
 | Nature family | Both complete OA/institutional bodies and subscription previews occurred. Load `nature-metadata-extraction.md`; classify the article's actual access state, not the journal name. |
 | Rockefeller/JEM | Earlier HTTP/reader/archive failures were followed by a reported successful CDP retrieval. Try authorized browser access; neither success nor failure is universal. Check PMCID/embargo metadata per article, not a fixed deposit-window rule. |
-| ASH/Blood; JAMA | Restricted PMC XML and missing EPMC PDFs occurred. Check remaining repository/publisher/browser leads. |
+| ASH/Blood; JAMA | Restricted PMC XML and missing EPMC PDFs occurred. A jamanetwork.com direct curl returned a Cloudflare "Just a moment" interstitial while a Wayback snapshot supplied the complete article text; check Wayback before browser escalation. |
 | Thieme; ADA/Diabetes | Maintenance pages, missing snapshots, or archive errors occurred. Recheck applicable live routes; these are not permanent closure. |
 | AAI/J Immunol | An S2 PDF lead returned redirect HTML; legacy jimmunol.org full-text snapshots may help. Check actual bytes. |
 | SAGE/Atypon | Unpaywall 422 and S2 null occurred. An API error is not a closed-access finding. |

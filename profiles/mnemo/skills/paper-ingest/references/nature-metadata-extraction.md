@@ -22,6 +22,17 @@ none establishes a universal rule for a Nature journal or the flagship.
    browser route goes through publisher-blocks and the shared browser owner;
    it does not authorize bypassing login or entitlement.
 
+An accepted-article-in-press state (published online before the Version of
+Record) has its own shape: the HTML carries abstract and page chrome but no
+`data-title` body sections, the article `.pdf` URL returns the HTML shell
+rather than PDF bytes, and PubMed may not yet index the DOI. Inspect the
+page's own attachment links for an accepted-proof variant — a
+`<suffix>_reference.pdf` path can appear alongside the standard `.pdf` —
+and verify actual bytes before treating any listed URL as served. A
+user-supplied accepted-version PDF is the authoritative body for this
+state: label it as provided, record provenance, and do not fall back to
+abstract-only closure while it is in hand.
+
 For a genuinely partial source, use only the abstract and other actually
 visible components, name their limits, and retain enrichment under the main
 closure contract. An extended-data caption can support its own stated result;
