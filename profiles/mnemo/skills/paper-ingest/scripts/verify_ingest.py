@@ -761,7 +761,11 @@ def main():
                     help="explicit satellite topology with no author ledger; "
                          "full mode requires person pages, page-only may defer "
                          "their creation; refuses when a ledger exists")
+    ap.add_argument('--source-package-handoff', help='absolute verified source-package handoff.json; required for the retained-PDF production route')
+    ap.add_argument('--source-package-method', help='absolute explicitly trusted accepted PDF method directory (requires its PDF dependencies)')
     args = ap.parse_args()
+    if bool(args.source_package_handoff) != bool(args.source_package_method):
+        ap.error('--source-package-handoff and --source-package-method must be supplied together')
 
     brain = args.instance or find_brain_root(os.getcwd())
     if not brain:
@@ -917,6 +921,22 @@ def main():
             print("  Filled contract: OK" + (
                 " (PAGE_READY: needs-ingest true, wiring deferred to parent)"
                 if args.page_only else ""))
+
+    if args.source_package_handoff:
+        try:
+            from source_package import absolute, verify_handoff
+            handoff = absolute(args.source_package_handoff)
+            # The log pointer is relative to the paper page, not new frontmatter.
+            pointer = os.path.relpath(handoff, os.path.dirname(os.path.abspath(paper_path)))
+            log = required_sections(body).get('Ingest log', [])
+            if ('Source package: ' + pointer) not in log:
+                raise ValueError('Ingest log requires relative source-package pointer: Source package: ' + pointer)
+            verify_handoff(handoff, args.source_package_method,
+                           expected_article={key: fm.get(key) for key in ('slug','title','doi','pmid')})
+            print('  Source package: OK (mechanical completion only; scientific acceptance remains separate)')
+        except (OSError, ValueError, KeyError, TypeError, ImportError, RuntimeError) as exc:
+            print(f'  Source package: FAIL ({exc})')
+            failures += 1
 
     # Invariant 6: canonical identity (network)
     if args.offline:

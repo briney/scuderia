@@ -38,10 +38,116 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import urllib.response
 import xml.etree.ElementTree as ET
+import hashlib
+import io
+from datetime import datetime, timezone
+from pathlib import Path
+
+from source_package import absolute, new_directory, public_url, put, save
 
 UA = "mnemo-fetch-fulltext/1.0 (mailto:you@example.com)"  # set your contact
 TIMEOUT = 60
+EVIDENCE = None
+
+
+class EvidenceError(RuntimeError):
+    """Fail closed: missing durable evidence cannot become a quiet route miss."""
+
+
+class AcquisitionEvidence:
+    def __init__(self, directory):
+        self.root = new_directory(directory)
+        self.sequence = 0
+
+    def open(self, req):
+        try:
+            public_url(req.full_url)
+            self.sequence += 1
+            attempt = new_directory(self.root / f'attempt-{self.sequence:06d}')
+            save(attempt/'request.json', dict(url=req.full_url, method=req.get_method(),
+                 started_at=datetime.now(timezone.utc).isoformat(),
+                 headers_retained=False, authentication='none supplied by helper'))
+        except (OSError, ValueError) as exc:
+            raise EvidenceError('cannot reserve safe acquisition evidence') from exc
+        counter = 0
+
+        class Capture(urllib.request.HTTPErrorProcessor):
+            def http_response(handler, request, response):
+                nonlocal counter
+                counter += 1
+                try:
+                    public_url(request.full_url)
+                    directory = new_directory(attempt/f'response-{counter:04d}')
+                    status = response.code
+                    record = dict(url=request.full_url, status=status,
+                                  observed_at=datetime.now(timezone.utc).isoformat(), headers_retained=False)
+                    # Save status even if reading the response body later fails.
+                    save(directory/'response.json', record)
+                    try:
+                        raw = response.read()
+                    except Exception as exc:
+                        partial = getattr(exc, 'partial', None)
+                        if isinstance(partial, bytes):
+                            put(directory/'partial-body.bin', partial)
+                            save(directory/'partial.json',dict(sha256=hashlib.sha256(partial).hexdigest(),complete=False))
+                        raise
+                    put(directory/'body.bin',raw)
+                    save(directory/'body.json',dict(sha256=hashlib.sha256(raw).hexdigest(),bytes=len(raw),complete=True))
+                    replacement = urllib.response.addinfourl(io.BytesIO(raw),response.headers,response.geturl(),status)
+                    replacement.msg = getattr(response,'msg','')
+                    response.close()
+                except OSError as exc:
+                    raise EvidenceError('response evidence persistence/read failed') from exc
+                return super().http_response(request,replacement)
+            https_response = http_response
+
+        class Redirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(handler, request, response, code, msg, headers, newurl):
+                try:
+                    public_url(newurl)
+                except ValueError as exc:
+                    raise EvidenceError('credential-bearing redirect rejected') from exc
+                return super().redirect_request(request,response,code,msg,headers,newurl)
+
+        try:
+            # No cookies or authentication handlers. Capture runs before HTTP
+            # status handling, including every redirect and every retry body.
+            response = urllib.request.build_opener(Capture(),Redirect()).open(req,timeout=TIMEOUT)
+            try:
+                save(attempt/'complete.json',dict(ended_at=datetime.now(timezone.utc).isoformat(),
+                     status=response.code,response_count=counter,transport_success=True))
+            except OSError as exc:
+                response.close()
+                raise EvidenceError('cannot retain acquisition completion') from exc
+            return response
+        except Exception as exc:
+            try:
+                save(attempt/'error.json',dict(ended_at=datetime.now(timezone.utc).isoformat(),
+                     error_type=type(exc).__name__,status=getattr(exc,'code',None),response_count=counter,
+                     transport_success=False,error_detail='Exception text omitted to avoid reflected credentials'))
+            except OSError as failure:
+                raise EvidenceError('cannot retain acquisition error') from failure
+            raise
+
+
+def open_request(req):
+    return EVIDENCE.open(req) if EVIDENCE is not None else urllib.request.urlopen(req,timeout=TIMEOUT)
+
+
+def write_download(path, raw):
+    if EVIDENCE is None:
+        with open(path,'wb') as stream:
+            stream.write(raw)
+    else:
+        p = absolute(path)
+        if not p.is_relative_to(EVIDENCE.root/'derived'):
+            raise EvidenceError('derived outputs must stay under evidence-dir/derived')
+        try:
+            put(p,raw)
+        except OSError as exc:
+            raise EvidenceError('derived output must be new and durable') from exc
 
 
 def fetch(url, binary=False, retries=2, backoff=4.0):
@@ -50,7 +156,7 @@ def fetch(url, binary=False, retries=2, backoff=4.0):
     for attempt in range(retries + 1):
         try:
             req = urllib.request.Request(url, headers={"User-Agent": UA})
-            with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+            with open_request(req) as r:
                 data = r.read()
             return data if binary else data.decode("utf-8", "replace")
         except urllib.error.HTTPError as e:
@@ -73,6 +179,8 @@ def fetch(url, binary=False, retries=2, backoff=4.0):
 def fetch_quiet(url, **kw):
     try:
         return fetch(url, **kw)
+    except EvidenceError:
+        raise
     except Exception:
         return None
 
@@ -173,8 +281,7 @@ def try_epmc_pdf(pmcid, out_prefix):
     if not data or len(data) < 10000 or not data.startswith(b"%PDF"):
         return None
     pdf_path = out_prefix + ".pdf"
-    with open(pdf_path, "wb") as f:
-        f.write(data)
+    write_download(pdf_path, data)
     try:
         import pymupdf
         doc = pymupdf.open(pdf_path)
@@ -220,8 +327,10 @@ def resolve_doi(doi):
     try:
         req = urllib.request.Request(url, headers={"User-Agent": UA},
                                      method="HEAD")
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+        with open_request(req) as r:
             return r.geturl()
+    except EvidenceError:
+        raise
     except Exception:
         return None
 
@@ -289,8 +398,7 @@ def fetch_pmc_figures(pmcid, out_prefix):
         if not data or len(data) < 1000:
             continue
         name = os.path.basename(urllib.parse.urlparse(u).path)
-        with open(os.path.join(figdir, name), "wb") as f:
-            f.write(data)
+        write_download(os.path.join(figdir, name), data)
         n += 1
     return figdir if n else None
 
@@ -312,15 +420,27 @@ def main():
                     help="Also fetch PMC OA figure bundle (needs pmcid)")
     ap.add_argument("--skip-publisher", action="store_true",
                     help="Stop before branch 2 (never touch the publisher page)")
+    ap.add_argument('--evidence-dir', help='NEW absolute acquisition evidence directory; --out must be below its derived/ directory')
     args = ap.parse_args()
+    global EVIDENCE
+    EVIDENCE = None
+    if args.evidence_dir:
+        directory = absolute(args.evidence_dir)
+        prefix = absolute(args.out)
+        if not prefix.is_relative_to(directory/'derived'):
+            ap.error('--out must be an absolute prefix below --evidence-dir/derived')
+        EVIDENCE = AcquisitionEvidence(directory)
     notes = []
     result = {"provenance": "none", "chars": 0,
               "text_file": None, "figures_dir": None, "notes": notes}
 
     def succeed(provenance, text):
         path = args.out + ".txt"
-        with open(path, "w") as f:
-            f.write(text)
+        if EVIDENCE is None:
+            with open(path, "w") as f:
+                f.write(text)
+        else:
+            write_download(path,text.encode('utf-8'))
         result.update(provenance=provenance, chars=len(text), text_file=path)
         return True
 

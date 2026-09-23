@@ -825,5 +825,37 @@ class TestCanonicalChecks(unittest.TestCase):
         self.assertFalse(unverified)
 
 
+class TestSourcePackageOption(CliCase):
+    def test_source_handoff_requires_trusted_method(self):
+        rc, out, err = self.verify('--source-package-handoff', str(Path(self.brain)/'missing.json'))
+        self.assertEqual(rc,2,out+err)
+        self.assertIn('--source-package-method',err)
+
+    def test_source_handoff_missing_or_fixture_fails(self):
+        import json
+        path=Path(self.brain)/'handoff.json'
+        path.write_text(json.dumps(dict(schema='source-package-handoff-v1',status='test-only',production_complete=False)))
+        rc,out,err=self.verify('--source-package-handoff',str(path),'--source-package-method',self.brain)
+        self.assertEqual(rc,1,out+err)
+        self.assertIn('Source package: FAIL',out)
+
+    def test_source_pointer_must_be_in_ingest_log(self):
+        path=Path(self.brain)/'handoff.json'
+        path.write_text('{}')
+        with patch('source_package.verify_handoff',return_value={'production_complete':True}):
+            rc,out,err=self.verify('--source-package-handoff',str(path),'--source-package-method',self.brain)
+        self.assertEqual(rc,1,out+err)
+        self.assertIn('source-package pointer',out)
+
+    def test_source_identity_is_bound_to_page(self):
+        path=Path(self.brain)/'handoff.json'; path.write_text('{}')
+        body=BODY+'\nSource package: ../handoff.json\n'
+        with patch('source_package.verify_handoff',return_value={'production_complete':True}) as verify:
+            rc,out,err=self.verify('--source-package-handoff',str(path),'--source-package-method',self.brain,body=body)
+        self.assertEqual(rc,0,out+err)
+        expected=verify.call_args.kwargs['expected_article']
+        self.assertEqual(expected,dict(slug='fixture-paper',title=PAGE_TITLE,doi='10.9999/synthetic.0001',pmid=PMID))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -60,6 +60,7 @@ They resolve under `skills/conventions/` through the profile binding.
 | Situation | Read |
 |---|---|
 | Invoking a helper | `references/script-commands.md`; resolve `scripts/` from this skill, use Python >=3.10 and required dependencies. |
+| New production ingest retaining any PDF | `references/source-package-integration.md` and the document-format-parsing skill; use the deployed accepted workflow, not an earlier locator prototype. |
 | PubMed identity or PMC source | `references/pubmed-pmc-retrieval.md` |
 | arXiv, bioRxiv/medRxiv, or a conference/published twin | `references/preprint-conference-retrieval.md` |
 | Publisher access failure, archive fallback, or browser download | `references/publisher-blocks.md`; for Nature markup/access states also `references/nature-metadata-extraction.md`. |
@@ -152,6 +153,29 @@ failed, or unavailable; do not infer one from another. Archive only through
 the source-archive convention when required/requested; no R2 pointer is
 claimed without verified archival. Retrieval alone does not imply archival.
 
+**Retained-source production route:** for new ingests retaining any PDF, follow
+`references/source-package-integration.md`. Enable `fetch_fulltext.py
+--evidence-dir` and preserve other-route originals and failed attempts in new
+source/attempt directories. Record the inspected attachment listing and each
+retrieval disposition; unavailable raw responses remain explicit limitations.
+Readable body text may be extracted from a retained original PDF, with its
+source recorded; obtaining text does not replace retaining the PDF.
+
+Run `source_package.py prepare` with operator-verified identity, observed
+links, explicit endpoint and application-post budget. Use every physical page
+and all accepted extraction channels for manuscript and supplementary PDFs.
+Retain non-PDF attachments with deferred-extraction dispositions; deferred
+extraction alone is not an automatic completion hold or permission to make
+claims from unread data. Acquisition and PDF-extraction failures remain holds.
+
+Use the registered workflow capability (Hermes: `paper_workflow`) for actual
+phases. Preparation, counting, sealing, separately authored approval and
+execution remain distinct gates. Preserve the accepted method settings and
+use absolute paths and a fresh external attempt directory for every operation.
+Require subprocess status plus matching phase evidence; report success can
+still describe incomplete work. Never automatically retry consumed or uncertain
+requests. A hard-killed launcher may leave a child requiring inspection.
+
 **Acceptance:** verify the retrieved title/identifier/version against Phase 1.
 For PDFs, require PDF bytes, successful parsing, and paper-specific content
 beyond the first page. A browser page-print is not the manuscript. Validate
@@ -166,8 +190,10 @@ and truncated extracts as full body text. Check the source's actual section
 structure, including thematic headings. Parsers may omit table cells,
 reference lists, floats, equations, or captions; inspect the original XML,
 PDF, HTML tables, or supplements for claims dependent on those elements.
-No fixed paragraph threshold establishes completeness. Figures can be read
-with the available image tool when they carry evidence not represented in text.
+No fixed paragraph threshold establishes completeness. For source/crop
+inspection on the retained-source route, use the dedicated pinned inspection
+capability (Hermes: `paper_vision_inspect`), not generic vision routing. Supply
+original pages and ordered crop fragments when visual evidence is required.
 
 **Abstract-only closure:** exhaust applicable authorized retrieval routes and
 record actual source responses. For PubMed-indexed papers the existing
@@ -190,6 +216,26 @@ without a published twin need not be flagged. Attribute preview/caption-only
 claims to those exact sources; do not invent missing methods/results.
 
 ### 5. Distillation and page write
+
+For the retained-source PDF route, generate and verify the adapter handoff
+before claiming source-package completion. Read its exact generated summary,
+`facts.json`, acquisition dispositions and source material. Use the handoff's
+package-relative paths to native text, original pages, ordered crop fragments
+and classification/association artifacts; counts and model labels are not
+scientific findings. Text-only operators use saved inspection findings and
+cannot claim personal pixel inspection. Same-model extraction and inspection
+are not independent verification. Mechanical completion does not establish
+exhaustive recall or human acceptance; new outputs do not inherit historical
+acceptance, and the development pilot does not impose human crop approval on
+every production ingest.
+
+Add an unformatted `Source package: <relative-path-to-handoff.json>` line in
+the existing Ingest log, relative to the paper page; do not add frontmatter
+fields. Record source versions, limitations and scientific review decisions.
+An explicitly source-limited draft may proceed from incomplete evidence, but
+acquisition/extraction holds retain `needs-ingest: true` and appropriate
+`needs-enrichment: true`; they are not silently waived by body-only prose.
+A fixture/test-only handoff never qualifies as production completion.
 
 Read a recent sibling page for the vault's style and the paper-kind schema
 for required fields; an existing page is not scientific evidence for this
@@ -308,6 +354,13 @@ This completed-fill contract is shared by dives and queue drains. Verify:
   graph integration, and the propagation event are complete and read back.
 
 Run `verify_ingest.py <bare-slug> --instance <brain> --require-filled`.
+For the retained-source PDF route, add both `--source-package-handoff
+<absolute-handoff.json>` and `--source-package-method <absolute-trusted-method>`
+using the documented PDF interpreter. These options are mandatory for this
+route, including PAGE_READY checks; legacy calls remain available only for
+existing/non-package routes. Revalidation binds the current sources, workflow,
+launcher evidence and exact generated summary to the paper identity and its
+relative Ingest log pointer. An earlier completion flag is insufficient.
 For PAGE_READY add `--page-only`: the queue flag remains true and only
 well-shaped unresolved author references are deferred; other errors fail.
 After parent integration set `needs-ingest: false` and rerun without

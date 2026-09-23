@@ -207,5 +207,105 @@ class TestRemovedFlagsFailFast(unittest.TestCase):
             self.assertNotIn(flag, stdout.getvalue())
 
 
+class TestAcquisitionEvidence(unittest.TestCase):
+    """Synthetic HTTP responses only; no socket is opened."""
+    def setUp(self):
+        self.mod = load_module()
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.base = Path(self.tmp.name)
+
+    def response(self, code, raw, url='https://example.invalid/article'):
+        import urllib.response
+        from email.message import Message
+        headers = Message(); headers['Content-Type'] = 'text/plain'
+        response = urllib.response.addinfourl(io.BytesIO(raw), headers, url, code)
+        response.msg = 'Synthetic transport fixture'
+        return response
+
+    def test_retry_preserves_failed_body_before_success(self):
+        self.mod.EVIDENCE = self.mod.AcquisitionEvidence(self.base/'evidence')
+        import urllib.error
+        responses = [self.response(503,b'SYNTHETIC unavailable'),self.response(200,b'SYNTHETIC success')]
+        with patch('urllib.request.HTTPHandler.http_open', side_effect=responses), \
+                patch.object(self.mod.time,'sleep'), forbid_socket():
+            result = self.mod.fetch('http://example.invalid/article')
+        self.assertEqual(result,'SYNTHETIC success')
+        records = sorted((self.base/'evidence').glob('attempt-*/response-*/response.json'))
+        self.assertEqual([json.loads(p.read_text())['status'] for p in records],[503,200])
+        self.assertEqual((records[0].parent/'body.bin').read_bytes(),b'SYNTHETIC unavailable')
+        self.assertEqual(len(list((self.base/'evidence').glob('attempt-*/error.json'))),1)
+
+    def test_partial_response_and_completion_log_failure(self):
+        import http.client
+        self.mod.EVIDENCE = self.mod.AcquisitionEvidence(self.base/'evidence')
+        response=self.response(200,b'')
+        response.read=lambda: (_ for _ in ()).throw(http.client.IncompleteRead(b'SYNTHETIC partial',100))
+        with patch('urllib.request.HTTPHandler.http_open',return_value=response),forbid_socket():
+            self.assertIsNone(self.mod.fetch_quiet('http://example.invalid/article',retries=0))
+        partial=next((self.base/'evidence').glob('attempt-*/response-*/partial-body.bin'))
+        self.assertEqual(partial.read_bytes(),b'SYNTHETIC partial')
+        self.assertFalse(json.loads((partial.parent/'partial.json').read_text())['complete'])
+        real=self.mod.save
+        def fail_completion(path,value):
+            if Path(path).name == 'complete.json': raise OSError('SYNTHETIC disk failure')
+            return real(path,value)
+        with patch.object(self.mod,'save',side_effect=fail_completion), \
+                patch('urllib.request.HTTPHandler.http_open',return_value=self.response(200,b'SYNTHETIC success')),forbid_socket():
+            with self.assertRaises(self.mod.EvidenceError):
+                self.mod.fetch_quiet('http://example.invalid/article')
+
+    def test_direct_doi_head_and_transport_failure(self):
+        import urllib.error
+        self.mod.EVIDENCE = self.mod.AcquisitionEvidence(self.base/'evidence')
+        with patch('urllib.request.HTTPSHandler.https_open',side_effect=urllib.error.URLError('SYNTHETIC failure')), forbid_socket():
+            self.assertIsNone(self.mod.resolve_doi('10.9999/fixture'))
+        error = next((self.base/'evidence').glob('attempt-*/error.json'))
+        self.assertEqual(json.loads(error.read_text())['error_type'],'URLError')
+        self.assertEqual(json.loads((error.parent/'request.json').read_text())['method'],'HEAD')
+
+    def test_redirect_responses_are_individual_evidence(self):
+        first=self.response(302,b'SYNTHETIC redirect','http://example.invalid/start')
+        first.headers['Location']='http://example.invalid/finish'
+        self.mod.EVIDENCE = self.mod.AcquisitionEvidence(self.base/'evidence')
+        with patch('urllib.request.HTTPHandler.http_open',side_effect=[first,self.response(200,b'SYNTHETIC final','http://example.invalid/finish')]), forbid_socket():
+            self.assertEqual(self.mod.fetch('http://example.invalid/start'),'SYNTHETIC final')
+        records=list((self.base/'evidence').glob('attempt-*/response-*/response.json'))
+        self.assertEqual(len(records),2)
+
+    def test_evidence_failure_cannot_be_swallowed(self):
+        self.mod.EVIDENCE = self.mod.AcquisitionEvidence(self.base/'evidence')
+        with patch.object(self.mod,'save',side_effect=OSError('SYNTHETIC disk failure')), forbid_socket():
+            with self.assertRaises(self.mod.EvidenceError):
+                self.mod.fetch_quiet('https://example.invalid/article')
+
+    def test_evidence_cli_new_directory_and_legacy_output(self):
+        body=b'<article><body><p>'+b'SYNTHETIC source body. '*120+b'</p></body></article>'
+        evidence=self.base/'evidence'; prefix=evidence/'derived'/'paper'
+        argv=['fetch_fulltext.py','--pmcid','PMC123','--out',str(prefix),'--evidence-dir',str(evidence)]
+        out=io.StringIO()
+        with patch.object(sys,'argv',argv), patch('urllib.request.HTTPSHandler.https_open',return_value=self.response(200,body)), \
+                contextlib.redirect_stdout(out),forbid_socket():
+            self.mod.main()
+        self.assertEqual(json.loads(out.getvalue())['provenance'],'pmc-xml')
+        self.assertEqual(next(evidence.glob('attempt-*/response-*/body.bin')).read_bytes(),body)
+        with patch.object(sys,'argv',argv),forbid_socket():
+            with self.assertRaises((ValueError,OSError,SystemExit)):
+                self.mod.main()
+
+    def test_credentials_rejected_before_request(self):
+        self.mod.EVIDENCE = self.mod.AcquisitionEvidence(self.base/'evidence')
+        with forbid_socket(), self.assertRaises(self.mod.EvidenceError):
+            self.mod.fetch_quiet('https://example.invalid/a?api_key=do-not-retain')
+        self.assertFalse(list((self.base/'evidence').rglob('*')))
+
+
+@contextlib.contextmanager
+def forbid_socket():
+    import socket
+    with patch.object(socket,'socket',side_effect=AssertionError('offline socket forbidden')):
+        yield
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
