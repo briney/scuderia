@@ -9,6 +9,9 @@ triggers:
   - "stub fill"
   - "ingest this DOI"
   - "add this paper to the brain"
+  - "re-enrich this paper"
+  - "selectively re-enrich a figure or table"
+  - "archive or restore an article package"
 eval_contract:
   goal: Resolve and faithfully distill one paper, then complete its required bibliography, author, and graph integration.
   dimensions:
@@ -20,6 +23,7 @@ eval_contract:
     - Declaring an unwired page-only result a complete ingest.
     - Clearing enrichment on abstract-only or substitute-preprint distillation.
     - Losing citing edges or wiring to a known wrong author identity.
+    - Calling selected or archive-only re-enrichment a completed full paper refresh.
 ---
 
 # paper-ingest — single-paper ingestion
@@ -61,6 +65,7 @@ They resolve under `skills/conventions/` through the profile binding.
 |---|---|
 | Invoking a helper | `references/script-commands.md`; resolve `scripts/` from this skill, use Python >=3.10 and required dependencies. |
 | New production ingest retaining any PDF | `references/source-package-integration.md`, `references/qualified-enrichment.md` and the document-format-parsing skill; use the deployed source workflow and qualified figure/table enrichment. |
+| Portable article-package archive/restore or explicit existing-paper full/selected re-enrichment | `references/portable-articles.md`; use its shared CLI and dedicated completion verifier, not the new-ingest v2 export contract. |
 | PubMed identity or PMC source | `references/pubmed-pmc-retrieval.md` |
 | arXiv, bioRxiv/medRxiv, or a conference/published twin | `references/preprint-conference-retrieval.md` |
 | Publisher access failure, archive fallback, or browser download | `references/publisher-blocks.md`; for Nature markup/access states also `references/nature-metadata-extraction.md`. |
@@ -71,6 +76,15 @@ They resolve under `skills/conventions/` through the profile binding.
 
 Do not load every retrieval reference for every paper. Keep scripts/tests at
 this skill's `scripts/` path; they are executable helpers, not required prose.
+
+For an explicit existing-paper re-enrichment request, follow the portable
+reference's plan/continuation route. Acquisition still follows Phase 4;
+scientific review, page/identity/graph checks and closeout remain obligations.
+Final package acceptance uses `reenrich.py verify-completion` with trusted
+publication pins, the full restored inventory, and the actual page/companion
+receipt when a page is requested. Preserve full versus selected and archive-only
+versus page-refresh completion. This branch does not replace the new-ingest
+route below, authorize a corpus campaign, or certify an untested model provider.
 
 ## Phases
 
