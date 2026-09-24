@@ -340,6 +340,26 @@ class WorkflowTests(unittest.TestCase):
             self.handoff(expected=2)
         finally: p.unlink()
 
+class VersionedHandoffTests(unittest.TestCase):
+    def test_v1_remains_verifiable_but_cannot_satisfy_new_route(self):
+        import source_package as adapter
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix='v1-read-',dir=ROOT) as folder:
+            base=Path(folder)
+            value=dict(schema='source-package-handoff-v1',production_complete=True,
+                       status='production-mechanical-complete',retention=str(base/'retention.json'),
+                       package=str(base/'package'),launcher_result=str(base/'result.json'),
+                       summary='Synthetic boundary only.',article={'slug':'fixture-paper'})
+            save(base/'handoff.json',value); (base/'summary.txt').write_text(value['summary'])
+            with patch.object(adapter,'build_handoff',return_value=value):
+                self.assertEqual(adapter.verify_handoff(base/'handoff.json',base/'method'),value)
+                with self.assertRaisesRegex(ValueError,'requires enriched v2'):
+                    adapter.verify_handoff(base/'handoff.json',base/'method',require_enriched=True)
+                (base/'summary.txt').write_text('tampered')
+                with self.assertRaisesRegex(ValueError,'summary changed'):
+                    adapter.verify_handoff(base/'handoff.json',base/'method')
+
+
 if __name__ == '__main__':
     sys.addaudithook(lambda event,args: (_ for _ in ()).throw(RuntimeError('offline-network-blocked')) if event.startswith('socket.') else None)
     unittest.main(verbosity=2)

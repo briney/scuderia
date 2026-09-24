@@ -8,7 +8,7 @@ Phase 4: use the existing retrieval references. Readable body, original manuscri
 
 For every new production ingest retaining a PDF, run adapter `prepare`, then use the registered `paper_workflow` capability for actual phases. In Hermes its tool binding is `paper_workflow`; do not replace it with generated shell pipelines or a second executor. Scope defaults to every physical page and all five channels. Figure-only/selected-page diagnostics cannot satisfy this route. Acquisition and extraction failures remain holds; do not silently replace failed extraction with an unqualified body-only ingest.
 
-Phase 5: produce a verified handoff before treating a source package as complete. Read its exact `summary.txt`, `facts`, retained acquisition dispositions, and source material. `documents[].pages` identifies original physical page imagery and page directories (`native-text.txt`, `native-text.json`); `documents[].candidates[].regions` and `logical.elements[].ordered_source_fragments` retain crop fragment order. `documents[].requests` exposes classification/association files and call evidence; candidate classification observations remain model observations. Resolve these package-relative paths against `package`, not the paper page. Do not infer scientific findings from counts or mechanically generated labels.
+Phase 5: produce a verified source-only v1 handoff as the input to qualified figure/table enrichment. Follow `qualified-enrichment.md` before treating the new production route as complete; the final paper points to the v2 handoff and annotated export, not the intermediate v1 handoff. Read the final handoff's exact `summary.txt`, `facts`, retained acquisition dispositions, qualifications and source material. `documents[].pages` identifies original physical page imagery and page directories (`native-text.txt`, `native-text.json`); `documents[].candidates[].regions` and `logical.elements[].ordered_source_fragments` retain crop fragment order. `documents[].requests` exposes classification/association files and call evidence; candidate classification observations remain model observations. Resolve these package-relative paths against `package`, not the paper page. Do not infer scientific findings from counts or mechanically generated labels.
 
 When visual inspection is necessary, use the dedicated `paper_vision_inspect` binding, supplying original pages and ordered crop fragments with precise questions and a new inspection attempt. Its deployment pins the inspection model; text-only operators consume saved findings, not pixels. Same-model inspection is not independent verification. Supply its saved inspection directory to report/finalize/summary. Inspection input coverage is distinct from findings and human acceptance. There is no requirement for manual human crop approval on every future ingest; agent/human scientific review still applies. Historical acceptance never transfers to new output.
 
@@ -20,9 +20,11 @@ In the existing Ingest log, add an unformatted line, relative to the paper page:
 
 Keep source version, URLs, acquisition limitations and scientific review decisions in that log. Add no frontmatter fields. Local retention is not external archival; existing source-archive requirements remain separate. Never invent R2 pointers.
 
-Phase 10: for this production route, both new verifier options are mandatory, including queued PAGE_READY checks. Use the PDF interpreter with PyYAML available:
+Phase 10: for new retained-PDF production ingests, source and enrichment verifier options are mandatory, including queued PAGE_READY checks. Use the PDF interpreter with PyYAML available:
 
-    <pdf-python> -B <scripts>/verify_ingest.py <bare-slug> --instance <absolute-instance> --require-filled --source-package-handoff <absolute-handoff.json> --source-package-method <absolute-trusted-method>
+    <pdf-python> -B <scripts>/verify_ingest.py <bare-slug> --instance <absolute-instance> --require-filled --source-package-handoff <absolute-v2-handoff.json> --source-package-method <absolute-trusted-method> --require-enriched-source --enrichment-integration <absolute-trusted-integration> --enrichment-root <absolute-trusted-frozen-enrichment-root>
+
+Keep the exact v2 `qualifications.txt` text in the paper and add `Annotated enrichment: <relative-annotated.html>` beside the source-package pointer in its Ingest log. See `qualified-enrichment.md` for scoped downstream use and the v2 construction command. Source-only v1 verification remains available for historical handoffs, not as a bypass for this new route.
 
 The verifier revalidates the saved launcher/process receipt, current package, retention manifest, exact generated facts/summary, and paper identity fields. A prior `complete=true` field is insufficient. `--page-only` retains existing queue/wiring behavior but does not bypass source checks. `--offline` skips canonical network identity only; legacy callers without the new options keep their existing behavior. No successful mechanical check establishes scientific acceptance or exhaustive recall.
 
@@ -94,9 +96,13 @@ For historical packages, only `summary` to new external output/attempt directori
 
 ## Verified distillation handoff
 
-Save the actual code-owned attempt `result.json`, not an operator reconstruction or a copied model summary. After successful complete report/finalize/summary:
+Save the actual code-owned attempt `result.json`, not an operator reconstruction or a copied model summary. After execution/finalization, obtain a fresh read-only `summary` in external output and attempt directories. A source-first HTML report may add display-only `review_overlay` fields to its state; use the canonical summary receipt for exact handoff revalidation. Do not strip fields, edit old receipts, relax validation or rerun extraction to remove that difference.
 
-    <pdf-python> -B <scripts>/source_package.py handoff --retention /absolute/new-source-run/retention.json --package /absolute/new-package --launcher-result /absolute/attempts/finalize/result.json --method /absolute/trusted-method --output /absolute/new-handoff
+    paper_workflow: {"operation":"summary","package_dir":"/absolute/new-package","output_dir":"/absolute/source-summary","attempt_dir":"/absolute/attempts/source-summary"}
+
+If inspection evidence was used, supply its actual directory to this summary too. A summary can describe incomplete work, which remains a hold. Build the intermediate source-only v1 handoff:
+
+    <pdf-python> -B <scripts>/source_package.py handoff --retention /absolute/new-source-run/retention.json --package /absolute/new-package --launcher-result /absolute/attempts/source-summary/result.json --method /absolute/trusted-method --output /absolute/new-handoff
     <pdf-python> -B <scripts>/source_package.py verify --handoff /absolute/new-handoff/handoff.json --method /absolute/trusted-method
 
 The adapter invokes the explicitly trusted accepted method's read-only `final_state` and `operation_evidence` validators. It reconstructs the reporting state, checks the saved process/receipt invocation and every bound artifact, compares the retained scope, and uses `facts.json` and the exact generated summary. It does not run a workflow phase, synthesize counts or trust narrative assertions. The handoff binds method code/assets, acquisition retention, launcher attempt, package inventory and any supplied inspection evidence. Revalidation detects subsequent additions/changes, not only missing files. Paths are explicit and must remain available; relocation requires fresh evidence at the new binding, not editing old receipts.

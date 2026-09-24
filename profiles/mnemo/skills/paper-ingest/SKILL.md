@@ -60,7 +60,7 @@ They resolve under `skills/conventions/` through the profile binding.
 | Situation | Read |
 |---|---|
 | Invoking a helper | `references/script-commands.md`; resolve `scripts/` from this skill, use Python >=3.10 and required dependencies. |
-| New production ingest retaining any PDF | `references/source-package-integration.md` and the document-format-parsing skill; use the deployed accepted workflow, not an earlier locator prototype. |
+| New production ingest retaining any PDF | `references/source-package-integration.md`, `references/qualified-enrichment.md` and the document-format-parsing skill; use the deployed source workflow and qualified figure/table enrichment. |
 | PubMed identity or PMC source | `references/pubmed-pmc-retrieval.md` |
 | arXiv, bioRxiv/medRxiv, or a conference/published twin | `references/preprint-conference-retrieval.md` |
 | Publisher access failure, archive fallback, or browser download | `references/publisher-blocks.md`; for Nature markup/access states also `references/nature-metadata-extraction.md`. |
@@ -217,8 +217,16 @@ claims to those exact sources; do not invent missing methods/results.
 
 ### 5. Distillation and page write
 
-For the retained-source PDF route, generate and verify the adapter handoff
-before claiming source-package completion. Read its exact generated summary,
+For the retained-source PDF route, first verify the source-only v1 handoff;
+then follow `references/qualified-enrichment.md` through the deployed enrichment
+capability (Hermes: `paper_enrichment`) and final v2 handoff. The code-owned
+roster includes all eligible figures/tables; algorithms are deferred by default.
+Retain failed/partial/unavailable outcomes and unreviewed scope. Import actual
+review findings without replacing original extraction. An empty finding list
+or model-authored coverage is not certification. Preserve exact-use qualifications
+beside affected content and the canonical qualification register in the paper.
+A source-only v1 handoff is intermediate evidence, not completion of this new
+route. Read the final handoff's exact generated summary,
 `facts.json`, acquisition dispositions and source material. Use the handoff's
 package-relative paths to native text, original pages, ordered crop fragments
 and classification/association artifacts; counts and model labels are not
@@ -229,9 +237,11 @@ exhaustive recall or human acceptance; new outputs do not inherit historical
 acceptance, and the development pilot does not impose human crop approval on
 every production ingest.
 
-Add an unformatted `Source package: <relative-path-to-handoff.json>` line in
-the existing Ingest log, relative to the paper page; do not add frontmatter
-fields. Record source versions, limitations and scientific review decisions.
+Add unformatted `Source package: <relative-path-to-v2-handoff.json>` and
+`Annotated enrichment: <relative-path-to-annotated.html>` lines in the existing
+Ingest log, relative to the paper page; do not add frontmatter fields. Preserve
+the exact v2 `qualifications.txt` text in the paper. Record source versions,
+limitations and scientific review decisions.
 An explicitly source-limited draft may proceed from incomplete evidence, but
 acquisition/extraction holds retain `needs-ingest: true` and appropriate
 `needs-enrichment: true`; they are not silently waived by body-only prose.
@@ -356,9 +366,13 @@ This completed-fill contract is shared by dives and queue drains. Verify:
 Run `verify_ingest.py <bare-slug> --instance <brain> --require-filled`.
 For the retained-source PDF route, add both `--source-package-handoff
 <absolute-handoff.json>` and `--source-package-method <absolute-trusted-method>`
-using the documented PDF interpreter. These options are mandatory for this
-route, including PAGE_READY checks; legacy calls remain available only for
-existing/non-package routes. Revalidation binds the current sources, workflow,
+using the documented PDF interpreter. For every new retained-PDF ingest also
+supply `--require-enriched-source --enrichment-integration <trusted-integration>
+--enrichment-root <trusted-frozen-enrichment-root>`. These options are mandatory
+for this route, including PAGE_READY checks; the final handoff must be v2 and
+its qualifications and annotated pointer must survive in the paper. Legacy
+v1 verification remains available for historical/non-enriched routes only.
+Revalidation binds the current sources, workflow,
 launcher evidence and exact generated summary to the paper identity and its
 relative Ingest log pointer. An earlier completion flag is insufficient.
 For PAGE_READY add `--page-only`: the queue flag remains true and only

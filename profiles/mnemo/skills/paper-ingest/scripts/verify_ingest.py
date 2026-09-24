@@ -763,7 +763,14 @@ def main():
                          "their creation; refuses when a ledger exists")
     ap.add_argument('--source-package-handoff', help='absolute verified source-package handoff.json; required for the retained-PDF production route')
     ap.add_argument('--source-package-method', help='absolute explicitly trusted accepted PDF method directory (requires its PDF dependencies)')
+    ap.add_argument('--require-enriched-source', action='store_true', help='new production route: require v2 enrichment evidence and preserved qualifications')
+    ap.add_argument('--enrichment-integration', help='absolute trusted qualified enrichment integration directory')
+    ap.add_argument('--enrichment-root', help='absolute trusted frozen enrichment package directory')
     args = ap.parse_args()
+    if args.require_enriched_source and not all((args.source_package_handoff,args.enrichment_integration,args.enrichment_root)):
+        ap.error('--require-enriched-source requires a source handoff and both trusted enrichment roots')
+    if bool(args.enrichment_integration) != bool(args.enrichment_root):
+        ap.error('both trusted enrichment roots must be supplied together')
     if bool(args.source_package_handoff) != bool(args.source_package_method):
         ap.error('--source-package-handoff and --source-package-method must be supplied together')
 
@@ -931,8 +938,19 @@ def main():
             log = required_sections(body).get('Ingest log', [])
             if ('Source package: ' + pointer) not in log:
                 raise ValueError('Ingest log requires relative source-package pointer: Source package: ' + pointer)
-            verify_handoff(handoff, args.source_package_method,
-                           expected_article={key: fm.get(key) for key in ('slug','title','doi','pmid')})
+            options = {}
+            if args.enrichment_integration or args.require_enriched_source:
+                options = dict(integration=args.enrichment_integration,enrichment_root=args.enrichment_root,
+                               require_enriched=args.require_enriched_source)
+            verified = verify_handoff(handoff, args.source_package_method,
+                           expected_article={key: fm.get(key) for key in ('slug','title','doi','pmid')}, **options)
+            if verified.get('schema') == 'source-package-handoff-v2':
+                if verified['qualifications'] not in body:
+                    raise ValueError('paper is missing exact source-bound enrichment qualifications')
+                annotated = os.path.relpath(os.path.join(os.path.dirname(verified['enrichment_handoff']), 'annotated.html'),
+                                            os.path.dirname(os.path.abspath(paper_path)))
+                if ('Annotated enrichment: '+annotated) not in log:
+                    raise ValueError('Ingest log requires annotated enrichment pointer: Annotated enrichment: '+annotated)
             print('  Source package: OK (mechanical completion only; scientific acceptance remains separate)')
         except (OSError, ValueError, KeyError, TypeError, ImportError, RuntimeError) as exc:
             print(f'  Source package: FAIL ({exc})')

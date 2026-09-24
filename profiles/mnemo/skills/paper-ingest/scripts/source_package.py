@@ -391,11 +391,83 @@ def build_handoff(retention_path, package, launcher_result, method, test_root=No
     return value
 
 
-def verify_handoff(path, method, expected_article=None):
+def trusted_enrichment(integration, enrichment_root):
+    """Only explicitly configured code roots may verify enriched evidence."""
+    integration = absolute(integration); enrichment_root = absolute(enrichment_root)
+    require((integration/'qualified_enrichment/exports.py').is_file() and
+            (enrichment_root/'pdf_enrichment/bindings.py').is_file(), 'trusted enrichment roots required')
+    sys.dont_write_bytecode = True
+    sys.path[:0] = [str(integration), str(enrichment_root)]
+    for name, root in (('qualified_enrichment', integration), ('pdf_enrichment', enrichment_root)):
+        module = importlib.import_module(name)
+        require(Path(module.__file__).resolve().parent == root/name, 'different enrichment code already imported')
+    return importlib.import_module('qualified_enrichment.exports')
+
+
+def qualification_text(enrichment):
+    lines = ['Enrichment qualifications (scoped, not correctness certification):']
+    for view in enrichment['elements']:
+        lines.append('Element '+view['element_id']+': '+view['review_status']+
+                     '; exact use requires source inspection or explicit qualification of affected/unreviewed scope.')
+        for finding in view['findings']:
+            lines.append('Finding '+finding['id']+'; target '+finding['target']+'; '+finding['stage']+'; '+
+                         finding['status']+'; '+finding['category']+': '+finding['reason'])
+            if finding.get('resolutions'):
+                lines.append('Original unchanged. Attributed resolution proposals for '+finding['id']+': '+
+                             json.dumps(finding['resolutions'], ensure_ascii=False, sort_keys=True))
+    for row in enrichment['eligibility']['element_accounting']:
+        if row['disposition'] != 'enriched':
+            lines.append('Disposition '+row['element_id']+': '+row['disposition'])
+    if enrichment['eligibility']['zero_eligible']:
+        lines.append('Zero eligible figure/table elements; this is not proof of their absence.')
+    return '\n'.join(lines)
+
+
+def build_enriched_handoff(retention_path, package, launcher_result, method,
+                           enrichment_handoff, enrichment_launcher_result, integration, enrichment_root,
+                           test_root=None):
+    # Do not relax any v1 acquisition, full-document, phase or fixture hold.
+    source = build_handoff(retention_path, package, launcher_result, method, test_root)
+    exports = trusted_enrichment(integration, enrichment_root)
+    enriched = exports.verify_export(enrichment_handoff, source_package=package, production=test_root is None)
+    from qualified_enrichment.launcher import verify_result
+    ep = absolute(enrichment_handoff)
+    receipt = verify_result(enrichment_launcher_result, 'export',
+                            {str(ep): sha(ep), str(ep.parent/'annotated.html'): sha(ep.parent/'annotated.html')})
+    require(receipt['deployment']['integration_dir'] == str(absolute(integration)) and
+            receipt['deployment']['enrichment_root'] == str(absolute(enrichment_root)) and
+            receipt['deployment']['method_dir'] == str(absolute(method)), 'enrichment launcher deployment mismatch')
+    if test_root:
+        require(all(absolute(p).is_relative_to(absolute(test_root)) for p in
+                    (ep,enrichment_launcher_result,enriched['review_root'])), 'test-only enrichment outside test root')
+    holds = sorted(set(source['holds'] + enriched['eligibility']['holds']))
+    return dict(source, schema='source-package-handoff-v2',
+                status='test-only' if test_root else 'qualified-production-complete',
+                production_complete=test_root is None and not holds, holds=holds,
+                source_handoff=source, enrichment=enriched,
+                enrichment_handoff=str(ep), enrichment_sha256=sha(ep),
+                enrichment_launcher_result=str(absolute(enrichment_launcher_result)),
+                enrichment_launcher_bindings=tree_hashes(absolute(enrichment_launcher_result).parent),
+                integration_bindings=tree_hashes(absolute(integration)/'qualified_enrichment'),
+                qualifications=qualification_text(enriched))
+
+
+def verify_handoff(path, method, expected_article=None, *, integration=None,
+                   enrichment_root=None, require_enriched=False):
     value = load(path)
-    require(value['schema'] == 'source-package-handoff-v1' and value['production_complete'] is True and
-            value['status'] == 'production-mechanical-complete', 'handoff is not production completion')
-    actual = build_handoff(value['retention'],value['package'],value['launcher_result'],method)
+    if value['schema'] == 'source-package-handoff-v2':
+        require(value['production_complete'] is True and value['status'] == 'qualified-production-complete',
+                'handoff is not production completion')
+        require(integration and enrichment_root, 'explicit trusted enrichment roots required')
+        actual = build_enriched_handoff(value['retention'],value['package'],value['launcher_result'],method,
+                    value['enrichment_handoff'],value['enrichment_launcher_result'],integration,enrichment_root)
+        require((absolute(path).parent/'qualifications.txt').read_text() == actual['qualifications'],
+                'removed or mismatched qualifications')
+    else:
+        require(not require_enriched, 'new production route requires enriched v2 handoff')
+        require(value['schema'] == 'source-package-handoff-v1' and value['production_complete'] is True and
+                value['status'] == 'production-mechanical-complete', 'handoff is not production completion')
+        actual = build_handoff(value['retention'],value['package'],value['launcher_result'],method)
     require(value == actual, 'stale or mismatched handoff')
     require((absolute(path).parent/'summary.txt').read_text() == actual['summary'], 'handoff exact summary changed')
     if expected_article is not None:
@@ -413,8 +485,14 @@ def main(argv=None):
     p = sub.add_parser('handoff')
     for flag in ('retention','package','launcher-result','method','output'): p.add_argument('--'+flag,required=True)
     p.add_argument('--test-only-root')
+    for flag in ('enrichment-handoff','enrichment-launcher-result','integration','enrichment-root'):
+        p.add_argument('--'+flag)
     p = sub.add_parser('verify'); p.add_argument('--handoff',required=True); p.add_argument('--method',required=True)
+    p.add_argument('--integration'); p.add_argument('--enrichment-root'); p.add_argument('--require-enriched',action='store_true')
     args = parser.parse_args(argv)
+    if args.command == 'handoff':
+        options = [args.enrichment_handoff,args.enrichment_launcher_result,args.integration,args.enrichment_root]
+        if any(options) and not all(options): parser.error('all four enrichment handoff/deployment arguments are required')
     # Adapter operations never need network, even when invoked without --offline.
     sys.addaudithook(lambda event,values: (_ for _ in ()).throw(RuntimeError('adapter-network-forbidden')) if event.startswith('socket.') else None)
     try:
@@ -428,17 +506,28 @@ def main(argv=None):
                          absolute(args.launcher_result).parent, absolute(args.method)]
             report = load(args.launcher_result)
             if report.get('facts_path'): protected.append(absolute(report['facts_path']).parent)
+            if args.enrichment_handoff:
+                protected += [absolute(args.enrichment_handoff).parent, absolute(args.enrichment_launcher_result).parent,
+                              absolute(args.integration), absolute(args.enrichment_root)]
+                enriched = load(args.enrichment_handoff)
+                protected.append(absolute(enriched['review_root']))
             for target in protected:
                 require(not output.is_relative_to(target) and not target.is_relative_to(output), 'handoff output must be external to evidence')
-            result = build_handoff(args.retention,args.package,args.launcher_result,args.method,args.test_only_root)
+            if args.enrichment_handoff:
+                result = build_enriched_handoff(args.retention,args.package,args.launcher_result,args.method,
+                    args.enrichment_handoff,args.enrichment_launcher_result,args.integration,args.enrichment_root,args.test_only_root)
+            else:
+                result = build_handoff(args.retention,args.package,args.launcher_result,args.method,args.test_only_root)
             if result['inspection_dir']:
                 inspection = absolute(result['inspection_dir'])
                 require(not output.is_relative_to(inspection) and not inspection.is_relative_to(output), 'handoff output must be external to inspection evidence')
             root = new_directory(output)
             save(root/'handoff.json',result); put(root/'summary.txt',result['summary'].encode())
+            if 'qualifications' in result: put(root/'qualifications.txt',result['qualifications'].encode())
             result = dict(handoff=str(root/'handoff.json'),status=result['status'],production_complete=result['production_complete'],holds=result['holds'])
         else:
-            result = verify_handoff(args.handoff,args.method)
+            result = verify_handoff(args.handoff,args.method,integration=args.integration,
+                                    enrichment_root=args.enrichment_root,require_enriched=args.require_enriched)
             result = dict(status=result['status'],production_complete=result['production_complete'])
         print(json.dumps(result,indent=2)); return 0
     except (OSError,ValueError,KeyError,TypeError,ImportError,RuntimeError) as exc:

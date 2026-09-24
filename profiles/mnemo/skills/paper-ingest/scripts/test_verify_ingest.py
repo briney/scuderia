@@ -857,5 +857,31 @@ class TestSourcePackageOption(CliCase):
         self.assertEqual(expected,dict(slug='fixture-paper',title=PAGE_TITLE,doi='10.9999/synthetic.0001',pmid=PMID))
 
 
+class TestEnrichedSourceOption(CliCase):
+    """Verifier/page boundary only; source verification is exercised separately."""
+    def test_new_route_requires_explicit_evidence(self):
+        rc,out,err=self.verify('--require-enriched-source')
+        self.assertEqual(rc,2,out+err)
+        self.assertIn('both trusted enrichment roots',err)
+
+    def test_qualified_page_preserves_exact_warnings_and_annotated_pointer(self):
+        path=Path(self.brain)/'handoff.json'; path.write_text('{}')
+        qualification='Enrichment qualifications (synthetic unit boundary): cell /record/cells/0 is unresolved.'
+        result=dict(schema='source-package-handoff-v2',production_complete=True,qualifications=qualification,
+                    enrichment_handoff=str(Path(self.brain)/'enrichment/handoff.json'))
+        base=BODY+'\nSource package: ../handoff.json\nAnnotated enrichment: ../enrichment/annotated.html\n'
+        flags=('--source-package-handoff',str(path),'--source-package-method',self.brain,
+               '--require-enriched-source','--enrichment-integration',self.brain,'--enrichment-root',self.brain)
+        for suffix,expected in (('\n'+qualification+'\n',0),('',1),('\n'+qualification.replace('unresolved','resolved')+'\n',1)):
+            with patch('source_package.verify_handoff',return_value=result) as verify:
+                rc,out,err=self.verify(*flags,body=base+suffix)
+                self.assertEqual(rc,expected,out+err)
+                self.assertTrue(verify.call_args.kwargs['require_enriched'])
+        with patch('source_package.verify_handoff',return_value=result):
+            rc,out,err=self.verify(*flags,body=base.replace('Annotated enrichment: ../enrichment/annotated.html','')+'\n'+qualification)
+            self.assertEqual(rc,1,out+err)
+            self.assertIn('annotated enrichment pointer',out)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
