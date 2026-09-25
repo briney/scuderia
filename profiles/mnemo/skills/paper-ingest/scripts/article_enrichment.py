@@ -462,15 +462,54 @@ def outcomes(work,binding,manifest_path):
     return execution_state(work,binding,manifest_path)['elements']
 
 
+def validate_accounting(accounting):
+    statuses=('pending','uncertain','failed','completed')
+    rows=accounting['requests']
+    require(all(row['status'] in statuses for row in rows.values()),'unknown-request-status')
+    counts={status:sum(row['status']==status for row in rows.values()) for status in statuses}
+    require(accounting['counts']==counts and accounting['complete'] is (counts['completed']==len(rows)) and
+            accounting['integrity_hold'] is any(row.get('failure',{}).get('fatal',False) for row in rows.values()),'request-accounting-binding')
+
+
+def readiness(accounting, assessment):
+    pending={rid for rid,row in accounting['requests'].items() if row['status']=='pending'}
+    accounted=not pending or bool(assessment is not None and set(assessment['unattempted'])==pending)
+    holds=[]
+    if not accounted: holds.append('unaccounted-pending-requests')
+    if accounting['integrity_hold']: holds.append('execution-integrity-hold')
+    if assessment is None or not assessment['usable_evidence']: holds.append('usable-evidence-review-required')
+    return dict(requests_accounted_for=accounted,requests_successful=accounting['complete'],
+                page_ready=not holds,holds=holds)
+
+
+def review_elements(work,binding,manifest_path,state):
+    """Expose retained source even when no visual response was accepted."""
+    v=verify(work,binding,manifest_path,for_execution=False); m=pa.load(manifest_path)
+    es={e['element_id']:e for e in m['elements']}; good={e['element_id']:e for e in state['elements']}
+    elements=[]
+    for row in v['requests']:
+        eid=row['element_id']; e=es[eid]
+        value=good.get(eid)
+        if value is None:
+            status=state['accounting']['requests'][row['id']]['status']
+            value=dict(element_id=eid,source_sha256=row['source_sha256'],document=row['document'],
+                content_type=e['content_type'],outcome=dict(status=status,complete=False,
+                    reason='Visual enrichment '+status+'; retained source remains available.'),
+                evidence=pa.load(absolute(work)/'enrichment'/row['directory']/'source-evidence.json'),
+                source_element=e['source_element'],source_pdf=None,**scope_fields(v))
+        elements.append(value)
+    return elements
+
+
 def review_create(work,binding,manifest_path):
-    state=execution_state(work,binding,manifest_path); elements=state['elements']
-    require(elements or state['accounting']['complete'],'no-successful-material-to-review')
+    state=execution_state(work,binding,manifest_path); elements=review_elements(work,binding,manifest_path,state)
     from qualified_enrichment import reviews, records
     root=pa.new_directory(absolute(work)/'review')
-    dossier=dict(schema='portable-review-dossier-v2',binding=binding,request_accounting=state['accounting'],
-        snapshot=dict(source_package='portable:'+sha(manifest_path),elements=elements),notice=reviews.NOTICE)
+    dossier=dict(schema='portable-review-dossier-v3',policy='observed-limitations-v1',binding=binding,request_accounting=state['accounting'],
+        snapshot=dict(source_package='portable:'+sha(manifest_path),manifest=str(absolute(manifest_path)),
+                      manifest_sha256=sha(manifest_path),elements=elements),notice=reviews.NOTICE)
     _seal_file(root/'dossier.json',dossier)
-    packet=reviews.packet_value(dossier,sha(root/'dossier.json'),[e['element_id'] for e in elements],8000000) if elements else None
+    packet=reviews.packet_value(dossier,sha(root/'dossier.json'),[e['element_id'] for e in elements],8000000)
     if packet: pa.save(root/'packet.json',packet)
     (root/'decisions').mkdir()
     return dossier
@@ -483,14 +522,24 @@ def review_verify(work,binding,manifest_path):
 def _review_verify(work,binding,manifest_path,state):
     root=absolute(work)/'review'
     dossier=read_bound(root/'dossier.json')
-    require(dossier.get('schema') == 'portable-review-dossier-v2', 'unsupported-portable-dossier-format')
+    require(dossier.get('schema') in ('portable-review-dossier-v2','portable-review-dossier-v3'), 'unsupported-portable-dossier-format')
+    from qualified_enrichment import reviews
+    current=reviews.policy(dossier)!='legacy'
     # An immutable partial review remains readable if untouched siblings later
     # finish; it never expands its reviewed scope or completion claim.
     ids={e['element_id'] for e in dossier['snapshot']['elements']}
-    elements=[e for e in state['elements'] if e['element_id'] in ids]
+    if current:
+        old=dossier['request_accounting']
+        finished={r['element_id'] for r in old['requests'].values() if r['status']=='completed'}
+        frozen=dict(elements=[e for e in state['elements'] if e['element_id'] in finished],accounting=old)
+        candidates=review_elements(work,binding,manifest_path,frozen)
+        require(dossier['snapshot']['manifest']==str(absolute(manifest_path)) and dossier['snapshot']['manifest_sha256']==sha(manifest_path),'review-manifest-binding')
+    else: candidates=state['elements']
+    elements=[e for e in candidates if e['element_id'] in ids]
     saved=dossier['request_accounting']; current=state['accounting']
+    validate_accounting(saved)
     require(set(saved['requests'])==set(current['requests']) and all(
-        row==current['requests'][rid] or row['status']=='pending' for rid,row in saved['requests'].items()),'review-accounting-changed')
+        row==current['requests'][rid] or row==dict(element_id=current['requests'][rid]['element_id'],status='pending') for rid,row in saved['requests'].items()),'review-accounting-changed')
     require(dossier['binding']==binding and dossier['snapshot']['elements']==elements and
         dossier['snapshot']['source_package']=='portable:'+sha(manifest_path),'review-source-or-outcome-changed')
     from qualified_enrichment import reviews
@@ -520,23 +569,34 @@ def review_import(work,binding,manifest_path,submission_path):
 
 def export(work,binding,manifest_path):
     root=absolute(work); dossier,entries,views=review_verify(work,binding,manifest_path)
-    from qualified_enrichment.exports import exact_view,content_targets
-    # An explicit review import is required for nonempty runs; empty findings
-    # are an attributed review, never a correctness certificate.
     require(entries or not views,'operator-review-import-required')
+    value=_export_value(work,binding,manifest_path,(dossier,entries,views))
+    destination=pa.new_directory(root/'export'); _seal_file(destination/'handoff.json',value)
+    pa.put(destination/'annotated.html',_export_html(value).encode())
+    return value
+
+
+def _export_html(value):
+    import html
+    return '<!doctype html><html lang="en"><meta charset="utf-8"><title>Qualified article evidence</title><pre>'+html.escape(json.dumps(value,indent=2))+'</pre></html>'
+
+
+def _export_value(work,binding,manifest_path,review):
+    root=absolute(work); dossier,entries,views=review
+    from qualified_enrichment import reviews
+    from qualified_enrichment.exports import exact_view,content_targets
+    current=reviews.policy(dossier)!='legacy'
+    for view in views: view['consumer_views']=[exact_view(view,p) for p in content_targets(view['outcome'])]
     v=read_bound(root/'enrichment'/'prepared.json')
     prior=pa.consume(manifest_path,v['roster']) if v['roster'] else pa.consume(manifest_path)
-    for view in views:
-        view['consumer_views']=[exact_view(view,p) for p in content_targets(view['outcome'])]
-    v=read_bound(root/'enrichment'/'prepared.json')
-    value=dict(schema='portable-qualified-export-v3',binding=binding,fixture=v['fixture'],profile=v['profile'],
+    value=dict(schema='portable-qualified-export-v4' if current else 'portable-qualified-export-v3',binding=binding,fixture=v['fixture'],profile=v['profile'],
         roster=v['roster'],elements=views,execution_complete=dossier['request_accounting']['complete'],
         request_accounting=dossier['request_accounting'],inherited_history=prior['history'],dispositions=prior['dispositions'],
         source_status=prior['source_status'],review_bindings=tree(root/'review'),
         scientific_acceptance='not-established',notice='Prior findings and review history remain active; a new outcome never resolves them automatically.',**scope_fields(v))
-    destination=pa.new_directory(root/'export'); _seal_file(destination/'handoff.json',value)
-    import html
-    pa.put(destination/'annotated.html',('<!doctype html><html lang="en"><meta charset="utf-8"><title>Qualified article evidence</title><pre>'+html.escape(json.dumps(value,indent=2))+'</pre></html>').encode())
+    if current:
+        assessment=reviews.assessment(dossier,entries)
+        value.update(policy=reviews.policy(dossier),assessment=assessment,readiness=readiness(dossier['request_accounting'],assessment))
     return value
 
 
@@ -561,18 +621,6 @@ def verify_export(work,binding,manifest_path):
 
 def _verify_export(work,binding,manifest_path,review):
     root=absolute(work); value=read_bound(root/'export'/'handoff.json')
-    dossier,_,views=review
-    from qualified_enrichment.exports import exact_view,content_targets
-    for view in views: view['consumer_views']=[exact_view(view,p) for p in content_targets(view['outcome'])]
-    v=read_bound(root/'enrichment'/'prepared.json')
-    prior=pa.consume(manifest_path,v['roster']) if v['roster'] else pa.consume(manifest_path)
-    expected_value=dict(schema='portable-qualified-export-v3',binding=binding,fixture=v['fixture'],profile=v['profile'],
-        roster=v['roster'],elements=views,execution_complete=dossier['request_accounting']['complete'],
-        request_accounting=dossier['request_accounting'],inherited_history=prior['history'],dispositions=prior['dispositions'],
-        source_status=prior['source_status'],review_bindings=tree(root/'review'),
-        scientific_acceptance='not-established',notice='Prior findings and review history remain active; a new outcome never resolves them automatically.',**scope_fields(v))
-    require(value==expected_value,'export-warning-or-binding-changed')
-    import html
-    expected='<!doctype html><html lang="en"><meta charset="utf-8"><title>Qualified article evidence</title><pre>'+html.escape(json.dumps(value,indent=2))+'</pre></html>'
-    require((root/'export'/'annotated.html').read_text()==expected,'readable-export-changed')
+    require(value==_export_value(work,binding,manifest_path,review),'export-warning-or-binding-changed')
+    require((root/'export/annotated.html').read_text()==_export_html(value),'annotated-export-changed')
     return value

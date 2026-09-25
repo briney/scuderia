@@ -18,7 +18,7 @@ SCHEMA=dict(name='paper_enrichment',description=(
     parameters=dict(type='object',additionalProperties=False,required=['operation','attempt_dir'],properties={
         'operation':dict(type='string',enum=['prepare','count','seal','execute','report','import-test-response','review-create','review-packet','review-import','export','verify-export','consume']),
         **{k:dict(type='string',minLength=1,maxLength=4096) for k in PATHS},
-        'elements':dict(type='array',items=dict(type='string'),minItems=1,uniqueItems=True),
+        'elements':dict(type='array',items=dict(type='string'),minItems=0,uniqueItems=True),
         'aspects':dict(type='array',items=dict(type='string',enum=['content','source-association','notation','layout','units','headers']),minItems=1,uniqueItems=True),
         'element':dict(type='string'),'target':dict(type='string'),
         'purpose':dict(type='string',enum=['discovery','summary','exact','algorithm-specification']),

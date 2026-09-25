@@ -75,11 +75,16 @@ def review_and_export(work,base):
     packet_path=work/'review'/'packet.json'
     if packet_path.exists():
         packet=pa.load(packet_path)
-        value=dict(schema='contextual-review-v1',packet_sha256=digest(packet),reviewer=reviewer(),findings=[],coverage=[],resolutions=[])
+        current=packet['schema']=='contextual-review-packet-v2'
+        value=dict(schema='contextual-review-v2' if current else 'contextual-review-v1',packet_sha256=digest(packet),reviewer=reviewer(),findings=[],coverage=[],resolutions=[])
+        if current:
+            _,_,manifest,m,_,_,_=rr.context(work)
+            source=next(f for f in m['files'] if f['key'].endswith('page.txt'))
+            value['assessment']=dict(usable_evidence=True,reason='Synthetic native evidence review.',source_refs=[{k:source[k] for k in ('key','sha256')}],unattempted={})
         # Explicit new warning with source association, carried into every export.
         for e in packet['elements']:
             value['findings'].append(dict(element_id=e['element_id'],source_sha256=e['source_sha256'],target='',
-                category='synthetic-known-uncertainty',reason='Unit assignment remains uncertain in the synthetic fixture.',stage='answer',evidence=[]))
+                category='synthetic-known-uncertainty',reason='Unit assignment remains uncertain in the synthetic fixture.',stage='answer',evidence=[dict(pointer='/body_fragments/0',source_sha256=e['source_sha256'],kind='crop')] if current else []))
         path=base/(work.name+'-review.json'); pa.save(path,value)
         rr.advance(work,'review-import',submission=path)
     return rr.advance(work,'export')

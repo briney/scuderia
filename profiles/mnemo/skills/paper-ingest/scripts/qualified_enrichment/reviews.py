@@ -12,10 +12,51 @@ NOTICE = ('Reference and literal-selection validation is not scientific verifica
           'layout or typography; model readings have no automatic precedence.')
 
 
+def policy(dossier):
+    require(dossier.get('schema') in (None,'portable-review-dossier-v2','portable-review-dossier-v3','uncertainty-dossier-v1','uncertainty-dossier-v2'),'unsupported-dossier-format')
+    current=dossier.get('schema') in ('portable-review-dossier-v3','uncertainty-dossier-v2')
+    if current: require(dossier.get('policy')=='observed-limitations-v1','unknown-review-policy')
+    else: require('policy' not in dossier,'unknown-review-policy')
+    return 'observed-limitations-v1' if current else 'legacy'
+
+
+def validate_assessment(dossier, value):
+    if value is None: return None
+    require(set(value)=={'usable_evidence','reason','source_refs','unattempted'},'assessment-fields')
+    require(type(value['usable_evidence']) is bool and isinstance(value['reason'],str) and value['reason'].strip(),'assessment-reason')
+    require(isinstance(value['source_refs'],list) and isinstance(value['unattempted'],dict),'assessment-evidence-fields')
+    import portable_articles as pa
+    manifest=absolute(dossier['snapshot']['manifest'])
+    require(sha(manifest)==dossier['snapshot']['manifest_sha256'],'assessment-manifest-binding')
+    m,paths=pa.verify_local(manifest); files={r['key']:r for r in m['files']}
+    for ref in value['source_refs']:
+        require(set(ref)=={'key','sha256'} and ref['key'] in files and ref['key'] in paths,'assessment-source-reference')
+        record=files[ref['key']]; path=paths[ref['key']]
+        require(record['role'] in ('source-original','source-package','source-retention') and sha(path)==ref['sha256']==record['sha256'],'assessment-source-binding')
+        require(path.suffix.lower() in ('.txt','.md','.json','.html','.csv'),'assessment-readable-source-required')
+        text=path.read_text().strip()
+        require(text and text not in ('{}','[]','null'),'assessment-empty-source')
+    require(not value['usable_evidence'] or value['source_refs'],'assessment-source-evidence-required')
+    accounting=dossier.get('request_accounting',dossier['snapshot'].get('request_accounting'))
+    pending={rid for rid,row in accounting['requests'].items() if row['status']=='pending'}
+    require(set(value['unattempted'])<=pending and all(isinstance(reason,str) and reason.strip() for reason in value['unattempted'].values()),'assessment-unattempted-disposition')
+    return value
+
+
+def assessment(dossier, entries):
+    value=None
+    for entry in entries:
+        if entry['submission'].get('assessment') is not None:
+            value=validate_assessment(dossier,entry['submission']['assessment'])
+    return value
+
+
 def create(path, kind, output):
     state = snapshot(path, kind)
     root = new(output, [absolute(path), absolute(state['source_package'])])
-    dossier = dict(schema='uncertainty-dossier-v1', snapshot=state, code=code_hashes(), notice=NOTICE)
+    current=state.get('selection',{}).get('schema')=='qualified-selection-v2'
+    dossier = dict(schema='uncertainty-dossier-v2' if current else 'uncertainty-dossier-v1', snapshot=state, code=code_hashes(), notice=NOTICE)
+    if current: dossier['policy']='observed-limitations-v1'
     save(root/'dossier.json', dossier)
     (root/'decisions').mkdir()
     return dossier
@@ -24,23 +65,38 @@ def create(path, kind, output):
 def verify(root):
     root = absolute(root)
     value = load(root/'dossier.json')
-    require(value['schema'] == 'uncertainty-dossier-v1', 'unsupported-dossier-format')
+    require(value['schema'] in ('uncertainty-dossier-v1','uncertainty-dossier-v2'), 'unsupported-dossier-format')
+    policy(value)
     from pdf_enrichment.trusted import validate_code_provenance
     validate_code_provenance(value['code'])
     expected = snapshot(value['snapshot']['path'], value['snapshot']['kind'])
+    if policy(value)!='legacy':
+        import article_enrichment as ae
+        ae.validate_accounting(value['snapshot']['request_accounting'])
+        saved=value['snapshot']; before=saved['request_accounting']['requests']; after=expected['request_accounting']['requests']
+        require(set(before)==set(after) and all(row==after[rid] or row==dict(element_id=after[rid]['element_id'],status='pending') for rid,row in before.items()),'review-accounting-changed')
+        pending={r['element_id'] for r in before.values() if r['status']=='pending'}
+        expected=copy.deepcopy(expected)
+        for element in expected['elements']:
+            if element['element_id'] in pending: element['outcome']=dict(status='pending',complete=False)
+        expected['request_accounting']=saved['request_accounting']
     require(expected == value['snapshot'], 'stale-source-or-outcome')
     return value
 
 
 def packet_value(dossier, dossier_hash, elements, max_bytes):
     require(type(max_bytes) is int and 1024 <= max_bytes <= 8_000_000, 'bounded-packet-size-required')
-    require(isinstance(elements, list) and elements and len(elements) == len(set(elements)), 'explicit-unique-packet-elements')
+    require(isinstance(elements, list) and (elements or policy(dossier)!='legacy') and len(elements) == len(set(elements)), 'explicit-unique-packet-elements')
     available = {e['element_id']: e for e in dossier['snapshot']['elements']}
     require(set(elements) <= available.keys(), 'unknown-packet-element')
-    result = dict(schema='contextual-review-packet-v1', dossier_sha256=dossier_hash,
+    result = dict(schema='contextual-review-packet-v2' if policy(dossier)!='legacy' else 'contextual-review-packet-v1', dossier_sha256=dossier_hash,
                   source_package=dossier['snapshot']['source_package'], notice=NOTICE,
                   elements=[dict(available[e], targets=list(nodes(available[e]['outcome'])),
-                                 automatic_findings=project(available[e])['findings']) for e in elements])
+                                 automatic_findings=project(available[e],policy=policy(dossier))['findings']) for e in elements])
+    if policy(dossier)!='legacy':
+        import portable_articles as pa
+        m=pa.load(dossier['snapshot']['manifest'])
+        result['source_files']=[dict(key=f['key'],sha256=f['sha256']) for f in m['files'] if f['role'] in ('source-original','source-package','source-retention')]
     require(len((json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False)+'\n').encode()) <= max_bytes, 'packet-too-large-select-fewer-elements')
     return result
 
@@ -116,24 +172,29 @@ def owners_for(element, pointer):
 
 def apply(dossier, decisions):
     elements = {e['element_id']: e for e in dossier['snapshot']['elements']}
-    views = {key: project(value) for key, value in elements.items()}
+    views = {key: project(value,policy=policy(dossier)) for key, value in elements.items()}
+    current=policy(dossier)!='legacy'
     known = {f['id']: f for v in views.values() for f in v['findings']}
     for entry in decisions:
         submission = entry['submission']
         provenance(submission['reviewer'])
         packet = entry['packet']
-        require(packet['schema'] == 'contextual-review-packet-v1' and
+        require(packet['schema'] == ('contextual-review-packet-v2' if current else 'contextual-review-packet-v1') and
                 packet['source_package'] == dossier['snapshot']['source_package'] and packet['notice'] == NOTICE,
                 'review-packet-source-association')
         require(packet['dossier_sha256'] == entry['dossier_sha256'], 'review-packet-dossier-binding')
-        require(submission['schema'] == 'contextual-review-v1' and submission['packet_sha256'] == digest(packet), 'review-packet-binding')
+        require(submission['schema'] == ('contextual-review-v2' if current else 'contextual-review-v1') and submission['packet_sha256'] == digest(packet), 'review-packet-binding')
+        if current:
+            require(packet==packet_value(dossier,entry['dossier_sha256'],[e['element_id'] for e in packet['elements']],8_000_000),'altered-review-packet')
         permitted = {e['element_id'] for e in packet['elements']}
         require(permitted <= elements.keys(), 'packet-element-binding')
         for item in packet['elements']:
             expected = dict(elements[item['element_id']], targets=list(nodes(elements[item['element_id']]['outcome'])),
-                            automatic_findings=project(elements[item['element_id']])['findings'])
+                            automatic_findings=project(elements[item['element_id']],policy=policy(dossier))['findings'])
             require(item == expected, 'altered-review-packet')
-        require(set(submission) == {'schema','packet_sha256','reviewer','findings','coverage','resolutions'}, 'review-fields')
+        fields={'schema','packet_sha256','reviewer','findings','coverage','resolutions'}
+        require(set(submission) in (fields,fields|{'assessment'}) if current else set(submission)==fields, 'review-fields')
+        if current: validate_assessment(dossier,submission.get('assessment'))
         for group in ('findings','coverage','resolutions'):
             require(isinstance(submission[group], list), 'review-list:'+group)
         for item in submission['findings']:
@@ -146,6 +207,7 @@ def apply(dossier, decisions):
             require(all(isinstance(item[k], str) and item[k].strip() for k in ('category','reason')), 'specific-free-text-reason-required')
             require(item['stage'] in ('extraction','answer'), 'finding-stage')
             refs = evidence(element, item['evidence'])
+            if current: require(refs,'material-finding-evidence-required')
             value = finding(element, item['target'], item['category'], item['reason'],
                             stage=item['stage'], provenance=submission['reviewer'], evidence=refs)
             readings = item.get('competing_readings', [])

@@ -52,14 +52,19 @@ def finding(element, target, category, reason, *, stage='extraction', provenance
     return value
 
 
-def project(element):
+def project(element, *, policy='legacy'):
     """Project explicit saved states; this is not a character-loss classifier."""
+    require(policy in ('legacy','observed-limitations-v1'),'unknown-review-policy')
     findings = []
     uncertain = {'partial', 'unresolved', 'unverified', 'unknown', 'unreadable',
                  'unsupported', 'failed', 'interrupted', 'prepared-not-sent',
                  'source-incomplete', 'not-selected', 'unknown-type', 'incomplete', 'missing', 'unavailable'}
     lists = {'unresolved', 'unresolved_symbols', 'missing', 'coverage_warnings',
              'element_warnings', 'gaps', 'layout_uncertainties', 'limitations'}
+    if policy != 'legacy':
+        uncertain -= {'unverified','unknown','not-selected','prepared-not-sent'}
+        uncertain |= {'uncertain','pending'}
+        lists -= {'limitations','coverage_warnings','element_warnings'}
     for path, value in nodes(element['outcome']).items():
         if not isinstance(value, dict):
             continue
@@ -75,12 +80,12 @@ def project(element):
                 reasons.append(key+': '+json.dumps(item, ensure_ascii=False))
             elif key in ('unreadable', 'unresolved') and item is True:
                 reasons.append(key+': true')
-            elif key == 'text_verification' and isinstance(item, str) and item.startswith('unverified'):
+            elif policy == 'legacy' and key == 'text_verification' and isinstance(item, str) and item.startswith('unverified'):
                 reasons.append(key+': '+item)
         if reasons:
             findings.append(finding(element, path, 'saved-uncertainty', '; '.join(reasons)))
     warnings = element.get('source_element', {}).get('coverage_warnings', [])
-    if warnings:
+    if warnings and policy == 'legacy':
         findings.append(finding(element, '', 'source-coverage', json.dumps(warnings, ensure_ascii=False)))
     for item in findings:
         if item['reason'] == 'status: partial' and any(
@@ -88,8 +93,10 @@ def project(element):
             item['summary_only'] = True
     if element['outcome'].get('status') == 'failed':
         require(not element['outcome'].get('record'), 'failed-outcome-cannot-have-accepted-record')
-    return dict(element_id=element['element_id'], source_sha256=element['source_sha256'],
+    result = dict(element_id=element['element_id'], source_sha256=element['source_sha256'],
                 outcome=element['outcome'], evidence=element['evidence'],
                 source_element=element.get('source_element'), source_pdf=element.get('source_pdf'),
                 content_type=element.get('content_type'),
                 findings=findings, coverage=[], review_status='unreviewed')
+    if policy != 'legacy': result['policy']=policy
+    return result

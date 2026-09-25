@@ -62,6 +62,15 @@ def exact_view(view, target, *, purpose='discovery', aspects=('content',), quali
                 algorithm_not_default=algorithm, notice=reviews.NOTICE)
 
 
+def page_view(view, target, *, qualification=None):
+    """Ordinary paper claims need material qualifications, not coverage certification."""
+    value=exact_view(view,target,purpose='summary',qualification=qualification or None)
+    needs=bool(value['unresolved_findings'] or value['unapplied_correction_findings'])
+    require(not needs or (isinstance(qualification,str) and qualification.strip()),
+            'material-finding-requires-qualification')
+    return value
+
+
 def content_targets(outcome):
     """Small semantic targets; full unchanged record stays alongside these."""
     result = []
@@ -76,12 +85,13 @@ def content_targets(outcome):
 
 def warning_html(view, path):
     relevant = affected(view, path)
-    messages = ['Unreviewed scope: '+path] if not any(c['target'] == path for c in view['coverage']) else ['Scoped review only: '+path]
+    messages = [] if view.get('policy')=='observed-limitations-v1' else ['Unreviewed scope: '+path] if not any(c['target'] == path for c in view['coverage']) else ['Scoped review only: '+path]
     for f in relevant:
         messages.append(f['id']+' | '+f['status']+' | '+f['category']+' | '+f['stage']+' | '+f['reason'])
         if f.get('resolutions'):
             messages.append('Original unchanged. Attributed resolution proposals for '+f['target']+': '+
                             json.dumps(f['resolutions'], ensure_ascii=False, sort_keys=True))
+    if not messages: return ''
     return '<aside class="warning">'+''.join('<p>'+html.escape(m)+'</p>' for m in messages)+'</aside>'
 
 
@@ -132,8 +142,12 @@ def render(machine):
         parts.append('<p>Source SHA256: '+view['source_sha256']+'</p>')
         if view.get('source_pdf'):
             parts.append('<a href="'+html.escape(Path(view['source_pdf']).as_uri(),quote=True)+'">Original PDF</a>')
+        paths=None
+        if machine.get('schema')=='qualified-enrichment-export-v2':
+            import portable_articles as pa
+            _,paths=pa.verify_local(machine['manifest'])
         for fragment in view['evidence'].get('body_fragments', []) + view['evidence'].get('captions', []):
-            crop = absolute(Path(machine['source_package'])/fragment['crop'])
+            crop = paths[fragment['crop']] if paths is not None else absolute(Path(machine['source_package'])/fragment['crop'])
             parts.append('<p><a href="'+html.escape(crop.as_uri(),quote=True)+'">Source crop, physical page '+
                          html.escape(str(fragment['page']))+'</a></p>')
         parts.append(render_record(view, view['outcome'].get('record', {})))
@@ -176,13 +190,23 @@ def eligibility(state):
 
 def build(root):
     root = absolute(root); dossier = reviews.verify(root)
-    _, views = reviews._reviewed_decisions(root,dossier)
+    entries, views = reviews._reviewed_decisions(root,dossier)
     for view in views:
         view['consumer_views'] = [exact_view(view,p) for p in content_targets(view['outcome'])]
     machine = dict(schema='qualified-enrichment-export-v1', review_root=str(root),
                    review_bindings=tree(root), source_package=dossier['snapshot']['source_package'],
                    source_bindings=dossier['snapshot']['source_bindings'], code=code_hashes(),
                    eligibility=eligibility(dossier['snapshot']), elements=views, notice=reviews.NOTICE)
+    if reviews.policy(dossier)!='legacy':
+        import article_enrichment as ae
+        assessment=reviews.assessment(dossier,entries)
+        accounting=dossier['snapshot']['request_accounting']
+        ready=ae.readiness(accounting,assessment)
+        machine.update(schema='qualified-enrichment-export-v2',policy=reviews.policy(dossier),manifest=dossier['snapshot']['manifest'],
+                       request_accounting=accounting,execution_complete=accounting['complete'],assessment=assessment,readiness=ready)
+        e=machine['eligibility']; e['holds']=sorted(set(e['holds']+ready['holds']))
+        e['qualified_production_eligible']=not e['holds']
+        e['status']='qualified-production-eligible' if not e['holds'] else 'execution-hold'
     return machine
 
 
@@ -197,7 +221,7 @@ def export(root, output):
 
 def verify_export(path, source_package=None, production=True):
     path = absolute(path); saved = load(path)
-    require(saved['schema'] == 'qualified-enrichment-export-v1', 'export-schema')
+    require(saved['schema'] in ('qualified-enrichment-export-v1','qualified-enrichment-export-v2'), 'export-schema')
     actual = build(saved['review_root'])
     from pdf_enrichment.trusted import validate_code_provenance
     actual['code'] = validate_code_provenance(saved['code'])

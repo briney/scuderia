@@ -44,7 +44,7 @@ def main(argv=None):
     command('report',('job','output'))
     command('import-test-response',('job','responses'))
     command('review-create',('run','output'),('kind',))
-    c=command('review-packet',('review-root','output')); c.add_argument('--element',action='append',required=True); c.add_argument('--max-bytes',type=int,default=1000000)
+    c=command('review-packet',('review-root','output')); c.add_argument('--element',action='append',default=[]); c.add_argument('--max-bytes',type=int,default=1000000)
     command('review-import',('review-root','packet','submission'))
     command('export',('review-root','output'))
     command('verify-export',('export-path',))
