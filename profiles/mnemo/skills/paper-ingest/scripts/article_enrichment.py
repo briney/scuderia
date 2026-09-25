@@ -16,7 +16,7 @@ import urllib.request
 import urllib.error
 
 import portable_articles as pa
-from article_runtime import require, absolute, inside, sha, digest, tree, trusted_modules, code_bindings
+from article_runtime import require, absolute, inside, sha, digest, tree, trusted_modules, code_bindings, locked
 
 DEFAULT_PROFILE = dict(name='qwen-v7-compatible', model='qwen3.8-27b', temperature=0,
     max_tokens=65536, response_format={'type':'json_object'}, context_limit=262144,
@@ -283,11 +283,12 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,*args,**kwargs): return None
 
 
-def _post(payload,value):
+def _post(payload,value,pre_post):
     key=os.environ.get(value['credential_env']); require(key,'runtime-credential-unavailable')
     req=urllib.request.Request(value['endpoint'],data=payload,method='POST',
         headers={'Content-Type':'application/json','Authorization':'Bearer '+key})
     opener=urllib.request.build_opener(NoRedirect(),urllib.request.ProxyHandler({}))
+    pre_post()
     try:
         with opener.open(req,timeout=value['timeout_seconds']) as response:
             raw=response.read(32*1024*1024+1); status=response.status
@@ -316,6 +317,11 @@ def _response(row,ev,raw,p,expected_tokens,fixture):
 
 
 def execute(work,binding,manifest_path,approval_path,*,authorize=False,fixture_transport=None):
+    with locked(absolute(work)/'enrichment'):
+        return _execute(work,binding,manifest_path,approval_path,authorize=authorize,fixture_transport=fixture_transport)
+
+
+def _execute(work,binding,manifest_path,approval_path,*,authorize=False,fixture_transport=None):
     v=verify(work,binding,manifest_path); root=absolute(work)/'enrichment'
     value=pa.load(approval_path); counts=approval(root,v,value)
     fixture=fixture_transport is not None
@@ -333,9 +339,11 @@ def execute(work,binding,manifest_path,approval_path,*,authorize=False,fixture_t
         pa.put(root/'executed-approval.json',absolute(approval_path).read_bytes())
         _seal_file(root/'execution-start.json',dict(approval_sha256=sha(root/'executed-approval.json'),fixture=fixture,
             binding=binding,started_at=pa.now_utc(),origin='offline-inference-double' if fixture else 'parent-authorized-live'))
-    for row in v['requests']:
+    def pre_post():
         verify(work,binding,manifest_path); approval(root,v,pa.load(root/'executed-approval.json'))
         require(sha(approval_path)==sha(root/'executed-approval.json'),'execution-approval-changed')
+    for row in v['requests']:
+        pre_post()
         # Revalidate all prior outcomes before another post. A consumed request
         # is never posted again, including an interrupted write or lost response.
         state=execution_state(work,binding,manifest_path)
@@ -344,7 +352,8 @@ def execute(work,binding,manifest_path,approval_path,*,authorize=False,fixture_t
         _seal_file(d/'reservation.json',dict(status='reserved-may-have-posted',request_sha256=row['request_sha256'],
             approval_sha256=sha(root/'executed-approval.json'),started_at=pa.now_utc()))
         try:
-            result=fixture_transport(raw,row) if fixture else _post(raw,value)
+            if fixture: pre_post()
+            result=fixture_transport(raw,row) if fixture else _post(raw,value,pre_post)
         except (OSError,ValueError) as exc:
             # Never save exception text: transports may include credentials.
             fatal=isinstance(exc,ValueError)
