@@ -344,11 +344,70 @@ class ReenrichTests(unittest.TestCase):
         with self.assertRaises(ValueError): rr.execute(altered,work_root=self.work)
         altered=copy.deepcopy(p); altered['elements']=['supplement::table-1']
         with self.assertRaises(ValueError): rr.execute(altered,work_root=self.work)
-    def test_interruption_consumes_run_without_retry(self):
+    def test_request_continuation_and_partial_export(self):
+        for failed in ('r000001','r000002'):
+            for failure in ('timeout','http','interrupt'):
+                with self.subTest(failed=failed,failure=failure):
+                    work=self.base/(failed+'-'+failure)
+                    rr.plan(rr.Request('synthetic'),manifest=self.manifest,work_root=work,fixture=True,model_profile=fixture_profile())
+                    rr.advance(work,'prepare'); ap=count_and_approve(work,self.base)
+                    calls=[]; success=inference_double(work)
+                    def transport(raw,row):
+                        calls.append(row['id'])
+                        if row['id']==failed:
+                            if failure=='timeout': raise TimeoutError('possibly sent')
+                            if failure=='interrupt': raise KeyboardInterrupt()
+                            return dict(http_status=500,raw=b'{"error":"synthetic failure"}')
+                        return success(raw,row)
+                    if failure=='interrupt':
+                        with self.assertRaises(KeyboardInterrupt): rr.advance(work,'approved-execute',approval=ap,fixture_transport=transport)
+                    else:
+                        rr.advance(work,'approved-execute',approval=ap,fixture_transport=transport)
+                    state=rr.execute(work_root=work)['stage_receipts']['enrichment']['accounting']
+                    self.assertEqual(state['requests'][failed]['status'],'failed' if failure=='http' else 'uncertain')
+                    self.assertFalse(state['complete'])
+                    if failure=='interrupt' and failed=='r000001':
+                        self.assertEqual(state['requests']['r000002']['status'],'pending')
+                        before=pa.tree(work); original=ap.read_bytes(); a=pa.load(ap); a['approved_by']='Changed approver'; ap.write_text(json.dumps(a))
+                        with self.assertRaisesRegex(ValueError,'approval-changed'):
+                            rr.advance(work,'approved-execute',approval=ap,fixture_transport=transport)
+                        self.assertEqual(before,pa.tree(work)); ap.write_bytes(original)
+                        source=self.base/'source/main-page.txt'; original=source.read_bytes(); source.write_bytes(b'changed')
+                        with self.assertRaises(ValueError): rr.advance(work,'approved-execute',approval=ap,fixture_transport=transport)
+                        self.assertEqual(before,pa.tree(work)); source.write_bytes(original)
+                    rr.advance(work,'approved-execute',approval=ap,fixture_transport=transport)
+                    rr.advance(work,'approved-execute',approval=ap,fixture_transport=transport)
+                    self.assertEqual(calls,['r000001','r000002'])
+                    exported=review_and_export(work,self.base)
+                    self.assertEqual(len(exported['elements']),1)
+                    self.assertFalse(exported['execution_complete'])
+                    self.assertEqual(exported['request_accounting']['counts']['completed'],1)
+                    status=rr.execute(work_root=work)
+                    self.assertFalse(status['production_complete']); self.assertEqual(status['completion'],'pending')
+                    fake=FakeRclone()
+                    with self.assertRaisesRegex(ValueError,'partial'): rr.publish(work,'fake','bucket','gate',runner=fake)
+                    self.assertFalse(fake.calls)
+                    self.assertFalse((work/'enrichment/execution-complete.json').exists())
+
+    def test_route_mismatch_stops_siblings_but_status_remains_readable(self):
+        self.plan(selected=False); rr.advance(self.work,'prepare'); ap=count_and_approve(self.work,self.base)
+        calls=[]; wrong=inference_double(self.work,wrong_model=True)
+        def transport(raw,row): calls.append(row['id']); return wrong(raw,row)
+        with self.assertRaisesRegex(ValueError,'model-mismatch'):
+            rr.advance(self.work,'approved-execute',approval=ap,fixture_transport=transport)
+        state=rr.execute(work_root=self.work)['stage_receipts']['enrichment']['accounting']
+        self.assertEqual(state['counts'],dict(pending=1,uncertain=0,failed=1,completed=0))
+        with self.assertRaisesRegex(ValueError,'execution-integrity-hold'):
+            rr.advance(self.work,'approved-execute',approval=ap,fixture_transport=transport)
+        self.assertEqual(calls,['r000001'])
+
+    def test_interruption_consumes_request_without_retry(self):
         self.plan(); rr.advance(self.work,'prepare'); ap=count_and_approve(self.work,self.base)
-        with self.assertRaises(TimeoutError): rr.advance(self.work,'approved-execute',approval=ap,fixture_transport=inference_double(self.work,interrupt=True))
-        with self.assertRaisesRegex(ValueError,'possibly-posted'): rr.execute(work_root=self.work)
-        with self.assertRaisesRegex(ValueError,'possibly-posted'): rr.advance(self.work,'approved-execute',approval=ap,fixture_transport=inference_double(self.work))
+        rr.advance(self.work,'approved-execute',approval=ap,fixture_transport=inference_double(self.work,interrupt=True))
+        state=rr.execute(work_root=self.work)['stage_receipts']['enrichment']['accounting']
+        self.assertEqual(state['counts']['uncertain'],1)
+        rr.advance(self.work,'approved-execute',approval=ap,fixture_transport=inference_double(self.work))
+        self.assertFalse((self.work/'enrichment/execution-complete.json').exists())
     def test_wrong_model_refuses_and_cannot_finalize(self):
         self.plan(); rr.advance(self.work,'prepare'); ap=count_and_approve(self.work,self.base)
         with self.assertRaisesRegex(ValueError,'model-mismatch'): rr.advance(self.work,'approved-execute',approval=ap,fixture_transport=inference_double(self.work,wrong_model=True))
@@ -433,7 +492,7 @@ class ReenrichTests(unittest.TestCase):
         prepared=pa.load(self.work/'enrichment'/'prepared.json'); row=prepared['requests'][0]
         response=self.work/'enrichment'/row['directory']/'response-body.json'
         response.write_bytes(response.read_bytes()+b' ')
-        with self.assertRaisesRegex(ValueError,'binding'): rr.execute(work_root=self.work)
+        with self.assertRaisesRegex(ValueError,'binding|artifact-changed'): rr.execute(work_root=self.work)
     def test_selective_cannot_change_unapproved_section(self):
         self.ready(); cp=candidate(self.work,self.base); c=pa.load(cp)
         c['replacements'][0]['heading']='## Unchanged'

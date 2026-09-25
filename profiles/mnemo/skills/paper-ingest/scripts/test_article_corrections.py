@@ -133,6 +133,55 @@ class Corrections(unittest.TestCase):
         self.assertTrue(any(r['key']==key and r['sha256']==pa.sha(wire) for r in result['history']))
         self.assertTrue(all('content' not in r and 'local_path' not in r for r in result['history']))
 
+    def test_prompt_history_is_scoped_deduplicated_not_archive_inventory(self):
+        import article_enrichment as ae
+        from article_runtime import trusted_modules
+        trusted_modules()
+        e=self.value['elements'][0]; other=self.value['elements'][1]
+        sources=pa.local_sources(self.path)
+        records={
+            'review/scoped.json': dict(reviewer={'identity':'Reviewer A'}, findings=[
+                dict(element_id=e['element_id'],source_sha256=e['source_sha256'],reason='RELEVANT unresolved units'),
+                dict(element_id=e['element_id'],source_sha256=other['source_sha256'],reason='WRONG SOURCE same ID'),
+                dict(document='supplement',label='Table 1',reason='OTHER DOCUMENT same label'),
+                dict(reason='UNKNOWN SCOPE warning')]),
+            'review/empty.json': dict(warnings=[],uncertainty=None),
+            'review/export.json': dict(schema='portable-qualified-export-v3',elements=[],warnings=['UNSCOPED export warning']),
+            'package/manifest.json': dict(schema='pdf-source-package-v1',documents=[
+                dict(identity='main',directory='documents/main',sha256=e['source_sha256']),
+                dict(identity='supplement',directory='documents/supplement',sha256=other['source_sha256'])]),
+            'package/initial-plan.json': dict(phase='initial',requests=[
+                dict(document='supplement',directory='requests/other')]),
+            'package/requests/other/decoded.json': dict(warnings=['OTHER REQUEST warning']),
+            'package/documents/supplement/inventory.json': dict(limitations=['OTHER INVENTORY limitation']),
+            'package/documents/main/inventory.json': dict(limitations=['RELEVANT source limitation']),
+            'review/duplicate.json': dict(warnings=['DUPLICATE unresolved warning']),
+            'review/decoded.json': dict(mapped=dict(warnings=['DUPLICATE unresolved warning'])),
+        }
+        for i,(key,value) in enumerate(records.items()):
+            p=self.root/'source'/('history-'+str(i)+'.json'); pa.save(p,value)
+            sources[key]=dict(root=str(p.parent),path=p.name)
+            self.value['files'].append(pa.file_record('enrichment-review',key,p))
+            self.value['common_dependencies'].append(key)
+            e['inherited'].append(key); e['dependencies'].append(key)
+        self.value['total_objects']=len(self.value['files'])
+        self.path.write_text(json.dumps(self.value))
+        (self.path.parent/'local-map.json').write_text(json.dumps(dict(schema='portable-article-local-map-v2',manifest_sha256=pa.sha(self.path),sources=sources)))
+        _,paths=pa.verify_local(self.path)
+        before=pa.tree(self.root/'source')
+        wire,_,_=ae.wire_for(e,paths,ae.DEFAULT_PROFILE)
+        text=json.dumps(wire)
+        for warning in ('Known unit uncertainty','RELEVANT unresolved units','RELEVANT source limitation','UNKNOWN SCOPE warning','Reviewer A','UNSCOPED export warning'):
+            self.assertIn(warning,text)
+        for warning in ('WRONG SOURCE','OTHER DOCUMENT','OTHER REQUEST','OTHER INVENTORY','review/empty.json'):
+            self.assertNotIn(warning,text)
+        self.assertEqual(text.count('DUPLICATE unresolved warning'),1)
+        self.assertIn('unscoped',text)
+        consumer=pa.consume(self.path,[e['element_id']])
+        self.assertIn('OTHER DOCUMENT',json.dumps(consumer))
+        self.assertEqual(before,pa.tree(self.root/'source'))
+        self.assertEqual({r['key'] for r in consumer['history']},set(e['inherited']))
+
     def test_positive_local_restore_and_consume(self):
         out=self.root/'restored'; result=pa.restore(self.path,out,elements=['main::table-1'])
         self.assertEqual(result['completed'],'selected-elements')

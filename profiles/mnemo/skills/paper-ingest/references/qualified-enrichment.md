@@ -1,16 +1,22 @@
 # Qualified figure/table enrichment
 
-Use this after the retained-source workflow and verified source-only v1 handoff for each new production ingest retaining PDFs. This is an agent-operated route through the deployed qualified-enrichment capability (Hermes binding: `paper_enrichment`). Discover its native schema in the operating session before proceeding. Resolve trusted integration, frozen enrichment, source method and PDF interpreter from the active instance deployment; do not install another profile or substitute a generated shell executor when a capability is unavailable. An unavailable deployment is a hold, not permission to skip enrichment silently.
+Runtime paths and installation: `runtime.md`. Every trusted method, enrichment, integration and adapter root below is the same resolved skill `scripts/` directory.
+
+Use this after the retained-source workflow and verified source-only v1 handoff for each new production ingest retaining PDFs. This is an agent-operated route through the deployed qualified-enrichment capability (Hermes binding: `paper_enrichment`). Discover its native schema in the operating session before proceeding. Resolve the canonical skill runtime and PDF interpreter from the active instance deployment (`runtime.md`); do not install another profile or substitute a generated shell executor when a capability is unavailable. An unavailable deployment is a hold, not permission to skip enrichment silently.
+
+Historical reads and strict execution bindings follow the compatibility table in
+`source-package-integration.md`. A saved code hash is producer provenance, not
+permission to resume a job with a changed implementation.
 
 ## Acceptance and boundaries
 
-The route permits imperfect figure/table content with explicit findings, review scope and qualifications. It does not establish factual fidelity from schema validity, successful execution, an empty findings list or a reviewer's coverage declaration. Source acquisition/extraction holds, integrity or serving mismatches, pending/possibly-posted requests, fixture provenance and caption-only controls remain disqualifying. Verified failed/partial enrichment records are visible content limitations, not accepted structured content. Keep usable supported material; do not make perfect extraction a prerequisite for the whole paper.
+The route permits imperfect figure/table content with explicit findings, review scope and qualifications. It does not establish factual fidelity from schema validity, successful execution, an empty findings list or a reviewer's coverage declaration. Source acquisition/extraction holds, integrity or serving mismatches, pending/possibly-posted requests, fixture provenance and caption-only controls remain disqualifying. Verified failed/partial enrichment records are visible content limitations, not accepted structured content. The frozen executor's completed, schema-failed run may also classify untouched siblings as `skipped-after-failure`; the qualified runtime's verified eligibility and execution-hold list determine whether that is a retained limitation. Do not confuse this disposition with a pending or possibly-posted request, and never describe skipped elements as successfully enriched. Read the qualified runtime/export, not only the older execution report, before deciding completion. Keep usable supported material; do not make perfect extraction a prerequisite for the whole paper.
 
 The capability selects all eligible source figures and tables, retaining its existing data-file-to-table mapping. Unknown/skipped/incomplete elements remain in its disposition register. Algorithms/code are not selected by default. Existing algorithm records may be reviewed for discovery; mathematical-specification use always requires source inspection. Production enablement does not authorize historical re-ingestion or another evaluation campaign.
 
 ## Operations
 
-Use absolute paths and a new external `attempt_dir` with an existing parent for every call. Keep inputs in a separate directory from attempt/output roots. Retain all receipts, including refusals. The integration's deployed README owns the full operation and submission schema; the native tool supplies argument names. No phase authorizes another automatically.
+Use absolute paths and a new external `attempt_dir` with an existing parent for every call. Keep inputs in a separate directory from attempt/output roots. Retain all receipts, including refusals. `qualified-enrichment-schema.md` owns the full operation and submission schema; the native tool supplies argument names. No phase authorizes another automatically.
 
 1. `prepare`: `source_handoff` is the verified v1 handoff; `output` is a new qualified job. Code enumerates the full roster. Never curate only favorable elements or use a test-root flag on production sources.
 2. `count`: provide `job` and the accepted `processor_cache`. Review actual payload/count/overflow, model route and budget; preserve frozen extraction settings.
@@ -22,7 +28,7 @@ Use absolute paths and a new external `attempt_dir` with an existing parent for 
 8. `review-import`: provide `review_root`, `packet`, and a separately authored contextual-review submission. Record checks actually performed; unreviewed fields stay unreviewed. No review is fabricated merely to clear an exact-use gate.
 9. `export`: provide `review_root` and a new `output`. Preserve its actual successful attempt `result.json` for v2 construction. `verify-export` revalidates its `export_path`; a structural pass does not waive execution holds.
 
-Use explicit `offline: true` for non-execution operations. Original PDFs, native text, crops, raw responses and extraction outcomes remain unchanged. Corrections are separately attributed findings/proposals. New review decisions require a new export; do not overwrite or repin historical code-bound exports.
+Use explicit `offline: true` for non-execution operations. Original PDFs, native text, crops, raw responses and extraction outcomes remain unchanged. Corrections are separately attributed findings/proposals. New review decisions require a new export; do not overwrite or repin historical exports.
 
 ## Review and downstream use
 
@@ -44,8 +50,8 @@ Keep the applicable qualification beside the scientific claim. Unsupported exact
 
 Build a new handoff with the source arguments plus the verified annotated export and its actual export receipt:
 
-    <pdf-python> -B <scripts>/source_package.py handoff --retention <retention.json> --package <source-package> --launcher-result <source-summary-attempt/result.json> --method <trusted-method> --enrichment-handoff <export/handoff.json> --enrichment-launcher-result <export-attempt/result.json> --integration <trusted-integration> --enrichment-root <trusted-frozen-enrichment-root> --output <new-v2-handoff>
-    <pdf-python> -B <scripts>/source_package.py verify --handoff <v2/handoff.json> --method <trusted-method> --integration <trusted-integration> --enrichment-root <trusted-frozen-enrichment-root> --require-enriched
+    <pdf-python> -B <scripts>/source_package.py handoff --retention <retention.json> --package <source-package> --launcher-result <source-summary-attempt/result.json> --method <scripts> --enrichment-handoff <export/handoff.json> --enrichment-launcher-result <export-attempt/result.json> --integration <scripts> --enrichment-root <scripts> --output <new-v2-handoff>
+    <pdf-python> -B <scripts>/source_package.py verify --handoff <v2/handoff.json> --method <scripts> --integration <scripts> --enrichment-root <scripts> --require-enriched
 
 Keep the v2 `qualifications.txt` text exactly in the paper and add both unformatted Ingest log pointers, relative to that paper:
 
@@ -54,6 +60,6 @@ Keep the v2 `qualifications.txt` text exactly in the paper and add both unformat
 
 Complete Phase 10 with:
 
-    <pdf-python> -B <scripts>/verify_ingest.py <slug> --instance <instance> --require-filled --source-package-handoff <v2/handoff.json> --source-package-method <trusted-method> --require-enriched-source --enrichment-integration <trusted-integration> --enrichment-root <trusted-frozen-enrichment-root>
+    <pdf-python> -B <scripts>/verify_ingest.py <slug> --instance <instance> --require-filled --source-package-handoff <v2/handoff.json> --source-package-method <scripts> --require-enriched-source --enrichment-integration <scripts> --enrichment-root <scripts>
 
 Add `--page-only` for the existing PAGE_READY contract, not to bypass source/enrichment checks. Legacy v1 verification remains for history; new production ingests use v2. The canonical qualification register and annotated pointer must survive unchanged; field-level prose must also preserve the relevant scientific limitation. Source/enrichment mechanical completion does not replace identity, bibliography, author wiring, graph integration or scientific review.

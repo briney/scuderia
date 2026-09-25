@@ -21,6 +21,7 @@ import article_enrichment as ae
 from article_runtime import require, absolute, sha, digest, tree, external, locked
 
 SCHEMA_PLAN='reenrich-plan-v2'
+DIAGNOSTIC_PLAN='reenrich-diagnostic-plan-v1'
 STAGES=('acquisition','source-preparation','enrichment','review-export','page-reconciliation','archive-publication')
 
 
@@ -112,6 +113,7 @@ def plan(request,*,manifest=None,work_root,fixture=False,model_profile=None,page
     work=absolute(work_root); p=ae.profile(model_profile); m=None
     if manifest:
         manifest=absolute(manifest); m=pa.validate_manifest(pa.load(manifest))
+        require(m['schema']!=pa.DIAGNOSTIC_SCHEMA, 'diagnostic-requires-diagnostic-plan')
         require(m['article']['slug']==request.article,'unknown-article')
         roster=_resolve_elements(m,request.elements) if request.elements is not None else [e['element_id'] for e in m['elements'] if e['eligible']]
         keys=pa.closure_for(m,roster) if request.elements is not None else {f['key'] for f in m['files']}
@@ -153,6 +155,23 @@ def plan(request,*,manifest=None,work_root,fixture=False,model_profile=None,page
     return value
 
 
+def diagnostic_plan(manifest, elements, *, work_root, fixture=False, model_profile=None):
+    manifest,work=absolute(manifest),absolute(work_root)
+    m=pa.validate_manifest(pa.load(manifest)); pa.verify_source(manifest)
+    ae.source_scope(m,elements,fixture,'selected-diagnostic')
+    external(work,[manifest.parent]+[absolute(s['root']) for s in pa.local_sources(manifest).values()])
+    value=dict(schema=DIAGNOSTIC_PLAN,scope='selected-diagnostic',article=None,article_identity=None,
+        mode='selected-diagnostic',request=dict(article=None,elements=elements,page=None),elements=elements,
+        manifest=str(manifest),manifest_sha256=sha(manifest),page_path=None,page_sha256=None,page_scope=[],
+        fixture=bool(fixture),profile=ae.profile(model_profile),production_complete=False,page_refresh_complete=False,
+        source_status=m['source_status'],planned_at=pa.now_utc())
+    if work.exists():
+        saved=ae.read_bound(work/'plan.json'); require(_same_plan(saved,value),'work-root-already-holds-different-plan')
+        return saved
+    pa.new_directory(work); ae._seal_file(work/'plan.json',value); (work/'receipts').mkdir()
+    return value
+
+
 def _history(work):
     previous=sha(work/'plan.json'); result=[]
     for i,path in enumerate(sorted((work/'receipts').glob('*.json')),1):
@@ -175,7 +194,12 @@ def _record(work,stage,paths,value):
 
 
 def context(work,*,check_page=True):
-    work=absolute(work); p=ae.read_bound(work/'plan.json'); require(p['schema']==SCHEMA_PLAN,'plan-schema')
+    work=absolute(work); p=ae.read_bound(work/'plan.json'); require(p['schema'] in (SCHEMA_PLAN,DIAGNOSTIC_PLAN),'plan-schema')
+    diagnostic=p['schema']==DIAGNOSTIC_PLAN
+    if diagnostic:
+        require(p['mode']==p['scope']=='selected-diagnostic' and p['article'] is None and p['article_identity'] is None and
+            p['page_path'] is None and p['request']['page'] is None and not p['page_scope'] and p['manifest'] and
+            p['production_complete'] is False and p['page_refresh_complete'] is False,'diagnostic-plan-contract')
     history=_history(work)
     manifest=p['manifest']; roster=p['elements']
     if not manifest and (work/'adoption.json').exists():
@@ -184,9 +208,16 @@ def context(work,*,check_page=True):
     elif manifest: require(sha(manifest)==p['manifest_sha256'],'manifest-changed-since-plan')
     m=None
     if manifest:
-        m=pa.validate_manifest(pa.load(manifest)); require(m['article']['slug']==p['article'],'article-identity-changed')
-        if p['article_identity']: require(m['article']==p['article_identity'],'article-version-changed')
-        expected=_resolve_elements(m,p['request']['elements']) if p['mode']=='selected' else [e['element_id'] for e in m['elements'] if e['eligible']]
+        m=pa.validate_manifest(pa.load(manifest))
+        if diagnostic:
+            ae.source_scope(m,roster,p['fixture'],'selected-diagnostic')
+            require(p['source_status']==m['source_status'], 'diagnostic-source-status-binding')
+            expected=p['request']['elements']
+        else:
+            require(m['schema']!=pa.DIAGNOSTIC_SCHEMA, 'diagnostic-production-plan-forbidden')
+            require(m['article']['slug']==p['article'],'article-identity-changed')
+            if p['article_identity']: require(m['article']==p['article_identity'],'article-version-changed')
+            expected=_resolve_elements(m,p['request']['elements']) if p['mode']=='selected' else [e['element_id'] for e in m['elements'] if e['eligible']]
         require(roster==expected,'roster-changed')
         keys=pa.closure_for(m,roster) if p['mode']=='selected' else {f['key'] for f in m['files']}
         pa.verify_local(manifest,keys)
@@ -243,21 +274,26 @@ def execute(plan_value=None,*,work_root):
     enrichment=work/'enrichment'
     if m: next_step='prepare'
     if (enrichment/'prepared.json').exists():
-        prepared=ae.verify(work,binding,manifest)
+        prepared=ae.verify(work,binding,manifest,for_execution=False)
         require(prepared['roster']==roster and prepared['fixture'] is p['fixture'] and prepared['profile']==p['profile'],'prepared-request-contract-changed')
-        receipts['enrichment']=dict(status='prepared-not-executed',roster=roster,mode=p['mode']); next_step='count'
+        receipts['enrichment']=dict(status='prepared-not-executed',roster=roster,mode=p['mode'],accounting=dict(
+            requests={r['id']:dict(element_id=r['element_id'],status='pending') for r in prepared['requests']},
+            counts=dict(pending=len(roster),uncertain=0,failed=0,completed=0),complete=False,integrity_hold=False)); next_step='count'
     if (enrichment/'counts.json').exists():
         ae.verify_counts(enrichment,prepared); next_step='seal'
     if (enrichment/'seal.json').exists(): next_step='approved-execute'
     if (enrichment/'execution-start.json').exists():
-        require((enrichment/'execution-complete.json').exists(),'possibly-posted-no-retry-new-run-required')
-        ae.outcomes(work,binding,manifest)
-        receipts['enrichment']=dict(status='executed',roster=roster,mode=p['mode'],fixture=p['fixture']); next_step='review-create'
+        accounting=ae.execution_state(work,binding,manifest)['accounting']
+        receipts['enrichment']=dict(status='executed' if accounting['complete'] else 'partial',roster=roster,
+            mode=p['mode'],fixture=p['fixture'],accounting=accounting)
+        next_step=('approved-execute' if accounting['counts']['pending'] and not accounting['integrity_hold'] else
+                   'review-create' if accounting['counts']['completed'] or accounting['complete'] else 'new-selected-run')
     if (work/'review'/'dossier.json').exists():
         ae.review_verify(work,binding,manifest); next_step='review-import'
     if (work/'export'/'handoff.json').exists():
-        ae.verify_export(work,binding,manifest)
-        receipts['review-export']=dict(status='verified',fixture=p['fixture']); next_step='candidate-import' if p['page_path'] else 'publish'
+        exported=ae.verify_export(work,binding,manifest)
+        receipts['review-export']=dict(status='verified' if exported['execution_complete'] else 'partial',fixture=p['fixture'])
+        next_step=('candidate-import' if p['page_path'] else 'publish') if exported['execution_complete'] else 'new-selected-run'
         if not p['page_path']: receipts['page-reconciliation']=dict(status='not-requested',applied=False)
     if (work/'page-candidate'/'candidate.json').exists():
         _candidate_verify(work,p,binding,manifest)
@@ -271,6 +307,17 @@ def execute(plan_value=None,*,work_root):
             manifest_key=publication['manifest_key'],manifest_sha256=publication['manifest_sha256'],
             article_key=m['article_key'],page=p['page_path'])
         receipts['archive-publication']=dict(status='verified-at-publication',publication=publication)
+    if p['schema']==DIAGNOSTIC_PLAN:
+        exported=(work/'export'/'handoff.json').exists()
+        diagnostic_ready=exported and receipts['review-export']['status']=='verified'
+        receipts['acquisition']=dict(status='not-established',holds=m['source_status']['holds'])
+        receipts['page-reconciliation']=dict(status='diagnostic-forbidden',applied=False)
+        receipts['archive-publication']=dict(status='diagnostic-forbidden')
+        return dict(schema='reenrich-diagnostic-run-v1',scope='selected-diagnostic',article=None,mode=p['mode'],
+            elements=roster,stage_receipts=receipts,source_status=m['source_status'],
+            status='diagnostic-export-ready' if diagnostic_ready else 'partial-diagnostic-export' if exported else 'pending-operator-continuation',
+            completion='diagnostic-export-ready' if diagnostic_ready else 'pending',
+            production_complete=False,page_refresh_complete=False,fixture=p['fixture'],next_step=None if diagnostic_ready else next_step)
     complete=all(x['status'] in ('verified','executed','applied','not-requested','verified-at-publication') for x in receipts.values())
     completion=completion_label(p) if complete else 'pending'
     return dict(schema='reenrich-run-v2',article=p['article'],mode=p['mode'],elements=roster,stage_receipts=receipts,
@@ -284,14 +331,18 @@ def advance(work_root,operation,*,cache=None,count_receipt=None,approval=None,au
         work,p,manifest,m,roster,binding,_=context(work_root)
         require(manifest,'legacy-prerequisites-not-adopted')
         if operation=='prepare':
-            value=ae.prepare(work,binding,manifest,roster,p['fixture'],p['profile']); path=work/'enrichment'/'prepared.json'
+            value=ae.prepare(work,binding,manifest,roster,p['fixture'],p['profile'],scope=p.get('scope','production')); path=work/'enrichment'/'prepared.json'
         elif operation=='count':
             value=ae.count(work,binding,manifest,cache,count_receipt); path=work/'enrichment'/'counts.json'
         elif operation=='seal':
             value=ae.seal(work,binding,manifest); path=work/'enrichment'/'seal.json'
         elif operation=='approved-execute':
+            before=tree(work/'enrichment')
             value=ae.execute(work,binding,manifest,approval,authorize=authorize,fixture_transport=fixture_transport)
-            path=work/'enrichment'/'execution-complete.json'
+            after=tree(work/'enrichment')
+            if after!=before:
+                _record(work,operation,[work/'enrichment'/key for key in after if key not in before],value['accounting'])
+            return value
         elif operation=='review-create':
             value=ae.review_create(work,binding,manifest); path=work/'review'/'dossier.json'
         elif operation=='review-import':
@@ -380,6 +431,7 @@ def _candidate_text(work,p,manifest,binding,submission):
     reviews.provenance(submission['reviewer'])
     require(isinstance(submission['qualification'],str) and submission['qualification'].strip(),'candidate-qualification-required')
     exported=ae.verify_export(work,binding,manifest); views={e['element_id']:e for e in exported['elements']}
+    require(exported['execution_complete'],'partial-export-cannot-complete-page-refresh')
     if p['manifest'] is None or p['mode']=='full': require(submission['full_distillation_reviewed'] is True,'full-distillation-attestation-required')
     original=(work/'original-page.md').read_text(); sections=_sections(original)
     changes=[]; seen=set(); covered=set()
@@ -423,6 +475,7 @@ def hashlib_sha(text):
 def candidate_import(work_root,submission):
     with locked(work_root):
         work,p,manifest,_,_,binding,_=context(work_root)
+        require(p['schema']!=DIAGNOSTIC_PLAN,'diagnostic-page-application-forbidden')
         require(p['page_path'],'page-not-planned')
         value=pa.load(submission); text=_candidate_text(work,p,manifest,binding,value)
         root=pa.new_directory(work/'page-candidate')
@@ -448,6 +501,7 @@ def apply(work_root,*,authorize=False):
     require(authorize is True,'explicit-page-apply-authorization-required')
     with locked(work_root):
         work,p,manifest,_,_,binding,history=context(work_root)
+        require(p['schema']!=DIAGNOSTIC_PLAN,'diagnostic-page-application-forbidden')
         require(not any(r['stage']=='page-apply' for r in history),'page-already-applied')
         c=_candidate_verify(work,p,binding,manifest); page=absolute(p['page_path'])
         require(not (work/'apply-start.json').exists(),'interrupted-apply-requires-operator-recovery')
@@ -467,6 +521,7 @@ def apply(work_root,*,authorize=False):
 
 
 def completion_label(p):
+    require(p['schema']!=DIAGNOSTIC_PLAN,'diagnostic-has-no-article-completion-label')
     return ('offline-' if p['fixture'] else '')+p['mode']+('-refresh-complete' if p['page_path'] else '-archive-complete')
 
 
@@ -480,6 +535,7 @@ def verify_completion(receipt_path,manifest_path,*,manifest_key,manifest_sha256,
     pa._hash(manifest_sha256); pa._hash(article_key); pa.relative_key(manifest_key)
     require(sha(manifest_path)==manifest_sha256,'completion-manifest-hash')
     m,paths=pa.verify_local(manifest_path); pa.verify_source(manifest_path)
+    require(m['schema']!=pa.DIAGNOSTIC_SCHEMA,'diagnostic-article-completion-forbidden')
     receipt=pa.load(receipt_path); pub=receipt['publication']
     require(receipt['schema']=='portable-article-completion-v1' and
         receipt['article']==m['article'] and m['article_key']==article_key==pub['article_key'],'completion-article-binding')
@@ -498,6 +554,7 @@ def verify_completion(receipt_path,manifest_path,*,manifest_key,manifest_sha256,
     require(exported['schema']=='portable-qualified-export-v3' and exported['binding']==binding and
         exported['roster']==refresh['roster'] and exported['fixture']==p['fixture']==refresh['fixture'] and
         refresh['mode']==p['mode'],'completion-export-contract')
+    require(exported.get('execution_complete',True) is True,'partial-export-cannot-verify-completion')
     require(receipt['completion']==completion_label(p) and receipt['page_refresh_complete']==bool(p['page_path']) and
         receipt['production_complete']==(not p['fixture']),'completion-status-binding')
     require(pub['verification_scope']=='rclone-live-readback' or p['fixture'],'offline-publication-not-production')
@@ -548,8 +605,10 @@ def verify_completion(receipt_path,manifest_path,*,manifest_key,manifest_sha256,
 def publish(work_root,remote,bucket,prefix,*,runner=None):
     with locked(work_root):
         work,p,manifest,m,roster,binding,history=context(work_root)
+        require(p['schema']!=DIAGNOSTIC_PLAN,'diagnostic-publication-forbidden')
         require(not p['page_path'] or any(r['stage']=='page-apply' for r in history),'page-apply-required-before-publication')
-        ae.verify_export(work,binding,manifest)
+        exported=ae.verify_export(work,binding,manifest)
+        require(exported['execution_complete'],'partial-export-cannot-publish-completion')
         require(not any(r['stage']=='publish' for r in history),'already-published')
         require(runner is None or p['fixture'], 'offline-publication-double-requires-fixture-run')
         if p['page_path']:
@@ -613,6 +672,9 @@ def main(argv=None):
     p=sub.add_parser('plan'); p.add_argument('--article',required=True); p.add_argument('--element',action='append')
     for name in ('page','manifest','profile','page-scope'): p.add_argument('--'+name)
     p.add_argument('--fixture',action='store_true'); p.add_argument('--work-root',required=True)
+    d=sub.add_parser('diagnostic-plan')
+    for name in ('manifest','work-root'): d.add_argument('--'+name,required=True)
+    d.add_argument('--element',action='append',required=True); d.add_argument('--profile'); d.add_argument('--fixture',action='store_true')
     for name in ('execute','prepare','count','seal','approved-execute','review-create','review-import','export','candidate-import','apply','adopt','publish'):
         s=sub.add_parser(name); s.add_argument('--work-root',required=True)
         if name=='count': s.add_argument('--cache'); s.add_argument('--count-receipt')
@@ -637,6 +699,8 @@ def main(argv=None):
             result=ae.consumer(work,binding,manifest,args.element,args.target,purpose=args.purpose,qualification=args.qualification)
         elif args.command=='plan': result=plan(Request(args.article,args.element,args.page),manifest=args.manifest,work_root=args.work_root,
             fixture=args.fixture,model_profile=pa.load(args.profile) if args.profile else None,page_scope=pa.load(args.page_scope) if args.page_scope else None)
+        elif args.command=='diagnostic-plan': result=diagnostic_plan(args.manifest,args.element,work_root=args.work_root,
+            fixture=args.fixture,model_profile=pa.load(args.profile) if args.profile else None)
         elif args.command=='execute': result=execute(work_root=args.work_root)
         elif args.command=='adopt': result=adopt(args.work_root,args.manifest,identity_approval=args.identity_approval)
         elif args.command=='candidate-import': result=candidate_import(args.work_root,args.submission)

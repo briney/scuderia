@@ -1,6 +1,43 @@
 # Retained-source integration
 
+Runtime paths and installation: `runtime.md`. Every trusted method, enrichment, integration and adapter root below is the same resolved skill `scripts/` directory.
+
 This is an agent-operated ingestion route. The adapter retains already acquired inputs and verifies handoffs; it does not retrieve, extract, approve, execute model requests, or write scientific prose. Identity, deduplication, integrity checks, bibliography, complete authors, graph propagation and archival remain paper-ingest obligations.
+
+## Historical compatibility and execution bindings
+
+Historical verification uses explicitly configured reader code. Producer code
+hashes and launcher deployment paths remain provenance; readers do not import
+code from paths named by an archive or require retired code directories to exist.
+Existing evidence files, review chains, and receipts remain unchanged.
+
+| Evidence | Supported reader contract | Checks retained |
+|---|---|---|
+| Source handoff v1/v2 | Existing source/package and fixed launcher-receipt formats | Recompute source state, facts, exact summary, source identity, holds, receipt grammar and artifact hashes; preserve recorded method/integration hashes |
+| Enrichment v7 | `pdf-source-package-enrichment-v7`, prepare v7, prompts v7, response v7, pinned request settings | Source/request hashes, element accounting, count/approval/reservation bindings, response reconstruction and execution holds |
+| Qualified selection/dossier/export v1 | `qualified-selection-v1`, `uncertainty-dossier-v1`, `qualified-enrichment-export-v1` | Reconstruct selection, snapshot, review chain, warnings and exact readable export |
+| Portable plan v2 / review v2 / export v3 | Existing production and selected-diagnostic scope rules | Regenerate payloads, reconstruct outcomes/accounting, verify byte seals, review chains, qualifications and completion restrictions |
+
+A known format is necessary, not sufficient: reconstruction must still match
+its retained evidence. Unknown formats, changed payload semantics, mismatched
+outcomes, missing source files, or removed warnings hold verification. A harmless
+implementation edit does not invalidate a compatible saved result. This does
+not promise compatibility with future semantic changes: retain supported readers
+or add an explicit versioned reader when such a change is introduced.
+
+Preparation/count/seal/execute and fixture-response import remain bound to the
+prepared implementation. The qualified operation entry also checks its selection's
+integration hashes before these mutations. Portable execution checks current code
+at entry and before each request. Historical read success is never permission to
+resume an old job under changed code; use its independently trusted original
+deployment or an explicitly designed continuation. Never repin saved hashes or
+replay an uncertain request to make a job pass. Legacy formats outside the table
+require an independently trusted retained verifier, not execution of archived code.
+
+Code relocation does not relocate source evidence. Saved package/run/receipt paths
+still need their existing evidence; moving those artifacts is a separate migration.
+New handoff creation remains bound to its current deployment. Reverification of an
+existing handoff uses recorded producer locations only as historical metadata.
 
 ## Production routing: Phases 4, 5 and 10
 
@@ -22,7 +59,7 @@ Keep source version, URLs, acquisition limitations and scientific review decisio
 
 Phase 10: for new retained-PDF production ingests, source and enrichment verifier options are mandatory, including queued PAGE_READY checks. Use the PDF interpreter with PyYAML available:
 
-    <pdf-python> -B <scripts>/verify_ingest.py <bare-slug> --instance <absolute-instance> --require-filled --source-package-handoff <absolute-v2-handoff.json> --source-package-method <absolute-trusted-method> --require-enriched-source --enrichment-integration <absolute-trusted-integration> --enrichment-root <absolute-trusted-frozen-enrichment-root>
+    <pdf-python> -B <scripts>/verify_ingest.py <bare-slug> --instance <absolute-instance> --require-filled --source-package-handoff <absolute-v2-handoff.json> --source-package-method <scripts> --require-enriched-source --enrichment-integration <scripts> --enrichment-root <scripts>
 
 Keep the exact v2 `qualifications.txt` text in the paper and add `Annotated enrichment: <relative-annotated.html>` beside the source-package pointer in its Ingest log. See `qualified-enrichment.md` for scoped downstream use and the v2 construction command. Source-only v1 verification remains available for historical handoffs, not as a bypass for this new route.
 
@@ -61,7 +98,7 @@ Run:
 
     <pdf-python> -B <scripts>/source_package.py prepare --input /absolute/acquired.json --output /absolute/new-source-run --application-endpoint https://deployment.example/v1/chat/completions --max-application-posts <explicit-integer-budget>
 
-The caller supplies endpoint and budget, not shared host constants. Output retains exact input JSON, all declared originals/diagnostics, hashes, non-PDF dispositions, `retention.json` and accepted-method `scope.json`. Hashes/page counts are checked before workflow preparation. No approval is generated. A source directory is append-never/reuse-never: even a partial failed preparation is preserved; use a new directory only after resolving the cause. The adapter refuses traversal, symlinks, hardlinked files, duplicate identities/bytes and output reuse. This is not a hostile-concurrent-filesystem security boundary.
+The caller supplies endpoint and budget, not shared host constants. Output retains exact input JSON, all declared originals/diagnostics, hashes, non-PDF dispositions, `retention.json` and accepted-method `scope.json`. Hashes/page counts are checked before workflow preparation. No approval is generated. Use a dedicated retention directory such as `<article-run>/retained`; put workflow, handoff, enrichment and attempt directories beside it, never inside it. The entire retention output tree is hash-bound, so adding a workflow package beneath that directory invalidates retention even when all original bytes are unchanged. A source directory is append-never/reuse-never: even a partial failed preparation is preserved; use a new directory only after resolving the cause. The adapter refuses traversal, symlinks, hardlinked files, duplicate identities/bytes and output reuse. This is not a hostile-concurrent-filesystem security boundary.
 
 ## Explicit workflow gates
 

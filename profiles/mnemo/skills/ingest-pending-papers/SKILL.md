@@ -41,7 +41,7 @@ resume page-only results awaiting shared wiring; no new selection gate applies.
 `brain-read` (scan `papers/` for `needs-ingest: true`), `brain-write`
 (via delegated `paper-ingest`), `spawn-subagent` (one per stub — the
 context-isolation lever this whole producer/consumer split exists for).
-Each delegated subagent in turn needs `paper-ingest`'s capabilities.
+Each delegated subagent in turn needs `paper-ingest`'s capabilities. For a new retained-PDF ingest, verify that the parent and worker can invoke the deployed source workflow, qualified enrichment and pinned source inspection capabilities before dispatch (Hermes: `paper_workflow`, `paper_enrichment`, `paper_vision_inspect`). A cron toolset allowlist must include their registered toolsets. Missing native capabilities are a deployment hold, not permission to substitute legacy text-only verification.
 
 ## What this guarantees
 
@@ -158,7 +158,11 @@ Follow the runtime’s configured models and limits without changing pins.
 3. **Delegate one page-only fill per queue item.** Use batch-drain
    and include the existing absolute input path, source citation, validated
    identifiers, input `cited_by` and provenance snapshot, expected canonical
-   target, and a unique scratch prefix. Tell the leaf to load paper-ingest,
+   target, and unique durable source/attempt directories plus a scratch prefix.
+   For retained PDFs, require paper-ingest's source-package and qualified-enrichment
+   references; return the verified v2 handoff, annotated export and actual operation
+   receipts alongside the page. Preserve failed/partial/skipped dispositions and
+   distinguish them from execution-uncertainty holds. Tell the leaf to load paper-ingest,
    use `venue` (not `journal`) and `year`, resolve the complete author list,
    and write only its assigned paper and scratch/source files. No shared
    ledger/person/concept/stub/inbox mutations and no Git operations.
@@ -179,7 +183,12 @@ Follow the runtime’s configured models and limits without changing pins.
 
    Apply the canonical completed-page checks in paper-ingest Phase 10, using
    `verify_ingest.py <bare-slug> --instance <brain> --require-filled
-   --page-only` for the intermediate. Verify the page against source evidence:
+   --page-only` for the intermediate. For every new retained-PDF item, include
+   `--source-package-handoff <v2/handoff.json> --source-package-method <trusted-method>
+   --require-enriched-source --enrichment-integration <trusted-integration>
+   --enrichment-root <trusted-frozen-enrichment-root>` with the deployed PDF Python.
+   A plain `--require-filled` pass does not validate that route. Require the exact
+   qualification register and annotated pointer in the paper. Verify the page against source evidence:
    identity, complete individual authors, substantive body sections, and
    enrichment provenance must agree. Explicit null DOI and collective-only
    empty authors are evidence-backed exceptions defined there; do not restore
@@ -207,7 +216,8 @@ Follow the runtime’s configured models and limits without changing pins.
    canonical path throughout; no shared file is edited by an in-flight leaf.
 
    Set `needs-ingest: false` only after those obligations are satisfied, then
-   run full `verify_ingest.py --require-filled` without `--page-only` and
+   run full `verify_ingest.py --require-filled` without `--page-only`, retaining
+   the same mandatory source/enrichment arguments for retained-PDF items, and run
    scoped schema lint. If completion checks fail, keep the item queued and
    report the remaining obligation. A valid abstract-only fill can succeed
    with `needs-enrichment: true`; do not repeatedly requeue it as a failure.

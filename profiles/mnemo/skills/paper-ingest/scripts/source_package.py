@@ -278,7 +278,7 @@ def trusted_method(path):
     return root
 
 
-def verified_state(retention_path, package, launcher_result, method):
+def verified_state(retention_path, package, launcher_result, method, *, historical=False):
     """Read-only revalidation, not a second workflow executor."""
     trusted_method(method)
     from pdf_source_package.workflow import final_state
@@ -299,7 +299,9 @@ def verified_state(retention_path, package, launcher_result, method):
     require(type(process['exit_code']) is int and process['exit_code'] == 0 and process['process_status'] == 'exited' and
             process['termination'] == 'normal' and process['termination_errors'] == [], 'launcher process not successfully completed')
     require(process['started_at'] and process['ended_at'] and type(process['child_pid']) is int, 'launcher process evidence missing')
-    require(process['cwd'] == str(absolute(method)), 'launcher trusted method mismatch')
+    absolute(process['cwd'])  # recorded producer location; never imported
+    if not historical:
+        require(process['cwd'] == str(absolute(method)), 'launcher trusted method mismatch')
     require(result['attempt_dir'] == str(attempt) and result['process_record'] == str(attempt/'process.json') and
             result['phase_evidence'] == str(attempt/'phase-evidence.json') and process['log'] == str(attempt/'console.log'), 'launcher attempt path mismatch')
     require((attempt/'console.log').is_file(), 'launcher console missing')
@@ -361,8 +363,8 @@ def holds_for(retention, state, package):
     return holds
 
 
-def build_handoff(retention_path, package, launcher_result, method, test_root=None):
-    retention, state, summary, inspections = verified_state(retention_path,package,launcher_result,method)
+def build_handoff(retention_path, package, launcher_result, method, test_root=None, *, historical=False):
+    retention, state, summary, inspections = verified_state(retention_path,package,launcher_result,method,historical=historical)
     holds = holds_for(retention,state,package)
     if test_root is None: require(not holds, 'production hold: '+', '.join(holds))
     else:
@@ -425,18 +427,19 @@ def qualification_text(enrichment):
 
 def build_enriched_handoff(retention_path, package, launcher_result, method,
                            enrichment_handoff, enrichment_launcher_result, integration, enrichment_root,
-                           test_root=None):
+                           test_root=None, *, historical=False):
     # Do not relax any v1 acquisition, full-document, phase or fixture hold.
-    source = build_handoff(retention_path, package, launcher_result, method, test_root)
+    source = build_handoff(retention_path, package, launcher_result, method, test_root, historical=historical)
     exports = trusted_enrichment(integration, enrichment_root)
     enriched = exports.verify_export(enrichment_handoff, source_package=package, production=test_root is None)
     from qualified_enrichment.launcher import verify_result
     ep = absolute(enrichment_handoff)
     receipt = verify_result(enrichment_launcher_result, 'export',
                             {str(ep): sha(ep), str(ep.parent/'annotated.html'): sha(ep.parent/'annotated.html')})
-    require(receipt['deployment']['integration_dir'] == str(absolute(integration)) and
-            receipt['deployment']['enrichment_root'] == str(absolute(enrichment_root)) and
-            receipt['deployment']['method_dir'] == str(absolute(method)), 'enrichment launcher deployment mismatch')
+    if not historical:
+        require(receipt['deployment']['integration_dir'] == str(absolute(integration)) and
+                receipt['deployment']['enrichment_root'] == str(absolute(enrichment_root)) and
+                receipt['deployment']['method_dir'] == str(absolute(method)), 'enrichment launcher deployment mismatch')
     if test_root:
         require(all(absolute(p).is_relative_to(absolute(test_root)) for p in
                     (ep,enrichment_launcher_result,enriched['review_root'])), 'test-only enrichment outside test root')
@@ -452,6 +455,20 @@ def build_enriched_handoff(retention_path, package, launcher_result, method,
                 qualifications=qualification_text(enriched))
 
 
+def retain_code_provenance(actual, saved):
+    """Keep producer hashes after independently reconstructing the evidence."""
+    for key in ('method_bindings', 'integration_bindings'):
+        if key in actual:
+            value = saved.get(key)
+            require(isinstance(value, dict) and value and all(
+                isinstance(k, str) and k and isinstance(v, str) and re.fullmatch('[0-9a-f]{64}', v)
+                for k, v in value.items()), 'invalid-code-provenance')
+            actual[key] = value
+    if 'source_handoff' in actual:
+        retain_code_provenance(actual['source_handoff'], saved['source_handoff'])
+    return actual
+
+
 def verify_handoff(path, method, expected_article=None, *, integration=None,
                    enrichment_root=None, require_enriched=False):
     value = load(path)
@@ -460,14 +477,15 @@ def verify_handoff(path, method, expected_article=None, *, integration=None,
                 'handoff is not production completion')
         require(integration and enrichment_root, 'explicit trusted enrichment roots required')
         actual = build_enriched_handoff(value['retention'],value['package'],value['launcher_result'],method,
-                    value['enrichment_handoff'],value['enrichment_launcher_result'],integration,enrichment_root)
+                    value['enrichment_handoff'],value['enrichment_launcher_result'],integration,enrichment_root,historical=True)
         require((absolute(path).parent/'qualifications.txt').read_text() == actual['qualifications'],
                 'removed or mismatched qualifications')
     else:
         require(not require_enriched, 'new production route requires enriched v2 handoff')
         require(value['schema'] == 'source-package-handoff-v1' and value['production_complete'] is True and
                 value['status'] == 'production-mechanical-complete', 'handoff is not production completion')
-        actual = build_handoff(value['retention'],value['package'],value['launcher_result'],method)
+        actual = build_handoff(value['retention'],value['package'],value['launcher_result'],method,historical=True)
+    retain_code_provenance(actual, value)
     require(value == actual, 'stale or mismatched handoff')
     require((absolute(path).parent/'summary.txt').read_text() == actual['summary'], 'handoff exact summary changed')
     if expected_article is not None:

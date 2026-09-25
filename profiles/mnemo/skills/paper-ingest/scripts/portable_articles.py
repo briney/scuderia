@@ -24,6 +24,7 @@ from article_runtime import (absolute, relative_key, inside, sha, require, diges
 
 SCHEMA = 'portable-article-manifest-v3'
 LEGACY_SCHEMA = 'portable-article-manifest-v2'
+DIAGNOSTIC_SCHEMA = 'selected-diagnostic-source-v1'
 ROLES = ('source-original', 'source-package', 'source-retention', 'enrichment-job',
          'enrichment-review', 'enrichment-export', 'page', 'legacy-pdf', 'handoff')
 MAX_MANIFEST_BYTES = 32 * 1024 * 1024
@@ -90,9 +91,18 @@ def _hash(value):
 
 
 def validate_manifest(m):
-    require(m.get('schema') in (SCHEMA, LEGACY_SCHEMA), 'manifest-schema')
+    require(m.get('schema') in (SCHEMA, LEGACY_SCHEMA, DIAGNOSTIC_SCHEMA), 'manifest-schema')
     require('sources' not in m, 'operational-sources-forbidden-in-archive-manifest')
-    require(m['article_key'] == article_key(m['article']), 'article-key-binding')
+    if m['schema'] == DIAGNOSTIC_SCHEMA:
+        require(m['article'] is None and m['article_key'] is None and m['scope']=='selected-diagnostic',
+                'diagnostic-not-bibliographic-article')
+        require(m['production_complete'] is False and m['page_refresh_complete'] is False and
+                m['source_status']['complete'] is False and m['source_status']['acquisition_verified'] is False,
+                'diagnostic-cannot-be-production-complete')
+        require(isinstance(m['roster'],list) and m['roster'] and len(set(m['roster']))==len(m['roster']) and
+                m['roster']==[e['element_id'] for e in m['elements']], 'diagnostic-explicit-roster-required')
+    else:
+        require(m['article_key'] == article_key(m['article']), 'article-key-binding')
     require(re.fullmatch('[a-z0-9][a-z0-9-]*', m['package_id']), 'package-id-required')
     require(isinstance(m['files'], list) and len(m['files']) <= 100000, 'file-inventory-limit')
     keys, aliases = set(), set()
@@ -192,6 +202,8 @@ def verify_source(manifest_path):
     representation; historical absolute receipt paths are never dereferenced.
     """
     m = validate_manifest(load(manifest_path))
+    if m['schema'] == DIAGNOSTIC_SCHEMA:
+        return verify_diagnostic(manifest_path)
     if m['provenance'].get('source_schema') is None:
         require(m['source_status']['fixture'] and m['provenance'].get('fixture') is True,
                 'nonfixture-requires-verified-source-provenance')
@@ -324,7 +336,8 @@ def build_manifest(retention, package, output, *, article=None, package_id,
         h = load(absolute(handoff_dir)/'handoff.json')
         require(h['status'] != 'test-only' or test_root is not None, 'explicit-fixture-root-required')
         actual = adapter.build_handoff(retention, package, h['launcher_result'], roots['pdf_source_package'],
-                                      test_root=test_root if h['status'] == 'test-only' else None)
+                                      test_root=test_root if h['status'] == 'test-only' else None, historical=True)
+        adapter.retain_code_provenance(actual, h)
         require(h == actual, 'handoff-revalidation-mismatch')
         _collect_tree(files, sources, 'handoff', absolute(h['launcher_result']).parent, 'launcher/', 'Code-owned acquisition launcher evidence')
         if h.get('inspection_dir'):
@@ -432,6 +445,99 @@ def build_manifest(retention, package, output, *, article=None, package_id,
     return m
 
 
+def _diagnostic_value(package, elements):
+    """Recompute a local diagnostic bundle; never assert article acquisition.
+
+    The whole saved inventory is retained and verified, but only exact selected
+    logical element IDs become requests. No candidate is promoted or retyped.
+    """
+    roots = trusted_modules()
+    from pdf_enrichment.package_io import SourcePackage
+    from pdf_enrichment import requests
+    package = absolute(package)
+    before = tree(package)  # reject links before the source reader opens files
+    require(isinstance(elements, list) and elements and all(isinstance(e,str) and e for e in elements) and
+            len(elements)==len(set(elements)), 'diagnostic-explicit-roster-required')
+    pkg = SourcePackage(package, method=roots['pdf_source_package'])
+    require(not pkg.historical, 'diagnostic-current-source-required')
+    index = {r['element_id']:r for r in pkg.eligible_elements(['figure','table'])}
+    require(set(elements)<=index.keys() and all(index[e]['kind'] in ('figure','table') for e in elements),
+            'diagnostic-selected-element-ineligible')
+    files, sources = [], {}
+    _collect_tree(files, sources, 'source-package', package, 'package/', 'Unchanged diagnostic source evidence; not an article archive')
+    common = sorted(f['key'] for f in files)
+    # Retain every original. Project recorded warning metadata through the same
+    # history reader used by production; raw request/response wires stay refs.
+    inherited = common
+    documents = []
+    holds = ['diagnostic-only', 'article-acquisition-and-association-not-established', 'scientific-acceptance-not-established']
+    dispositions = [dict(kind='source-extraction',detail=copy.deepcopy(pkg.current_state['facts']))]
+    for d in pkg.documents:
+        original = next(doc for doc in pkg.manifest['documents'] if doc['identity']==d['identity'])
+        selected_pages = copy.deepcopy(original['selected_pages'])
+        whole = d['extraction_scope']=='whole-document' and selected_pages==list(range(1,d['page_count']+1))
+        if not whole: holds.append('diagnostic-not-whole-document:'+d['identity'])
+        if not d['source_complete']: holds.append('source-incomplete:'+d['identity'])
+        documents.append(dict(identity=d['identity'],source_sha256=d['sha256'],source_version=d['sha256'],
+            raw_key='package/'+d['raw'],complete=bool(whole and d['source_complete']),fixture=d['source_fixture'],
+            page_count=d['page_count'],selected_pages=selected_pages,extraction_scope=d['extraction_scope'],gaps=d['gaps']))
+        dispositions.append(dict(kind='source-document',detail=dict(document=d['identity'],gaps=d['gaps'],
+            logical_dispositions=d['logical_dispositions'],source_complete=d['source_complete'])))
+    status=dict(complete=False,fixture=bool(pkg.current_state['fixture']),holds=holds,
+        acquisition_verified=False,extraction_verified=True,identity_basis='Saved document identities and PDF hashes only; no bibliographic article association')
+    selected=[]
+    for eid in elements:
+        row=index[eid]; d=pkg.doc(row['document']); e=row['element']
+        ev=_remap_evidence(requests._base_evidence(pkg,d,e))
+        require(ev['body_fragments'], 'diagnostic-body-fragment-required')
+        ev['diagnostic_context']=dict(scope='selected-diagnostic',source_status=status,dispositions=dispositions)
+        frags=[dict(fragment_id=f['id'],page=f['page'],bbox=f['bbox'],crop_key='package/'+f['crop'],
+                    crop_sha256=f.get('crop_sha256')) for f in e['ordered_source_fragments']]
+        pages=sorted({f['page'] for f in ev['body_fragments']+ev['captions']})
+        native=[]
+        for n in pages:
+            require(d['pages'][n].get('native_text') and d['pages'][n].get('page_image'), 'missing-page-context')
+            native.append('package/'+relative_key(d['pages'][n]['native_text']))
+        selected.append(dict(element_id=eid,document=d['identity'],source_sha256=d['sha256'],content_type=e['content_type'],
+            kind=row['kind'],eligible=True,label=e.get('label'),fragments=frags,caption_note_refs=copy.deepcopy(e['caption_note_refs']),
+            evidence=ev,source_element=copy.deepcopy(e),dependencies=common,inherited=inherited,
+            context=dict(native_text_keys=native,heading_unit_footnote_scope='whole physical page; associations remain unverified'),
+            unavailable=[] if ev['captions'] else [dict(kind='caption-not-associated',detail='No associated caption in verified source representation; not evidence of article absence.')]))
+    value=dict(schema=DIAGNOSTIC_SCHEMA,scope='selected-diagnostic',roster=elements,
+        package_id='diagnostic-'+digest(before)[:20],article=None,article_key=None,
+        production_complete=False,page_refresh_complete=False,files=files,total_objects=len(files),
+        documents=documents,elements=selected,common_dependencies=common,source_status=status,dispositions=dispositions,
+        provenance=dict(source_schema=pkg.schema,source_tree_sha256=pkg.snapshot['tree_sha256'],fixture=status['fixture'],
+            method_code=tree(roots['pdf_source_package']/'pdf_source_package'),
+            statement='Verified saved source bundle; original document identities retained, article acquisition unverified. Diagnostic selection only.'))
+    require(tree(package)==before, 'inputs-changed-during-diagnostic-build')
+    validate_manifest(value)
+    return value,sources
+
+
+def build_diagnostic(package, output, *, elements):
+    package,output=absolute(package),absolute(output)
+    external(output,[package])
+    value,sources=_diagnostic_value(package,elements)
+    new_directory(output); save(output/'manifest.json',value)
+    save(output/'local-map.json',dict(schema='portable-article-local-map-v2',manifest_sha256=sha(output/'manifest.json'),sources=sources))
+    verify_diagnostic(output/'manifest.json')
+    return value
+
+
+def verify_diagnostic(manifest_path):
+    m,paths=verify_local(manifest_path)
+    require(m['schema']==DIAGNOSTIC_SCHEMA, 'diagnostic-source-contract-required')
+    root=paths['package/manifest.json'].parent
+    require(all(paths[f['key']]==inside(root,f['key'].removeprefix('package/')) for f in m['files']),
+            'diagnostic-original-package-layout-required')
+    actual,_=_diagnostic_value(root,m['roster'])
+    from pdf_enrichment.trusted import validate_code_provenance
+    actual['provenance']['method_code'] = validate_code_provenance(m['provenance']['method_code'])
+    require(m==actual, 'diagnostic-source-recomputation-mismatch')
+    return m['source_status']
+
+
 def element_index(package):
     """Compatibility discovery only; archive creation uses the verified build path."""
     roots = trusted_modules()
@@ -447,7 +553,23 @@ def closure_for(manifest, elements):
     return set(manifest['common_dependencies']).union(*(set(index[e]['dependencies']) for e in elements))
 
 
-def qualification_projection(value):
+def _history_scope(value, inherited=None, *, document=False):
+    scope=dict(inherited or {})
+    for key in ('document','source_document','source_sha256','element_id'):
+        if isinstance(value.get(key),str) and value[key]:
+            scope['document' if key=='source_document' else key]=value[key]
+    if document:
+        if isinstance(value.get('identity'),str): scope['document']=value['identity']
+        if isinstance(value.get('sha256'),str): scope['source_sha256']=value['sha256']
+    return scope
+
+
+def _history_matches(scope, element):
+    # Labels, page numbers and local IDs are not cross-document identities.
+    return all(scope.get(k,element[k])==element[k] for k in ('document','source_sha256','element_id'))
+
+
+def qualification_projection(value, *, element=None, scope=None):
     """Project metadata only; never embed prior exports or request/image bodies.
 
     Unknown warning metadata is conservatively retained with its JSON pointer.
@@ -460,6 +582,7 @@ def qualification_projection(value):
         trusted_modules()
         from qualified_enrichment.exports import exact_view, content_targets
         for view in value['elements']:
+            if element is not None and not _history_matches(_history_scope(view,scope),element): continue
             targets=sorted(set([''] + content_targets(view['outcome']) +
                 [f['target'] for f in view['findings']] + [c['target'] for c in view['coverage']]))
             scopes=[]
@@ -468,23 +591,82 @@ def qualification_projection(value):
                 scopes.append({k:v for k,v in exact.items() if k!='content'})
             result.append(dict(element_id=view['element_id'],source_sha256=view['source_sha256'],
                 findings=view['findings'],coverage=view['coverage'],review_status=view['review_status'],scopes=scopes))
-        return result
+        if element is None: return result
+        # Scoped views do not replace genuinely unscoped export-level warnings.
+        value={k:v for k,v in value.items() if k!='elements'}
     metadata={'findings','automatic_findings','warnings','warning','notice','limitations','unresolved',
               'coverage','resolutions','dispositions','holds','unavailable','uncertainty','uncertainties'}
     omitted={'inherited_history','consumer_views','messages','response_body','request_wire'}
-    def walk(v,pointer=''):
+    if element is not None:
+        metadata |= {'limitation','source_limitation','gaps','model_root_uncertainty','coverage_warnings'}
+    def walk(v,pointer='',parent_scope=None,attribution=None,document=False):
         if isinstance(v,dict):
+            current=_history_scope(v,parent_scope,document=document)
+            if element is not None and not _history_matches(current,element): return
+            author=v.get('reviewer',v.get('provenance',attribution))
             for key,item in v.items():
                 if key in omitted: continue
                 target=pointer+'/'+key.replace('~','~0').replace('/','~1')
                 if key in metadata:
-                    result.append(dict(target=target,metadata=item,
-                        attribution=v.get('reviewer',v.get('provenance')),
-                        association='Historical metadata; scope as recorded, not a new correction.'))
-                else: walk(item,target)
+                    if element is None:
+                        result.append(dict(target=target,metadata=item,
+                            attribution=v.get('reviewer',v.get('provenance')),
+                            association='Historical metadata; scope as recorded, not a new correction.'))
+                    else:
+                        # Each actual finding keeps its recorded scope/author.
+                        # Empty/null containers are not warnings or model context.
+                        for i,entry in enumerate(item if isinstance(item,list) else [item]):
+                            scoped=_history_scope(entry,current) if isinstance(entry,dict) else current
+                            if entry in (None,[],{},'') or not _history_matches(scoped,element): continue
+                            result.append(dict(target=target+('/'+str(i) if isinstance(item,list) else ''),metadata=entry,
+                                scope=scoped or 'unscoped',attribution=entry.get('reviewer',entry.get('provenance',author)) if isinstance(entry,dict) else author,
+                                association='Historical metadata; scope as recorded, not a new correction.'))
+                else: walk(item,target,current,author,key=='documents')
         elif isinstance(v,list):
-            for i,item in enumerate(v): walk(item,pointer+'/'+str(i))
-    walk(value)
+            for i,item in enumerate(v): walk(item,pointer+'/'+str(i),parent_scope,attribution,document)
+    walk(value,parent_scope=scope)
+    return result
+
+
+def prompt_history(paths, keys, element):
+    """Selected prompt projection only; consumer/archive history is unchanged."""
+    directories={}
+    # Use recorded directory associations, never a filename/label/page guess.
+    for key,path in paths.items():
+        if Path(key).name not in ('manifest.json','initial-plan.json','classification-plan.json','association-plan.json','prepared.json'): continue
+        value=load(path)
+        if not isinstance(value,dict): continue
+        prefix=str(Path(key).parent)+'/' if '/' in key else ''
+        if value.get('schema')=='pdf-source-package-v1':
+            for doc in value['documents']:
+                directories[prefix+doc['directory']+'/']=_history_scope(doc,document=True)
+        for row in value.get('requests',[]):
+            if row.get('directory'):
+                directories[prefix+row['directory']+'/']=_history_scope(row)
+    result=[]; seen=set()
+    for key in sorted(keys):
+        path=paths[key]; scope={}
+        for directory,association in sorted(directories.items(),key=lambda x:len(x[0])):
+            if key.startswith(directory): scope.update(association)
+        if not _history_matches(scope,element): continue
+        if path.suffix=='.json' and Path(key).name not in ('request-wire.json','response-body.json'):
+            qualifications=qualification_projection(load(path),element=element,scope=scope)
+        elif path.suffix in ('.txt','.md') and ('review' in key.split('/') or 'findings' in Path(key).name):
+            qualifications=[dict(metadata=path.read_text(),scope=scope or 'unscoped',association='Unscoped historical review text')]
+        else: continue
+        unique=[]
+        for q in qualifications:
+            # Identical decoded/result projections share one representative raw
+            # reference. Different scope, attribution or finding values survive.
+            target=q.get('target','')
+            # Only known duplicate decoder wrappers are interchangeable. Keep
+            # cell/fragment indexes and other target paths distinct.
+            while target.split('/')[1:2] in (['mapped'],['raw_selection'],['raw_alias_selection'],['validator_input']):
+                target=target[target.index('/',1):] if '/' in target[1:] else ''
+            identity=digest(dict({k:v for k,v in q.items() if k!='target'},target=target))
+            if identity not in seen:
+                seen.add(identity); unique.append(q)
+        if unique: result.append(dict(key=key,sha256=sha(path),qualifications=unique,raw_retained=True))
     return result
 
 
@@ -505,6 +687,9 @@ def history_refs(paths, keys):
 
 def consume(manifest_path, elements=None, *, purpose='discovery', qualification=None):
     m = validate_manifest(load(manifest_path))
+    if m['schema']==DIAGNOSTIC_SCHEMA:
+        verify_source(manifest_path)
+        require(elements is None or elements==m['roster'], 'diagnostic-consumer-roster-binding')
     ids = [e['element_id'] for e in m['elements']] if elements is None else elements
     keys = closure_for(m, ids) if ids else set(m['common_dependencies'])
     _, paths = verify_local(manifest_path, keys)
@@ -514,7 +699,9 @@ def consume(manifest_path, elements=None, *, purpose='discovery', qualification=
     history=history_refs(paths,keys & inherited)
     return dict(schema='portable-article-consumer-v3', article=m['article'], elements=[e for e in m['elements'] if e['element_id'] in ids],
                 source_status=m['source_status'], dispositions=m['dispositions'], history=history,
-                purpose=purpose, qualification=qualification, scientific_acceptance='not-established')
+                purpose=purpose, qualification=qualification, scientific_acceptance='not-established',
+                **(dict(scope='selected-diagnostic',production_complete=False,page_refresh_complete=False)
+                   if m['schema']==DIAGNOSTIC_SCHEMA else {}))
 
 
 def revision_prefix(m, prefix):
@@ -593,6 +780,7 @@ def publish(manifest_path, remote, bucket, prefix, *, runner=None):
     relative_key(prefix)
     path = absolute(manifest_path)
     m, paths = verify_local(path)  # even reused remote objects do not waive current input validation
+    require(m['schema'] != DIAGNOSTIC_SCHEMA, 'diagnostic-publication-forbidden')
     initial = sha(path)
     transport = RcloneTransport(remote, bucket, runner)
     receipts = []
@@ -611,6 +799,7 @@ def publish(manifest_path, remote, bucket, prefix, *, runner=None):
 def restore(manifest_path, destination, *, elements=None, include_package=True, include_enrichment=True,
             include_page=True, remote=None, bucket=None, prefix=None, runner=None):
     path = absolute(manifest_path); m = validate_manifest(load(path)); original_hash = sha(path)
+    require(m['schema'] != DIAGNOSTIC_SCHEMA, 'diagnostic-archive-restore-forbidden')
     destination = absolute(destination)
     require(not destination.exists(), 'destination-must-be-new')
     require(elements is None or isinstance(elements, list) and elements, 'empty-selection-rejected')
@@ -679,6 +868,9 @@ def main(argv=None):
     for name in ('retention', 'package', 'output', 'package-id'): b.add_argument('--'+name, required=True)
     for name in ('handoff', 'job', 'review', 'export', 'page', 'document-bindings', 'fixture-root'): b.add_argument('--'+name)
     b.add_argument('--legacy-pdf', action='append')
+    d = sub.add_parser('diagnostic-manifest')
+    for name in ('package','output'): d.add_argument('--'+name, required=True)
+    d.add_argument('--element', action='append', required=True)
     p = sub.add_parser('publish'); p.add_argument('--manifest', required=True)
     for name in ('remote', 'bucket', 'prefix'): p.add_argument('--'+name, required=True)
     r = sub.add_parser('restore'); r.add_argument('--manifest')
@@ -694,6 +886,10 @@ def main(argv=None):
                 handoff_dir=args.handoff, job=args.job, review=args.review, export=args.export, page=args.page,
                 legacy_pdfs=args.legacy_pdf, document_bindings=load(args.document_bindings) if args.document_bindings else None, test_root=args.fixture_root)
             result = dict(schema=result['schema'], objects=result['total_objects'], elements=len(result['elements']))
+        elif args.command == 'diagnostic-manifest':
+            result = build_diagnostic(args.package, args.output, elements=args.element)
+            result = dict(schema=result['schema'],scope=result['scope'],roster=result['roster'],
+                production_complete=False,page_refresh_complete=False,source_status=result['source_status'])
         elif args.command == 'publish': result = publish(args.manifest, args.remote, args.bucket, args.prefix)
         elif args.command == 'consume': result = consume(args.manifest, args.element, purpose=args.purpose, qualification=args.qualification)
         else:
