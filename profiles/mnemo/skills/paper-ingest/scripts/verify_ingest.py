@@ -763,7 +763,7 @@ def main():
                          "their creation; refuses when a ledger exists")
     ap.add_argument('--source-package-handoff', help='absolute verified source-package handoff.json; required for the retained-PDF production route')
     ap.add_argument('--source-package-method', help='absolute explicitly trusted accepted PDF method directory (requires its PDF dependencies)')
-    ap.add_argument('--require-enriched-source', action='store_true', help='new production route: require v2 enrichment evidence and preserved qualifications')
+    ap.add_argument('--require-enriched-source', action='store_true', help='new production route: require enriched handoff evidence and preserved qualifications')
     ap.add_argument('--enrichment-integration', help='absolute trusted qualified enrichment integration directory')
     ap.add_argument('--enrichment-root', help='absolute trusted frozen enrichment package directory')
     args = ap.parse_args()
@@ -944,7 +944,7 @@ def main():
                                require_enriched=args.require_enriched_source)
             verified = verify_handoff(handoff, args.source_package_method,
                            expected_article={key: fm.get(key) for key in ('slug','title','doi','pmid')}, **options)
-            if verified.get('schema') == 'source-package-handoff-v2':
+            if verified.get('schema') in ('source-package-handoff-v2','source-package-handoff-v3'):
                 if verified['qualifications'] not in body:
                     raise ValueError('paper is missing exact source-bound enrichment qualifications')
                 annotated = os.path.relpath(os.path.join(os.path.dirname(verified['enrichment_handoff']), 'annotated.html'),

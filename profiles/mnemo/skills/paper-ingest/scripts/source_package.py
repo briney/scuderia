@@ -407,6 +407,18 @@ def trusted_enrichment(integration, enrichment_root):
 
 
 def qualification_text(enrichment):
+    if enrichment['schema']=='qualified-enrichment-export-v2':
+        lines=[]
+        for view in enrichment['elements']:
+            for finding in view['findings']:
+                if finding['status']=='unresolved' or finding.get('resolutions'):
+                    lines.append('Element '+view['element_id']+'; target '+finding['target']+': '+finding['reason'])
+                    if finding.get('resolutions'):
+                        lines.append('Attributed proposals; original unchanged: '+json.dumps(finding['resolutions'],ensure_ascii=False,sort_keys=True))
+        for row in enrichment['eligibility']['element_accounting']:
+            if row['disposition'] in ('failed','uncertain','pending','unsupported','interrupted'):
+                lines.append('Visual enrichment '+row['element_id']+': '+row['disposition'])
+        return '\n'.join(lines)
     lines = ['Enrichment qualifications (scoped, not correctness certification):']
     for view in enrichment['elements']:
         lines.append('Element '+view['element_id']+': '+view['review_status']+
@@ -444,7 +456,7 @@ def build_enriched_handoff(retention_path, package, launcher_result, method,
         require(all(absolute(p).is_relative_to(absolute(test_root)) for p in
                     (ep,enrichment_launcher_result,enriched['review_root'])), 'test-only enrichment outside test root')
     holds = sorted(set(source['holds'] + enriched['eligibility']['holds']))
-    return dict(source, schema='source-package-handoff-v2',
+    return dict(source, schema='source-package-handoff-v3' if enriched['schema']=='qualified-enrichment-export-v2' else 'source-package-handoff-v2',
                 status='test-only' if test_root else 'qualified-production-complete',
                 production_complete=test_root is None and not holds, holds=holds,
                 source_handoff=source, enrichment=enriched,
@@ -472,7 +484,7 @@ def retain_code_provenance(actual, saved):
 def verify_handoff(path, method, expected_article=None, *, integration=None,
                    enrichment_root=None, require_enriched=False):
     value = load(path)
-    if value['schema'] == 'source-package-handoff-v2':
+    if value['schema'] in ('source-package-handoff-v2','source-package-handoff-v3'):
         require(value['production_complete'] is True and value['status'] == 'qualified-production-complete',
                 'handoff is not production completion')
         require(integration and enrichment_root, 'explicit trusted enrichment roots required')
@@ -481,7 +493,7 @@ def verify_handoff(path, method, expected_article=None, *, integration=None,
         require((absolute(path).parent/'qualifications.txt').read_text() == actual['qualifications'],
                 'removed or mismatched qualifications')
     else:
-        require(not require_enriched, 'new production route requires enriched v2 handoff')
+        require(not require_enriched, 'new production route requires enriched handoff')
         require(value['schema'] == 'source-package-handoff-v1' and value['production_complete'] is True and
                 value['status'] == 'production-mechanical-complete', 'handoff is not production completion')
         actual = build_handoff(value['retention'],value['package'],value['launcher_result'],method,historical=True)

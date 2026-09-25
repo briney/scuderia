@@ -76,3 +76,16 @@ class PortableReview(unittest.TestCase):
         from qualified_enrichment import reviews
         with self.assertRaisesRegex(ValueError,'source-binding'):
             reviews.validate_assessment(pa.load(self.work/'review/dossier.json'),bad)
+
+
+class InitialHandoff(unittest.TestCase):
+    def test_current_qualification_text_has_no_coverage_warning(self):
+        import source_package as sp
+        v=records.project(element(),policy='observed-limitations-v1')
+        exported=dict(schema='qualified-enrichment-export-v2',elements=[v],eligibility=dict(
+            element_accounting=[dict(element_id=v['element_id'],disposition='enriched')],zero_eligible=False))
+        self.assertEqual(sp.qualification_text(exported),'')
+        exported['eligibility']['element_accounting'][0]['disposition']='failed'
+        self.assertIn('failed',sp.qualification_text(exported))
+        exported['schema']='qualified-enrichment-export-v1'
+        self.assertIn('unreviewed',sp.qualification_text(exported))
