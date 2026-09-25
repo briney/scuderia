@@ -191,6 +191,7 @@ def read_job(job):
     import article_enrichment as ae
     import portable_articles as pa
     selection,manifest,binding=portable_job(job)
+    from . import reviews
     state=ae.execution_state(job,binding,manifest); m=pa.load(manifest)
     successful={e['element_id']:e for e in state['elements']}; elements=[]
     statuses={r['element_id']:r['status'] for r in state['accounting']['requests'].values()}
@@ -208,7 +209,7 @@ def read_job(job):
     return dict(kind='qualified-job',path=str(job),selection=selection,selection_sha256=sha(job/'selection.json'),
         source_package=selection['source_package'],source_bindings=selection['source_bindings'],elements=elements,
         execution_holds=holds,fixture=selection['fixture'],request_accounting=state['accounting'],
-        manifest=str(manifest),manifest_sha256=sha(manifest),binding=binding,
+        manifest=str(manifest),manifest_sha256=sha(manifest),source_files=reviews.source_files(m),binding=binding,
         documents=[dict(d,source_status='complete' if d['complete'] else 'incomplete',source_complete=d['complete']) for d in m['documents']])
 
 

@@ -296,8 +296,8 @@ def execute(plan_value=None,*,work_root):
     if (work/'export'/'handoff.json').exists():
         require(review is not None,'export-without-review')
         exported=ae._verify_export(work,binding,manifest,review)
-        receipts['review-export']=dict(status='verified' if exported['execution_complete'] else 'partial',fixture=p['fixture'])
-        next_step=('candidate-import' if p['page_path'] else 'publish') if exported['execution_complete'] else 'new-selected-run'
+        receipts['review-export']=dict(status='verified' if page_ready(exported) else 'partial',fixture=p['fixture'])
+        next_step=('candidate-import' if p['page_path'] else 'publish') if page_ready(exported) else 'new-selected-run'
         if not p['page_path']: receipts['page-reconciliation']=dict(status='not-requested',applied=False)
     if (work/'page-candidate'/'candidate.json').exists():
         require(exported is not None,'candidate-without-export')
@@ -323,7 +323,7 @@ def execute(plan_value=None,*,work_root):
             status='diagnostic-export-ready' if diagnostic_ready else 'partial-diagnostic-export' if exported else 'pending-operator-continuation',
             completion='diagnostic-export-ready' if diagnostic_ready else 'pending',
             production_complete=False,page_refresh_complete=False,fixture=p['fixture'],next_step=None if diagnostic_ready else next_step)
-    complete=all(x['status'] in ('verified','executed','applied','not-requested','verified-at-publication') for x in receipts.values())
+    complete=all(x['status'] in ('verified','executed','applied','not-requested','verified-at-publication') for key,x in receipts.items() if key!='enrichment') and 'publish' in stages
     completion=completion_label(p) if complete else 'pending'
     return dict(schema='reenrich-run-v2',article=p['article'],mode=p['mode'],elements=roster,stage_receipts=receipts,
         status='finished' if complete else 'pending-operator-continuation',completion=completion,
@@ -386,7 +386,112 @@ def page_receipt_path(page,binding):
     return page.parent/page_receipt_name(page,binding)
 
 
+def page_ready(exported):
+    if exported['schema']=='portable-qualified-export-v4':
+        require(exported['readiness']==ae.readiness(exported['request_accounting'],exported['assessment']),'page-readiness-binding')
+        return exported['readiness']['page_ready']
+    require(exported['schema']=='portable-qualified-export-v3','unsupported-export-format')
+    return exported['execution_complete']
+
+
+def source_reference(ref, manifest, paths):
+    from qualified_enrichment.records import resolve_pointer
+    inspected=ref.get('kind')=='inspection'
+    fields={'kind','key','sha256','page','reason','qualification'} if inspected else {'kind','key','sha256','pointer','quote','qualification'}
+    require(set(ref)==fields and ref['kind'] in ('source','inspection'),'candidate-source-fields')
+    files={f['key']:f for f in manifest['files']}
+    require(ref['key'] in files and ref['key'] in paths,'candidate-source-key')
+    f=files[ref['key']]; path=paths[ref['key']]
+    require(f['role'] in ('source-original','source-package','source-retention') and sha(path)==ref['sha256']==f['sha256'],'candidate-source-binding')
+    require(isinstance(ref['qualification'],str),'candidate-qualification-type')
+    if inspected:
+        require(path.suffix.lower()=='.pdf' and type(ref['page']) is int and isinstance(ref['reason'],str) and ref['reason'].strip(),'candidate-inspection-fields')
+        import pymupdf
+        with pymupdf.open(path) as pdf: require(1<=ref['page']<=len(pdf),'candidate-inspection-page')
+    else:
+        require(path.suffix.lower() in ('.txt','.md','.json','.html','.csv'),'candidate-readable-source-required')
+        value=resolve_pointer(pa.load(path),ref['pointer']) if path.suffix.lower()=='.json' else path.read_text()
+        if path.suffix.lower()!='.json': require(ref['pointer']=='','candidate-text-pointer')
+        require(isinstance(value,str) and isinstance(ref['quote'],str) and ref['quote'].strip() and ref['quote'] in value,'candidate-source-literal-selection')
+    return ref
+
+
+def _material_history(value):
+    target=value.get('metadata_target',value.get('target',''))
+    metadata=value.get('metadata')
+    if target.endswith('/unreviewed_aspects'): return False
+    if target.endswith('/coverage'):
+        rows=metadata if isinstance(metadata,list) else [metadata]
+        ordinary={'element_id','target','aspect','evidence','reason','reviewer'}
+        return any(isinstance(row,dict) and bool(set(row)-ordinary) for row in rows)
+    if target.endswith('/notice'):
+        from qualified_enrichment.reviews import NOTICE
+        if metadata==NOTICE: return False
+    return metadata not in ('',[],{})
+
+
+def _current_register(exported,submission,m,p,annotated_sha256,paths,previous):
+    from qualified_enrichment.exports import page_view,affected
+    from qualified_enrichment.records import related
+    prefix='refresh-'+exported['binding'][:20]+'/'
+    locator=dict(key=prefix+'export/handoff.json',sha256=submission['export_sha256'])
+    views={e['element_id']:e for e in exported['elements']}; targets=[]; sources=[]; qualifications=[]
+    index={e['element_id']:e for e in m['elements']}
+    def add(value):
+        if value not in qualifications: qualifications.append(value)
+    for replacement in submission['replacements']:
+        for ref in replacement['evidence']:
+            if ref['kind'] in ('source','inspection'):
+                source_reference(ref,m,paths)
+                if ref not in sources: sources.append(ref)
+            else:
+                page_view(views[ref['element_id']],ref['target'],qualification=ref['qualification'])
+                targets.append(dict(ref,reviewer=submission['reviewer'],evidence=dict(key=prefix+'page-candidate/input.json')))
+    for view in views.values():
+        e=index[view['element_id']]; scope={k:e[k] for k in ('document','source_sha256','element_id')}
+        cited=[t['target'] for t in targets if t['element_id']==view['element_id']] or ['']
+        active={f['id']:f for target in cited for f in affected(view,target)}
+        for f in active.values():
+            if f['status']=='unresolved' or f.get('resolutions'):
+                add(dict(scope,**{k:f[k] for k in ('target','status','category','reason','provenance','resolutions') if k in f},evidence=locator))
+        for entry in pa.prompt_history(paths,set(m['common_dependencies'])|set(e['inherited']),e):
+            evidence={k:entry[k] for k in ('key','sha256')}
+            for q in entry['qualifications']:
+                if 'findings' in q:
+                    for f in {f['id']:f for target in cited for f in affected(q,target)}.values():
+                        if f['status']=='unresolved' or f.get('resolutions'):
+                            add(dict(scope,**{k:f[k] for k in ('target','status','category','reason','provenance','resolutions') if k in f},evidence=evidence))
+                elif _material_history(q):
+                    metadata=q['metadata']
+                    if isinstance(metadata,dict) and str(metadata.get('target','')).startswith('/record') and not any(related(t,metadata['target']) for t in cited): continue
+                    add(dict(scope=q.get('scope','unscoped'),metadata_target=q.get('target',''),metadata=q['metadata'],attribution=q.get('attribution'),evidence=evidence))
+    if previous is not None:
+        _register_archive(previous,paths)
+        if previous['schema'].endswith('-v1'):
+            old='refresh-'+previous['binding'][:20]+'/'
+            previous=qualification_register(pa.load(paths[previous['export_locator']['key']]),pa.load(paths[old+'page-candidate/input.json']),
+                pa.load(paths[old+'parent-manifest.json']),pa.load(paths[old+'plan.json']),previous['annotated_export_locator']['sha256'],archive_paths=paths)
+        for q in previous['qualifications']:
+            if _material_history(q): add(q)
+        for target in previous['selected_targets']:
+            if target.get('qualification') and target not in targets: targets.append(target)
+        if previous.get('operator_qualification') and previous['operator_qualification']!=submission['qualification']:
+            key='refresh-'+previous['binding'][:20]+'/page-candidate/input.json'
+            add(dict(scope='Prior page review',metadata_target='/qualification',metadata=previous['operator_qualification'],attribution=previous['reviewer'],evidence=dict(key=key,sha256=sha(paths[key]))))
+        for ref in previous.get('selected_sources',[]):
+            if ref not in sources: sources.append(ref)
+    result=dict(schema='portable-page-qualification-register-v3',binding=exported['binding'],article=m['article'],article_key=m['article_key'],
+        publication_receipt=page_receipt_name(p['page_path'],exported['binding']),export_locator=locator,
+        annotated_export_locator=dict(key=prefix+'export/annotated.html',sha256=annotated_sha256),
+        source_locators=[dict(document=d['identity'],key=d['raw_key'],sha256=d['source_sha256']) for d in m['documents']],
+        reviewer=submission['reviewer'],operator_qualification=submission['qualification'],selected_targets=targets,selected_sources=sources,
+        qualifications=qualifications,source_status=exported['source_status'],enrichment_status=dict(
+            counts=exported['request_accounting']['counts'],requests_successful=exported['execution_complete']))
+    return result
+
+
 def qualification_register(exported,submission,m,p,annotated_sha256,*,version=2,archive_paths=None,previous=None):
+    if version==3: return _current_register(exported,submission,m,p,annotated_sha256,archive_paths,previous)
     from qualified_enrichment.exports import exact_view
     views={v['element_id']:v for v in exported['elements']}; targets=[]
     for row in submission['replacements']:
@@ -478,10 +583,10 @@ def read_register(text):
     without_register(text)  # validate delimiters even when there is no register
     if REGISTER_START not in text: return None
     block=text.split(REGISTER_START,1)[1].split(REGISTER_END,1)[0]
-    match=re.search(r'<!-- portable-page-qualification-register-v2: ([^\n]*) -->\n$',block) or re.search(r'<pre>([\s\S]*)</pre>\n$',block)
+    match=re.search(r'<!-- portable-page-qualification-register-v[23]: ([^\n]*) -->\n$',block) or re.search(r'<pre>([\s\S]*)</pre>\n$',block)
     require(match is not None,'malformed-qualification-register')
     value=json.loads(html.unescape(match[1]))
-    require(value.get('schema') in ('portable-page-qualification-register-v1','portable-page-qualification-register-v2'),
+    require(value.get('schema') in ('portable-page-qualification-register-v1','portable-page-qualification-register-v2','portable-page-qualification-register-v3'),
         'unknown-qualification-register')
     require(REGISTER_START+block+REGISTER_END==register_text(value),'noncanonical-qualification-register')
     return value
@@ -495,6 +600,7 @@ def _register_archive(register,paths):
     snapshot=paths.get(prefix+'applied-page.md')
     require(snapshot is not None and read_register(snapshot.read_text())==register,'register-archive-snapshot')
     locators=[register['export_locator'],register['annotated_export_locator']]+register['source_locators']
+    locators += [{k:ref[k] for k in ('key','sha256')} for ref in register.get('selected_sources',[])]
     locators += [q['evidence'] for q in register.get('qualifications',[])+register['selected_targets'] if q.get('evidence')]
     exported=pa.load(paths[register['export_locator']['key']]) if register['export_locator']['key'] in paths else None
     require(exported is not None,'register-archive-evidence')
@@ -512,6 +618,19 @@ def register_text(register):
     import html
     header=(REGISTER_START+'Article package: '+register['publication_receipt']+'\n'+
         'Annotated export: '+register['annotated_export_locator']['key']+' (resolve through article package receipt)\n')
+    if register['schema']=='portable-page-qualification-register-v3':
+        def esc(value): return html.escape(value if isinstance(value,str) else json.dumps(value,ensure_ascii=False,sort_keys=True)).replace('\n','&#10;').replace('\r','&#13;')
+        parts=[header]
+        if register['operator_qualification'].strip(): parts.append('<p>'+esc(register['operator_qualification'])+'</p>\n')
+        for target in register['selected_targets']:
+            if target['qualification']: parts.append('<p>'+esc(target['element_id']+' '+target['target']+': '+target['qualification'])+'</p>\n')
+        for ref in register['selected_sources']:
+            if ref['qualification']: parts.append('<p>'+esc(ref['key']+': '+ref['qualification'])+'</p>\n')
+        for q in register['qualifications']:
+            parts.append('<p>'+esc(q.get('scope',{k:q[k] for k in ('document','element_id','target') if k in q}))+': '+esc(q.get('reason',q.get('metadata')))+
+                (' Attributed proposals; originals unchanged: '+esc(q['resolutions']) if q.get('resolutions') else '')+'</p>\n')
+        parts.append('<!-- portable-page-qualification-register-v3: '+html.escape(json.dumps(register,ensure_ascii=False,sort_keys=True,separators=(',',':')))+' -->\n'+REGISTER_END)
+        return ''.join(parts)
     if register['schema'].endswith('-v1'):
         return header+'<pre>'+html.escape(json.dumps(register,ensure_ascii=False,sort_keys=True,indent=2))+'</pre>\n'+REGISTER_END
     def text(value):
@@ -553,15 +672,19 @@ def _candidate_text(work,p,manifest,binding,submission,*,version=2,exported=None
     unchanged=submission.get('reconciliation_outcome')=='reviewed-no-scientific-text-change'
     require(submission.get('reconciliation_outcome','scientific-text-revised') in
         ('scientific-text-revised','reviewed-no-scientific-text-change'),'candidate-reconciliation-outcome')
-    require(submission['schema']=='reenrich-page-candidate-v2' and submission['binding']==binding and
+    current=submission['schema']=='reenrich-page-candidate-v3'
+    if current: version=3
+    require(submission['schema'] in ('reenrich-page-candidate-v2','reenrich-page-candidate-v3') and submission['binding']==binding and
         submission['export_sha256']==sha(work/'export'/'handoff.json'),'candidate-binding')
     from qualified_enrichment import reviews
     from qualified_enrichment.exports import exact_view
     reviews.provenance(submission['reviewer'])
-    require(isinstance(submission['qualification'],str) and submission['qualification'].strip(),'candidate-qualification-required')
+    require(isinstance(submission['qualification'],str) and (current or submission['qualification'].strip()),'candidate-qualification-required')
     if exported is None: exported=ae.verify_export(work,binding,manifest)
     views={e['element_id']:e for e in exported['elements']}
-    require(exported['execution_complete'],'partial-export-cannot-complete-page-refresh')
+    require(current == (exported['schema']=='portable-qualified-export-v4'),'candidate-export-policy-binding')
+    require(page_ready(exported),'partial-export-cannot-complete-page-refresh')
+    m,paths=pa.verify_local(manifest,set(pa.local_sources(manifest)))
     if p['manifest'] is None or p['mode']=='full': require(submission['full_distillation_reviewed'] is True,'full-distillation-attestation-required')
     original=(work/'original-page.md').read_text(); sections=_sections(original)
     changes=[]; seen=set(); covered=set()
@@ -583,11 +706,20 @@ def _candidate_text(work,p,manifest,binding,submission,*,version=2,exported=None
         require(isinstance(r['evidence'],list) and (r['evidence'] or not ids),'replacement-evidence-required')
         evidence_ids=set()
         for ref in r['evidence']:
-            require(set(ref)=={'element_id','source_sha256','target','qualification'},'candidate-evidence-fields')
-            require(ref['element_id'] in ids and ref['source_sha256']==views[ref['element_id']]['source_sha256'],'candidate-evidence-source-binding')
-            exact_view(views[ref['element_id']],ref['target'],purpose='exact',qualification=ref['qualification'])
-            require(ref['qualification'] and (unchanged or ref['qualification'] in after),'qualification-must-appear-in-prose')
-            evidence_ids.add(ref['element_id'])
+            if current and ref.get('kind') in ('source','inspection'):
+                source_reference(ref,m,paths); evidence_ids.update(ids)
+            else:
+                fields={'element_id','source_sha256','target','qualification'}
+                require(set(ref)==(fields|{'kind'} if current else fields),'candidate-evidence-fields')
+                if current: require(ref['kind']=='enrichment','candidate-evidence-kind')
+                require(ref['element_id'] in ids and ref['source_sha256']==views[ref['element_id']]['source_sha256'],'candidate-evidence-source-binding')
+                if current:
+                    from qualified_enrichment.exports import page_view
+                    page_view(views[ref['element_id']],ref['target'],qualification=ref['qualification'])
+                else: exact_view(views[ref['element_id']],ref['target'],purpose='exact',qualification=ref['qualification'])
+                evidence_ids.add(ref['element_id'])
+            require(isinstance(ref['qualification'],str) and (current or ref['qualification']),'candidate-qualification-type')
+            require(not ref['qualification'] or unchanged or ref['qualification'] in after,'qualification-must-appear-in-prose')
         require(evidence_ids==ids,'candidate-evidence-roster'); covered.update(ids)
         changes.append((start,end,after))
     require(covered==set(exported['roster']),'candidate-must-reconcile-requested-roster')
@@ -627,7 +759,7 @@ def _candidate_verify(work,p,binding,manifest,*,exported=None):
         value['input_sha256']==sha(root/'input.json') and value['candidate_sha256']==sha(root/'page-candidate.md') and
         value['diff_sha256']==sha(root/'page-candidate.diff'),'candidate-changed')
     saved=(root/'page-candidate.md').read_text()
-    version=1 if read_register(saved)['schema'].endswith('-v1') else 2
+    version=int(read_register(saved)['schema'].rsplit('-v',1)[1])
     require(saved==_candidate_text(work,p,manifest,binding,pa.load(root/'input.json'),version=version,exported=exported),'candidate-regeneration-mismatch')
     return value
 
@@ -672,7 +804,7 @@ def verify_completion(receipt_path,manifest_path,*,manifest_key,manifest_sha256,
     m,paths=pa.verify_local(manifest_path); pa.verify_source(manifest_path)
     require(m['schema']!=pa.DIAGNOSTIC_SCHEMA,'diagnostic-article-completion-forbidden')
     receipt=pa.load(receipt_path); pub=receipt['publication']
-    require(receipt['schema']=='portable-article-completion-v1' and
+    require(receipt['schema'] in ('portable-article-completion-v1','portable-article-completion-v2') and
         receipt['article']==m['article'] and m['article_key']==article_key==pub['article_key'],'completion-article-binding')
     require(pub['manifest_key']==manifest_key and pub['manifest_sha256']==manifest_sha256 and
         manifest_key==pa.revision_prefix(m,pub['prefix'])+'/manifests/'+manifest_sha256+'.json','completion-publication-pointer')
@@ -686,10 +818,14 @@ def verify_completion(receipt_path,manifest_path,*,manifest_key,manifest_sha256,
     p=pa.load(paths[prefix+'plan.json']); exported=pa.load(paths[prefix+'export/handoff.json'])
     parent_path=paths[prefix+'parent-manifest.json']; parent=pa.validate_manifest(pa.load(parent_path))
     require(sha(parent_path)==m['provenance']['parent_manifest_sha256'] and parent['article']==m['article'], 'completion-parent-binding')
-    require(exported['schema']=='portable-qualified-export-v3' and exported['binding']==binding and
+    require(exported['schema'] in ('portable-qualified-export-v3','portable-qualified-export-v4') and exported['binding']==binding and
         exported['roster']==refresh['roster'] and exported['fixture']==p['fixture']==refresh['fixture'] and
         refresh['mode']==p['mode'],'completion-export-contract')
-    require(exported.get('execution_complete',True) is True,'partial-export-cannot-verify-completion')
+    current=receipt['schema']=='portable-article-completion-v2'
+    require(current == (exported['schema']=='portable-qualified-export-v4'),'completion-policy-binding')
+    require(page_ready(exported),'partial-export-cannot-verify-completion')
+    if current:
+        require(all(receipt[k]==exported['readiness'][k] for k in ('requests_accounted_for','requests_successful')),'completion-accounting-binding')
     require(receipt['completion']==completion_label(p) and receipt['page_refresh_complete']==bool(p['page_path']) and
         receipt['production_complete']==(not p['fixture']),'completion-status-binding')
     require(pub['verification_scope']=='rclone-live-readback' or p['fixture'],'offline-publication-not-production')
@@ -707,7 +843,14 @@ def verify_completion(receipt_path,manifest_path,*,manifest_key,manifest_sha256,
     dossier=pa.load(paths[prefix+'review/dossier.json'])
     decision_keys=sorted(k for k in paths if k.startswith(prefix+'review/decisions/') and k.endswith('.json'))
     entries=[pa.load(paths[k]) for k in decision_keys]
-    views=reviews.apply(dossier,entries)
+    if current:
+        require(dossier['snapshot']['manifest_sha256']==sha(parent_path),'completion-review-manifest')
+        ae.validate_accounting(dossier['request_accounting'])
+    views=reviews.apply(dossier,entries,manifest=parent,paths=paths)
+    if current:
+        assessment=reviews.assessment(dossier,entries,manifest=parent,paths=paths)
+        require(exported['assessment']==assessment and exported['request_accounting']==dossier['request_accounting'] and
+                exported['readiness']==ae.readiness(dossier['request_accounting'],assessment),'completion-review-readiness')
     require(entries or not views,'completion-review-required')
     for view in views: view['consumer_views']=[exact_view(view,t) for t in content_targets(view['outcome'])]
     require(exported['elements']==views and [v['element_id'] for v in views]==ids,'completion-export-findings')
@@ -729,7 +872,7 @@ def verify_completion(receipt_path,manifest_path,*,manifest_key,manifest_sha256,
         text=page.read_text()
         stored=read_register(text)
         require(stored is not None,'completion-qualification-register-or-pointer')
-        version=1 if stored['schema'].endswith('-v1') else 2
+        version=int(stored['schema'].rsplit('-v',1)[1])
         register=qualification_register(exported,submission,parent,p,receipt['annotated_export']['sha256'],version=version,archive_paths=paths,
             previous=read_register(paths[prefix+'original-page.md'].read_text()))
         require(register_text(register) in text and text.count(REGISTER_START)==1,'completion-qualification-register-or-pointer')
@@ -747,7 +890,7 @@ def publish(work_root,remote,bucket,prefix,*,runner=None):
         require(p['schema']!=DIAGNOSTIC_PLAN,'diagnostic-publication-forbidden')
         require(not p['page_path'] or any(r['stage']=='page-apply' for r in history),'page-apply-required-before-publication')
         exported=ae.verify_export(work,binding,manifest)
-        require(exported['execution_complete'],'partial-export-cannot-publish-completion')
+        require(page_ready(exported),'partial-export-cannot-publish-completion')
         require(not any(r['stage']=='publish' for r in history),'already-published')
         require(runner is None or p['fixture'], 'offline-publication-double-requires-fixture-run')
         if p['page_path']:
@@ -790,11 +933,13 @@ def publish(work_root,remote,bucket,prefix,*,runner=None):
         context(work_root)  # detect page/input edits during the upload before writing a receipt
         ae._seal_file(work/'publication.json',result)
         prefix_local='refresh-'+binding[:20]+'/'
-        completion=dict(schema='portable-article-completion-v1',binding=binding,article=m['article'],publication=result,
+        completion=dict(schema='portable-article-completion-v2' if exported['schema']=='portable-qualified-export-v4' else 'portable-article-completion-v1',binding=binding,article=m['article'],publication=result,
             completion=completion_label(p),production_complete=not p['fixture'],page_refresh_complete=bool(p['page_path']),
             page_sha256=sha(p['page_path']) if p['page_path'] else None,
             export=dict(key=prefix_local+'export/handoff.json',sha256=sha(work/'export/handoff.json')),
             annotated_export=dict(key=prefix_local+'export/annotated.html',sha256=sha(work/'export/annotated.html')))
+        if exported['schema']=='portable-qualified-export-v4':
+            completion.update({k:exported['readiness'][k] for k in ('requests_accounted_for','requests_successful')})
         # The page's stable sibling receipt is deliberately NOT an archive input:
         # page snapshot -> receipt name; receipt -> immutable manifest hash.
         # No hash cycle and no post-publication page rewrite. Never overwrite.

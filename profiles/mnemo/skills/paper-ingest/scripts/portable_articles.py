@@ -578,11 +578,16 @@ def qualification_projection(value, *, element=None, scope=None):
     """
     result=[]
     if isinstance(value, dict) and value.get('schema') in (
-            'qualified-enrichment-export-v1', 'portable-qualified-export-v2', 'portable-qualified-export-v3'):
+            'qualified-enrichment-export-v1', 'qualified-enrichment-export-v2', 'portable-qualified-export-v2', 'portable-qualified-export-v3', 'portable-qualified-export-v4'):
         trusted_modules()
         from qualified_enrichment.exports import exact_view, content_targets
+        current=value['schema'] in ('qualified-enrichment-export-v2','portable-qualified-export-v4')
         for view in value['elements']:
             if element is not None and not _history_matches(_history_scope(view,scope),element): continue
+            if current:
+                findings=[f for f in view['findings'] if f['status']=='unresolved' or f.get('resolutions')]
+                if findings: result.append(dict(element_id=view['element_id'],source_sha256=view['source_sha256'],findings=findings))
+                continue
             targets=sorted(set([''] + content_targets(view['outcome']) +
                 [f['target'] for f in view['findings']] + [c['target'] for c in view['coverage']]))
             scopes=[]
@@ -593,7 +598,7 @@ def qualification_projection(value, *, element=None, scope=None):
                 findings=view['findings'],coverage=view['coverage'],review_status=view['review_status'],scopes=scopes))
         if element is None: return result
         # Scoped views do not replace genuinely unscoped export-level warnings.
-        value={k:v for k,v in value.items() if k!='elements'}
+        value={k:v for k,v in value.items() if k!='elements' and (not current or k not in ('notice','dispositions','request_accounting','review_bindings'))}
     metadata={'findings','automatic_findings','warnings','warning','notice','limitations','unresolved',
               'coverage','resolutions','dispositions','holds','unavailable','uncertainty','uncertainties'}
     omitted={'inherited_history','consumer_views','messages','response_body','request_wire'}

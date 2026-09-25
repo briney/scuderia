@@ -484,7 +484,9 @@ def readiness(accounting, assessment):
 
 def review_elements(work,binding,manifest_path,state):
     """Expose retained source even when no visual response was accepted."""
-    v=verify(work,binding,manifest_path,for_execution=False); m=pa.load(manifest_path)
+    # Caller supplies this operation's verified execution state, never a persisted cache.
+    v=read_bound(absolute(work)/'enrichment/prepared.json'); m=pa.load(manifest_path)
+    require(v['binding']==binding and v['manifest_sha256']==sha(manifest_path),'review-preparation-binding')
     es={e['element_id']:e for e in m['elements']}; good={e['element_id']:e for e in state['elements']}
     elements=[]
     for row in v['requests']:
@@ -507,7 +509,7 @@ def review_create(work,binding,manifest_path):
     root=pa.new_directory(absolute(work)/'review')
     dossier=dict(schema='portable-review-dossier-v3',policy='observed-limitations-v1',binding=binding,request_accounting=state['accounting'],
         snapshot=dict(source_package='portable:'+sha(manifest_path),manifest=str(absolute(manifest_path)),
-                      manifest_sha256=sha(manifest_path),elements=elements),notice=reviews.NOTICE)
+                      manifest_sha256=sha(manifest_path),source_files=reviews.source_files(pa.load(manifest_path)),elements=elements),notice=reviews.NOTICE)
     _seal_file(root/'dossier.json',dossier)
     packet=reviews.packet_value(dossier,sha(root/'dossier.json'),[e['element_id'] for e in elements],8000000)
     if packet: pa.save(root/'packet.json',packet)
@@ -529,6 +531,7 @@ def _review_verify(work,binding,manifest_path,state):
     # finish; it never expands its reviewed scope or completion claim.
     ids={e['element_id'] for e in dossier['snapshot']['elements']}
     if current:
+        require(dossier['snapshot']['source_files']==reviews.source_files(pa.load(manifest_path)),'review-source-inventory')
         old=dossier['request_accounting']
         finished={r['element_id'] for r in old['requests'].values() if r['status']=='completed'}
         frozen=dict(elements=[e for e in state['elements'] if e['element_id'] in finished],accounting=old)

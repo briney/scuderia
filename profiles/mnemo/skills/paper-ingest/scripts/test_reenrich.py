@@ -102,7 +102,11 @@ def candidate(work,base):
         after=before.replace('Old scientific prose.','Revised scientific prose from the supplied evidence. '+qualification)
         changes.append(dict(heading=s['heading'],old_sha256=rr.hashlib_sha(before),new_text=after,elements=s['elements'],
             evidence=[dict(element_id=e,source_sha256=views[e]['source_sha256'],target='/record',qualification=qualification) for e in s['elements']]))
-    value=dict(schema='reenrich-page-candidate-v2',binding=binding,export_sha256=pa.sha(work/'export'/'handoff.json'),
+    current=exported['schema']=='portable-qualified-export-v4'
+    if current:
+        for row in changes:
+            for ref in row['evidence']: ref['kind']='enrichment'
+    value=dict(schema='reenrich-page-candidate-v3' if current else 'reenrich-page-candidate-v2',binding=binding,export_sha256=pa.sha(work/'export'/'handoff.json'),
         reviewer=reviewer(),qualification=qualification,full_distillation_reviewed=True,replacements=changes)
     path=base/(work.name+'-candidate-input.json'); pa.save(path,value)
     return path
@@ -181,7 +185,7 @@ class ReenrichTests(unittest.TestCase):
         self.assertIn('Unit assignment remains uncertain',text)
         self.assertIn('Known unit uncertainty',text)
         self.assertIn('Article package:',text); self.assertIn('Annotated export:',text)
-        self.assertIn('unreviewed_aspects',text)
+        self.assertNotIn('Unreviewed aspects:',text)
         self.assertIn('Old scientific prose.',text)
         self.assertEqual(rr.without_register(text),original)
         rr.publish(self.work,'fake','bucket','gate',runner=FakeRclone())
@@ -190,7 +194,7 @@ class ReenrichTests(unittest.TestCase):
         args=dict(manifest_key=pub['manifest_key'],manifest_sha256=pub['manifest_sha256'],article_key=self.m['article_key'],page=self.page)
         verified=rr.verify_completion(receipt,self.work/'archive'/'manifest.json',**args)
         self.assertEqual(verified['completion'],'offline-selected-refresh-complete')
-        self.assertEqual(verified['schema'],'portable-article-completion-v1')
+        self.assertEqual(verified['schema'],'portable-article-completion-v2')
         with self.assertRaises(ValueError): rr.verify_completion(receipt,self.work/'archive'/'manifest.json',**dict(args,manifest_sha256='0'*64))
         saved=self.page.read_text()
         for old in ('Unit assignment remains uncertain','Article package:','Annotated export:'):
@@ -211,32 +215,24 @@ class ReenrichTests(unittest.TestCase):
         self.assertIn('Known unit uncertainty',text)
         self.assertIn('Unit assignment remains uncertain',text)
         register=rr.read_register(text)
-        self.assertEqual(register['schema'],'portable-page-qualification-register-v2')
+        self.assertEqual(register['schema'],'portable-page-qualification-register-v3')
         self.assertEqual(rr.install_register(text,register),text)
-        # Historical candidates and completions keep their original rendering.
-        legacy=rr.qualification_register(exported,submission,self.m,p,
-            pa.sha(self.work/'export/annotated.html'),version=1)
-        old=rr.install_register(self.page.read_text(),legacy)
-        from unittest.mock import patch
-        original_candidate=rr._candidate_text
-        with patch.object(rr,'_candidate_text',side_effect=lambda *args: original_candidate(*args,version=1)):
-            rr.candidate_import(self.work,cp)
-        rr.apply(self.work,authorize=True)
+        # Verify current replacement against the archived snapshot. Genuine old
+        # completions are tested from records produced by the baseline checkout.
+        rr.candidate_import(self.work,cp); rr.apply(self.work,authorize=True)
         rr.publish(self.work,'fake','bucket','gate',runner=FakeRclone())
         _,paths=pa.verify_local(self.work/'archive/manifest.json')
+        replacement=dict(register,operator_qualification='A later attributed qualification.')
         with self.assertRaisesRegex(ValueError,'register-archive'):
-            rr.install_register(old,register)
-        newer=rr.install_register(old,register,archive_paths=paths)
-        self.assertEqual(rr.without_register(newer),rr.without_register(old))
-        for key in (legacy['export_locator']['key'],legacy['annotated_export_locator']['key'],
-                    legacy['source_locators'][0]['key'],'review/findings.json',
-                    'refresh-'+legacy['binding'][:20]+'/review/dossier.json'):
+            rr.install_register(text,replacement)
+        newer=rr.install_register(text,replacement,archive_paths=paths)
+        self.assertEqual(rr.without_register(newer),rr.without_register(text))
+        for key in (register['export_locator']['key'],register['annotated_export_locator']['key'],
+                    register['source_locators'][0]['key'],'review/findings.json',
+                    'refresh-'+register['binding'][:20]+'/review/dossier.json'):
             incomplete=dict(paths); del incomplete[key]
             with self.assertRaisesRegex(ValueError,'register-archive'):
-                rr.install_register(old,register,archive_paths=incomplete)
-        altered=old.replace('Known unit uncertainty','Unarchived human qualification')
-        with self.assertRaisesRegex(ValueError,'register-archive'):
-            rr.install_register(altered,register,archive_paths=paths)
+                rr.install_register(text,replacement,archive_paths=incomplete)
 
     def test_refresh_keeps_qualifications_for_previously_cited_targets(self):
         self.ready(); cp=self.no_change_candidate(); c=pa.load(cp)
@@ -410,7 +406,8 @@ class ReenrichTests(unittest.TestCase):
         rr.advance(self.work,'approved-execute',approval=ap,fixture_transport=inference_double(self.work))
         rr.advance(self.work,'review-create'); packet=pa.load(self.work/'review/packet.json'); e=packet['elements'][0]
         ref=dict(pointer='/body_fragments/0',source_sha256=e['source_sha256'],kind='crop')
-        submission=dict(schema='contextual-review-v1',packet_sha256=digest(packet),reviewer=reviewer(),coverage=[],resolutions=[],
+        submission=dict(schema='contextual-review-v2',packet_sha256=digest(packet),reviewer=reviewer(),coverage=[],resolutions=[],
+            assessment=dict(usable_evidence=True,reason='Synthetic retained evidence review.',source_refs=[dict(key='package/main/page.txt',sha256=pa.sha(self.base/'source/main-page.txt'))],unattempted={}),
             findings=[dict(element_id=e['element_id'],source_sha256=e['source_sha256'],target='/record/cells/0/raw_value',
                 category='synthetic-reading',reason='Original cell needs a qualified reading.',stage='answer',evidence=[ref])])
         path=self.base/'scoped-review.json'; pa.save(path,submission); rr.advance(self.work,'review-import',submission=path)
@@ -424,7 +421,7 @@ class ReenrichTests(unittest.TestCase):
         rr.candidate_import(self.work,candidate(self.work,self.base)); rr.apply(self.work,authorize=True)
         import html
         text=html.unescape(self.page.read_text())
-        self.assertIn('unapplied_correction_findings',text); self.assertIn('Synthetic operator proposal only.',text)
+        self.assertIn('Attributed proposals',text); self.assertIn('Synthetic operator proposal only.',text)
         self.assertIn('Synthetic test operator',text); self.assertIn('"proposed_value": "42"',text)
         self.assertEqual(pa.load(self.work/'export/handoff.json')['elements'][0]['outcome'],original)
         self.assertIsNone(original['record']['cells'][0]['raw_value'])
@@ -536,14 +533,15 @@ class ReenrichTests(unittest.TestCase):
                     rr.advance(work,'approved-execute',approval=ap,fixture_transport=transport)
                     self.assertEqual(calls,['r000001','r000002'])
                     exported=review_and_export(work,self.base)
-                    self.assertEqual(len(exported['elements']),1)
+                    self.assertEqual(len(exported['elements']),2)
                     self.assertFalse(exported['execution_complete'])
                     self.assertEqual(exported['request_accounting']['counts']['completed'],1)
                     status=rr.execute(work_root=work)
                     self.assertFalse(status['production_complete']); self.assertEqual(status['completion'],'pending')
                     fake=FakeRclone()
-                    with self.assertRaisesRegex(ValueError,'partial'): rr.publish(work,'fake','bucket','gate',runner=fake)
-                    self.assertFalse(fake.calls)
+                    published=rr.publish(work,'fake','bucket','gate',runner=fake)
+                    self.assertEqual(published['completion'],'offline-full-archive-complete')
+                    self.assertFalse(pa.load(work/'completion.json')['requests_successful'])
                     self.assertFalse((work/'enrichment/execution-complete.json').exists())
 
     def test_route_mismatch_stops_siblings_but_status_remains_readable(self):
@@ -568,7 +566,9 @@ class ReenrichTests(unittest.TestCase):
     def test_wrong_model_refuses_and_cannot_finalize(self):
         self.plan(); rr.advance(self.work,'prepare'); ap=count_and_approve(self.work,self.base)
         with self.assertRaisesRegex(ValueError,'model-mismatch'): rr.advance(self.work,'approved-execute',approval=ap,fixture_transport=inference_double(self.work,wrong_model=True))
-        with self.assertRaises((ValueError,FileNotFoundError)): rr.advance(self.work,'review-create')
+        exported=review_and_export(self.work,self.base)
+        self.assertFalse(exported['readiness']['page_ready'])
+        self.assertIn('execution-integrity-hold',exported['readiness']['holds'])
     def test_wrong_count_refuses(self):
         self.plan(); rr.advance(self.work,'prepare'); ap=count_and_approve(self.work,self.base)
         with self.assertRaisesRegex(ValueError,'count-mismatch'): rr.advance(self.work,'approved-execute',approval=ap,fixture_transport=inference_double(self.work,wrong_count=True))

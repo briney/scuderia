@@ -89,3 +89,50 @@ class InitialHandoff(unittest.TestCase):
         self.assertIn('failed',sp.qualification_text(exported))
         exported['schema']='qualified-enrichment-export-v1'
         self.assertIn('unreviewed',sp.qualification_text(exported))
+
+
+class PartialRefresh(unittest.TestCase):
+    def setUp(self):
+        import test_reenrich as fixtures
+        fixtures.ReenrichTests.setUp(self)
+    def test_partial_native_page_applies_and_publishes(self):
+        import test_reenrich as fixtures
+        import reenrich as rr
+        import portable_articles as pa
+        from article_runtime import digest
+        from test_article_corrections import FakeRclone
+        fixtures.ReenrichTests.plan(self,selected=False)
+        rr.advance(self.work,'prepare'); approval=fixtures.count_and_approve(self.work,self.base)
+        rr.advance(self.work,'approved-execute',approval=approval,fixture_transport=fixtures.inference_double(self.work,interrupt=True))
+        fixtures.review_and_export(self.work,self.base)
+        _,p,manifest,m,roster,binding,_=rr.context(self.work)
+        exported=pa.load(self.work/'export/handoff.json')
+        before=self.page.read_text();start,end=rr._sections(before)['## Results']
+        key='package/main/page.txt';path=pa.verify_local(manifest)[1][key]
+        submission=dict(schema='reenrich-page-candidate-v3',binding=binding,export_sha256=pa.sha(self.work/'export/handoff.json'),
+            reviewer=fixtures.reviewer(),qualification='',full_distillation_reviewed=True,
+            replacements=[dict(heading='## Results',old_sha256=rr.hashlib_sha(before[start:end]),
+                new_text=before[start:end].replace('Old scientific prose.','Native manuscript text supports this synthetic summary.'),
+                elements=roster,evidence=[dict(kind='source',key=key,sha256=pa.sha(path),pointer='',quote=path.read_text(),qualification='')])])
+        inp=self.base/'current-candidate.json';pa.save(inp,submission)
+        rr.candidate_import(self.work,inp);rr.apply(self.work,authorize=True)
+        self.assertIn('<!-- Human annotation -->',self.page.read_text())
+        self.assertIn('[[preserved-link]]',self.page.read_text())
+        self.assertIn('uncertain',self.page.read_text())
+        self.assertNotIn('Unreviewed aspects:',self.page.read_text())
+        fake=FakeRclone()
+        result=rr.publish(self.work,'fake','bucket','gate',runner=fake)
+        self.assertTrue(result['page_refresh_complete'])
+        receipt=pa.load(self.work/'completion.json')
+        self.assertFalse(receipt['requests_successful'])
+        pub=receipt['publication']
+        verified=rr.verify_completion(self.work/'completion.json',self.work/'archive/manifest.json',
+            manifest_key=pub['manifest_key'],manifest_sha256=pub['manifest_sha256'],article_key=pub['article_key'],page=self.page)
+        self.assertTrue(verified['page_refresh_complete'])
+        restored=self.base/'restored'
+        pa.restore_remote(pub['manifest_key'],pub['manifest_sha256'],restored,remote='fake',bucket='bucket',prefix='gate',article_key=pub['article_key'],runner=fake)
+        receipt_path=self.base/'saved-completion.json';pa.save(receipt_path,receipt)
+        import shutil
+        shutil.rmtree(self.work);shutil.rmtree(self.base/'source');shutil.rmtree(self.base/'archive')
+        self.assertTrue(rr.verify_completion(receipt_path,restored/'manifest.json',manifest_key=pub['manifest_key'],
+            manifest_sha256=pub['manifest_sha256'],article_key=pub['article_key'],page=self.page)['page_refresh_complete'])

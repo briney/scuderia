@@ -107,7 +107,7 @@ def argv_for(args, deployment, attempt, *, historical=False):
         value=args[key]
         if key=='authorize_posts': command.append('--authorize-posts')
         elif key in ('elements','aspects'):
-            require(isinstance(value,list) and value and len(value)==len(set(value)) and all(isinstance(x,str) and x for x in value),'explicit-unique-list')
+            require(isinstance(value,list) and (value or key=='elements') and len(value)==len(set(value)) and all(isinstance(x,str) and x for x in value),'explicit-unique-list')
             for item in value: command.append('--'+('element' if key=='elements' else 'aspect')+'='+item)
         else:
             require(isinstance(value,(str,int)) and not isinstance(value,bool),'scalar-argument')

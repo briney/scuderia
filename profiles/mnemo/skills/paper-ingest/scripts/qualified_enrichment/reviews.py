@@ -20,19 +20,32 @@ def policy(dossier):
     return 'observed-limitations-v1' if current else 'legacy'
 
 
-def validate_assessment(dossier, value):
+def source_files(manifest):
+    return [dict(key=f['key'],sha256=f['sha256']) for f in manifest['files']
+            if f['role'] in ('source-original','source-package','source-retention')]
+
+
+def validate_assessment(dossier, value, *, manifest=None, paths=None):
     if value is None: return None
     require(set(value)=={'usable_evidence','reason','source_refs','unattempted'},'assessment-fields')
     require(type(value['usable_evidence']) is bool and isinstance(value['reason'],str) and value['reason'].strip(),'assessment-reason')
     require(isinstance(value['source_refs'],list) and isinstance(value['unattempted'],dict),'assessment-evidence-fields')
     import portable_articles as pa
-    manifest=absolute(dossier['snapshot']['manifest'])
-    require(sha(manifest)==dossier['snapshot']['manifest_sha256'],'assessment-manifest-binding')
-    m,paths=pa.verify_local(manifest); files={r['key']:r for r in m['files']}
+    if manifest is None:
+        path=absolute(dossier['snapshot']['manifest'])
+        require(sha(path)==dossier['snapshot']['manifest_sha256'],'assessment-manifest-binding')
+        manifest,paths=pa.verify_local(path,set(pa.local_sources(path))|{r['key'] for r in value['source_refs']})
+    require(dossier['snapshot']['source_files']==source_files(manifest),'assessment-source-inventory')
+    files={r['key']:r for r in manifest['files']}
     for ref in value['source_refs']:
-        require(set(ref)=={'key','sha256'} and ref['key'] in files and ref['key'] in paths,'assessment-source-reference')
+        require(set(ref) in ({'key','sha256'},{'key','sha256','page','inspection'}) and ref['key'] in files and ref['key'] in paths,'assessment-source-reference')
         record=files[ref['key']]; path=paths[ref['key']]
         require(record['role'] in ('source-original','source-package','source-retention') and sha(path)==ref['sha256']==record['sha256'],'assessment-source-binding')
+        if 'inspection' in ref:
+            require(path.suffix.lower()=='.pdf' and type(ref['page']) is int and isinstance(ref['inspection'],str) and ref['inspection'].strip(),'assessment-inspection-fields')
+            import pymupdf
+            with pymupdf.open(path) as pdf: require(1<=ref['page']<=len(pdf),'assessment-inspection-page')
+            continue
         require(path.suffix.lower() in ('.txt','.md','.json','.html','.csv'),'assessment-readable-source-required')
         text=path.read_text().strip()
         require(text and text not in ('{}','[]','null'),'assessment-empty-source')
@@ -43,11 +56,11 @@ def validate_assessment(dossier, value):
     return value
 
 
-def assessment(dossier, entries):
+def assessment(dossier, entries, *, manifest=None, paths=None):
     value=None
     for entry in entries:
         if entry['submission'].get('assessment') is not None:
-            value=validate_assessment(dossier,entry['submission']['assessment'])
+            value=validate_assessment(dossier,entry['submission']['assessment'],manifest=manifest,paths=paths)
     return value
 
 
@@ -94,9 +107,7 @@ def packet_value(dossier, dossier_hash, elements, max_bytes):
                   elements=[dict(available[e], targets=list(nodes(available[e]['outcome'])),
                                  automatic_findings=project(available[e],policy=policy(dossier))['findings']) for e in elements])
     if policy(dossier)!='legacy':
-        import portable_articles as pa
-        m=pa.load(dossier['snapshot']['manifest'])
-        result['source_files']=[dict(key=f['key'],sha256=f['sha256']) for f in m['files'] if f['role'] in ('source-original','source-package','source-retention')]
+        result['source_files']=dossier['snapshot']['source_files']
     require(len((json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False)+'\n').encode()) <= max_bytes, 'packet-too-large-select-fewer-elements')
     return result
 
@@ -170,7 +181,7 @@ def owners_for(element, pointer):
     return set()
 
 
-def apply(dossier, decisions):
+def apply(dossier, decisions, *, manifest=None, paths=None):
     elements = {e['element_id']: e for e in dossier['snapshot']['elements']}
     views = {key: project(value,policy=policy(dossier)) for key, value in elements.items()}
     current=policy(dossier)!='legacy'
@@ -194,7 +205,7 @@ def apply(dossier, decisions):
             require(item == expected, 'altered-review-packet')
         fields={'schema','packet_sha256','reviewer','findings','coverage','resolutions'}
         require(set(submission) in (fields,fields|{'assessment'}) if current else set(submission)==fields, 'review-fields')
-        if current: validate_assessment(dossier,submission.get('assessment'))
+        if current: validate_assessment(dossier,submission.get('assessment'),manifest=manifest,paths=paths)
         for group in ('findings','coverage','resolutions'):
             require(isinstance(submission[group], list), 'review-list:'+group)
         for item in submission['findings']:
