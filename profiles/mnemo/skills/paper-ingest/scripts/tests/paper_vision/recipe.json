@@ -1,0 +1,15 @@
+{
+  "provider_identity": "custom:local",
+  "endpoint": "http://example.invalid:4000/v1/chat/completions",
+  "credential_env": "LITELLM_API_KEY",
+  "settings": {
+    "model": "qwen3.8-27b",
+    "temperature": 0,
+    "max_tokens": 65536
+  },
+  "timeout_seconds": 1200,
+  "reasoning": "default; reasoning fields omitted",
+  "redirects": false,
+  "proxies": false,
+  "retries": 0
+}

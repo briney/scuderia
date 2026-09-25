@@ -1,0 +1,24 @@
+{
+  "schema_version": "structured-block-contract-v1",
+  "localization": {
+    "root_keys": ["status", "blocks", "uncertainty"],
+    "status": ["ok", "empty", "unresolved"],
+    "block_keys": ["label", "fragments", "uncertainty"],
+    "fragment_keys": ["object_ids"],
+    "object_ids": "Nonempty original compact/group integer aliases; no booleans, unknown IDs or ambiguous reuse.",
+    "label": "Printed source label or null; no type assertion.",
+    "geometry": "Unchanged material.py and table_model.py after a blocks-to-tables key-only adapter.",
+    "metadata_exception": "Only an omitted root uncertainty on status=ok; recorded as unknown/not-provided, not empty. No empty-group tolerance."
+  },
+  "classification": {
+    "root_keys": ["classifications"],
+    "item_keys": ["candidate_id", "content_type", "source_label", "label_evidence", "uncertainty"],
+    "content_type": ["table", "algorithm", "code", "other", "uncertain", "unknown"],
+    "label_evidence": ["crop-image", "context-image", "native-text", "none"],
+    "source_label": "Printed label or null; model observation, independent review pending. Figure/Table/Algorithm namespaces remain distinct.",
+    "accounting": "Every actual page-local candidate exactly once; no new or duplicate IDs.",
+    "geometry": "No output coordinates, role changes, merges or new candidates.",
+    "uncertainty": "Array of nonblank strings; nonempty for uncertain or unknown."
+  },
+  "separation": "Source geometry, component role, observed label and content type are distinct. Classification does not establish caption association."
+}

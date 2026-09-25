@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Reference-only document association",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "groups", "unassociated", "conflicts"],
+  "properties": {
+    "status": {"enum": ["ok", "unresolved"]},
+    "groups": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["source_document", "body_refs", "caption_note_refs", "label"], "properties": {
+      "source_document": {"type": "string", "minLength": 1},
+      "body_refs": {"$ref": "#/$defs/nonempty_refs"},
+      "caption_note_refs": {"$ref": "#/$defs/refs"},
+      "label": {"type": ["string", "null"], "minLength": 1}
+    }}},
+    "unassociated": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["candidate_id", "source_document"], "properties": {
+      "candidate_id": {"type": "string", "minLength": 1},
+      "source_document": {"type": "string", "minLength": 1}
+    }}},
+    "conflicts": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["candidate_refs", "source_document", "reason"], "properties": {
+      "candidate_refs": {"$ref": "#/$defs/nonempty_refs"},
+      "source_document": {"type": "string", "minLength": 1},
+      "reason": {"enum": ["ambiguous-association", "overlapping-content", "insufficient-source"]}
+    }}}
+  },
+  "$defs": {
+    "refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "nonempty_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+  },
+  "$comment": "assembly.validate additionally requires exact candidate accounting, source/type/full-label-namespace compatibility, original page/geometric order, finite geometry and source-supported labels. No geometry or text output is permitted."
+}

@@ -1,0 +1,14 @@
+name: paper-workflow
+version: 0.1.0
+description: Fixed-argv PDF workflow launch with durable process evidence and artifact-derived reports
+provides_tools:
+  - paper_workflow
+config_schema:
+  method_dir:
+    type: str
+    required: true
+    description: Absolute trusted method directory containing pdf_source_package
+  python:
+    type: str
+    required: true
+    description: Absolute trusted PDF environment interpreter

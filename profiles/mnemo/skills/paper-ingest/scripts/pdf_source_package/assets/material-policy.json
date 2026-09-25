@@ -1,0 +1,12 @@
+{
+  "policy_id": "missing-root-uncertainty-first-pass-v1",
+  "scope": "Apply the accepted Tai geometry interpreter on first processing of actual body responses; no response repair or repeat inference.",
+  "permitted_omission": "Only absent root uncertainty with status=ok, accepted root keys and otherwise valid table/fragment/label/member geometry structure.",
+  "missing_metadata": {"root_uncertainty_present": false, "model_root_uncertainty": null, "disposition": "NOT PROVIDED; never model-reported empty uncertainty"},
+  "compatibility_view": "A private deep copy supplies uncertainty=[] only to invoke the unchanged frozen decoder. Raw model selection is retained exactly; derived mapped uncertainty is restored to null. No member or geometry is changed.",
+  "diagnostics": "Retain the original strict table diagnostic and the frozen figure-geometry diagnostic separately, including metadata-presence warnings.",
+  "refusals": "Invalid PRESENT uncertainty, unknown IDs or keys, missing geometry, ambiguous membership, nonfinite/inverted bounds and nonpositive fragment unions remain failures. Empty/unresolved statuses use the unchanged frozen handling.",
+  "existing_warnings": "Finite degenerate source members and within-fragment duplicates retain all extrema and raw occurrences under the accepted table policy.",
+  "provenance": ["reference/tai-material-policy.json", "reference/TAI-HUMAN-ACCEPTANCE.md", "adaptation-baseline.json"],
+  "human_acceptance": "Pending review of this experiment; the Tai acceptance does not accept new outputs."
+}

@@ -1,0 +1,7 @@
+name: paper-vision
+version: 0.1.0
+description: Pinned paper image inspection with exact-byte evidence and no Hermes model routing
+provides_tools:
+  - paper_vision_inspect
+python_dependencies:
+  - "Pillow>=12.3.0,<13"

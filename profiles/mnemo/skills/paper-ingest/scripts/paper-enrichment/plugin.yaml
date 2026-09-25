@@ -1,0 +1,26 @@
+name: paper-enrichment
+version: 0.1.0
+description: Qualified figure/table enrichment and source-bound append-only uncertainty review
+provides_tools:
+  - paper_enrichment
+config_schema:
+  integration_dir:
+    type: str
+    required: true
+    description: Absolute trusted qualified integration source root
+  enrichment_root:
+    type: str
+    required: true
+    description: Absolute trusted frozen directory containing pdf_enrichment
+  method_dir:
+    type: str
+    required: true
+    description: Absolute trusted accepted PDF method directory
+  adapter_dir:
+    type: str
+    required: true
+    description: Absolute trusted directory containing source_package.py
+  python:
+    type: str
+    required: true
+    description: Absolute trusted PDF interpreter
