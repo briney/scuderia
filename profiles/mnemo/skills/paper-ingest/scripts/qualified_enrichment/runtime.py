@@ -135,28 +135,84 @@ def source_handoff(path, method, test_root=None):
 
 
 def prepare(handoff, output, method, test_root=None):
+    import portable_articles as pa
+    import article_enrichment as ae
+    from article_runtime import digest
     accepted = source_handoff(handoff, method, test_root)
     pkg = SourcePackage(accepted['package'], method=method)
-    selected = [r['element_id'] for r in pkg.eligible_elements(['figure', 'table']) if r['kind']]
     output = new(output, [pkg.root, absolute(handoff).parent, absolute(method)])
-    if test_root:
-        require(output.is_relative_to(absolute(test_root)), 'fixture-output-outside-test-root')
-    # V7 deliberately requires a nonempty explicit live roster. Do not forge a
-    # dummy request or synthetic v7 run for a genuinely empty selection.
-    if selected:
-        requests.prepare(pkg.root, output/'v7', kinds=['figure', 'table'], element_ids=selected,
-                         method=method, fixture=test_root is not None)
-    selection = dict(schema='qualified-selection-v1', source_handoff=str(absolute(handoff)),
-                     source_handoff_sha256=sha(handoff), source_package=str(pkg.root),
-                     source_bindings=tree(pkg.root), method=str(absolute(method)), selected=selected,
-                     default_kinds=['figure', 'table'], algorithm_disposition='deferred-not-selected',
-                     fixture=test_root is not None, test_root=str(absolute(test_root)) if test_root else None,
-                     code=code_hashes())
-    save(output/'selection.json', selection)
+    if test_root: require(output.is_relative_to(absolute(test_root)), 'fixture-output-outside-test-root')
+    retained = load(accepted['retention'])['acquisition']['files']
+    pdfs = [r for r in retained if r['format']=='pdf']; associations = {}
+    for doc in pkg.documents:
+        candidates = [r for r in pdfs if r['sha256']==doc['sha256'] and r['page_count']==doc['page_count']]
+        named = [r for r in candidates if r['id']==doc['identity']]
+        candidates = named or candidates
+        require(len(candidates)==1, 'ambiguous-source-document-association')
+        associations[doc['identity']]=candidates[0]['id']
+    manifest=output/'source/manifest.json'
+    m=pa.build_manifest(accepted['retention'], pkg.root, manifest.parent,
+                        package_id='new-ingest', document_bindings=associations, test_root=test_root)
+    selected=[e['element_id'] for e in m['elements'] if e['eligible'] and e['kind'] in ('figure','table')]
+    selection=dict(schema='qualified-selection-v2', source_handoff=str(absolute(handoff)),
+        source_handoff_sha256=sha(handoff),source_package=str(pkg.root),source_bindings=tree(pkg.root),
+        manifest_sha256=sha(manifest), selected=selected, default_kinds=['figure','table'],
+        algorithm_disposition='deferred-not-selected',fixture=test_root is not None,
+        test_root=str(absolute(test_root)) if test_root else None,code=code_hashes())
+    save(output/'selection.json',selection)
+    ae.prepare(output,digest(selection),manifest,selected,fixture=test_root is not None)
     return selection
 
 
+def portable_job(job, *, for_execution=False):
+    import portable_articles as pa
+    import article_enrichment as ae
+    from article_runtime import digest
+    job=absolute(job); selection=load(job/'selection.json'); manifest=job/'source/manifest.json'
+    require(selection['schema']=='qualified-selection-v2','historical-job-read-only-new-job-required')
+    trusted.validate_code_provenance(selection['code'])
+    if for_execution: require(selection['code']==code_hashes(),'selection-code-binding')
+    require(sha(selection['source_handoff'])==selection['source_handoff_sha256'],'source-handoff-changed')
+    accepted=source_handoff(selection['source_handoff'],trusted.read_method_path(),selection['test_root'])
+    require(accepted['package']==selection['source_package'] and tree(accepted['package'])==selection['source_bindings'],'selection-source-binding')
+    require(sha(manifest)==selection['manifest_sha256'],'selection-manifest-binding')
+    m,_=pa.verify_local(manifest)
+    selected=[e['element_id'] for e in m['elements'] if e['eligible'] and e['kind'] in ('figure','table')]
+    require(selected==selection['selected'] and selection['default_kinds']==['figure','table'] and
+            selection['algorithm_disposition']=='deferred-not-selected','default-roster-binding')
+    binding=digest(selection); prepared=ae.verify(job,binding,manifest,for_execution=for_execution)
+    require(prepared['roster']==selected and prepared['fixture'] is selection['fixture'],'production-selection-binding')
+    return selection,manifest,binding
+
+
 def read_job(job):
+    job=absolute(job); selection=load(job/'selection.json')
+    if selection['schema']=='qualified-selection-v1': return _read_legacy_job(job)
+    import article_enrichment as ae
+    import portable_articles as pa
+    selection,manifest,binding=portable_job(job)
+    state=ae.execution_state(job,binding,manifest); m=pa.load(manifest)
+    successful={e['element_id']:e for e in state['elements']}; elements=[]
+    statuses={r['element_id']:r['status'] for r in state['accounting']['requests'].values()}
+    docs={d['identity']:d for d in m['documents']}
+    _,paths=pa.verify_local(manifest)
+    for e in m['elements']:
+        value=successful.get(e['element_id'])
+        if value is None:
+            value=dict(element_id=e['element_id'],source_sha256=e['source_sha256'],document=e['document'],
+                content_type=e['content_type'],outcome=dict(status=statuses.get(e['element_id'],'not-selected'),complete=False),
+                evidence=e['evidence'],source_element=e['source_element'])
+        value=dict(value,eligible_default=e['element_id'] in selection['selected'],source_pdf=str(paths[docs[e['document']]['raw_key']]))
+        elements.append(value)
+    holds=['execution-integrity-hold'] if state['accounting']['integrity_hold'] else []
+    return dict(kind='qualified-job',path=str(job),selection=selection,selection_sha256=sha(job/'selection.json'),
+        source_package=selection['source_package'],source_bindings=selection['source_bindings'],elements=elements,
+        execution_holds=holds,fixture=selection['fixture'],request_accounting=state['accounting'],
+        manifest=str(manifest),binding=binding,
+        documents=[dict(d,source_status='complete' if d['complete'] else 'incomplete',source_complete=d['complete']) for d in m['documents']])
+
+
+def _read_legacy_job(job):
     job = absolute(job)
     selection = load(job/'selection.json')
     require(selection['schema'] == 'qualified-selection-v1', 'unsupported-selection-format')
@@ -197,7 +253,12 @@ def snapshot(path, kind):
 
 def prepare_for_approval(job, cache=None):
     """Resume offline bookkeeping at verified boundaries, never a consumed POST."""
-    job = external(job, []); state = read_job(job); run = job/'v7'
+    job = external(job, []); state=read_job(job)
+    if state['selection'].get('schema')=='qualified-selection-v2':
+        import article_enrichment as ae
+        _,manifest,binding=portable_job(job,for_execution=True)
+        return ae.prepare_for_approval(job,binding,manifest,cache)
+    run = job/'v7'
     require(state['selection']['code'] == code_hashes(), 'selection-code-binding')
     if not state['selection']['selected']:
         return 'review-create'

@@ -251,6 +251,26 @@ def seal(work,binding,manifest_path):
     return template
 
 
+def prepare_for_approval(work,binding,manifest_path,cache=None):
+    v=verify(work,binding,manifest_path); root=absolute(work)/'enrichment'
+    if not v['requests']: return 'review-create'
+    if (root/'execution-start.json').exists():
+        state=execution_state(work,binding,manifest_path)['accounting']
+        if state['integrity_hold']: return 'hold-inspect-evidence-no-retry'
+        return 'approved-execute' if state['counts']['pending'] else 'review-create'
+    if not (root/'counts.json').exists():
+        require(not (root/'count-start.json').exists(),'partial-count-hold-new-run-required')
+        count(work,binding,manifest_path,cache=cache)
+    verify_counts(root,v)
+    if not (root/'seal.json').exists(): seal(work,binding,manifest_path)
+    saved=read_bound(root/'seal.json')
+    require(saved==dict(schema='portable-enrichment-seal-v2',binding=binding,prepared_sha256=sha(root/'prepared.json'),
+        counts_sha256=sha(root/'counts.json'),fixture=v['fixture'],profile=v['profile'],requests=v['requests'],**scope_fields(v)), 'seal-bindings-changed')
+    template=pa.load(root/'approval.template.json')
+    require(template['approved'] is False and template['seal_sha256']==sha(root/'seal.json'),'unapproved-template-binding')
+    return 'review-and-author-approval'
+
+
 def approval(root,v,value):
     require(set(value)==set(pa.load(root/'approval.template.json')), 'approval-fields')
     require(all(value.get(k)==x for k,x in scope_fields(v).items()), 'diagnostic-approval-scope-binding')
@@ -389,6 +409,12 @@ def execution_state(work,binding,manifest_path):
 def _execution_state(work,binding,manifest_path,v):
     # Caller owns this operation's already-verified preparation. Never persist it.
     root=absolute(work)/'enrichment'
+    if not (root/'execution-start.json').exists():
+        require(not any((root/r['directory']/name).exists() for r in v['requests'] for name in
+            ('reservation.json','failure.json','response-body.json','outcome.json')),'request-without-execution-start')
+        rows={r['id']:dict(element_id=r['element_id'],status='pending') for r in v['requests']}
+        return dict(elements=[],accounting=dict(requests=rows,counts=dict(pending=len(rows),uncertain=0,failed=0,completed=0),
+            complete=not rows,integrity_hold=False))
     start=read_bound(root/'execution-start.json'); a=pa.load(root/'executed-approval.json')
     require(start['approval_sha256']==sha(root/'executed-approval.json') and start['binding']==binding and start['fixture'] is v['fixture'],'execution-start-binding')
     counts=approval(root,v,a); result=[]; rows={}; hashes={}; integrity_hold=False

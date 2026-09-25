@@ -15,6 +15,9 @@ def bootstrap(enrichment_root, adapter_dir, method):
         if any(p.is_symlink() for p in (path,*path.parents)):
             raise ValueError('trusted-root-symlink-forbidden')
     sys.path[:0]=[str(enrichment_root),str(adapter_dir)]
+    import os
+    os.environ.update(PDF_ENRICHMENT_METHOD=str(method), REENRICH_ENRICHMENT_ROOT=str(enrichment_root),
+                      REENRICH_INTEGRATION_ROOT=str(Path(__file__).resolve().parent))
     import pdf_enrichment
     if Path(pdf_enrichment.__file__).resolve().parent != Path(enrichment_root)/'pdf_enrichment':
         raise ValueError('different-enrichment-already-imported')
@@ -68,33 +71,35 @@ def main(argv=None):
                 artifacts[str(job/'selection.json')]=sha(job/'selection.json')
         elif args.operation in ('count','seal','execute','report','import-test-response'):
             job=absolute(args.job); state=runtime.read_job(job)
-            run=job/'v7'
-            if args.operation != 'report':
-                from qualified_enrichment.storage import code_hashes
-                require(state['selection']['code'] == code_hashes(), 'selection-code-binding')
-            require(state['selection']['selected'], 'zero-eligible-no-enrichment-operation-required')
-            if args.operation=='count':
-                live.count(run,absolute(args.processor_cache)); names=['counts.json','counts.sha256']
-            elif args.operation=='seal':
-                next_step=runtime.prepare_for_approval(job,args.processor_cache)
-                names=['seal.json','approval.template.json']
-            elif args.operation=='execute':
-                result=live.execute(run,absolute(args.approval),authorize=args.authorize_posts)
-                names=['execution-session.json','executed-approval.json','execution-complete.json']
-                expected=load(run/'approval.template.json')['requests']
-                exit_code=0 if len(result['attempted'])==len(expected) and all(v.get('complete') for v in result['results'].values()) else 1
-            elif args.operation=='import-test-response':
-                importer.import_test_response(run,absolute(args.responses)); names=['enrichment-results.json']
-            else:
+            if state['selection']['schema']=='qualified-selection-v1':
+                require(args.operation=='report','historical-job-read-only-new-job-required')
                 from qualified_enrichment.storage import external
                 external(args.output,[job,absolute(state['source_package'])])
-                importer.report(run,absolute(args.output)); names=[]
+                importer.report(job/'v7',absolute(args.output))
                 for name in tree(absolute(args.output)): artifacts[str(absolute(args.output)/name)]=sha(absolute(args.output)/name)
-            for name in names: artifacts[str(run/name)]=sha(run/name)
-            # Use the frozen validators after the operation too; filenames alone
-            # do not establish count, outcome or source validity.
-            if args.operation=='count': live.verify_counts(run,bindings.verify(run))
-            else: runtime.read_job(job)
+            else:
+                import article_enrichment as ae
+                _,manifest,binding=runtime.portable_job(job,for_execution=args.operation!='report')
+                run=job/'enrichment'
+                if args.operation=='count':
+                    ae.count(job,binding,manifest,cache=absolute(args.processor_cache))
+                elif args.operation=='seal':
+                    next_step=runtime.prepare_for_approval(job,args.processor_cache)
+                elif args.operation=='execute':
+                    result=ae.execute(job,binding,manifest,absolute(args.approval),authorize=args.authorize_posts)
+                    exit_code=0 if result['accounting']['complete'] else 1
+                    details=result['accounting']
+                elif args.operation=='import-test-response':
+                    raise ValueError('portable-fixtures-use-offline-executor-double')
+                else:
+                    from qualified_enrichment.storage import external,new
+                    output=new(args.output,[job,absolute(state['source_package'])])
+                    save(output/'report.json',state)
+                    artifacts[str(output/'report.json')]=sha(output/'report.json')
+                if args.operation!='report':
+                    for name in tree(run):
+                        if not name.endswith('.lock'): artifacts[str(run/name)]=sha(run/name)
+                    runtime.read_job(job)
         elif args.operation=='review-create':
             details=reviews.create(args.run,args.kind or 'qualified-job',args.output)
             artifacts[str(absolute(args.output)/'dossier.json')]=sha(absolute(args.output)/'dossier.json')

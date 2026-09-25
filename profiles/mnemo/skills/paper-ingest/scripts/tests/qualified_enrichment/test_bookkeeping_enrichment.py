@@ -78,19 +78,36 @@ class EnrichmentBookkeeping(unittest.TestCase):
                 live.execute_fixture(self.run,path,lambda *args: self.fail('must not post'))
         self.assertFalse((self.run/'execution-session.json').exists())
 
-    def test_prepare_entry_bundles_real_request_preparation_and_seal(self):
-        import entry
-        scripts=Path(__file__).resolve().parents[2]
-        handoff=self.root/'source-handoff'/'handoff.json'; storage.save(handoff,{'synthetic':'fixture handoff boundary double'})
-        package=str(Path(os.environ['PDF_ENRICHMENT_FIXTURES'])/'current')
-        receipt=self.root/'receipt.json'
-        with patch.object(runtime,'source_handoff',return_value=dict(package=package)), patch.object(counting,'processor',return_value=None), patch.object(counting.Counter,'count',self.fake_count):
-            result=entry.main(['--enrichment-root',str(scripts),'--adapter-dir',str(scripts),'--method',str(scripts),
-                '--receipt',str(receipt),'--offline','prepare','--source-handoff',str(handoff),'--output',str(self.job),
-                '--processor-cache',str(self.cache),'--test-root',str(self.root)])
-        self.assertEqual(result,0)
-        value=storage.load(receipt)
-        self.assertEqual(value['next_step'],'review-and-author-approval')
-        self.assertFalse(value['production_executed'])
-        self.assertIn(str(self.run/'seal.json'),value['checked_artifacts'])
-        self.assertFalse((self.run/'execution-session.json').exists())
+
+
+class PortableNewIngest(unittest.TestCase):
+    def test_real_source_prepares_portable_default_roster(self):
+        from test_portable_articles import real_archive
+        import portable_articles as pa
+        import article_enrichment as ae
+        with tempfile.TemporaryDirectory(dir=os.environ['SOURCE_PACKAGE_TEST_ROOT']) as tmp:
+            root=Path(tmp); manifest,m,mapping=real_archive(root)
+            handoff=root/'handoff/handoff.json'; storage.save(handoff,dict(fixture=True))
+            accepted=dict(package=str(root/'package'),retention=str(root/'retention/retention.json'))
+            with patch.object(runtime,'source_handoff',return_value=accepted):
+                selection=runtime.prepare(handoff,root/'job',Path(__file__).resolve().parents[2],root)
+                self.assertEqual(selection['schema'],'qualified-selection-v2')
+                selected,manifest,binding=runtime.portable_job(root/'job')
+                prepared=ae.verify(root/'job',binding,manifest)
+                self.assertEqual(prepared['roster'],selected['selected'])
+                self.assertFalse((root/'job/v7').exists())
+                state=runtime.read_job(root/'job')
+                self.assertEqual(state['request_accounting']['counts']['pending'],len(selected['selected']))
+                import entry
+                scripts=Path(__file__).resolve().parents[2]; receipt=root/'seal-receipt.json'
+                with patch.object(counting,'processor',return_value=None), patch.object(counting.Counter,'count',EnrichmentBookkeeping.fake_count):
+                    result=entry.main(['--enrichment-root',str(scripts),'--adapter-dir',str(scripts),'--method',str(scripts),
+                        '--receipt',str(receipt),'--offline','seal','--job',str(root/'job'),
+                        '--processor-cache',os.environ['PDF_PROCESSOR_CACHE']])
+                self.assertEqual(result,0)
+                self.assertEqual(storage.load(receipt)['next_step'],'review-and-author-approval')
+                self.assertFalse(storage.load(root/'job/enrichment/approval.template.json')['approved'])
+                before=storage.tree(root/'job')
+                with patch.object(ae,'count',side_effect=AssertionError('recount')):
+                    self.assertEqual(runtime.prepare_for_approval(root/'job'), 'review-and-author-approval')
+                self.assertEqual(before,storage.tree(root/'job'))
