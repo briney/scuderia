@@ -97,8 +97,10 @@ Execution and delivery are separate: a fired status does not prove the message
 reached its destination. One-shot completion is scheduler-managed; do not
 promise physical deletion of its historical job record.
 
-Procedure edits use an isolated scheduling/parser/log rehearsal with captured
-output, not a production reminder or test message.
+Procedure edits follow change-scoped verification in
+`skills/conventions/skill-hygiene.md`. When scheduling/parser/log behavior
+requires execution, use an isolated rehearsal with captured output, not a
+production reminder or test message.
 
 ## Promotion to task
 

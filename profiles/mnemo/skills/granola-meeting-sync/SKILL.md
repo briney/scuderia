@@ -303,6 +303,6 @@ does not silently skip. The failure is visible in the cron job output.
 
 ## Procedure-change verification
 
-Edits require the no-regression read-back in `skills/conventions/skill-hygiene.md`.
-For scheduled consumers, re-run a representative task and inspect its real
-output without live delivery; do not advance production cursors during a check.
+Apply change-scoped verification in `skills/conventions/skill-hygiene.md`.
+When the changed behavior requires an execution check, inspect captured output
+without live delivery; do not advance production cursors during validation.

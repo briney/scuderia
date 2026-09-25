@@ -216,7 +216,7 @@ two audit skills.
 - `skills/conventions/paper-stubs.md` — shared stub shape, producer exceptions, citation provenance, and queue completion
 - `skills/conventions/rem-cycle-contract.md` — the rem-cycle phase interface: structured phase result, the binary commit gate, run mode, protected classes
 - `skills/conventions/test-before-bulk.md` — never batch without testing one first
-- `skills/conventions/skill-hygiene.md` — the eval contract, the no-regression law, the scheduled-run gate; governs every edit to a skill
+- `skills/conventions/skill-hygiene.md` — the eval contract, no-regression law, and change-scoped verification; governs skill maintenance
 - `skills/conventions/concept-stub-capture.md` — capture-cheap/decide-later: file transient ideas as `is_concept_stub: true` notes, defer the concept/hypothesis judgment to `concept-coalesce`
 - `skills/_brain-filing-rules.md` — where a new page goes
 - `skills/_output-rules.md` — output quality standards

@@ -164,8 +164,10 @@ Read back all changed pages, preserved quotes/edges and map counts; validate
 frontmatter and any merge's inbound repairs. The completed standalone unit is
 the verified concept changes plus map; use `git-ops`. In a scheduled or nested
 run the owning primary closes the unit, and children return paths/checks only.
-Procedure edits exercise a bounded real-source map/phase output in scratch per
-`skill-hygiene.md`, with no test delivery or production consolidation.
+Procedure edits follow change-scoped verification in
+`skills/conventions/skill-hygiene.md`. When map/phase behavior requires an
+execution check, use bounded real-source input in scratch, with no test
+delivery or production consolidation.
 
 ## Anti-patterns
 

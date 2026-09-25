@@ -163,8 +163,8 @@ path and immediate report, without writing scheduled `runs/` artifacts. No
 phase performs external research retrieval. Paper fills and source lookups are
 waking work; authorized Git fetch/push is a separate closeout capability.
 
-For edits to this scheduled procedure, inspect actual job prompts/logs and
-replay a bounded real-source phase plus report path in scratch under
-`skill-hygiene.md`. Read the produced artifacts against this contract; do not
-fire a production job or deliver a test report. Structural checks or reading
-old results alone do not satisfy this representative-run gate.
+Procedure edits follow change-scoped verification in
+`skills/conventions/skill-hygiene.md`. When phase/report behavior needs an
+execution check, inspect affected job prompts/logs and replay a bounded
+real-source phase plus report path in scratch. Read the produced artifacts
+against this contract; do not fire a production job or deliver a test report.

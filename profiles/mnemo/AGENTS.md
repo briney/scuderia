@@ -35,6 +35,12 @@ checkout. The profile's `skills/RESOLVER.md` routes a request to a skill.
 
 ## Norms
 
+- Skill maintenance follows the bound profile's `conventions/skill-hygiene.md`.
+  Scope verification to changed behavior: procedural prose uses read-back;
+  external authoring/execution recipes do not automatically require pressure
+  scenarios, repeated samples, or whole-workflow reruns. Preserve quality
+  contracts, operational safety gates, and checks needed by actual behavior changes.
+
 - Never blind-overwrite a file: read current state first; if it was edited
   very recently, append or hold rather than clobbering.
 - Close verified work units through `skills/git-ops/SKILL.md`, under the

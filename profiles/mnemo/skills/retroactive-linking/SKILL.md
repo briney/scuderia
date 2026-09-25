@@ -156,6 +156,7 @@ What gets re-linked in one invocation:
 - Re-linking `USER/<name>.md` or other protected pages.
 - Inventing an alias to force a match — normalize real aliases, never fabricate.
 
-Authoring changes follow `skills/conventions/skill-hygiene.md`: re-run a
-representative scheduled task without live delivery, inspect its real output
-against this contract, and ship no regression.
+Authoring changes follow change-scoped verification in
+`skills/conventions/skill-hygiene.md`. When execution is required, inspect
+captured output against this contract without live delivery or production
+cursor changes; ship no regression.

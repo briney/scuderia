@@ -32,7 +32,7 @@ required safety/identity/verification gates. It is not a session log.
 > **Read first:** repository `AGENTS.md` (ownership and privacy),
 > `skills/RESOLVER.md` (routing), `skills/conventions/capabilities.md`
 > (named capabilities), and `skills/conventions/skill-hygiene.md`
-> (eval contract, no-regression law, and scheduled-run gate).
+> (eval contract, no-regression law, and change-scoped verification).
 > Reference character and conventions rather than restating them.
 
 ## Capabilities
@@ -106,9 +106,9 @@ execution and scheduling capabilities depend on the skill being validated.
    the complete procedure and affected callers, parse frontmatter, and resolve
    concrete support paths. Run referenced helpers when their behavior or
    invocation changed; keep existing tests. A procedural read-back is the
-   semantic check, not a fabricated test score. For schedule-backed edits,
-   follow `skill-hygiene.md`'s representative-run gate: capture real output
-   without posting to a live channel. If validation is blocked, report the
+   semantic check, not a fabricated test score. Select further checks by the
+   changed behavior under `skill-hygiene.md`, not by scheduled status. When
+   execution is required, capture and inspect output without live delivery. If validation is blocked, report the
    block and do not call the unit complete. Audits and restructures also
    require the retention and loaded-byte checks in the audit reference.
 

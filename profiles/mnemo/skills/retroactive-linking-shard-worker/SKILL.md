@@ -181,6 +181,6 @@ For an actual EMFILE failure, load `references/file-operation-recovery.md`.
 If the result file cannot be written, return the available entries and exact
 blockage to the parent; never claim a file exists. Ordinary workers report
 instruction issues rather than edit skills. Authoring changes must satisfy
-`skills/conventions/skill-hygiene.md`: re-run a representative task without
-live delivery, inspect its real output against this contract, and ship no
-regression.
+change-scoped verification in `skills/conventions/skill-hygiene.md`.
+When execution is required, inspect captured output against this contract
+without live delivery or production cursor changes; ship no regression.

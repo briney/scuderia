@@ -66,6 +66,12 @@ content into a file here, stop: templates say "the brain", "your human", and
 - Commit promptly with descriptive messages. This repo is hand-committed like
   code; no auto-snapshotter watches it.
 
+- For mnemo skill maintenance, use `profiles/mnemo/conventions/skill-hygiene.md`:
+  verification is scoped to changed behavior. Procedural prose uses read-back;
+  external authoring/execution skills do not automatically impose pressure
+  scenarios, repeated samples, or whole-workflow reruns. Preserve quality
+  contracts, operational safety gates, and checks needed by actual behavior changes.
+
 ## The spec
 
 `docs/north-star/VISION.md` fixes what scuderia is for; `docs/north-star/DESIGN.md`

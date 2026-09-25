@@ -286,6 +286,7 @@ the orchestrator itself does not load it.
 
 ## Procedure-change verification
 
-Apply skill-hygiene’s read-back and representative-run gate. Capture validation
-output without live delivery; exercise parent completion in an isolated copy
-rather than running an unbounded production drain as a maintenance test.
+Apply change-scoped verification in `skills/conventions/skill-hygiene.md`.
+When parent-completion behavior changes, exercise it in an isolated copy and
+inspect captured output without live delivery. Do not run an unbounded
+production drain as a maintenance test.

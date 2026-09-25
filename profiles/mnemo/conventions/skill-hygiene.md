@@ -78,69 +78,65 @@ Two consequences:
   the changed script, may bypass re-argument — but the re-read below still
   runs.)
 
-## Re-read and re-verify — the standing regression check
+## Change-scoped verification
 
-Atticus skills are mostly *procedural markdown*, not code; the handful with
-real scripts (`paper-ingest/scripts`, `mailbox-drain/scripts`,
-`feed-emit/scripts`, `granola-meeting-sync/scripts`) are the exception, not the
-rule. There is no test runner, and none is wanted — the correct regression
-check for a procedural skill is a **read-back**, not a test suite.
+Select checks by the behavior changed, not by the skill's size, history, or
+scheduled status. Read back the affected instructions against the existing
+`eval_contract`, resolver, and conventions; inspect immediate callers and
+check referenced paths and command interfaces where the edit affects them.
+Do not weaken quality dimensions or safety obligations to make an edit pass.
 
-After any edit, re-read and re-verify:
+| Change | Required evidence |
+|---|---|
+| Wording, routing, or procedural clarification without an operational behavior change | Read back affected instructions and callers; check affected references and command interfaces. No live run or fabricated test suite. |
+| Deterministic code | Reproduce the affected failure where applicable; run affected offline tests and immediate caller checks. |
+| Model prompt or scientific interpretation behavior | Use a bounded representative example and inspect its output against the affected quality dimensions. |
+| Deployment, imports, packaging, or serving integration | Run focused import/relocation/interface checks; use a bounded real integration check where offline evidence cannot establish the changed behavior. |
+| Archive migration or cleanup | Verify the affected archive inputs, outputs, and preserved evidence. |
 
-1. **Re-read the SKILL.md** against the current resolver and conventions —
-   does it still route, still cite the conventions by path, still hold?
-2. **Re-check the referenced script** (if any) — does it still exist, still
-   run, still match what the skill claims it does? No dead paths.
-3. **Re-check every checklist item that *previously* passed** — not just the
-   one you touched. If an item that used to pass now fails, the edit broke
-   something; fix before shipping.
+For mixed changes, combine the applicable rows. A Markdown edit that changes
+model behavior or operational decisions is not merely a wording correction.
+Name the changed behavior, checks run, results, and remaining limitations in
+the normal closeout; no separate acceptance dossier is required.
 
-This is the same read-back discipline `brain-ops` applies to pages. It is the
-whole of what "tested" means here — and it is sufficient, because the skill's
-behavior is an instruction set the mind follows, not a function to exercise.
+Broaden validation only for a concrete dependency, failure, or unresolved risk
+introduced by the change. Do not automatically re-check every previously
+passed checklist, replay historical acceptance drivers, rebuild old experiment
+environments, or hash unrelated archives. Preserve useful regression tests;
+run the affected suite, expanding it when the evidence warrants doing so.
 
-## The scheduled-run gate — edit nothing that backs a cron, unrun
+This policy governs maintenance of mnemo skills, including edits to this
+policy. External authoring or execution recipes do not automatically require
+pressure scenarios, repeated model samples, TDD for procedural prose, or
+whole-workflow reruns. Use such checks only when the changed behavior needs
+them. Keep each skill's existing quality contract and operational safety gates.
 
-Many atticus skills back scheduled jobs: `briefing`, `synthesis-briefing`,
-`literature-sweep`, `rem-cycle` (and its phase delegates), `funding-sweep`,
-`monitor-the-situation`, `ingest-pending-papers`, and friends. Two rules for
-these:
+## Scheduled skills and live validation
 
-1. **Log-and-inspect first.** The scheduled job must run through a logged,
-   inspectable path — a `cron` job with a recorded `last_status` and a dream
-   report, not a bare shell pipeline that runs silently. `cron-operations`
-   owns the "why did this job fail" side; this rule is the "don't edit the
-   skill out from under a live job" side. Ghost runs are the #1 source of
-   silent breakage.
-2. **Re-run a representative task before shipping.** Editing a
-   schedule-backed skill is not done until you have re-run one representative
-   live task through the edited skill and re-read the real output it would
-   produced — against its eval contract, forward-only. The principle is
-   constant ("re-run the highest-bar task, the output the human reads most
-   critically"); the *specific* input is never hardcoded into the skill body.
-   Capture the output to a file, do **not** post it to a live channel during
-   the check.
+Being schedule-backed does not itself require a live rerun. Apply the matrix
+above. When a scheduled or live path actually needs validation:
 
-Write the hard rule into any schedule-backed skill's body:
+- Use a bounded, logged, inspectable run and capture its output to a file.
+  Inspect the real output against the affected contract dimensions; report
+  execution status separately from delivery status.
+- Use isolated inputs and outputs. Do not deliver test messages, advance
+  production cursors, drain production queues, or mutate production state
+  merely to test an edit. Preserve authorization and spending limits.
+- Inspect job prompts, logs, and serving bindings when those are affected.
+  `cron-operations` owns diagnosis of scheduled failures. If the required
+  check cannot run, report the limitation and hold the affected change.
 
-```markdown
-⛔ NO-REGRESSION + RE-RUN GATE: any edit to this skill must (1) re-run a
-representative scheduled task, (2) re-read its real output against the eval
-contract, (3) hold forward-only. A worse output does not ship.
-```
+Reference this convention from consuming skills rather than copying a
+blanket rerun gate into each skill.
 
 ## Anti-patterns
 
-- Shipping a skill edit that regresses a contract dimension ("worse") — the
-  forward-only law has no quiet exception.
-- Evaluating a skill on generic dimensions instead of its own `eval_contract`.
-- Editing a schedule-backed skill without re-running a representative task and
-  re-reading its real output.
-- Inventing a test suite where a read-back is the honest check — procedural
-  markdown doesn't run in `bun test`.
-- Editing one checklist item and skipping the re-read of the rest.
-- Hardcoding one deployment's people or channels into a skill body — declare
-  the principle, let each deployment fill the specific input.
-- Rewriting a skill from scratch to fix it — idempotent improvement preserves
-  what works.
+- Shipping a known regression against a skill's `eval_contract`.
+- Calling changed model or operational behavior a wording correction to avoid
+  its required check.
+- Running a live task solely because a skill is scheduled.
+- Inventing a test suite or pressure campaign for a procedural read-back.
+- Re-enacting a historical acceptance campaign without a concrete reason.
+- Ignoring affected callers, broken references, or a failed required check.
+- Hardcoding one deployment's people or channels into a template.
+- Rewriting an entire skill when a targeted correction preserves what works.
