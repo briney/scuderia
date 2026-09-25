@@ -185,7 +185,7 @@ class SelectiveIntegration(unittest.TestCase):
             selected = eligible[:1]  # strict subset
             selection = runtime.prepare(str(base / 'v1' / 'handoff.json'),
                                         str(base / 'job'), METHOD, test_root=str(ROOT))
-            self.assertEqual(selection['schema'], 'qualified-selection-v1')
+            self.assertEqual(selection['schema'], 'qualified-selection-v2')
             self.assertEqual(selection['selected'], eligible)  # default = full roster
 
             # now the selective variant: prepare again with explicit subset

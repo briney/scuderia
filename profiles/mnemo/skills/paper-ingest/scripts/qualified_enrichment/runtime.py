@@ -194,6 +194,8 @@ def read_job(job):
     from . import reviews
     state=ae.execution_state(job,binding,manifest); m=pa.load(manifest)
     successful={e['element_id']:e for e in state['elements']}; elements=[]
+    prepared=ae.read_bound(job/'enrichment/prepared.json')
+    evidence={r['element_id']:load(job/'enrichment'/r['directory']/'source-evidence.json') for r in prepared['requests']}
     statuses={r['element_id']:r['status'] for r in state['accounting']['requests'].values()}
     docs={d['identity']:d for d in m['documents']}
     _,paths=pa.verify_local(manifest)
@@ -202,7 +204,7 @@ def read_job(job):
         if value is None:
             value=dict(element_id=e['element_id'],source_sha256=e['source_sha256'],document=e['document'],
                 content_type=e['content_type'],outcome=dict(status=statuses.get(e['element_id'],'not-selected'),complete=False),
-                evidence=e['evidence'],source_element=e['source_element'])
+                evidence=evidence.get(e['element_id'],e['evidence']),source_element=e['source_element'])
         value=dict(value,eligible_default=e['element_id'] in selection['selected'],source_pdf=str(paths[docs[e['document']]['raw_key']]))
         elements.append(value)
     holds=['execution-integrity-hold'] if state['accounting']['integrity_hold'] else []
@@ -259,28 +261,4 @@ def prepare_for_approval(job, cache=None):
         import article_enrichment as ae
         _,manifest,binding=portable_job(job,for_execution=True)
         return ae.prepare_for_approval(job,binding,manifest,cache)
-    run = job/'v7'
-    require(state['selection']['code'] == code_hashes(), 'selection-code-binding')
-    if not state['selection']['selected']:
-        return 'review-create'
-    if (run/'execution-session.json').exists():
-        return 'hold-inspect-evidence-no-retry' if state['execution_holds'] else 'review-create'
-    plan = bindings.verify(run)
-    require(not any((run/r['directory']/'reservation.json').exists() for r in plan['requests'] if r.get('id')),
-            'execution-reservation-no-resume')
-    if not (run/'counts.json').exists():
-        require(not (run/'count-session.json').exists(), 'partial-count-hold-new-run-required')
-        require(cache is not None, 'processor-cache-required')
-        live.count(run, absolute(cache))
-    live.verify_counts(run, plan)
-    if not (run/'seal.json').exists():
-        live.seal(run)
-    sealed = load(run/'seal.json')
-    require(sealed.get('schema') == 'enrichment-seal-v2' and
-            all(sealed[k] == plan[k] for k in ('code','method','source_package','fixture')), 'seal-binding')
-    for name, expected in sealed['files'].items():
-        from pdf_enrichment.io import safe
-        require(sha(safe(run,name)) == expected, 'seal-file-changed')
-    template = load(run/'approval.template.json')
-    require(template['approved'] is False and template['seal_sha256'] == sha(run/'seal.json'), 'unapproved-template-binding')
-    return 'review-and-author-approval'
+    raise ValueError('historical-job-read-only-new-job-required')

@@ -353,7 +353,7 @@ class VersionedHandoffTests(unittest.TestCase):
             save(base/'handoff.json',value); (base/'summary.txt').write_text(value['summary'])
             with patch.object(adapter,'build_handoff',return_value=value):
                 self.assertEqual(adapter.verify_handoff(base/'handoff.json',base/'method'),value)
-                with self.assertRaisesRegex(ValueError,'requires enriched v2'):
+                with self.assertRaisesRegex(ValueError,'requires enriched handoff'):
                     adapter.verify_handoff(base/'handoff.json',base/'method',require_enriched=True)
                 (base/'summary.txt').write_text('tampered')
                 with self.assertRaisesRegex(ValueError,'summary changed'):

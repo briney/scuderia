@@ -11,9 +11,9 @@ PATHS=('source_handoff','output','test_root','job','processor_cache','approval',
 SCHEMA=dict(name='paper_enrichment',description=(
     'Run one qualified figure/table enrichment or contextual review operation. Trusted deployment paths are configured, not caller arguments. '
     'New preparation selects all eligible figures/tables; algorithms remain deferred. Preparation/review are offline. '
-    'execute needs a separately authored approval and authorize_posts=true; no retry/resume or reused budgets. '
-    'attempt_dir is new, external, with parents created safely. export preserves unresolved and unreviewed scope. '
-    'Exact use needs source inspection or qualification; algorithm-specification always needs inspection. '
+    'execute needs a separately authored approval and authorize_posts=true; local failures continue independent requests; explicit continuation sends only never-reserved siblings under identical approval/original budget. '
+    'attempt_dir is new, external, with parents created safely. export retains actual request accounting; source-backed partial evidence may be page-ready. '
+    'Record only observed substantive limitations; empty qualifications are valid. Specialized exact use needs source inspection or qualification; algorithm-specification always needs inspection. '
     'prepare with processor_cache also counts and seals; seal with processor_cache resumes offline bookkeeping. Returns actual child exit and hash-checked artifact receipt, not a scientific correctness claim.'),
     parameters=dict(type='object',additionalProperties=False,required=['operation','attempt_dir'],properties={
         'operation':dict(type='string',enum=['prepare','count','seal','execute','report','import-test-response','review-create','review-packet','review-import','export','verify-export','consume']),

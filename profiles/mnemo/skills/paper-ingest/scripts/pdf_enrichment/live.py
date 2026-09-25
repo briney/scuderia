@@ -3,13 +3,10 @@
 No extractor phase modification, automatic approval, retry, fallback or trimming.
 """
 from pathlib import Path
-import fcntl
-import os
 import re
-import time
 from urllib.parse import urlsplit
 from .io import require, load, save, put, sha, digest, dumps, strict, safe, now_utc
-from . import bindings, trusted, importer
+from . import bindings, trusted
 from .requests import SETTINGS
 
 
@@ -108,98 +105,6 @@ def _approval(run,path,plan,counts):
     return raw,approval
 
 
-def stamp(path):
-    s=path.stat()
-    return (s.st_dev,s.st_ino,s.st_size,s.st_mtime_ns,s.st_ctime_ns)
-
-
 def execute(run, approval, *, authorize=False):
-    """The public live entry has no injectable transport."""
-    require(authorize is True,'explicit-authorize-posts-required')
-    require(not os.environ.get('PDF_ENRICHMENT_OFFLINE') and not os.environ.get('PDF_SOURCE_PACKAGE_OFFLINE'),'offline-live-forbidden')
-    return _execute(run,approval,fixture_transport=None)
-
-
-def execute_fixture(run, approval, transport):
-    """Test-only injection; requires a permanently fixture-bound run and offline mode."""
-    require(os.environ.get('PDF_ENRICHMENT_OFFLINE')=='1','fixture-execution-offline-required')
-    require(callable(transport),'fixture-transport-required')
-    return _execute(run,approval,fixture_transport=transport)
-
-
-def _execute(run, approval_path, fixture_transport):
-    run=Path(run).absolute(); approval_path=Path(approval_path).absolute()
-    safe(run,'.execution.lock')
-    with (run/'.execution.lock').open('a+b') as lock:
-        fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-        require(not (run/'execution-session.json').exists(),'one-attempt-no-resume')
-        initial=load(run/'enrichment-plan.json')
-        source=Path(initial['source_package']['root'])
-        # Capture metadata before full entry validation; subsequent requests do not rehash the huge tree.
-        source_stamps={p:stamp(p) for p in source.rglob('*') if p.is_file()}
-        plan=bindings.verify(run); counts=verify_counts(run,plan)
-        sealed=load(run/'seal.json')
-        require(sealed['code']==plan['code'] and sealed['method']==plan['method'] and sealed['source_package']==plan['source_package'],'seal-code-source-binding')
-        for name,h in sealed['files'].items(): require(sha(safe(run,name))==h,'sealed-input-changed:'+name)
-        approval_raw,approval=_approval(run,approval_path,plan,counts)
-        fixture=fixture_transport is not None
-        require(plan['fixture'] is fixture and ((run/'OFFLINE-FIXTURE').exists() is fixture),'no-fixture-promotion')
-        rows=[r for r in plan['requests'] if r.get('id') in {a['id'] for a in approval['requests']}]
-        require(all(not (safe(run,r['directory'])/'reservation.json').exists() for r in rows),'consumed-reservation')
-        method=trusted.module('execution',plan['method']['root'])
-        constants=trusted.module('io',plan['method']['root'])
-        require(constants.TIMEOUT==1200 and constants.SETTINGS==SETTINGS,'accepted-method-settings-mismatch')
-        transport=fixture_transport if fixture else method.LiveTransport(approval)
-        origin='offline-bounded-fake-transport' if fixture else 'parent-authorized-live'
-        frozen={safe(run,n):safe(run,n).read_bytes() for n in sealed['files']}
-        frozen[run/'seal.json']=(run/'seal.json').read_bytes()
-        frozen[approval_path]=approval_raw
-        def check(row):
-            require(all(p.read_bytes()==raw for p,raw in frozen.items()),'entry-input-changed')
-            require(trusted.code_hashes()==plan['code'] and trusted.method_hashes(plan['method']['root'])==plan['method']['code'],'entry-code-changed')
-            require({p:stamp(p) for p in source.rglob('*') if p.is_file()}==source_stamps,'entry-source-changed')
-            bindings.request(run,row)
-        save(run/'execution-session.json',dict(started_at=now_utc(),pid=os.getpid(),origin=origin,approval_sha256=digest(approval_raw),maximum_posts=approval['maximum_posts']))
-        put(run/'executed-approval.json',approval_raw)
-        finished=[]
-        for row in rows:
-            check(row)
-            p=safe(run,row['directory']); payload=(p/'request-wire.json').read_bytes()
-            reservation=dict(status='reserved-may-have-posted',started_at=now_utc(),origin=origin,
-                             request_sha256=digest(payload),approval_sha256=digest(approval_raw),seal_sha256=sha(run/'seal.json'))
-            save(p/'reservation.json',reservation)
-            meta=dict(started_at=reservation['started_at'],requested_model=SETTINGS['model'],returned_model=None,
-                      usage=None,origin=origin,synthetic=fixture,timeout_seconds=1200,retries=0)
-            started=time.monotonic()
-            try:
-                # Transport invokes this check immediately before its single HTTP POST.
-                received=transport(payload,row,lambda:check(row))
-            except (OSError,TimeoutError,ConnectionError) as exc:
-                received=dict(status='transport-failure',error_type=type(exc).__name__)
-            raw=received.get('raw')
-            meta.update({('transport_status' if k=='status' else k):v for k,v in received.items() if k!='raw'})
-            meta.update(finished_at=now_utc(),latency_seconds=time.monotonic()-started)
-            if raw is not None:
-                put(p/'response-body.json',raw)
-                meta.update(raw_file='response-body.json',raw_sha256=digest(raw))
-            try:
-                require(raw is not None,'missing-response-body')
-                require(received.get('http_status')==200,'http-failure:'+str(received.get('http_status')))
-                env=strict(raw)
-                meta['returned_model']=env.get('model') if isinstance(env,dict) else None
-                meta['usage']=env.get('usage') if isinstance(env,dict) else None
-                text,env=method.envelope(raw)
-                usage=env.get('usage')
-                require(isinstance(usage,dict) and all(type(usage.get(k)) is int and usage[k]>=0 for k in ('prompt_tokens','completion_tokens','total_tokens')),'missing-or-invalid-usage')
-                require(usage['prompt_tokens']==counts['requests'][row['id']]['prompt_tokens_local'],'actual-prompt-count-mismatch')
-                require(usage['completion_tokens']<=65536 and usage['total_tokens']==usage['prompt_tokens']+usage['completion_tokens'],'invalid-usage-total')
-                result=importer.assemble_response(row,load(p/'source-evidence.json'),text,fixture)
-            except (ValueError,KeyError,TypeError,IndexError) as exc:
-                result=dict(status='failed',complete=False,reason=type(exc).__name__+':'+str(exc))
-            result.update(meta)
-            importer.retain_outcome(run,row,result)
-            finished.append(row['id'])
-            if result['status']=='failed': break  # no repair, no retry, stop remaining work
-        result=dict(finished_at=now_utc(),origin=origin,attempted=finished,results=importer.outcomes(run,plan))
-        save(run/'execution-complete.json',result)
-        return result
+    """Historical v7 evidence is read-only; create a current portable job."""
+    raise ValueError('historical-job-read-only-new-job-required')

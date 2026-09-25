@@ -79,7 +79,7 @@ def review_and_export(work,base):
         value=dict(schema='contextual-review-v2' if current else 'contextual-review-v1',packet_sha256=digest(packet),reviewer=reviewer(),findings=[],coverage=[],resolutions=[])
         if current:
             _,_,manifest,m,_,_,_=rr.context(work)
-            source=next(f for f in m['files'] if f['key'].endswith('page.txt'))
+            source=next(f for f in m['files'] if f['key'].endswith(('page.txt','native-text.txt')))
             value['assessment']=dict(usable_evidence=True,reason='Synthetic native evidence review.',source_refs=[{k:source[k] for k in ('key','sha256')}],unattempted={})
         # Explicit new warning with source association, carried into every export.
         for e in packet['elements']:

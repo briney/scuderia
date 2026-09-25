@@ -77,3 +77,18 @@ class SharedExecution(unittest.TestCase):
         self.assertEqual(len(sent),1)
         with self.assertRaisesRegex(ValueError,'integrity-hold'):
             rr.advance(self.work,'approved-execute',approval=approval,fixture_transport=lambda *a:self.fail('fatal resumed'))
+
+    def test_historical_execute_refuses_before_touching_run(self):
+        from pdf_enrichment import live
+        missing=self.base/'historical-run'
+        with self.assertRaisesRegex(ValueError,'historical-job-read-only-new-job-required'):
+            live.execute(missing,self.base/'approval.json',authorize=True)
+        self.assertFalse(missing.exists())
+
+    def test_insufficient_budget_cannot_post(self):
+        approval=self.prepared(); value=pa.load(approval); value['maximum_posts']=0
+        approval.write_text(json.dumps(value))
+        with self.assertRaisesRegex(ValueError,'budget'):
+            rr.advance(self.work,'approved-execute',approval=approval,
+                       fixture_transport=lambda *a:self.fail('budget exceeded'))
+        self.assertFalse((self.work/'enrichment/execution-start.json').exists())

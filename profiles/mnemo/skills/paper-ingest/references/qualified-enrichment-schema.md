@@ -10,23 +10,23 @@ Pass these objects to `paper_enrichment`, or save one object for `operate.py`. A
    The default is every eligible figure/table, not an operator-curated subset. Only an explicitly fixture-marked source handoff may use `test_root: <OWNED_TEST_ROOT>`; this is never production evidence.
 2. `operation: count`, `job: <JOB>`, `processor_cache: <ACCEPTED_OFFICIAL_CACHE>`.
 3. `operation: seal`, `job: <JOB>`, optional `processor_cache: <ACCEPTED_OFFICIAL_CACHE>` to count if needed. Saved complete counts/seals are verified and reused; interrupted counts and uncertain requests remain holds.
-4. Parent reviews the source/payload/count/serving route and separately authors approval from `<JOB>/v7/approval.template.json`. The template is deliberately unapproved. Follow the unchanged frozen v7 approval contract. This module never writes approved booleans, credentials or a post budget for the operator.
-5. After separate authorization, use operation `execute` with `job: <JOB>`, `approval: <SEPARATE_PARENT_APPROVAL.json>` and the explicit `authorize_posts` flag set to true. Do not pass `offline`, and do not reuse a consumed run. Existing offline environment markers cause refusal rather than being removed.
-6. `operation: report`, `job: <JOB>`, `output: <NEW_EXTERNAL_V7_REPORT>`. Report output must not be inside the run or source tree.
+4. Parent reviews the source/payload/count/serving route and separately authors approval from `<JOB>/enrichment/approval.template.json`. The template is deliberately unapproved. Use the current portable approval contract. This module never writes approved booleans, credentials or a post budget for the operator.
+5. After separate authorization, use operation `execute` with `job: <JOB>`, `approval: <SEPARATE_PARENT_APPROVAL.json>` and the explicit `authorize_posts` flag set to true. Do not pass `offline`, and never retry consumed requests; explicit continuation is only for never-reserved siblings under the identical approval and original budget. Existing offline environment markers cause refusal rather than being removed.
+6. `operation: report`, `job: <JOB>`, `output: <NEW_EXTERNAL_REPORT>`. Report output must not be inside the run or source tree.
 7. `operation: review-create`, `run: <JOB>`, `output: <NEW_REVIEW_ROOT>`. To review retained v7 records without production eligibility, use `run: <V7_RUN>`, `kind: v7-run` instead. This supports existing algorithm records without promoting algorithms by default.
-8. `operation: review-packet`, `review_root: <REVIEW_ROOT>`, `elements: [<EXACT_ELEMENT_ID>]`, `output: <NEW_PACKET.json>`, optional `max_bytes` (default 1,000,000; maximum 8,000,000). The packet contains native text, original records, crop/page locators, valid targets and inherited findings. Reduce the explicit roster if too large; nothing is silently truncated.
+8. `operation: review-packet`, `review_root: <REVIEW_ROOT>`, `elements: [<EXACT_ELEMENT_ID>]`, `output: <NEW_PACKET.json>`, optional `max_bytes` (default 1,000,000; maximum 8,000,000). Use `elements: []` for a zero-eligible current job. The packet contains native text, original records, crop/page locators, valid targets and inherited findings. Reduce the explicit roster if too large; nothing is silently truncated.
 9. `operation: review-import`, `review_root: <REVIEW_ROOT>`, `packet: <PACKET.json>`, `submission: <OPERATOR_SUBMISSION.json>`.
-10. `operation: export`, `review_root: <REVIEW_ROOT>`, `output: <NEW_EXPORT>`. Retain this operation's `result.json`; adapter v2 checks its actual child exit and exported artifacts. `operation: verify-export`, `export_path: <EXPORT/handoff.json>` revalidates all warnings and evidence but does not waive a production hold.
+10. `operation: export`, `review_root: <REVIEW_ROOT>`, `output: <NEW_EXPORT>`. Retain this operation's `result.json`; the enriched handoff checks its actual child exit and exported artifacts. `operation: verify-export`, `export_path: <EXPORT/handoff.json>` revalidates all warnings and evidence but does not waive a production hold.
 11. `operation: consume`, `export_path: <EXPORT/handoff.json>`, `element: <ID>`, `target: <JSON_POINTER>`, `purpose: discovery|summary|exact|algorithm-specification`, `output: <NEW_CONSUMER.json>`. Optional `aspects` selects named review aspects for discovery/summary; exact and algorithm-specification use always exposes all six aspects, so requesting text alone cannot hide unchecked units or layout. Optional `qualification` is explicit explanatory text. `source_inspection` names a JSON file with reviewer, reason and evidence, using the same evidence contract as review import. Algorithm-specification inspection requires the owning crop, not native text alone. Consumers must preserve the returned warnings and unknown scope, not copy only `content`.
 
-An explicitly fixture-marked v7 run may use `operation: import-test-response`, `job: <JOB>`, `responses: <EXPLICIT_FIXTURE_RESPONSES.json>`. This reuses the original fixture importer; there is no public fake-live transport. Zero-eligible jobs skip count/seal/execute/import operations and proceed to review/export.
+Historical v7 records remain readable under their original schemas. Current native jobs use `qualified-selection-v2` and the portable prepared/count/seal formats under `enrichment/`; the v7 execute entry refuses before reservation or network access. Fixture response injection is a test-only transport double, not a native operation. Zero-eligible jobs skip count/seal/execute and proceed to review/export.
 
 ## Operator review submission
 
 The source packet's canonical SHA256 is `qualified_enrichment.records.digest(packet)` (sorted-key canonical JSON), distinct from its file-byte hash. The native packet operation returns it as `receipt.review_packet_sha256`. Submission shape:
 
     {
-      "schema": "contextual-review-v1",
+      "schema": "contextual-review-v2",
       "packet_sha256": "<CANONICAL_PACKET_HASH>",
       "reviewer": {
         "kind": "model-operator",
@@ -40,6 +40,12 @@ The source packet's canonical SHA256 is `qualified_enrichment.records.digest(pac
       "coverage": [],
       "resolutions": []
     }
+
+Current dossiers (`uncertainty-dossier-v2`, `portable-review-dossier-v3`) and exports (`qualified-enrichment-export-v2`, `portable-qualified-export-v4`) carry `policy: observed-limitations-v1`. Packets use `contextual-review-packet-v2`. Historical formats retain their original policy and rendering; unknown versions are rejected.
+
+A final current submission adds `assessment` with `usable_evidence` (boolean), a specific `reason`, manifest-bound `source_refs` (`key`, `sha256`), and `unattempted` (exact pending request IDs mapped to specific reasons). Source refs must contain readable nonempty text; for inspected PDFs additionally provide physical `page` and nonempty `inspection`. Use actual source keys/hashes from the packet. Partial reviews may omit the assessment; page readiness requires it. No successful visual response is required. The export exposes `requests_accounted_for`, `requests_successful`, `page_ready` and holds independently; a ready page does not turn failures into successes. Frozen review snapshots never import later sibling results.
+
+Findings require source evidence. Coverage is audit metadata, not a mandatory certification checklist. Empty findings, coverage and page qualifications are valid when no substantive limitation is observed.
 
 Human or orchestrator-imported judgments use `kind: human` or `kind: orchestrator-import` with `model: null` and `provider: null`. Do not relabel existing human findings as newly detected by GLM.
 

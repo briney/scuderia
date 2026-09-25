@@ -43,7 +43,7 @@ def cover(entry, e, target):
 def register(view):
     sys.path.insert(0, os.environ['UNCERTAINTY_ADAPTER'])
     import source_package
-    return source_package.qualification_text(dict(elements=[view], eligibility=dict(element_accounting=[], zero_eligible=False)))
+    return source_package.qualification_text(dict(schema='qualified-enrichment-export-v1',elements=[view], eligibility=dict(element_accounting=[], zero_eligible=False)))
 
 
 class ResolutionAnnotations(unittest.TestCase):

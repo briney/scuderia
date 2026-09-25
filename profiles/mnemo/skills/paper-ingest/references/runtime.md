@@ -61,7 +61,7 @@ Standalone enrichment uses the same five settings in a trusted JSON file:
     <pdf-python> -B <scripts>/operate.py --deployment <deployment.json> --arguments <operation.json>
 
 Follow `source-package-integration.md` for source preparation and the v1 handoff,
-then `qualified-enrichment.md` for new-ingest review/export and the v2 handoff.
+then `qualified-enrichment.md` for new-ingest review/export and the v3 handoff.
 Follow `portable-articles.md` for existing-article refresh. Operation/submission
 schemas are in `qualified-enrichment-schema.md`. Native tools remain the normal
 production route; these paths do not authorize spending or scientific approval.

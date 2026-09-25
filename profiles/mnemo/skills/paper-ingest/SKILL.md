@@ -65,7 +65,7 @@ They resolve under `skills/conventions/` through the profile binding.
 |---|---|
 | Invoking a helper | `references/script-commands.md`; resolve `scripts/` from this skill, use Python >=3.10 and required dependencies. |
 | New production ingest retaining any PDF | `references/source-package-integration.md`, `references/qualified-enrichment.md` and the document-format-parsing skill; use the deployed source workflow and qualified figure/table enrichment. |
-| Portable article-package archive/restore or explicit existing-paper full/selected re-enrichment | `references/portable-articles.md`; use its shared CLI and dedicated completion verifier, not the new-ingest v2 export contract. |
+| Portable article-package archive/restore or explicit existing-paper full/selected re-enrichment | `references/portable-articles.md`; use its shared CLI and dedicated completion verifier, not the new-ingest handoff contract. |
 | PubMed identity or PMC source | `references/pubmed-pmc-retrieval.md` |
 | arXiv, bioRxiv/medRxiv, or a conference/published twin | `references/preprint-conference-retrieval.md` |
 | Publisher access failure, archive fallback, or browser download | `references/publisher-blocks.md`; for Nature markup/access states also `references/nature-metadata-extraction.md`. |
@@ -233,11 +233,11 @@ claims to those exact sources; do not invent missing methods/results.
 
 For the retained-source PDF route, first verify the source-only v1 handoff;
 then follow `references/qualified-enrichment.md` through the deployed enrichment
-capability (Hermes: `paper_enrichment`) and final v2 handoff. The code-owned
+capability (Hermes: `paper_enrichment`) and final v3 handoff. The code-owned
 roster includes all eligible figures/tables; algorithms are deferred by default.
-Retain failed/partial/unavailable outcomes and unreviewed scope. Import actual
+Retain failed/partial/unavailable outcomes. Page readiness may rely on usable native text after local visual failures; request accounting remains unchanged. Record only evidence-supported substantive limitations, not generic model fallibility or missing exhaustive review coverage. Empty qualifications are valid. Source-acquisition/extraction and integrity holds still block completion. Import actual
 review findings without replacing original extraction. An empty finding list
-or model-authored coverage is not certification. Preserve exact-use qualifications
+or model-authored coverage is not certification. Preserve substantive qualifications
 beside affected content and the canonical qualification register in the paper.
 A source-only v1 handoff is intermediate evidence, not completion of this new
 route. Read the final handoff's exact generated summary,
@@ -251,10 +251,10 @@ exhaustive recall or human acceptance; new outputs do not inherit historical
 acceptance, and the development pilot does not impose human crop approval on
 every production ingest.
 
-Add unformatted `Source package: <relative-path-to-v2-handoff.json>` and
+Add unformatted `Source package: <relative-path-to-v3-handoff.json>` and
 `Annotated enrichment: <relative-path-to-annotated.html>` lines in the existing
 Ingest log, relative to the paper page; do not add frontmatter fields. Preserve
-the exact v2 `qualifications.txt` text in the paper. Record source versions,
+the exact v3 `qualifications.txt` text in the paper. Record source versions,
 limitations and scientific review decisions.
 An explicitly source-limited draft may proceed from incomplete evidence, but
 acquisition/extraction holds retain `needs-ingest: true` and appropriate
@@ -383,7 +383,7 @@ For the retained-source PDF route, add both `--source-package-handoff
 using the documented PDF interpreter. For every new retained-PDF ingest also
 supply `--require-enriched-source --enrichment-integration <trusted-integration>
 --enrichment-root <trusted-frozen-enrichment-root>`. These options are mandatory
-for this route, including PAGE_READY checks; the final handoff must be v2 and
+for this route, including PAGE_READY checks; the final handoff must be v3 and
 its qualifications and annotated pointer must survive in the paper. Legacy
 v1 verification remains available for historical/non-enriched routes only.
 Revalidation binds the current sources, workflow,

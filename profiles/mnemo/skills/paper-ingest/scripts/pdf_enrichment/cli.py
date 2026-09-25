@@ -1,4 +1,4 @@
-"""Enrichment prepare, official count, seal, explicit execute, fixture import and report."""
+"""Historical enrichment preparation/readers; live execution requires a current portable job."""
 import argparse
 import json
 import os
@@ -40,9 +40,7 @@ def main(argv=None):
             result=live.seal(args.run)
             summary=dict(approval_template=str(args.run/'approval.template.json'),approved=False,ready_requests=len(result['requests']))
         elif args.command=='execute':
-            result=live.execute(args.run,args.approval,authorize=args.authorize_posts)
-            summary=dict(attempted=result['attempted'],statuses={k:v['status'] for k,v in result['results'].items()})
-            print(json.dumps(summary)); return 0 if len(result['attempted'])==len(json.loads((args.run/'approval.template.json').read_text())['requests']) and all(v.get('complete') for v in result['results'].values()) else 1
+            live.execute(args.run,args.approval,authorize=args.authorize_posts)
         elif args.command=='import-test-response':
             summary=dict(imported=importer.import_test_response(args.run,args.responses,args.request))
         else:

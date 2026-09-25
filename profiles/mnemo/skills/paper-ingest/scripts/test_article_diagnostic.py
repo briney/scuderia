@@ -65,7 +65,7 @@ class Endpoints(unittest.TestCase):
             opener=urllib.request.build_opener(ae.NoRedirect(),urllib.request.ProxyHandler({}),handler)
             with patch.dict(os.environ,{'DIAGNOSTIC_TEST_KEY':'TEST_ONLY_NOT_A_CREDENTIAL'}), \
                  patch.object(ae.urllib.request,'build_opener',return_value=opener):
-                result=ae._post(b'{}',dict(endpoint='http://source.invalid/start',credential_env='DIAGNOSTIC_TEST_KEY',timeout_seconds=1200))
+                result=ae._post(b'{}',dict(endpoint='http://source.invalid/start',credential_env='DIAGNOSTIC_TEST_KEY',timeout_seconds=1200),lambda:None)
             self.assertEqual(handler.calls,['http://source.invalid/start'])
             self.assertEqual(result['http_status'],302)
             self.assertNotIn(b'TEST_ONLY_NOT_A_CREDENTIAL',result['raw'])
@@ -135,7 +135,10 @@ class Diagnostic(unittest.TestCase):
         a['endpoint']='http://example.invalid/v1/chat/completions'; ap.write_text(json.dumps(a))
         transport=inference_double(self.work); rows=iter(pa.load(self.work/'enrichment/prepared.json')['requests'])
         env={k:v for k,v in os.environ.items() if k not in ('PDF_ENRICHMENT_OFFLINE','PDF_SOURCE_PACKAGE_OFFLINE')}
-        with patch.dict(os.environ,env,clear=True), patch.object(ae,'_post',side_effect=lambda payload,value:transport(payload,next(rows))) as post:
+        def post_double(payload,value,pre_post):
+            pre_post()
+            return transport(payload,next(rows))
+        with patch.dict(os.environ,env,clear=True), patch.object(ae,'_post',side_effect=post_double) as post:
             rr.advance(self.work,'approved-execute',approval=ap,authorize=True)
             self.assertEqual(post.call_count,len(self.ids))
             rr.advance(self.work,'approved-execute',approval=ap,authorize=True)

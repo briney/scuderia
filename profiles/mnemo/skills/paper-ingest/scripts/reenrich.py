@@ -282,14 +282,16 @@ def execute(plan_value=None,*,work_root):
         require(prepared is not None,'counts-without-preparation')
         ae.verify_counts(enrichment,prepared); next_step='seal'
     if (enrichment/'seal.json').exists(): next_step='approved-execute'
-    if (enrichment/'execution-start.json').exists():
+    if prepared is not None or (enrichment/'execution-start.json').exists():
         require(prepared is not None,'execution-without-preparation')
         state=ae._execution_state(work,binding,manifest,prepared)
         accounting=state['accounting']
         receipts['enrichment']=dict(status='executed' if accounting['complete'] else 'partial',roster=roster,
             mode=p['mode'],fixture=p['fixture'],accounting=accounting)
         next_step=('approved-execute' if accounting['counts']['pending'] and not accounting['integrity_hold'] else
-                   'review-create' if accounting['counts']['completed'] or accounting['complete'] else 'new-selected-run')
+                   'review-create' if not accounting['integrity_hold'] else 'hold-inspect-evidence-no-retry')
+    if state is not None and not (enrichment/'execution-start.json').exists() and roster:
+        next_step='approved-execute' if (enrichment/'seal.json').exists() else 'seal' if (enrichment/'counts.json').exists() else 'count'
     if (work/'review'/'dossier.json').exists():
         require(state is not None,'review-without-execution')
         review=ae._review_verify(work,binding,manifest,state); next_step='review-import'
@@ -312,9 +314,11 @@ def execute(plan_value=None,*,work_root):
             manifest_key=publication['manifest_key'],manifest_sha256=publication['manifest_sha256'],
             article_key=m['article_key'],page=p['page_path'])
         receipts['archive-publication']=dict(status='verified-at-publication',publication=publication)
+    held=bool(state and state['accounting']['integrity_hold'])
+    if held: next_step='hold-inspect-evidence-no-retry'
     if p['schema']==DIAGNOSTIC_PLAN:
+        diagnostic_ready=bool(exported and exported['execution_complete'] and not held)
         exported=(work/'export'/'handoff.json').exists()
-        diagnostic_ready=exported and receipts['review-export']['status']=='verified'
         receipts['acquisition']=dict(status='not-established',holds=m['source_status']['holds'])
         receipts['page-reconciliation']=dict(status='diagnostic-forbidden',applied=False)
         receipts['archive-publication']=dict(status='diagnostic-forbidden')
@@ -323,7 +327,7 @@ def execute(plan_value=None,*,work_root):
             status='diagnostic-export-ready' if diagnostic_ready else 'partial-diagnostic-export' if exported else 'pending-operator-continuation',
             completion='diagnostic-export-ready' if diagnostic_ready else 'pending',
             production_complete=False,page_refresh_complete=False,fixture=p['fixture'],next_step=None if diagnostic_ready else next_step)
-    complete=all(x['status'] in ('verified','executed','applied','not-requested','verified-at-publication') for key,x in receipts.items() if key!='enrichment') and 'publish' in stages
+    complete=not held and all(x['status'] in ('verified','executed','applied','not-requested','verified-at-publication') for key,x in receipts.items() if key!='enrichment') and 'publish' in stages
     completion=completion_label(p) if complete else 'pending'
     return dict(schema='reenrich-run-v2',article=p['article'],mode=p['mode'],elements=roster,stage_receipts=receipts,
         status='finished' if complete else 'pending-operator-continuation',completion=completion,
@@ -416,11 +420,25 @@ def source_reference(ref, manifest, paths):
     return ref
 
 
+def _material_finding(finding,paths,evidence):
+    """Suppress only known automatic baseline states; keep the archived original."""
+    if finding.get('resolutions') or finding.get('category')!='saved-uncertainty' or finding.get('provenance')!=dict(kind='deterministic-check',check='v7-state-projection-v1'):
+        return True
+    from qualified_enrichment.records import project,resolve_pointer
+    archived=pa.load(paths[evidence['key']])
+    view=next((v for v in archived.get('elements',[]) if v['element_id']==finding.get('element_id')),None)
+    if view is None: return True
+    target=finding['target']; raw=resolve_pointer(view['outcome'],target)
+    # Older model limitation lists may contain real inadequacies; do not classify their prose.
+    if isinstance(raw,dict) and any(raw.get(k) for k in ('limitations','coverage_warnings','element_warnings')): return True
+    return any(f['target']==target for f in project(dict(view,source_element=view.get('source_element') or {}),policy='observed-limitations-v1')['findings'])
+
+
 def _material_history(value):
     target=value.get('metadata_target',value.get('target',''))
     metadata=value.get('metadata')
     if target.endswith('/unreviewed_aspects'): return False
-    if target.endswith('/coverage'):
+    if 'coverage' in target.split('/'):
         rows=metadata if isinstance(metadata,list) else [metadata]
         ordinary={'element_id','target','aspect','evidence','reason','reviewer'}
         return any(isinstance(row,dict) and bool(set(row)-ordinary) for row in rows)
@@ -459,7 +477,7 @@ def _current_register(exported,submission,m,p,annotated_sha256,paths,previous):
             for q in entry['qualifications']:
                 if 'findings' in q:
                     for f in {f['id']:f for target in cited for f in affected(q,target)}.values():
-                        if f['status']=='unresolved' or f.get('resolutions'):
+                        if (f['status']=='unresolved' or f.get('resolutions')) and _material_finding(f,paths,evidence):
                             add(dict(scope,**{k:f[k] for k in ('target','status','category','reason','provenance','resolutions') if k in f},evidence=evidence))
                 elif _material_history(q):
                     metadata=q['metadata']
@@ -472,7 +490,7 @@ def _current_register(exported,submission,m,p,annotated_sha256,paths,previous):
             previous=qualification_register(pa.load(paths[previous['export_locator']['key']]),pa.load(paths[old+'page-candidate/input.json']),
                 pa.load(paths[old+'parent-manifest.json']),pa.load(paths[old+'plan.json']),previous['annotated_export_locator']['sha256'],archive_paths=paths)
         for q in previous['qualifications']:
-            if _material_history(q): add(q)
+            if _material_history(q) and _material_finding(q,paths,q['evidence']): add(q)
         for target in previous['selected_targets']:
             if target.get('qualification') and target not in targets: targets.append(target)
         if previous.get('operator_qualification') and previous['operator_qualification']!=submission['qualification']:
@@ -666,6 +684,13 @@ def install_register(text,register,*,archive_paths=None):
     return text[:match.end()]+register_text(register)+text[match.end():]
 
 
+def _page_export(work,binding,manifest):
+    state=ae.execution_state(work,binding,manifest)
+    require(not state['accounting']['integrity_hold'],'execution-integrity-hold')
+    review=ae._review_verify(work,binding,manifest,state)
+    return ae._verify_export(work,binding,manifest,review)
+
+
 def _candidate_text(work,p,manifest,binding,submission,*,version=2,exported=None):
     fields={'schema','binding','export_sha256','reviewer','qualification','full_distillation_reviewed','replacements'}
     require(set(submission) in (fields,fields|{'reconciliation_outcome'}),'candidate-fields')
@@ -680,7 +705,7 @@ def _candidate_text(work,p,manifest,binding,submission,*,version=2,exported=None
     from qualified_enrichment.exports import exact_view
     reviews.provenance(submission['reviewer'])
     require(isinstance(submission['qualification'],str) and (current or submission['qualification'].strip()),'candidate-qualification-required')
-    if exported is None: exported=ae.verify_export(work,binding,manifest)
+    if exported is None: exported=_page_export(work,binding,manifest)
     views={e['element_id']:e for e in exported['elements']}
     require(current == (exported['schema']=='portable-qualified-export-v4'),'candidate-export-policy-binding')
     require(page_ready(exported),'partial-export-cannot-complete-page-refresh')
@@ -888,8 +913,8 @@ def publish(work_root,remote,bucket,prefix,*,runner=None):
     with locked(work_root):
         work,p,manifest,m,roster,binding,history=context(work_root)
         require(p['schema']!=DIAGNOSTIC_PLAN,'diagnostic-publication-forbidden')
+        exported=_page_export(work,binding,manifest)
         require(not p['page_path'] or any(r['stage']=='page-apply' for r in history),'page-apply-required-before-publication')
-        exported=ae.verify_export(work,binding,manifest)
         require(page_ready(exported),'partial-export-cannot-publish-completion')
         require(not any(r['stage']=='publish' for r in history),'already-published')
         require(runner is None or p['fixture'], 'offline-publication-double-requires-fixture-run')
