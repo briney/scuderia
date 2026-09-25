@@ -200,9 +200,12 @@ class RealArchiveTests(unittest.TestCase):
         self.assertFalse(fm['source_status']['complete'])
         self.assertTrue(fm['initial_ingest']['production_complete'])
         body='Source package: '+str(compact/'manifest.json')+'\n'+final['qualifications']
-        fp.verify_ingest(compact/'manifest.json',fm['article'],body)
+        import figure_embeds
+        figure_page=root/'paper.md'
+        body=figure_embeds.render(body,compact/'manifest.json',figure_page)
+        fp.verify_ingest(compact/'manifest.json',fm['article'],body,page=figure_page)
         shutil.rmtree(root/'native-job'); shutil.rmtree(completed)
-        fp.verify_ingest(compact/'manifest.json',fm['article'],body)
+        fp.verify_ingest(compact/'manifest.json',fm['article'],body,page=figure_page)
 
 
     def test_source_association_cannot_be_overridden(self):

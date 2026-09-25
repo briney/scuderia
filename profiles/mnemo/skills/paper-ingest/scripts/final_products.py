@@ -402,6 +402,7 @@ def publish_refresh(work, plan, manifest, source, roster, binding, history, expo
                       page_sha256=sha(plan['page_path']) if plan['page_path'] else None,
                       requests_accounted_for=exported.get('readiness', {}).get('requests_accounted_for', exported['execution_complete']),
                       requests_successful=exported['execution_complete'], fixture=plan['fixture'], mode=plan['mode'], roster=roster)
+    if plan.get('figure_embeds'): completion['figure_embeds']=True
     if plan['page_path']:
         completion['register_sha256'] = pa.digest(rr.read_register(absolute(plan['page_path']).read_text()))
     if not archive.exists():
@@ -434,7 +435,7 @@ def publish_refresh(work, plan, manifest, source, roster, binding, history, expo
     return rr.execute(plan, work_root=work)
 
 
-def verify_completion(receipt, m, paths, page):
+def verify_completion(receipt, m, paths, page, manifest_path):
     """Caller has verified the pinned manifest, inventory and publication receipts."""
     import reenrich as rr
     require(receipt['schema'] == 'portable-article-completion-v3', 'final-completion-schema')
@@ -452,6 +453,9 @@ def verify_completion(receipt, m, paths, page):
         register = rr.read_register(page.read_text())
         require(register and pa.digest(register) == facts['register_sha256'] and register['binding'] == facts['binding'], 'completion-qualification-register-or-pointer')
         rr._register_archive(register, paths)
+        if facts.get('figure_embeds'):
+            import figure_embeds
+            figure_embeds.verify(page.read_text(), manifest_path, page)
         require(pa.load(page.parent/register['publication_receipt']) == receipt, 'completion-page-receipt-pointer')
     else:
         require(page is None and facts['page_sha256'] is None, 'archive-only-not-page-refresh')
@@ -472,7 +476,7 @@ def from_ingest(handoff, destination, *, method, integration, enrichment_root):
     exported['profile'] = prepared['profile']; exported['fixture'] = prepared['fixture']
     exported['processing'] = dict(prepared_at=prepared['prepared_at'], protocol_sha256=pa.digest(prepared['code']))
     m = build(exported['manifest'], destination, exports=[exported])
-    m['initial_ingest'] = dict(source_handoff_sha256=sha(handoff),
+    m['initial_ingest'] = dict(source_handoff_sha256=sha(handoff), figure_embeds=True,
                               production_complete=verified['production_complete'],
                               readiness=exported['readiness'], qualifications=verified['qualifications'])
     destination = absolute(destination)
@@ -484,13 +488,17 @@ def from_ingest(handoff, destination, *, method, integration, enrichment_root):
     return m
 
 
-def verify_ingest(manifest, article, body):
+def verify_ingest(manifest, article, body, page=None):
     m = verify(manifest)
     require(all(m['article'].get(k) == v for k, v in article.items() if k in ('slug','title','doi','pmid')), 'final-ingest-article-binding')
     completed = m['initial_ingest']
     require(completed['production_complete'] is True and not m['source_status']['fixture'] and
             completed['readiness']['page_ready'] is True and not completed['readiness']['holds'], 'final-ingest-not-complete')
     require(completed['qualifications'] in body, 'final-ingest-qualifications-missing')
+    if completed.get('figure_embeds'):
+        import figure_embeds
+        require(page is not None, 'figure-page-path-required')
+        figure_embeds.verify(body,manifest,page)
     return m
 
 

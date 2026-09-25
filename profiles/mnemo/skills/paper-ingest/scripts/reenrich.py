@@ -141,7 +141,7 @@ def plan(request,*,manifest=None,work_root,fixture=False,model_profile=None,page
         require(len({s['heading'] for s in scopes})==len(scopes),'duplicate-page-scope')
     pending=[] if m else ['source-retrieval','package-construction','full-distillation-and-reconciliation']
     if not m and request.elements is not None: pending.append('selection-validation')
-    value=dict(schema=SCHEMA_PLAN,retention_policy='final-products-v1',article=request.article,mode='selected' if request.elements is not None else 'full',
+    value=dict(schema=SCHEMA_PLAN,retention_policy='final-products-v1',figure_embeds=True,article=request.article,mode='selected' if request.elements is not None else 'full',
         request=dict(article=request.article,elements=request.elements,page=str(request.page) if request.page else None),
         elements=roster,manifest=str(manifest) if manifest else None,manifest_sha256=sha(manifest) if manifest else None,
         article_identity=m['article'] if m else source_identity,source_archive=str(source_archive) if source_archive else None,
@@ -723,7 +723,8 @@ def _page_export(work,binding,manifest):
 
 def _candidate_text(work,p,manifest,binding,submission,*,version=2,exported=None):
     fields={'schema','binding','export_sha256','reviewer','qualification','full_distillation_reviewed','replacements'}
-    require(set(submission) in (fields,fields|{'reconciliation_outcome'}),'candidate-fields')
+    optional={'reconciliation_outcome'} | ({'figure_supplements'} if p.get('figure_embeds') else set())
+    require(fields<=set(submission)<=fields|optional,'candidate-fields')
     unchanged=submission.get('reconciliation_outcome')=='reviewed-no-scientific-text-change'
     require(submission.get('reconciliation_outcome','scientific-text-revised') in
         ('scientific-text-revised','reviewed-no-scientific-text-change'),'candidate-reconciliation-outcome')
@@ -790,7 +791,11 @@ def _candidate_text(work,p,manifest,binding,submission,*,version=2,exported=None
     if version==1: text=without_register(text)
     if p.get('source_archive'):
         paths.update(pa.verify_local(p['source_archive'])[1])
-    return install_register(text,register,archive_paths=paths)
+    text=install_register(text,register,archive_paths=paths)
+    if p.get('figure_embeds'):
+        import figure_embeds
+        text=figure_embeds.render(text,work/'final-products/manifest.json',p['page_path'],image_root=work/'archive',supplements=submission.get('figure_supplements'))
+    return text
 
 
 def hashlib_sha(text):
@@ -876,7 +881,7 @@ def verify_completion(receipt_path,manifest_path,*,manifest_key,manifest_sha256,
         all(r['method']=='read_back_sha256' for r in pub['receipts']),'publication-readback-inventory')
     if m['schema']==pa.FINAL_SCHEMA:
         import final_products
-        return final_products.verify_completion(receipt,m,paths,page)
+        return final_products.verify_completion(receipt,m,paths,page,manifest_path)
     refresh=m['provenance']['refresh']; binding=refresh['binding']; prefix='refresh-'+binding[:20]+'/'
     require(receipt['binding']==binding,'completion-run-binding')
     p=pa.load(paths[prefix+'plan.json']); exported=pa.load(paths[prefix+'export/handoff.json'])

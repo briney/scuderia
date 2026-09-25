@@ -389,7 +389,7 @@ This completed-fill contract is shared by dives and queue drains. Verify:
 Run `verify_ingest.py <bare-slug> --instance <brain> --require-filled`.
 For the retained-source PDF route, first verify the v5 source/enrichment handoff
 and run `final_products.py ingest` as documented in `qualified-enrichment.md`.
-Then add `--final-products <absolute-final-package/manifest.json>
+Render manuscript figure embeds with `figure_embeds.py` before final page verification, as documented in `qualified-enrichment.md`; supplementary figures require essential context. Then add `--final-products <absolute-final-package/manifest.json>
 --require-enriched-source`, using the documented PDF interpreter. These options
 are mandatory for new retained-PDF ingests, including PAGE_READY checks. Preserve
 the substantive qualifications and final-package pointer in the paper. Permanent

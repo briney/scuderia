@@ -104,7 +104,7 @@ def code_bindings():
                        if k.endswith(('.py', '.json', '.txt'))} for name, root in roots.items()}
     here = Path(__file__).parent
     bindings['portable-adapter-v2'] = {n: sha(here / n) for n in
-        ('article_runtime.py', 'portable_articles.py', 'reenrich.py', 'article_enrichment.py', 'final_products.py')
+        ('article_runtime.py', 'portable_articles.py', 'reenrich.py', 'article_enrichment.py', 'final_products.py', 'figure_embeds.py')
         if (here / n).is_file()}
     return bindings
 

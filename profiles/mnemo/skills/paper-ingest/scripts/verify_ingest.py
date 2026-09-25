@@ -939,7 +939,7 @@ def main():
             pointer = os.path.relpath(manifest, os.path.dirname(os.path.abspath(paper_path)))
             if ('Source package: '+pointer) not in required_sections(body).get('Ingest log', []):
                 raise ValueError('Ingest log requires finalized Source package: '+pointer)
-            final_products.verify_ingest(manifest, {key: fm.get(key) for key in ('slug','title','doi','pmid')}, body)
+            final_products.verify_ingest(manifest, {key: fm.get(key) for key in ('slug','title','doi','pmid')}, body, page=paper_path)
             print('  Final products: OK (sources, scientific outputs and substantive qualifications verified)')
         except (OSError, ValueError, KeyError, TypeError, ImportError) as exc:
             print(f'  Final products: FAIL ({exc})')

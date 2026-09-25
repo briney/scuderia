@@ -62,6 +62,18 @@ Keep the v5 `qualifications.txt` text exactly (an empty file is valid) in the pa
 
 The final package's `products_key` identifies its descriptions, structured values and substantive qualifications. It also retains originals, native text, crops and source mappings. Do not point the completed paper at temporary review packets, raw requests or annotated runtime exports.
 
+Before the final page check, render manuscript figures from the compact package:
+
+    <pdf-python> -B <scripts>/figure_embeds.py render --manifest <final-package/manifest.json> --page <paper.md> --output <new-candidate.md>
+
+Review and apply the candidate under the original-page guard, before recording any page completion hash. The renderer embeds retained figure-body crops with standard Markdown relative links and extracted source captions as text. It does not copy images, embed caption screenshots, or rerun extraction/model requests. New figures default to a Figures section before the Ingest log; whole figure blocks can be moved beside the discussion. Keep panel fragments in source order. Preserve source-caption/crop qualifications beside the affected figure; distinguish model interpretations from source captions. A failed model description alone is not a reason to hide an intact image.
+
+Supplementary figures are opt-in: add `--supplement 'ELEMENT_ID=why this figure is essential to the page'` only when needed for context. The reason remains with the figure. No automatic supplementary gallery. Missing figure bodies are stated explicitly rather than fabricated. Unknown source roles require source-metadata reconciliation, not guessing from the figure number.
+
+Generated blocks have ownership markers. Prose outside them is preserved. If a block was manually edited, regeneration holds for reconciliation instead of overwriting it; retain that edited content while reconciling a new candidate. Do not bypass the guard by silently removing markers. Full blocks can be repositioned without changing their contents. Initial finalized packages require figure verification; old completion formats keep their original contract.
+
+Images remain in the local final package, outside Git and replicated through the existing source-package sync/archive process. Restore packages to their linked vault-relative locations. Before removing an older package, update every affected embed and verify the actual page links. A Markdown-only Git clone does not contain the images.
+
 Complete Phase 10 with:
 
     <pdf-python> -B <scripts>/verify_ingest.py <slug> --instance <instance> --require-filled --final-products <final-package/manifest.json> --require-enriched-source
