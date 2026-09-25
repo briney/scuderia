@@ -47,9 +47,9 @@ class SelectiveIntegration(unittest.TestCase):
         # trusted deployment bootstrap (same entry as the retained parent fixtures)
         self.assertTrue((INTEGRATION / 'entry.py').is_file())
         sys.path[:0] = [str(INTEGRATION), str(SCRIPTS),
-                        str(INTEGRATION.parent / 'enrichment' / 'package'), str(METHOD)]
+                        os.environ['REENRICH_ENRICHMENT_ROOT'], str(METHOD)]
         from entry import bootstrap
-        bootstrap(INTEGRATION.parent / 'enrichment' / 'package', SCRIPTS, METHOD)
+        bootstrap(Path(os.environ['REENRICH_ENRICHMENT_ROOT']), SCRIPTS, METHOD)
         from qualified_enrichment import runtime
         from pdf_enrichment.package_io import SourcePackage
         from pdf_enrichment.io import sha

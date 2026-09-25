@@ -381,7 +381,7 @@ def page_receipt_path(page,binding):
     return page.parent/page_receipt_name(page,binding)
 
 
-def qualification_register(exported,submission,m,p,annotated_sha256):
+def qualification_register(exported,submission,m,p,annotated_sha256,*,version=2,archive_paths=None,previous=None):
     from qualified_enrichment.exports import exact_view
     views={v['element_id']:v for v in exported['elements']}; targets=[]
     for row in submission['replacements']:
@@ -389,7 +389,7 @@ def qualification_register(exported,submission,m,p,annotated_sha256):
             value=exact_view(views[ref['element_id']],ref['target'],purpose='exact',qualification=ref['qualification'])
             targets.append({k:v for k,v in value.items() if k!='content'})
     prefix='refresh-'+exported['binding'][:20]+'/'
-    return dict(schema='portable-page-qualification-register-v1',binding=exported['binding'],article=m['article'],
+    register=dict(schema='portable-page-qualification-register-v1',binding=exported['binding'],article=m['article'],
         article_key=m['article_key'],publication_receipt=page_receipt_name(p['page_path'],exported['binding']),
         locator_contract='Resolve archive keys through the publication receipt manifest key/hash; receipt absent means publication pending.',
         source_locators=[dict(document=d['identity'],key=d['raw_key'],sha256=d['source_sha256']) for d in m['documents']],
@@ -398,27 +398,151 @@ def qualification_register(exported,submission,m,p,annotated_sha256):
         reviewer=submission['reviewer'],full_distillation_reviewed=submission['full_distillation_reviewed'],
         reconciliation_outcome=submission.get('reconciliation_outcome','scientific-text-revised'),
         operator_qualification=submission['qualification'],selected_targets=targets,
-        current_qualifications=pa.qualification_projection(exported),
-        inherited_qualifications=[r for r in exported['inherited_history'] if r.get('qualifications')],
-        source_status=exported['source_status'],dispositions=exported['dispositions'],
+        source_status=exported['source_status'],
         notice='Native/model originals are unchanged. Findings and attributed correction proposals are annotations, not applied factual corrections. Prior unresolved findings remain active; review covers only recorded scopes/aspects.')
+
+    if version==1:
+        return dict(register,current_qualifications=pa.qualification_projection(exported),
+            inherited_qualifications=[r for r in exported['inherited_history'] if r.get('qualifications')],
+            dispositions=exported['dispositions'])
+    require(version==2 and archive_paths is not None,'register-archive-required')
+    # The export retains full history. The paper needs the selected scopes only.
+    register['schema']='portable-page-qualification-register-v2'
+    register['selected_targets']=[{k:t[k] for k in ('element_id','source_sha256','target','qualification',
+        'unreviewed_aspects','scope_review_status','unapplied_correction_findings')} for t in targets]
+    for t in register['selected_targets']:
+        t.update(reviewer=submission['reviewer'],evidence=dict(key=prefix+'page-candidate/input.json'))
+    index={e['element_id']:e for e in m['elements']}
+    qualifications=[]; seen=set()
+    def add(value,locator):
+        identity=digest(value)
+        if identity not in seen:
+            seen.add(identity); qualifications.append(dict(value,evidence=locator))
+    def finding(f,scope,locator):
+        value=dict(scope,**{k:f[k] for k in ('target','status','category','reason','provenance') if k in f})
+        if f.get('resolutions'):
+            value['resolutions']=f['resolutions']
+            value['correction']='Attributed proposals only; originals remain unchanged.'
+        add(value,locator)
+    from qualified_enrichment.exports import affected
+    from qualified_enrichment.records import related
+    for target in targets:
+        element=index[target['element_id']]
+        scope={k:element[k] for k in ('document','source_sha256','element_id')}
+        for f in target['findings']: finding(f,scope,register['export_locator'])
+        keys=set(m['common_dependencies'])|set(element['inherited'])
+        for entry in pa.prompt_history(archive_paths,keys,element):
+            locator={k:entry[k] for k in ('key','sha256')}
+            for q in entry['qualifications']:
+                if 'findings' in q:
+                    for f in affected(q,target['target']): finding(f,scope,locator)
+                    continue
+                # Untyped coverage may contain gaps or unresolved warnings.
+                metadata=q['metadata']
+                if isinstance(metadata,dict) and (metadata.get('target')=='/record' or str(metadata.get('target','')).startswith('/record/')):
+                    if not related(metadata['target'],target['target']): continue
+                add(dict(scope=q.get('scope','unscoped'),metadata_target=q.get('target',''),metadata=metadata,
+                    attribution=q.get('attribution')),locator)
+    register['qualifications']=qualifications
+    if previous is not None:
+        _register_archive(previous,archive_paths)
+        if previous['schema'].endswith('-v1'):
+            old_prefix='refresh-'+previous['binding'][:20]+'/'
+            previous=qualification_register(pa.load(archive_paths[previous['export_locator']['key']]),
+                pa.load(archive_paths[old_prefix+'page-candidate/input.json']),
+                pa.load(archive_paths[old_prefix+'parent-manifest.json']),pa.load(archive_paths[old_prefix+'plan.json']),
+                previous['annotated_export_locator']['sha256'],archive_paths=archive_paths)
+        # Previously cited scopes still qualify unchanged prose elsewhere on the
+        # page. A new selective refresh cannot silently retire those warnings.
+        identity=lambda t: (t['element_id'],t['source_sha256'],t['target'],t['qualification'],digest(t['reviewer']))
+        current={identity(t) for t in register['selected_targets']}
+        register['selected_targets'] += [t for t in previous['selected_targets'] if identity(t) not in current]
+        if (previous['operator_qualification'],previous['reviewer']) != (register['operator_qualification'],register['reviewer']):
+            key='refresh-'+previous['binding'][:20]+'/page-candidate/input.json'
+            add(dict(scope='Prior page review',metadata_target='/qualification',metadata=previous['operator_qualification'],
+                attribution=previous['reviewer']),dict(key=key,sha256=sha(archive_paths[key])))
+        for q in previous['qualifications']:
+            add({k:v for k,v in q.items() if k!='evidence'},q['evidence'])
+        sources={digest(d) for d in register['source_locators']}
+        register['source_locators'] += [d for d in previous['source_locators'] if digest(d) not in sources]
+    return register
+
+
+def read_register(text):
+    import html
+    without_register(text)  # validate delimiters even when there is no register
+    if REGISTER_START not in text: return None
+    block=text.split(REGISTER_START,1)[1].split(REGISTER_END,1)[0]
+    match=re.search(r'<!-- portable-page-qualification-register-v2: ([^\n]*) -->\n$',block) or re.search(r'<pre>([\s\S]*)</pre>\n$',block)
+    require(match is not None,'malformed-qualification-register')
+    value=json.loads(html.unescape(match[1]))
+    require(value.get('schema') in ('portable-page-qualification-register-v1','portable-page-qualification-register-v2'),
+        'unknown-qualification-register')
+    require(REGISTER_START+block+REGISTER_END==register_text(value),'noncanonical-qualification-register')
+    return value
+
+
+def _register_archive(register,paths):
+    require(paths is not None,'register-archive-required')
+    # A verified archived snapshot proves the entire removed register survives,
+    # including unknown/human-added qualifications. Never silently discard them.
+    prefix='refresh-'+register['binding'][:20]+'/'
+    snapshot=paths.get(prefix+'applied-page.md')
+    require(snapshot is not None and read_register(snapshot.read_text())==register,'register-archive-snapshot')
+    locators=[register['export_locator'],register['annotated_export_locator']]+register['source_locators']
+    locators += [q['evidence'] for q in register.get('qualifications',[])+register['selected_targets'] if q.get('evidence')]
+    exported=pa.load(paths[register['export_locator']['key']]) if register['export_locator']['key'] in paths else None
+    require(exported is not None,'register-archive-evidence')
+    for key,h in exported['review_bindings'].items():
+        locators.append(dict(key=prefix+'review/'+pa.relative_key(key),sha256=h))
+    for locator in locators:
+        path=paths.get(locator['key'])
+        require(path is not None and ('sha256' not in locator or sha(path)==locator['sha256']),'register-archive-evidence')
+    for ref in exported['inherited_history']:
+        path=paths.get(ref['key'])
+        require(path is not None and sha(path)==ref['sha256'],'register-archive-history')
 
 
 def register_text(register):
     import html
-    return (REGISTER_START+'Article package: '+register['publication_receipt']+'\n'+
-        'Annotated export: '+register['annotated_export_locator']['key']+' (resolve through article package receipt)\n'+
-        '<pre>'+html.escape(json.dumps(register,ensure_ascii=False,sort_keys=True,indent=2))+'</pre>\n'+REGISTER_END)
+    header=(REGISTER_START+'Article package: '+register['publication_receipt']+'\n'+
+        'Annotated export: '+register['annotated_export_locator']['key']+' (resolve through article package receipt)\n')
+    if register['schema'].endswith('-v1'):
+        return header+'<pre>'+html.escape(json.dumps(register,ensure_ascii=False,sort_keys=True,indent=2))+'</pre>\n'+REGISTER_END
+    def text(value):
+        return html.escape(value if isinstance(value,str) else json.dumps(value,ensure_ascii=False,sort_keys=True)).replace('\n','&#10;').replace('\r','&#13;')
+    parts=[header,'<p><strong>Source qualifications</strong> — '+text(register['operator_qualification'])+' Attribution: '+text(register['reviewer'])+'.</p>\n']
+    if not register['source_status'].get('complete') or register['source_status'].get('holds') or register['source_status'].get('fixture'):
+        parts.append('<p>Source status: '+text(register['source_status'])+'</p>\n')
+    for target in register['selected_targets']:
+        parts.append('<p><code>'+text(target['element_id']+' '+target['target'])+'</code>: '+
+            text(target['qualification'])+' Unreviewed aspects: '+text(', '.join(target['unreviewed_aspects']) or 'none for this exact scope')+
+            '. Attribution: '+text(target['reviewer'])+' Evidence: <code>'+text(target['evidence']['key'])+'</code>.</p>\n')
+    for q in register['qualifications']:
+        scope=q.get('scope',{k:q[k] for k in ('document','element_id','source_sha256','target') if k in q})
+        parts.append('<p>'+text(scope)+(' '+text(q['metadata_target']) if q.get('metadata_target') else '')+
+            ' — '+text(q.get('status','Historical qualification'))+': '+
+            text(q.get('reason',q.get('metadata')))+
+            (' Attributed proposals only; original unchanged: '+text(q['resolutions']) if q.get('resolutions') else '')+
+            ' Attribution: '+text(q.get('provenance',q.get('attribution')))+
+            ' Evidence: <code>'+text(q['evidence']['key'])+'</code>.</p>\n')
+    parts.append('<p>'+text(register['notice'])+'</p>\n')
+    # Compact machine binding, not a second visible review-history dump.
+    parts.append('<!-- portable-page-qualification-register-v2: '+html.escape(json.dumps(register,
+        ensure_ascii=False,sort_keys=True,separators=(',',':')))+' -->\n'+REGISTER_END)
+    return ''.join(parts)
 
 
-def install_register(text,register):
+def install_register(text,register,*,archive_paths=None):
+    old=read_register(text)
+    if old is not None and old!=register: _register_archive(old,archive_paths)
     text=without_register(text)
     match=re.match(r'\A---\n[\s\S]*?\n(?:---|\.\.\.)\n',text)
     require(match is not None,'paper-page-frontmatter-required')
     return text[:match.end()]+register_text(register)+text[match.end():]
 
 
-def _candidate_text(work,p,manifest,binding,submission):
+def _candidate_text(work,p,manifest,binding,submission,*,version=2):
     fields={'schema','binding','export_sha256','reviewer','qualification','full_distillation_reviewed','replacements'}
     require(set(submission) in (fields,fields|{'reconciliation_outcome'}),'candidate-fields')
     unchanged=submission.get('reconciliation_outcome')=='reviewed-no-scientific-text-change'
@@ -463,8 +587,11 @@ def _candidate_text(work,p,manifest,binding,submission):
     require(covered==set(exported['roster']),'candidate-must-reconcile-requested-roster')
     text=original
     for start,end,after in sorted(changes,reverse=True): text=text[:start]+after+text[end:]
-    register=qualification_register(exported,submission,pa.load(manifest),p,sha(work/'export'/'annotated.html'))
-    return install_register(text,register)
+    m,paths=pa.verify_local(manifest,set(pa.local_sources(manifest)))
+    register=qualification_register(exported,submission,m,p,sha(work/'export'/'annotated.html'),version=version,archive_paths=paths,previous=read_register(original))
+    # Historical candidate read-back uses its original rendering contract.
+    if version==1: text=without_register(text)
+    return install_register(text,register,archive_paths=paths)
 
 
 def hashlib_sha(text):
@@ -493,7 +620,9 @@ def _candidate_verify(work,p,binding,manifest):
     require(value['binding']==binding and value['original_sha256']==p['page_sha256'] and
         value['input_sha256']==sha(root/'input.json') and value['candidate_sha256']==sha(root/'page-candidate.md') and
         value['diff_sha256']==sha(root/'page-candidate.diff'),'candidate-changed')
-    require((root/'page-candidate.md').read_text()==_candidate_text(work,p,manifest,binding,pa.load(root/'input.json')),'candidate-regeneration-mismatch')
+    saved=(root/'page-candidate.md').read_text()
+    version=1 if read_register(saved)['schema'].endswith('-v1') else 2
+    require(saved==_candidate_text(work,p,manifest,binding,pa.load(root/'input.json'),version=version),'candidate-regeneration-mismatch')
     return value
 
 
@@ -591,8 +720,12 @@ def verify_completion(receipt_path,manifest_path,*,manifest_key,manifest_sha256,
         reviews.provenance(submission['reviewer'])
         if p['mode']=='full' or p['manifest'] is None:
             require(submission['full_distillation_reviewed'] is True,'full-distillation-attestation-required')
-        register=qualification_register(exported,submission,parent,p,receipt['annotated_export']['sha256'])
         text=page.read_text()
+        stored=read_register(text)
+        require(stored is not None,'completion-qualification-register-or-pointer')
+        version=1 if stored['schema'].endswith('-v1') else 2
+        register=qualification_register(exported,submission,parent,p,receipt['annotated_export']['sha256'],version=version,archive_paths=paths,
+            previous=read_register(paths[prefix+'original-page.md'].read_text()))
         require(register_text(register) in text and text.count(REGISTER_START)==1,'completion-qualification-register-or-pointer')
         require(sha(page)==sha(paths[prefix+'applied-page.md'])==receipt['page_sha256'],'completion-page-snapshot')
         sidecar=page.parent/register['publication_receipt']

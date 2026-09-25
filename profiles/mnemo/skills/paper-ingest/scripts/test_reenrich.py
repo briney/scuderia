@@ -163,6 +163,125 @@ class ReenrichTests(unittest.TestCase):
         receipt.write_text(json.dumps(value))
         with self.assertRaises(ValueError): rr.verify_completion(receipt,self.work/'archive'/'manifest.json',**args)
 
+    def test_compact_register_and_verified_legacy_replacement(self):
+        self.ready(); cp=self.no_change_candidate(); submission=pa.load(cp)
+        exported=pa.load(self.work/'export/handoff.json')
+        p=pa.load(self.work/'plan.json')
+        text=rr._candidate_text(self.work,p,self.manifest,exported['binding'],submission)
+        self.assertNotIn('current_qualifications',text)
+        self.assertNotIn('inherited_qualifications',text)
+        self.assertIn('Known unit uncertainty',text)
+        self.assertIn('Unit assignment remains uncertain',text)
+        register=rr.read_register(text)
+        self.assertEqual(register['schema'],'portable-page-qualification-register-v2')
+        self.assertEqual(rr.install_register(text,register),text)
+        # Historical candidates and completions keep their original rendering.
+        legacy=rr.qualification_register(exported,submission,self.m,p,
+            pa.sha(self.work/'export/annotated.html'),version=1)
+        old=rr.install_register(self.page.read_text(),legacy)
+        from unittest.mock import patch
+        original_candidate=rr._candidate_text
+        with patch.object(rr,'_candidate_text',side_effect=lambda *args: original_candidate(*args,version=1)):
+            rr.candidate_import(self.work,cp)
+        rr.apply(self.work,authorize=True)
+        rr.publish(self.work,'fake','bucket','gate',runner=FakeRclone())
+        _,paths=pa.verify_local(self.work/'archive/manifest.json')
+        with self.assertRaisesRegex(ValueError,'register-archive'):
+            rr.install_register(old,register)
+        newer=rr.install_register(old,register,archive_paths=paths)
+        self.assertEqual(rr.without_register(newer),rr.without_register(old))
+        for key in (legacy['export_locator']['key'],legacy['annotated_export_locator']['key'],
+                    legacy['source_locators'][0]['key'],'review/findings.json',
+                    'refresh-'+legacy['binding'][:20]+'/review/dossier.json'):
+            incomplete=dict(paths); del incomplete[key]
+            with self.assertRaisesRegex(ValueError,'register-archive'):
+                rr.install_register(old,register,archive_paths=incomplete)
+        altered=old.replace('Known unit uncertainty','Unarchived human qualification')
+        with self.assertRaisesRegex(ValueError,'register-archive'):
+            rr.install_register(altered,register,archive_paths=paths)
+
+    def test_refresh_keeps_qualifications_for_previously_cited_targets(self):
+        self.ready(); cp=self.no_change_candidate(); c=pa.load(cp)
+        c['qualification']='Prior operator limitation outside the element evidence.'
+        c['replacements'][0]['evidence'][0]['qualification']='Prior exact-target limitation.'
+        cp.write_text(json.dumps(c)); rr.candidate_import(self.work,cp); rr.apply(self.work,authorize=True)
+        rr.publish(self.work,'fake','bucket','gate',runner=FakeRclone())
+        prior_manifest=self.work/'archive/manifest.json'
+        _,paths=pa.verify_local(prior_manifest)
+        first=rr.read_register(self.page.read_text()); incomplete=dict(paths)
+        del incomplete['refresh-'+first['binding'][:20]+'/page-candidate/input.json']
+        with self.assertRaisesRegex(ValueError,'register-archive'):
+            rr._register_archive(first,incomplete)
+        self.work=self.base/'second'
+        rr.plan(rr.Request('synthetic',['main::table-1','supplement::table-1'],self.page),manifest=prior_manifest,
+            work_root=self.work,fixture=True,model_profile=fixture_profile(),
+            page_scope=[dict(heading='## Results',elements=['main::table-1','supplement::table-1'])])
+        rr.advance(self.work,'prepare'); approval=count_and_approve(self.work,self.base)
+        rr.advance(self.work,'approved-execute',approval=approval,fixture_transport=inference_double(self.work))
+        review_and_export(self.work,self.base)
+        rr.candidate_import(self.work,self.no_change_candidate())
+        register=rr.read_register((self.work/'page-candidate/page-candidate.md').read_text())
+        self.assertEqual({t['element_id'] for t in register['selected_targets']},{'main::table-1','supplement::table-1'})
+        self.assertIn('Prior operator limitation outside the element evidence.',rr.register_text(register))
+        self.assertIn('Prior exact-target limitation.',rr.register_text(register))
+        rr.apply(self.work,authorize=True); rr.publish(self.work,'fake','bucket','gate',runner=FakeRclone())
+
+    def test_compact_register_preserves_warning_bearing_coverage(self):
+        warning=self.base/'source/findings.json'
+        warning.write_text(json.dumps(dict(coverage=dict(status='partial',gaps=['Lower panel unreadable']))))
+        self.m['files'][-1]=pa.file_record('enrichment-review','review/findings.json',warning)
+        self.manifest.write_text(json.dumps(self.m))
+        mapping=pa.load(self.manifest.parent/'local-map.json'); mapping['manifest_sha256']=pa.sha(self.manifest)
+        (self.manifest.parent/'local-map.json').write_text(json.dumps(mapping))
+        self.ready(); rr.candidate_import(self.work,self.no_change_candidate())
+        text=(self.work/'page-candidate/page-candidate.md').read_text()
+        visible=text.split('<!-- portable-page-qualification-register-v2:')[0]
+        self.assertIn('Lower panel unreadable',visible)
+
+    def test_compact_rendering_cannot_add_page_sections(self):
+        self.ready(); cp=self.no_change_candidate(); submission=pa.load(cp)
+        submission['qualification']='First line.\n## Injected heading\nStill a qualification.'
+        cp.write_text(json.dumps(submission)); rr.candidate_import(self.work,cp)
+        text=(self.work/'page-candidate/page-candidate.md').read_text()
+        self.assertEqual(set(rr._sections(text)),set(rr._sections(self.page.read_text())))
+        register=rr.read_register(text)
+        self.assertEqual(register['operator_qualification'],submission['qualification'])
+        self.assertNotIn('## Injected heading',rr._sections(text))
+
+    def test_compact_history_keeps_distinct_metadata_pointers(self):
+        warning=self.base/'source/findings.json'
+        warning.write_text(json.dumps(dict(first=dict(warning='Identical warning'),second=dict(warning='Identical warning'))))
+        self.m['files'][-1]=pa.file_record('enrichment-review','review/findings.json',warning)
+        self.manifest.write_text(json.dumps(self.m))
+        mapping=pa.load(self.manifest.parent/'local-map.json'); mapping['manifest_sha256']=pa.sha(self.manifest)
+        (self.manifest.parent/'local-map.json').write_text(json.dumps(mapping))
+        self.ready(); rr.candidate_import(self.work,self.no_change_candidate())
+        register=rr.read_register((self.work/'page-candidate/page-candidate.md').read_text())
+        rows=[q for q in register['qualifications'] if q.get('metadata')=='Identical warning']
+        self.assertEqual(len(rows),2)
+        self.assertEqual({q['metadata_target'] for q in rows},{'/first/warning','/second/warning'})
+
+    def test_page_warnings_use_recorded_source_element_and_target_scope(self):
+        warning=self.base/'source/findings.json'
+        main=self.m['elements'][0]; other=self.m['elements'][1]
+        rows=[dict(element_id=main['element_id'],source_sha256=main['source_sha256'],target='/record/cells/0/raw_value',
+                   reason='Applicable inherited warning'),
+              dict(element_id=other['element_id'],source_sha256=other['source_sha256'],target='',reason='Other document warning'),
+              dict(element_id=main['element_id'],source_sha256=main['source_sha256'],target='/record/units',reason='Sibling target warning'),
+              dict(element_id=main['element_id'],source_sha256='0'*64,target='',reason='Different source version warning')]
+        warning.write_text(json.dumps(dict(findings=rows,notice='Unscoped warning stays')))
+        self.m['files'][-1]=pa.file_record('enrichment-review','review/findings.json',warning)
+        self.manifest.write_text(json.dumps(self.m))
+        mapping=pa.load(self.manifest.parent/'local-map.json'); mapping['manifest_sha256']=pa.sha(self.manifest)
+        (self.manifest.parent/'local-map.json').write_text(json.dumps(mapping))
+        self.ready(); cp=self.no_change_candidate(); submission=pa.load(cp)
+        submission['replacements'][0]['evidence'][0]['target']='/record/cells/0/raw_value'
+        cp.write_text(json.dumps(submission)); rr.candidate_import(self.work,cp)
+        text=(self.work/'page-candidate/page-candidate.md').read_text()
+        self.assertIn('Applicable inherited warning',text); self.assertIn('Unscoped warning stays',text)
+        for absent in ('Other document warning','Sibling target warning','Different source version warning'):
+            self.assertNotIn(absent,text)
+
     def test_unchanged_full_and_legacy_require_review(self):
         self.ready(selected=False,legacy=True); cp=self.no_change_candidate()
         with self.assertRaisesRegex(ValueError,'full-distillation'): rr.candidate_import(self.work,cp)
