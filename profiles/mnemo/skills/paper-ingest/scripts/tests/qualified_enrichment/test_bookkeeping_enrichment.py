@@ -86,18 +86,18 @@ class PortableNewIngest(unittest.TestCase):
                     reviewer=reviewer(),findings=[],coverage=[],resolutions=[],assessment=assessment))
                 reviews.import_review(review,packet_path,inp)
                 exported=exports.export(review,root/'export')
-                self.assertTrue(exported['readiness']['page_ready'])
+                self.assertFalse(exported['readiness']['page_ready'])  # Source fixture cannot be production-ready.
                 self.assertFalse(exported['execution_complete'])
                 self.assertIn('fixture-not-production',exported['eligibility']['holds'])
                 self.assertEqual(exports.verify_export(root/'export/handoff.json',production=False),exported)
                 import source_package as sp
-                source_handoff=dict(holds=['fixture-not-production'])
+                source_handoff=dict(holds=['fixture-not-production'],source_readiness=dossier['snapshot']['source_readiness'])
                 deployment=dict(integration_dir=str(scripts),enrichment_root=str(scripts),method_dir=str(scripts))
                 launcher_result=root/'attempt/result.json'; storage.save(launcher_result,{})
                 with patch.object(sp,'build_handoff',return_value=source_handoff), patch.object(launcher,'verify_result',return_value=dict(deployment=deployment)):
                     final=sp.build_enriched_handoff(root/'retention/retention.json',root/'package',root/'source-result.json',scripts,
                         root/'export/handoff.json',launcher_result,scripts,scripts,root)
-                self.assertEqual(final['schema'],'source-package-handoff-v3')
+                self.assertEqual(final['schema'],'source-package-handoff-v5')
                 self.assertFalse(final['production_complete'])
                 self.assertEqual(final['enrichment']['request_accounting'],exported['request_accounting'])
 

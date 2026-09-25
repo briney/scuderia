@@ -944,14 +944,16 @@ def main():
                                require_enriched=args.require_enriched_source)
             verified = verify_handoff(handoff, args.source_package_method,
                            expected_article={key: fm.get(key) for key in ('slug','title','doi','pmid')}, **options)
-            if verified.get('schema') in ('source-package-handoff-v2','source-package-handoff-v3'):
+            if verified.get('schema') == 'source-package-handoff-v4':
+                raise ValueError('source-only evidence is intermediate; enriched handoff required for completion')
+            if verified.get('schema') in ('source-package-handoff-v2','source-package-handoff-v3','source-package-handoff-v5'):
                 if verified['qualifications'] not in body:
                     raise ValueError('paper is missing exact source-bound enrichment qualifications')
                 annotated = os.path.relpath(os.path.join(os.path.dirname(verified['enrichment_handoff']), 'annotated.html'),
                                             os.path.dirname(os.path.abspath(paper_path)))
                 if ('Annotated enrichment: '+annotated) not in log:
                     raise ValueError('Ingest log requires annotated enrichment pointer: Annotated enrichment: '+annotated)
-            print('  Source package: OK (mechanical completion only; scientific acceptance remains separate)')
+            print('  Source package: OK (verified evidence and completion contract; scientific acceptance remains separate)')
         except (OSError, ValueError, KeyError, TypeError, ImportError, RuntimeError) as exc:
             print(f'  Source package: FAIL ({exc})')
             failures += 1

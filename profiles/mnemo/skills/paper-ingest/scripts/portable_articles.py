@@ -153,6 +153,10 @@ def validate_manifest(m):
         for u in e['unavailable']:
             require(set(u) == {'kind', 'detail'} and u['kind'] and u['detail'], 'unavailable-disposition')
     status = m['source_status']
+    if 'readiness' in status:
+        import source_package as adapter
+        adapter.validate_source_readiness(status['readiness'])
+        require(m['schema'] != DIAGNOSTIC_SCHEMA, 'diagnostic-source-readiness-forbidden')
     require(all(type(status[k]) is bool for k in ('complete', 'fixture', 'acquisition_verified', 'extraction_verified')), 'typed-source-status')
     require(isinstance(status['holds'], list) and isinstance(m['dispositions'], list), 'typed-source-holds')
     require(not status['complete'] or (not status['holds'] and status['acquisition_verified'] and
@@ -252,6 +256,14 @@ def verify_source(manifest_path):
                     doc['selected_pages'] == list(range(1, doc['page_count']+1)), 'diagnostic-not-complete')
     facts = [r['detail'] for r in m['dispositions'] if r['kind'] == 'source-extraction']
     require(len(facts) == 1, 'extraction-facts-required')
+    if 'readiness' in m['source_status']:
+        expected = adapter.source_readiness(acquisition, facts[0], fixture=m['source_status']['fixture'],
+                                            stopped='package/stop.json' in inventory)
+        if any(doc['extraction_scope'] != 'whole-document' or doc['selected_pages'] != list(range(1,doc['page_count']+1)) or set(doc['channels']) != {'caption','figure','structured','classification','association'} for doc in docs.values()):
+            expected['holds'] = sorted(set(expected['holds'] + ['diagnostic-not-whole-document']))
+        require(m['source_status']['readiness'] == expected, 'source-readiness-binding')
+        require(not any(h.startswith('diagnostic-not-whole-document:') for h in m['source_status']['holds']) or
+                'diagnostic-not-whole-document' in expected['holds'], 'source-readiness-diagnostic-scope')
     if m['source_status']['complete']:
         require(all(v['status'] == 'retrieved' for v in acquisition['obligations'].values()) and
                 acquisition['attachments']['status'] != 'not-inspected' and
@@ -316,7 +328,7 @@ def build_manifest(retention, package, output, *, article=None, package_id,
     for d in pkg.documents:
         row = pdfs[bindings[d['identity']]]
         require(d['sha256'] == row['sha256'] and d['page_count'] == row['page_count'], 'source-document-hash-association')
-        if d['extraction_scope'] != 'whole-document' or set(d['pages']) != set(range(1, d['page_count']+1)):
+        if d['extraction_scope'] != 'whole-document' or set(d['pages']) != set(range(1, d['page_count']+1)) or set(d['channels']) != {'caption','figure','structured','classification','association'}:
             diagnostic_documents.append(d['identity'])
     files, sources = [], {}
     _collect_tree(files, sources, 'source-retention', retention.parent, 'retention/', 'Unchanged acquisition, original identity basis and diagnostics')
@@ -328,7 +340,7 @@ def build_manifest(retention, package, output, *, article=None, package_id,
             f.update(role='source-original', binds=dict(source_id=row['id'], source_role=row['role'],
                 source_version=identity['version'], identity_verification=row['identity_verification']))
     _collect_tree(files, sources, 'source-package', package, 'package/', 'Unchanged source/runtime evidence')
-    for root, role, prefix in ((handoff_dir, 'handoff', 'handoff/'), (job, 'enrichment-job', 'job/'),
+    for root, role, prefix in ((handoff_dir, 'source-package', 'handoff/'), (job, 'enrichment-job', 'job/'),
                                (review, 'enrichment-review', 'review/'), (export, 'enrichment-export', 'export/')):
         if root: _collect_tree(files, sources, role, root, prefix, 'Unchanged historical evidence; not automatically promoted')
     # Optional handoff and qualified export inputs must be independently revalidated.
@@ -336,10 +348,10 @@ def build_manifest(retention, package, output, *, article=None, package_id,
         h = load(absolute(handoff_dir)/'handoff.json')
         require(h['status'] != 'test-only' or test_root is not None, 'explicit-fixture-root-required')
         actual = adapter.build_handoff(retention, package, h['launcher_result'], roots['pdf_source_package'],
-                                      test_root=test_root if h['status'] == 'test-only' else None, historical=True)
+                                      test_root=test_root if h['status'] == 'test-only' else None, historical=True, schema=h['schema'])
         adapter.retain_code_provenance(actual, h)
         require(h == actual, 'handoff-revalidation-mismatch')
-        _collect_tree(files, sources, 'handoff', absolute(h['launcher_result']).parent, 'launcher/', 'Code-owned acquisition launcher evidence')
+        _collect_tree(files, sources, 'source-package', absolute(h['launcher_result']).parent, 'launcher/', 'Code-owned acquisition launcher evidence')
         if h.get('inspection_dir'):
             _collect_tree(files, sources, 'handoff', h['inspection_dir'], 'inspections/', 'Inspection findings and raw responses')
     if handoff_dir:
@@ -347,7 +359,7 @@ def build_manifest(retention, package, output, *, article=None, package_id,
             report = absolute(h[field])
             if not any(inside(s['root'], s['path']) == report for s in sources.values()):
                 key = 'source-report/' + field + '/' + relative_key(report.name)
-                files.append(file_record('handoff', key, report))
+                files.append(file_record('source-package', key, report))
                 sources[key] = dict(root=str(report.parent), path=report.name)
     if job:
         from qualified_enrichment import runtime
@@ -378,7 +390,7 @@ def build_manifest(retention, package, output, *, article=None, package_id,
     # Preserve all review/export/raw-run evidence. This deliberately over-includes
     # history rather than guessing which warning a later consumer may need.
     inherited = sorted(f['key'] for f in files if f['role'].startswith('enrichment-') or f['role'] == 'handoff')
-    common = sorted(set(inherited + [f['key'] for f in files if f['role'] in ('source-retention', 'source-original')]
+    common = sorted(set((['package/stop.json'] if (package/'stop.json').exists() else []) + inherited + [f['key'] for f in files if f['role'] in ('source-retention', 'source-original')]
                         + ['package/manifest.json']))
     records = {f['key']: f for f in files}
     elements, documents = [], []
@@ -430,11 +442,14 @@ def build_manifest(retention, package, output, *, article=None, package_id,
         created_at=now_utc(), files=files, total_objects=len(files), documents=documents, elements=elements,
         common_dependencies=common, dispositions=auto_dispositions + (dispositions or []),
         source_status=dict(complete=not mechanical_holds, fixture=fixture, holds=mechanical_holds,
-            acquisition_verified=True, extraction_verified=True, identity_basis=retained['identity_basis']),
+            acquisition_verified=True, extraction_verified=True, identity_basis=retained['identity_basis'],
+            readiness=adapter.source_readiness(acquisition,state['facts'],fixture=fixture,stopped=(package/'stop.json').exists())),
         provenance=dict(source_schema=pkg.schema, source_tree_sha256=pkg.snapshot['tree_sha256'],
             method_code=tree(roots['pdf_source_package']/'pdf_source_package'),
             fixture=fixture, original_document_bindings=bindings,
             statement='Identity is operator asserted; hashes and extraction bindings are code verified. Scientific acceptance is not established.'))
+    if diagnostic_documents:
+        m['source_status']['readiness']['holds'] = sorted(set(m['source_status']['readiness']['holds'] + ['diagnostic-not-whole-document']))
     validate_manifest(m)
     require(before == {str(r): tree(r) for r in protected if r.is_dir()}, 'inputs-changed-during-build')
     destination = new_directory(output)
@@ -577,6 +592,11 @@ def qualification_projection(value, *, element=None, scope=None):
     model-based pruning, length limit, or implicit resolution across revisions.
     """
     result=[]
+    if isinstance(value,dict) and value.get('schema')=='source-package-handoff-v4':
+        return result  # Raw mechanical evidence is not an observed scientific limitation.
+    if isinstance(value,dict) and value.get('schema')=='source-package-handoff-v5':
+        result=qualification_projection(value['enrichment'],element=element,scope=scope)
+        return [dict(row,target='/enrichment'+row['target']) if 'target' in row else row for row in result]
     if isinstance(value, dict) and value.get('schema') in (
             'qualified-enrichment-export-v1', 'qualified-enrichment-export-v2', 'portable-qualified-export-v2', 'portable-qualified-export-v3', 'portable-qualified-export-v4'):
         trusted_modules()
@@ -596,11 +616,16 @@ def qualification_projection(value, *, element=None, scope=None):
                 scopes.append({k:v for k,v in exact.items() if k!='content'})
             result.append(dict(element_id=view['element_id'],source_sha256=view['source_sha256'],
                 findings=view['findings'],coverage=view['coverage'],review_status=view['review_status'],scopes=scopes))
-        if element is None: return result
+        if element is None:
+            limitations=(value.get('assessment') or {}).get('source_limitations',[])
+            if limitations:
+                result.append(dict(target='/assessment/source_limitations',metadata=limitations,
+                    association='Attributed source limitations; review provenance retained in archive.'))
+            return result
         # Scoped views do not replace genuinely unscoped export-level warnings.
         value={k:v for k,v in value.items() if k!='elements' and (not current or k not in ('notice','dispositions','request_accounting','review_bindings'))}
     metadata={'findings','automatic_findings','warnings','warning','notice','limitations','unresolved',
-              'coverage','resolutions','dispositions','holds','unavailable','uncertainty','uncertainties'}
+              'coverage','resolutions','dispositions','holds','unavailable','uncertainty','uncertainties','source_limitations'}
     omitted={'inherited_history','consumer_views','messages','response_body','request_wire'}
     if element is not None:
         metadata |= {'limitation','source_limitation','gaps','model_root_uncertainty','coverage_warnings'}

@@ -27,7 +27,11 @@ def source_files(manifest):
 
 def validate_assessment(dossier, value, *, manifest=None, paths=None):
     if value is None: return None
-    require(set(value)=={'usable_evidence','reason','source_refs','unattempted'},'assessment-fields')
+    fields={'usable_evidence','reason','source_refs','unattempted'}
+    require(set(value) in (fields,fields|{'source_limitations'}),'assessment-fields')
+    if 'source_limitations' in value:
+        require(isinstance(value['source_limitations'],list) and all(isinstance(x,str) and x.strip() for x in value['source_limitations']), 'source-limitations-shape')
+        require(not value['source_limitations'] or value['source_refs'], 'source-limitations-evidence-required')
     require(type(value['usable_evidence']) is bool and isinstance(value['reason'],str) and value['reason'].strip(),'assessment-reason')
     require(isinstance(value['source_refs'],list) and isinstance(value['unattempted'],dict),'assessment-evidence-fields')
     import portable_articles as pa
@@ -52,15 +56,18 @@ def validate_assessment(dossier, value, *, manifest=None, paths=None):
     require(not value['usable_evidence'] or value['source_refs'],'assessment-source-evidence-required')
     accounting=dossier.get('request_accounting',dossier['snapshot'].get('request_accounting'))
     pending={rid for rid,row in accounting['requests'].items() if row['status']=='pending'}
+    pending.update(manifest['source_status'].get('readiness',{}).get('pending',[]))
     require(set(value['unattempted'])<=pending and all(isinstance(reason,str) and reason.strip() for reason in value['unattempted'].values()),'assessment-unattempted-disposition')
     return value
 
 
 def assessment(dossier, entries, *, manifest=None, paths=None):
-    value=None
+    value=None; limitations=[]
     for entry in entries:
         if entry['submission'].get('assessment') is not None:
             value=validate_assessment(dossier,entry['submission']['assessment'],manifest=manifest,paths=paths)
+            limitations.extend(x for x in value.get('source_limitations',[]) if x not in limitations)
+    if limitations: value=dict(value,source_limitations=limitations)
     return value
 
 
@@ -108,6 +115,8 @@ def packet_value(dossier, dossier_hash, elements, max_bytes):
                                  automatic_findings=project(available[e],policy=policy(dossier))['findings']) for e in elements])
     if policy(dossier)!='legacy':
         result['source_files']=dossier['snapshot']['source_files']
+        source=dossier['snapshot'].get('source_readiness')
+        if source is not None: result['source_readiness']=source
     require(len((json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False)+'\n').encode()) <= max_bytes, 'packet-too-large-select-fewer-elements')
     return result
 

@@ -363,15 +363,59 @@ def holds_for(retention, state, package):
     return holds
 
 
-def build_handoff(retention_path, package, launcher_result, method, test_root=None, *, historical=False):
+
+def source_readiness(acquisition, facts, *, fixture, stopped=False):
+    """Verified evidence may be partial; pending work needs an attributed disposition.
+
+    This policy never changes mechanical completion or authorizes a retry.
+    Namespaced pending keys share the enrichment review's unattempted map.
+    """
+    pending = []
+    holds = ['fixture-not-production'] if fixture else []
+    for role, value in acquisition['obligations'].items():
+        if value['status'] != 'retrieved' and not value.get('disposition', '').strip():
+            pending.append('source:acquisition:' + role)
+    attachments = acquisition['attachments']
+    if attachments['status'] == 'not-inspected': pending.append('source:attachments')
+    for item in attachments['items']:
+        if item['status'] != 'retrieved' and not item.get('disposition', '').strip():
+            pending.append('source:attachment:' + item['id'])
+    for phase, row in facts['phases'].items():
+        if row['status'] == 'not-prepared': pending.append('source:phase:' + phase)
+        if row['fixture_or_replay_calls']: holds.append('fixture-or-replay-' + phase)
+    for row in facts['requests']:
+        if not row['attempted'] and not row['uncertain_reservation']:
+            pending.append('source:request:' + row['id'])
+    if stopped: holds.append('workflow-stop-record')
+    inspection = facts['inspection']
+    if inspection['status'] in ('incomplete-records', 'directory-missing'):
+        holds.append('inspection-evidence-incomplete')
+    if inspection['fixture_or_replay_calls']: holds.append('fixture-inspection-not-production')
+    return dict(policy='source-readiness-v1', pending=sorted(pending), holds=sorted(holds))
+
+
+def validate_source_readiness(value):
+    require(set(value) == {'policy', 'pending', 'holds'} and value['policy'] == 'source-readiness-v1',
+            'unknown-source-readiness-policy')
+    for key in ('pending', 'holds'):
+        require(isinstance(value[key], list) and all(isinstance(x, str) and x for x in value[key]) and
+                value[key] == sorted(set(value[key])), 'source-readiness-fields')
+    require(all(x.startswith('source:') for x in value['pending']), 'source-pending-namespace')
+    return value
+
+def build_handoff(retention_path, package, launcher_result, method, test_root=None, *, historical=False, schema='source-package-handoff-v4'):
+    require(schema in ('source-package-handoff-v1', 'source-package-handoff-v4'), 'source-handoff-schema')
     retention, state, summary, inspections = verified_state(retention_path,package,launcher_result,method,historical=historical)
     holds = holds_for(retention,state,package)
-    if test_root is None: require(not holds, 'production hold: '+', '.join(holds))
+    readiness = source_readiness(retention['acquisition'], state['facts'],
+        fixture=state['fixture'] or (Path(package)/'OFFLINE-FIXTURE').exists(), stopped=(Path(package)/'stop.json').exists()) if schema.endswith('v4') else None
+    blocking = readiness['holds'] if readiness is not None else holds
+    if test_root is None: require(not blocking, 'production hold: '+', '.join(blocking))
     else:
         test_root = absolute(test_root)
         require(state['fixture'] is True, 'test-only requires explicit workflow fixture')
         require(all(absolute(p).is_relative_to(test_root) for p in (retention_path,package,launcher_result)), 'test-only inputs must be under test root')
-    value = dict(schema='source-package-handoff-v1', status='test-only' if test_root else 'production-mechanical-complete',
+    value = dict(schema=schema, status='test-only' if test_root else 'verified-source-evidence' if readiness is not None else 'production-mechanical-complete',
         production_complete=not holds and test_root is None, holds=holds, article=retention['acquisition']['article'],
         retention=str(absolute(retention_path)), retention_sha256=sha(retention_path), package=str(absolute(package)),
         launcher_result=str(absolute(launcher_result)), launcher_bindings=tree_hashes(absolute(launcher_result).parent),
@@ -385,6 +429,8 @@ def build_handoff(retention_path, package, launcher_result, method, test_root=No
                      'Identity is operator-verified; the adapter verifies bindings, not article content.',
                      'Inspection input coverage is distinct from model findings and human acceptance.',
                      'Absent historical clocks remain not-recorded; originals and non-PDF dispositions are retained.'])
+    if readiness is not None:
+        value.update(source_readiness=readiness, source_complete=not holds, production_complete=False)
     for source in retention['acquisition']['files']:
         if source.get('extraction_disposition') == 'deferred-non-PDF':
             value['limitations'].append(
@@ -408,7 +454,7 @@ def trusted_enrichment(integration, enrichment_root):
 
 def qualification_text(enrichment):
     if enrichment['schema']=='qualified-enrichment-export-v2':
-        lines=[]
+        lines=['Source limitation: '+x for x in (enrichment.get('assessment') or {}).get('source_limitations',[])]
         for view in enrichment['elements']:
             for finding in view['findings']:
                 if finding['status']=='unresolved' or finding.get('resolutions'):
@@ -439,9 +485,9 @@ def qualification_text(enrichment):
 
 def build_enriched_handoff(retention_path, package, launcher_result, method,
                            enrichment_handoff, enrichment_launcher_result, integration, enrichment_root,
-                           test_root=None, *, historical=False):
-    # Do not relax any v1 acquisition, full-document, phase or fixture hold.
-    source = build_handoff(retention_path, package, launcher_result, method, test_root, historical=historical)
+                           test_root=None, *, historical=False, schema=None):
+    source_schema = 'source-package-handoff-v1' if schema in ('source-package-handoff-v2','source-package-handoff-v3') else 'source-package-handoff-v4'
+    source = build_handoff(retention_path, package, launcher_result, method, test_root, historical=historical, schema=source_schema)
     exports = trusted_enrichment(integration, enrichment_root)
     enriched = exports.verify_export(enrichment_handoff, source_package=package, production=test_root is None)
     from qualified_enrichment.launcher import verify_result
@@ -455,8 +501,14 @@ def build_enriched_handoff(retention_path, package, launcher_result, method,
     if test_root:
         require(all(absolute(p).is_relative_to(absolute(test_root)) for p in
                     (ep,enrichment_launcher_result,enriched['review_root'])), 'test-only enrichment outside test root')
-    holds = sorted(set(source['holds'] + enriched['eligibility']['holds']))
-    return dict(source, schema='source-package-handoff-v3' if enriched['schema']=='qualified-enrichment-export-v2' else 'source-package-handoff-v2',
+    if source_schema.endswith('v4'):
+        require(enriched['schema']=='qualified-enrichment-export-v2', 'source-readiness-requires-current-review')
+        import article_enrichment as ae
+        ready = ae.readiness(enriched['request_accounting'], enriched['assessment'], source['source_readiness'])
+        holds = sorted(set(ready['holds'] + enriched['eligibility']['holds']))
+    else: holds = sorted(set(source['holds'] + enriched['eligibility']['holds']))
+    if test_root is None: require(not holds, 'production hold: '+', '.join(holds))
+    return dict(source, schema=schema or 'source-package-handoff-v5',
                 status='test-only' if test_root else 'qualified-production-complete',
                 production_complete=test_root is None and not holds, holds=holds,
                 source_handoff=source, enrichment=enriched,
@@ -484,19 +536,21 @@ def retain_code_provenance(actual, saved):
 def verify_handoff(path, method, expected_article=None, *, integration=None,
                    enrichment_root=None, require_enriched=False):
     value = load(path)
-    if value['schema'] in ('source-package-handoff-v2','source-package-handoff-v3'):
+    if value['schema'] in ('source-package-handoff-v2','source-package-handoff-v3','source-package-handoff-v5'):
         require(value['production_complete'] is True and value['status'] == 'qualified-production-complete',
                 'handoff is not production completion')
         require(integration and enrichment_root, 'explicit trusted enrichment roots required')
         actual = build_enriched_handoff(value['retention'],value['package'],value['launcher_result'],method,
-                    value['enrichment_handoff'],value['enrichment_launcher_result'],integration,enrichment_root,historical=True)
+                    value['enrichment_handoff'],value['enrichment_launcher_result'],integration,enrichment_root,historical=True,schema=value['schema'])
         require((absolute(path).parent/'qualifications.txt').read_text() == actual['qualifications'],
                 'removed or mismatched qualifications')
     else:
         require(not require_enriched, 'new production route requires enriched handoff')
-        require(value['schema'] == 'source-package-handoff-v1' and value['production_complete'] is True and
-                value['status'] == 'production-mechanical-complete', 'handoff is not production completion')
-        actual = build_handoff(value['retention'],value['package'],value['launcher_result'],method,historical=True)
+        require((value['schema'] == 'source-package-handoff-v1' and value['production_complete'] is True and
+                value['status'] == 'production-mechanical-complete') or
+                (value['schema'] == 'source-package-handoff-v4' and value['production_complete'] is False and
+                 value['status'] == 'verified-source-evidence'), 'handoff is not production completion')
+        actual = build_handoff(value['retention'],value['package'],value['launcher_result'],method,historical=True,schema=value['schema'])
     retain_code_provenance(actual, value)
     require(value == actual, 'stale or mismatched handoff')
     require((absolute(path).parent/'summary.txt').read_text() == actual['summary'], 'handoff exact summary changed')

@@ -392,7 +392,7 @@ def page_receipt_path(page,binding):
 
 def page_ready(exported):
     if exported['schema']=='portable-qualified-export-v4':
-        require(exported['readiness']==ae.readiness(exported['request_accounting'],exported['assessment']),'page-readiness-binding')
+        require(exported['readiness']==ae.readiness(exported['request_accounting'],exported['assessment'],exported['source_status'].get('readiness')),'page-readiness-binding')
         return exported['readiness']['page_ready']
     require(exported['schema']=='portable-qualified-export-v3','unsupported-export-format')
     return exported['execution_complete']
@@ -457,6 +457,13 @@ def _current_register(exported,submission,m,p,annotated_sha256,paths,previous):
     index={e['element_id']:e for e in m['elements']}
     def add(value):
         if value not in qualifications: qualifications.append(value)
+    for entry in exported.get('inherited_history',[]):
+        for q in entry.get('qualifications',[]):
+            if 'source_limitations' in q.get('target','').split('/') and q.get('metadata'):
+                add(dict(scope='Prior source evidence',metadata_target=q['target'],metadata=q['metadata'],
+                         evidence={k:entry[k] for k in ('key','sha256')}))
+    for reason in (exported.get('assessment') or {}).get('source_limitations',[]):
+        add(dict(scope='Source evidence',reason=reason,evidence=locator))
     for replacement in submission['replacements']:
         for ref in replacement['evidence']:
             if ref['kind'] in ('source','inspection'):
@@ -875,7 +882,7 @@ def verify_completion(receipt_path,manifest_path,*,manifest_key,manifest_sha256,
     if current:
         assessment=reviews.assessment(dossier,entries,manifest=parent,paths=paths)
         require(exported['assessment']==assessment and exported['request_accounting']==dossier['request_accounting'] and
-                exported['readiness']==ae.readiness(dossier['request_accounting'],assessment),'completion-review-readiness')
+                exported['readiness']==ae.readiness(dossier['request_accounting'],assessment,parent['source_status'].get('readiness')),'completion-review-readiness')
     require(entries or not views,'completion-review-required')
     for view in views: view['consumer_views']=[exact_view(view,t) for t in content_targets(view['outcome'])]
     require(exported['elements']==views and [v['element_id'] for v in views]==ids,'completion-export-findings')

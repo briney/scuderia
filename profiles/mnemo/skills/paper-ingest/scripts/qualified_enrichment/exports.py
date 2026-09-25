@@ -165,7 +165,9 @@ def eligibility(state):
     holds = list(state['execution_holds'])
     if state['fixture']: holds.append('fixture-not-production')
     if state['kind'] != 'qualified-job': holds.append('review-only-not-default-production-roster')
-    if any(d.get('source_status') != 'complete' or not d.get('source_complete') for d in state['documents']):
+    if 'source_readiness' in state:
+        holds.extend(state['source_readiness']['holds'])
+    elif any(d.get('source_status') != 'complete' or not d.get('source_complete') for d in state['documents']):
         holds.append('source-acquisition-extraction-not-complete')
     accounting = []
     for element in state['elements']:
@@ -185,7 +187,8 @@ def eligibility(state):
                 eligible_elements=sum(e['eligible_default'] for e in accounting),
                 zero_eligible=not any(e['eligible_default'] for e in accounting),
                 scientific_correctness='not-established', human_acceptance='not-established',
-                note='Field limitations and partial enrichment do not waive source-stage execution holds.')
+                note=('Partial source outcomes remain recorded; pending source work requires assessment.' if 'source_readiness' in state else
+                      'Field limitations and partial enrichment do not waive source-stage execution holds.'))
 
 
 def build(root):
@@ -201,7 +204,7 @@ def build(root):
         import article_enrichment as ae
         assessment=reviews.assessment(dossier,entries)
         accounting=dossier['snapshot']['request_accounting']
-        ready=ae.readiness(accounting,assessment)
+        ready=ae.readiness(accounting,assessment,dossier['snapshot'].get('source_readiness'))
         machine.update(schema='qualified-enrichment-export-v2',policy=reviews.policy(dossier),manifest=dossier['snapshot']['manifest'],
                        request_accounting=accounting,execution_complete=accounting['complete'],assessment=assessment,readiness=ready)
         e=machine['eligibility']; e['holds']=sorted(set(e['holds']+ready['holds']))

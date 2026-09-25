@@ -2,7 +2,7 @@
 
 Runtime paths and installation: `runtime.md`. Every trusted method, enrichment, integration and adapter root below is the same resolved skill `scripts/` directory.
 
-Use this after the retained-source workflow and verified source-only v1 handoff for each new production ingest retaining PDFs. This is an agent-operated route through the deployed qualified-enrichment capability (Hermes binding: `paper_enrichment`). Discover its native schema in the operating session before proceeding. Resolve the canonical skill runtime and PDF interpreter from the active instance deployment (`runtime.md`); do not install another profile or substitute a generated shell executor when a capability is unavailable. An unavailable deployment is a hold, not permission to skip enrichment silently.
+Use this after the retained-source workflow and verified source-only v4 handoff for each new production ingest retaining PDFs. This is an agent-operated route through the deployed qualified-enrichment capability (Hermes binding: `paper_enrichment`). Discover its native schema in the operating session before proceeding. Resolve the canonical skill runtime and PDF interpreter from the active instance deployment (`runtime.md`); do not install another profile or substitute a generated shell executor when a capability is unavailable. An unavailable deployment is a hold, not permission to skip enrichment silently.
 
 Historical reads and strict execution bindings follow the compatibility table in
 `source-package-integration.md`. A saved code hash is producer provenance, not
@@ -12,7 +12,7 @@ permission to resume a job with a changed implementation.
 
 New ingestion and refresh share the portable enrichment executor. Ordinary page content is the ingesting model's best estimate, not certified ground truth. Record only evidence-supported substantive deviations from that baseline: a material native/VLM disagreement, an unreadable table region, or a failed figure description. Do not hunt for limitations, invent minor caveats, or label missing exhaustive review coverage as a defect. Empty findings and qualifications are valid.
 
-Page readiness is separate from request success. An attributed assessment must identify usable retained evidence and explicitly account for any never-attempted requests. Failed or uncertain visual requests remain failed or uncertain, but usable manuscript text may support a page. Integrity/route/model/count holds, fixture provenance and unchanged source acquisition/extraction holds still prevent production completion. Never call unavailable visual content successfully enriched.
+Page readiness is separate from request success. An attributed assessment must identify usable retained evidence and explicitly account for any never-attempted requests. Failed or uncertain visual requests remain failed or uncertain, but usable manuscript text may support a page. Integrity/route/model/count holds, fixture provenance and unaccounted pending source work still prevent production completion. Never call unavailable visual content successfully enriched.
 
 The capability selects all eligible source figures and tables, retaining its existing data-file-to-table mapping. Unknown/skipped/incomplete elements remain in its disposition register. Algorithms/code are not selected by default. Existing algorithm records may be reviewed for discovery; mathematical-specification use always requires source inspection. Production enablement does not authorize historical re-ingestion or another evaluation campaign.
 
@@ -45,20 +45,20 @@ Retain the entire relevant consumer context: `findings` including attributed res
 
 Keep any applicable substantive qualification beside the scientific claim. Unsupported exact claims must be inspected, omitted or stated as unresolved; a detached generic caveat is insufficient. This procedure does not promise automatic detection of every discrepancy.
 
-## Final v3 handoff and completion
+## Final v5 handoff and completion
 
 Build a new handoff with the source arguments plus the verified annotated export and its actual export receipt:
 
-    <pdf-python> -B <scripts>/source_package.py handoff --retention <retention.json> --package <source-package> --launcher-result <source-summary-attempt/result.json> --method <scripts> --enrichment-handoff <export/handoff.json> --enrichment-launcher-result <export-attempt/result.json> --integration <scripts> --enrichment-root <scripts> --output <new-v3-handoff>
-    <pdf-python> -B <scripts>/source_package.py verify --handoff <v3/handoff.json> --method <scripts> --integration <scripts> --enrichment-root <scripts> --require-enriched
+    <pdf-python> -B <scripts>/source_package.py handoff --retention <retention.json> --package <source-package> --launcher-result <source-summary-attempt/result.json> --method <scripts> --enrichment-handoff <export/handoff.json> --enrichment-launcher-result <export-attempt/result.json> --integration <scripts> --enrichment-root <scripts> --output <new-v5-handoff>
+    <pdf-python> -B <scripts>/source_package.py verify --handoff <v5/handoff.json> --method <scripts> --integration <scripts> --enrichment-root <scripts> --require-enriched
 
-Keep the v3 `qualifications.txt` text exactly (an empty file is valid) in the paper and add both unformatted Ingest log pointers, relative to that paper:
+Keep the v5 `qualifications.txt` text exactly (an empty file is valid) in the paper and add both unformatted Ingest log pointers, relative to that paper:
 
-    Source package: <relative-v3-handoff.json>
+    Source package: <relative-v5-handoff.json>
     Annotated enrichment: <relative-export/annotated.html>
 
 Complete Phase 10 with:
 
-    <pdf-python> -B <scripts>/verify_ingest.py <slug> --instance <instance> --require-filled --source-package-handoff <v3/handoff.json> --source-package-method <scripts> --require-enriched-source --enrichment-integration <scripts> --enrichment-root <scripts>
+    <pdf-python> -B <scripts>/verify_ingest.py <slug> --instance <instance> --require-filled --source-package-handoff <v5/handoff.json> --source-package-method <scripts> --require-enriched-source --enrichment-integration <scripts> --enrichment-root <scripts>
 
-Add `--page-only` for the existing PAGE_READY contract, not to bypass source/enrichment checks. Legacy v1 verification remains for history; new production ingests use v3. The canonical qualification register and annotated pointer must survive unchanged; field-level prose must also preserve the relevant scientific limitation. Source/enrichment mechanical completion does not replace identity, bibliography, author wiring, graph integration or scientific review.
+Add `--page-only` for the existing PAGE_READY contract, not to bypass source/enrichment checks. Legacy v1/v2/v3 verification remains for history; new production ingests use v4 intermediate evidence and v5 completion. The canonical qualification register and annotated pointer must survive unchanged; field-level prose must also preserve the relevant scientific limitation. Source/enrichment mechanical completion does not replace identity, bibliography, author wiring, graph integration or scientific review.

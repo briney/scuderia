@@ -73,7 +73,7 @@ class SyntheticCompletionPolicyTests(unittest.TestCase):
                       'inspection': {'status': 'not-supplied', 'uncertain_reservations': 0,
                                      'fixture_or_replay_calls': 0}}}
 
-    def synthetic_handoff(self):
+    def synthetic_handoff(self, schema='source-package-handoff-v1'):
         # Mock only for this policy unit control. No files, model responses,
         # launcher receipts or successful execution evidence are fabricated.
         from unittest.mock import patch
@@ -84,7 +84,20 @@ class SyntheticCompletionPolicyTests(unittest.TestCase):
                 patch.object(self.adapter, 'tree_hashes', return_value={}), \
                 patch.object(self.adapter, 'load', return_value=paths):
             return self.adapter.build_handoff(self.base/'retention.json', self.base/'package',
-                                              self.base/'result.json', self.base/'method')
+                                              self.base/'result.json', self.base/'method', schema=schema)
+
+    def test_v4_partial_evidence_is_intermediate_not_false_completion(self):
+        self.state['facts']['requests']=[]
+        self.state['requested_work_complete']=False
+        self.state['documents'][0]['complete_package']=False
+        self.state['facts']['phases']['association']['status']='not-prepared'
+        handoff=self.synthetic_handoff('source-package-handoff-v4')
+        self.assertEqual(handoff['status'],'verified-source-evidence')
+        self.assertFalse(handoff['production_complete'])
+        self.assertFalse(handoff['source_complete'])
+        self.assertIn('requested-work-incomplete',handoff['holds'])
+        self.assertEqual(handoff['source_readiness']['pending'],['source:phase:association'])
+        self.assertEqual(handoff['source_readiness']['holds'],[])
 
     def test_otherwise_complete_nonfixture_positive_control(self):
         self.assertEqual(self.adapter.holds_for(self.retention, self.state, self.base), [])

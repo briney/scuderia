@@ -74,6 +74,7 @@ def prior_dependencies(root, phases):
 
 def prepare_stage(root, phase):
     root=Path(root); require(phase in ('classification','association'),'downstream-phase')
+    require(not (root/'stop.json').exists(),'shared-stop-pending')
     require(not (root/f'{phase}-plan.json').exists(),'stage-already-prepared')
     require((root/'initial-complete.json').exists(),'initial-execution-must-finish')
     manifest=load(root/'manifest.json'); all_cs=collect(root); rows=[]; dispositions=[]

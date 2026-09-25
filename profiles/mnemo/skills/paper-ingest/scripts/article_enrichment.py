@@ -100,7 +100,11 @@ def source_scope(m, roster, fixture, scope):
         require(fixture or not m['source_status']['fixture'], 'fixture-cannot-be-live-promoted')
     else:
         require(m['schema']!=pa.DIAGNOSTIC_SCHEMA, 'diagnostic-requires-explicit-scope')
-        require(fixture or (m['source_status']['complete'] and not m['source_status']['fixture']), 'source-not-production-eligible')
+        status=m['source_status']; ready=status.get('readiness')
+        if ready is not None:
+            from source_package import validate_source_readiness
+            validate_source_readiness(ready)
+        require(fixture or (not status['fixture'] and (not ready['holds'] if ready is not None else status['complete'])), 'source-not-production-eligible')
 
 
 def scope_fields(v):
@@ -471,10 +475,16 @@ def validate_accounting(accounting):
             accounting['integrity_hold'] is any(row.get('failure',{}).get('fatal',False) for row in rows.values()),'request-accounting-binding')
 
 
-def readiness(accounting, assessment):
+def readiness(accounting, assessment, source=None):
     pending={rid for rid,row in accounting['requests'].items() if row['status']=='pending'}
+    if source is not None:
+        from source_package import validate_source_readiness
+        validate_source_readiness(source)
+        pending.update(source['pending'])
     accounted=not pending or bool(assessment is not None and set(assessment['unattempted'])==pending)
-    holds=[]
+    # Fixture simulations may exercise page mechanics; source_scope and the
+    # production handoff/publication checks still forbid fixture promotion.
+    holds=[h for h in source['holds'] if not h.startswith('fixture-')] if source is not None else []
     if not accounted: holds.append('unaccounted-pending-requests')
     if accounting['integrity_hold']: holds.append('execution-integrity-hold')
     if assessment is None or not assessment['usable_evidence']: holds.append('usable-evidence-review-required')
@@ -510,6 +520,8 @@ def review_create(work,binding,manifest_path):
     dossier=dict(schema='portable-review-dossier-v3',policy='observed-limitations-v1',binding=binding,request_accounting=state['accounting'],
         snapshot=dict(source_package='portable:'+sha(manifest_path),manifest=str(absolute(manifest_path)),
                       manifest_sha256=sha(manifest_path),source_files=reviews.source_files(pa.load(manifest_path)),elements=elements),notice=reviews.NOTICE)
+    source=pa.load(manifest_path)['source_status'].get('readiness')
+    if source is not None: dossier['snapshot']['source_readiness']=source
     _seal_file(root/'dossier.json',dossier)
     packet=reviews.packet_value(dossier,sha(root/'dossier.json'),[e['element_id'] for e in elements],8000000)
     if packet: pa.save(root/'packet.json',packet)
@@ -532,6 +544,7 @@ def _review_verify(work,binding,manifest_path,state):
     ids={e['element_id'] for e in dossier['snapshot']['elements']}
     if current:
         require(dossier['snapshot']['source_files']==reviews.source_files(pa.load(manifest_path)),'review-source-inventory')
+        require(dossier['snapshot'].get('source_readiness')==pa.load(manifest_path)['source_status'].get('readiness'),'review-source-readiness-binding')
         old=dossier['request_accounting']
         finished={r['element_id'] for r in old['requests'].values() if r['status']=='completed'}
         frozen=dict(elements=[e for e in state['elements'] if e['element_id'] in finished],accounting=old)
@@ -599,7 +612,7 @@ def _export_value(work,binding,manifest_path,review):
         scientific_acceptance='not-established',notice='Prior findings and review history remain active; a new outcome never resolves them automatically.',**scope_fields(v))
     if current:
         assessment=reviews.assessment(dossier,entries)
-        value.update(policy=reviews.policy(dossier),assessment=assessment,readiness=readiness(dossier['request_accounting'],assessment))
+        value.update(policy=reviews.policy(dossier),assessment=assessment,readiness=readiness(dossier['request_accounting'],assessment,prior['source_status'].get('readiness')))
     return value
 
 

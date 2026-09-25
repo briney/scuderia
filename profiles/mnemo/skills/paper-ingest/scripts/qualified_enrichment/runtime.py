@@ -127,7 +127,7 @@ def source_handoff(path, method, test_root=None):
         return adapter.verify_handoff(path, method)
     value = load(path)
     require(value['status'] == 'test-only', 'fixture-handoff-required')
-    actual = adapter.build_handoff(value['retention'], value['package'], value['launcher_result'], method, test_root, historical=True)
+    actual = adapter.build_handoff(value['retention'], value['package'], value['launcher_result'], method, test_root, historical=True, schema=value['schema'])
     adapter.retain_code_provenance(actual, value)
     require(value == actual, 'fixture-source-handoff-mismatch')
     require((path.parent/'summary.txt').read_text() == actual['summary'], 'fixture-summary-mismatch')
@@ -208,11 +208,13 @@ def read_job(job):
         value=dict(value,eligible_default=e['element_id'] in selection['selected'],source_pdf=str(paths[docs[e['document']]['raw_key']]))
         elements.append(value)
     holds=['execution-integrity-hold'] if state['accounting']['integrity_hold'] else []
-    return dict(kind='qualified-job',path=str(job),selection=selection,selection_sha256=sha(job/'selection.json'),
+    result = dict(kind='qualified-job',path=str(job),selection=selection,selection_sha256=sha(job/'selection.json'),
         source_package=selection['source_package'],source_bindings=selection['source_bindings'],elements=elements,
         execution_holds=holds,fixture=selection['fixture'],request_accounting=state['accounting'],
         manifest=str(manifest),manifest_sha256=sha(manifest),source_files=reviews.source_files(m),binding=binding,
         documents=[dict(d,source_status='complete' if d['complete'] else 'incomplete',source_complete=d['complete']) for d in m['documents']])
+    if 'readiness' in m['source_status']: result['source_readiness']=m['source_status']['readiness']
+    return result
 
 
 def _read_legacy_job(job):

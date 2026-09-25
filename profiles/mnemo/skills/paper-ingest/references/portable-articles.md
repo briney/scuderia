@@ -47,7 +47,7 @@ Add `--element <element-id>` for a selected dependency closure. Full restore is 
 
 ## One full/selected request path
 
-The library uses `Request(article, elements=None, page=None)` and `plan`/`execute` plus explicit stage operations. The CLI uses `reenrich.py plan`: no `--element` means all eligible figures/tables; repeated `--element` selects exact IDs or unambiguous labels. An empty list is invalid. Algorithms/code remain deferred. Full scope includes source limitations and missing-supplement holds; it is not permission to infer completeness from a manuscript alone.
+The library uses `Request(article, elements=None, page=None)` and `plan`/`execute` plus explicit stage operations. The CLI uses `reenrich.py plan`: no `--element` means all eligible figures/tables; repeated `--element` selects exact IDs or unambiguous labels. An empty list is invalid. Algorithms/code remain deferred. Full scope includes the actual source inventory and acquisition dispositions. New source readiness metadata allows supported pages despite accounted-for missing supplements; it never claims those sources were retrieved. Legacy manifests retain their original completion rules.
 
     <py> -B <scripts>/reenrich.py plan --article <slug> --manifest <restored/manifest.json> --work-root <new-durable-work-dir>
 
@@ -113,4 +113,4 @@ Omit `--page` only for archive-only plans. The verifier checks source/history/re
 
 Keep `selected-refresh-complete`, `full-refresh-complete`, `selected-archive-complete` and `full-archive-complete` distinct. Fixture labels start with `offline-` and have `production_complete: false`. Archive-only is never page-refresh completion. Missing prerequisites, interrupted writes or unconfirmed requests remain holds.
 
-This is a separate completion contract from the new-ingest v3 handoff. Never feed a portable refresh export to `source_package.py`/`verify_ingest.py` as if it were their frozen export schema. For an existing-page refresh, run ordinary page/identity/graph checks and frontmatter lint in addition to `reenrich.py verify-completion`; retain all applicable prior ingest/source pointers. Do not weaken new-ingest verification or infer bibliography/author integration from a package receipt. Close the verified owned changes with `git-ops`; campaign scheduling and figure embedding are separate work.
+This is a separate completion contract from the new-ingest v5 handoff. Never feed a portable refresh export to `source_package.py`/`verify_ingest.py` as if it were their frozen export schema. For an existing-page refresh, run ordinary page/identity/graph checks and frontmatter lint in addition to `reenrich.py verify-completion`; retain all applicable prior ingest/source pointers. Do not weaken new-ingest verification or infer bibliography/author integration from a package receipt. Close the verified owned changes with `git-ops`; campaign scheduling and figure embedding are separate work.

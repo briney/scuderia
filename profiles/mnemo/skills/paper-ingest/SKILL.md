@@ -209,19 +209,22 @@ inspection on the retained-source route, use the dedicated pinned inspection
 capability (Hermes: `paper_vision_inspect`), not generic vision routing. Supply
 original pages and ordered crop fragments when visual evidence is required.
 
-**Abstract-only closure:** exhaust applicable authorized retrieval routes and
-record actual source responses. For PubMed-indexed papers the existing
-three-source check requires an EPMC record indicating `inPMC: N` and
-`isOpenAccess: N`, Unpaywall indicating closed/not OA, and Semantic Scholar
-`openAccessPdf` null/CLOSED. A GREEN/BRONZE or other available-copy lead must
-be attempted. A valid PMCID is also a lead despite stale EPMC flags. Empty
-results, missing credentials, a provider failure, and 403/429/5xx responses
-are unavailable evidence, not closed records. Contradictory access metadata
-requires investigation, not an abstract-only conclusion. Record an unresolved
-access blocker if closure cannot be established; do not claim this gate passed.
-For preprints not covered by those indexes, check the original versioned
-source, published twin, and applicable repository/mirror routes as described
-in the preprint reference; unavailable APIs never count as closed evidence.
+**Acquisition closure:** make reasonable, recorded attempts through applicable
+authorized retrieval routes: canonical publisher/versioned source, available
+repository copies, and relevant index leads. Attempt known available-copy leads
+or explicitly record why they were deferred. Record actual responses and
+remaining blockers; do not require three providers to agree that access is
+closed. A missing credential, empty result, 403/429/5xx, or provider failure
+means unavailable or unresolved evidence, not proof that the paper is closed.
+Investigate contradictory metadata enough to account for the available leads;
+if access remains unresolved, a useful abstract-based page may still complete.
+Do not repeat failed routes indefinitely or bypass access restrictions.
+
+For preprints, check the original versioned source, published twin and
+applicable repository routes in the preprint reference. Record the version
+actually used. A known unattempted source needs a specific deferral reason.
+Without a retained PDF, use the existing text/abstract distillation route;
+never manufacture a PDF package to satisfy the retained-PDF interface.
 
 When justified abstract-only distillation is used, set `fulltext_source:
 abstract-only` and `needs-enrichment: true`. A preprint used instead of an
@@ -231,15 +234,15 @@ claims to those exact sources; do not invent missing methods/results.
 
 ### 5. Distillation and page write
 
-For the retained-source PDF route, first verify the source-only v1 handoff;
+For the retained-source PDF route, first verify the source-only v4 handoff;
 then follow `references/qualified-enrichment.md` through the deployed enrichment
-capability (Hermes: `paper_enrichment`) and final v3 handoff. The code-owned
+capability (Hermes: `paper_enrichment`) and final v5 handoff. The code-owned
 roster includes all eligible figures/tables; algorithms are deferred by default.
-Retain failed/partial/unavailable outcomes. Page readiness may rely on usable native text after local visual failures; request accounting remains unchanged. Record only evidence-supported substantive limitations, not generic model fallibility or missing exhaustive review coverage. Empty qualifications are valid. Source-acquisition/extraction and integrity holds still block completion. Import actual
+Retain failed/partial/unavailable outcomes. Page readiness may rely on usable native text after local visual failures; request accounting remains unchanged. Record only evidence-supported substantive limitations, not generic model fallibility or missing exhaustive review coverage. Empty qualifications are valid. Account for pending source work in the attributed assessment. Known acquisition/extraction failures need not block a supported page; integrity holds and fixture evidence still block production completion. Import actual
 review findings without replacing original extraction. An empty finding list
 or model-authored coverage is not certification. Preserve substantive qualifications
 beside affected content and the canonical qualification register in the paper.
-A source-only v1 handoff is intermediate evidence, not completion of this new
+A source-only v4 handoff is intermediate evidence, not completion of this new
 route. Read the final handoff's exact generated summary,
 `facts.json`, acquisition dispositions and source material. Use the handoff's
 package-relative paths to native text, original pages, ordered crop fragments
@@ -251,15 +254,21 @@ exhaustive recall or human acceptance; new outputs do not inherit historical
 acceptance, and the development pilot does not impose human crop approval on
 every production ingest.
 
-Add unformatted `Source package: <relative-path-to-v3-handoff.json>` and
+Add unformatted `Source package: <relative-path-to-v5-handoff.json>` and
 `Annotated enrichment: <relative-path-to-annotated.html>` lines in the existing
 Ingest log, relative to the paper page; do not add frontmatter fields. Preserve
-the exact v3 `qualifications.txt` text in the paper. Record source versions,
+the exact v5 `qualifications.txt` text in the paper. Record source versions,
 limitations and scientific review decisions.
-An explicitly source-limited draft may proceed from incomplete evidence, but
-acquisition/extraction holds retain `needs-ingest: true` and appropriate
-`needs-enrichment: true`; they are not silently waived by body-only prose.
-A fixture/test-only handoff never qualifies as production completion.
+A supported source-limited page may complete ingestion after ordinary parent
+integration and verification. Set `needs-ingest: false` then, even if acquisition,
+extraction or enrichment has recorded failures. Retain `needs-enrichment: true`
+for a concrete unresolved source or processing gap worth revisiting; abstract-only
+pages retain it. Missing redundant downloads alone do not require enrichment.
+Record material source limitations in the assessment's `source_limitations`
+and beside affected claims; leave that list empty when no substantive inadequacy
+is established. Never infer scientific limitations merely from incomplete
+mechanical counts. A fixture/test-only handoff never qualifies as production
+completion.
 
 Read a recent sibling page for the vault's style and the paper-kind schema
 for required fields; an existing page is not scientific evidence for this
@@ -383,9 +392,9 @@ For the retained-source PDF route, add both `--source-package-handoff
 using the documented PDF interpreter. For every new retained-PDF ingest also
 supply `--require-enriched-source --enrichment-integration <trusted-integration>
 --enrichment-root <trusted-frozen-enrichment-root>`. These options are mandatory
-for this route, including PAGE_READY checks; the final handoff must be v3 and
+for this route, including PAGE_READY checks; the final handoff must be v5 and
 its qualifications and annotated pointer must survive in the paper. Legacy
-v1 verification remains available for historical/non-enriched routes only.
+v1/v2/v3 verification remains available for historical routes only.
 Revalidation binds the current sources, workflow,
 launcher evidence and exact generated summary to the paper identity and its
 relative Ingest log pointer. An earlier completion flag is insufficient.

@@ -45,6 +45,22 @@ Current dossiers (`uncertainty-dossier-v2`, `portable-review-dossier-v3`) and ex
 
 A final current submission adds `assessment` with `usable_evidence` (boolean), a specific `reason`, manifest-bound `source_refs` (`key`, `sha256`), and `unattempted` (exact pending request IDs mapped to specific reasons). Source refs must contain readable nonempty text; for inspected PDFs additionally provide physical `page` and nonempty `inspection`. Use actual source keys/hashes from the packet. Partial reviews may omit the assessment; page readiness requires it. No successful visual response is required. The export exposes `requests_accounted_for`, `requests_successful`, `page_ready` and holds independently; a ready page does not turn failures into successes. Frozen review snapshots never import later sibling results.
 
+New source packages carry `source-readiness-v1`. Their packets expose
+`source_readiness.pending`: include these exact namespaced keys (for example
+`source:phase:association` or `source:request:<ID>`) in the same `unattempted`
+map, along with pending enrichment request IDs. Give a specific deferral reason
+for each. Local failed/uncertain source requests retain their original outcomes;
+they are not retries or successful extractions. Integrity/fixture holds cannot
+be waived by an assessment.
+
+The assessment may also include `source_limitations`, a list of substantive
+source limitations supported by the reviewed evidence. Use an empty list when
+none is established. Do not hunt for limitations or list generic fallibility,
+redundant missing formats, or hypothetical omissions. These statements are
+preserved across later assessments, the initial handoff and refresh page's qualification register;
+keep relevant qualifications beside affected claims too. Acquisition and
+extraction evidence remains available even when no source limitation is recorded.
+
 Findings require source evidence. Coverage is audit metadata, not a mandatory certification checklist. Empty findings, coverage and page qualifications are valid when no substantive limitation is observed.
 
 Human or orchestrator-imported judgments use `kind: human` or `kind: orchestrator-import` with `model: null` and `provider: null`. Do not relabel existing human findings as newly detected by GLM.

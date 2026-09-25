@@ -178,9 +178,9 @@ def reserve(entry, row, origin):
 
 def next_step(root, phase, status):
     root = Path(root)
-    if status['uncertain_reservations'] or status['failed'] or (root/'stop.json').exists():
+    if (root/'stop.json').exists():
         return 'hold-inspect-evidence-no-retry'
-    if status['status'] == 'complete':
+    if status['status'] == 'complete' or (root/f'{phase}-complete.json').exists():
         channels = {c for d in load(root/'manifest.json')['documents'] for c in d['channels']}
         for following in PHASES[PHASES.index(phase)+1:]:
             if following not in channels:
