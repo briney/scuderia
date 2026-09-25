@@ -54,6 +54,7 @@ def synthetic(root):
     value = dict(schema=pa.SCHEMA, package_id='synthetic-revision', article=dict(slug='synthetic',title='Synthetic',doi=None,pmid=None,version='v1'),
         article_key=pa.article_key(dict(slug='synthetic',doi=None,pmid=None)),
         files=files,total_objects=len(files),documents=documents,elements=elements,
+        native_text_keys=[f['key'] for f in files if f['key'].endswith('/page.txt')],
         common_dependencies=[key], dispositions=[],source_status=dict(complete=True,fixture=True,holds=[],
             identity_basis='Synthetic operator assertion, never production', acquisition_verified=True,
             extraction_verified=True),provenance={'fixture':True})

@@ -110,7 +110,7 @@ def _same_plan(left,right):
 def plan(request,*,manifest=None,work_root,fixture=False,model_profile=None,page_scope=None):
     if isinstance(request,dict): request=Request(**request)
     require(isinstance(request,Request),'request-required')
-    work=absolute(work_root); p=ae.profile(model_profile); m=None
+    work=absolute(work_root); p=ae.profile(model_profile); m=None; source_archive=None; source_identity=None
     if manifest:
         manifest=absolute(manifest); m=pa.validate_manifest(pa.load(manifest))
         require(m['schema']!=pa.DIAGNOSTIC_SCHEMA, 'diagnostic-requires-diagnostic-plan')
@@ -124,6 +124,10 @@ def plan(request,*,manifest=None,work_root,fixture=False,model_profile=None,page
         pa.verify_source(manifest)
         roots=[manifest.parent]+[absolute(s['root']) for s in pa.local_sources(manifest).values()]
         external(work,roots)
+        if m['schema']==pa.FINAL_SCHEMA and request.elements is None:
+            # A retained article supplies originals, not a resumable extraction.
+            source_archive=manifest; source_identity=m['article']
+            manifest=None; m=None; roster=None
     else: roster=None
     if request.page:
         external(work,[request.page])
@@ -137,10 +141,11 @@ def plan(request,*,manifest=None,work_root,fixture=False,model_profile=None,page
         require(len({s['heading'] for s in scopes})==len(scopes),'duplicate-page-scope')
     pending=[] if m else ['source-retrieval','package-construction','full-distillation-and-reconciliation']
     if not m and request.elements is not None: pending.append('selection-validation')
-    value=dict(schema=SCHEMA_PLAN,article=request.article,mode='selected' if request.elements is not None else 'full',
+    value=dict(schema=SCHEMA_PLAN,retention_policy='final-products-v1',article=request.article,mode='selected' if request.elements is not None else 'full',
         request=dict(article=request.article,elements=request.elements,page=str(request.page) if request.page else None),
         elements=roster,manifest=str(manifest) if manifest else None,manifest_sha256=sha(manifest) if manifest else None,
-        article_identity=m['article'] if m else None,page_path=str(request.page) if request.page else None,
+        article_identity=m['article'] if m else source_identity,source_archive=str(source_archive) if source_archive else None,
+        source_archive_sha256=sha(source_archive) if source_archive else None,page_path=str(request.page) if request.page else None,
         page_sha256=sha(request.page) if request.page else None,page_scope=scopes,fixture=bool(fixture),profile=p,
         pending_operator_steps=[dict(name=x) for x in pending],planned_at=pa.now_utc(),
         cost_exposure=dict(minimum_package_build_required=m is None,selected_elements=len(roster) if roster is not None else None,
@@ -201,6 +206,9 @@ def context(work,*,check_page=True):
             p['page_path'] is None and p['request']['page'] is None and not p['page_scope'] and p['manifest'] and
             p['production_complete'] is False and p['page_refresh_complete'] is False,'diagnostic-plan-contract')
     history=_history(work)
+    if p.get('source_archive'):
+        require(sha(p['source_archive'])==p['source_archive_sha256'],'retained-originals-manifest-changed')
+        pa.verify_local(p['source_archive'],set(pa.local_sources(p['source_archive']))); pa.verify_source(p['source_archive'])
     manifest=p['manifest']; roster=p['elements']
     if not manifest and (work/'adoption.json').exists():
         a=ae.read_bound(work/'adoption.json'); require(a['plan_sha256']==sha(work/'plan.json'),'adoption-plan-binding')
@@ -239,6 +247,7 @@ def adopt(work_root,manifest,*,identity_approval):
         require(p['manifest'] is None and not (work/'adoption.json').exists(),'legacy-adoption-only-once')
         path=absolute(manifest); m,_=pa.verify_local(path)  # full legacy prerequisites, not a partial restore
         pa.verify_source(path)
+        require(m['schema']!=pa.FINAL_SCHEMA,'fresh-source-preparation-required')
         external(work,[path.parent]+[absolute(s['root']) for s in pa.local_sources(path).values()])
         require(m['article']['slug']==p['article'],'legacy-article-mismatch')
         if p['page_path']: _page_identity(work/'original-page.md',p['article'],m['article'])
@@ -428,6 +437,14 @@ def _material_finding(finding,paths,evidence):
     archived=pa.load(paths[evidence['key']])
     view=next((v for v in archived.get('elements',[]) if v['element_id']==finding.get('element_id')),None)
     if view is None: return True
+    if archived.get('schema')=='article-scientific-products-v1': return True
+    return _material_finding_in_view(finding,view)
+
+
+def _material_finding_in_view(finding,view):
+    if finding.get('resolutions') or finding.get('category')!='saved-uncertainty' or finding.get('provenance')!=dict(kind='deterministic-check',check='v7-state-projection-v1'):
+        return True
+    from qualified_enrichment.records import project,resolve_pointer
     target=finding['target']; raw=resolve_pointer(view['outcome'],target)
     # Older model limitation lists may contain real inadequacies; do not classify their prose.
     if isinstance(raw,dict) and any(raw.get(k) for k in ('limitations','coverage_warnings','element_warnings')): return True
@@ -501,7 +518,7 @@ def _current_register(exported,submission,m,p,annotated_sha256,paths,previous):
         for target in previous['selected_targets']:
             if target.get('qualification') and target not in targets: targets.append(target)
         if previous.get('operator_qualification') and previous['operator_qualification']!=submission['qualification']:
-            key='refresh-'+previous['binding'][:20]+'/page-candidate/input.json'
+            key=previous['export_locator']['key'] if previous['schema']=='portable-page-qualification-register-v4' else 'refresh-'+previous['binding'][:20]+'/page-candidate/input.json'
             add(dict(scope='Prior page review',metadata_target='/qualification',metadata=previous['operator_qualification'],attribution=previous['reviewer'],evidence=dict(key=key,sha256=sha(paths[key]))))
         for ref in previous.get('selected_sources',[]):
             if ref not in sources: sources.append(ref)
@@ -593,7 +610,7 @@ def qualification_register(exported,submission,m,p,annotated_sha256,*,version=2,
         current={identity(t) for t in register['selected_targets']}
         register['selected_targets'] += [t for t in previous['selected_targets'] if identity(t) not in current]
         if (previous['operator_qualification'],previous['reviewer']) != (register['operator_qualification'],register['reviewer']):
-            key='refresh-'+previous['binding'][:20]+'/page-candidate/input.json'
+            key=previous['export_locator']['key'] if previous['schema']=='portable-page-qualification-register-v4' else 'refresh-'+previous['binding'][:20]+'/page-candidate/input.json'
             add(dict(scope='Prior page review',metadata_target='/qualification',metadata=previous['operator_qualification'],
                 attribution=previous['reviewer']),dict(key=key,sha256=sha(archive_paths[key])))
         for q in previous['qualifications']:
@@ -608,10 +625,10 @@ def read_register(text):
     without_register(text)  # validate delimiters even when there is no register
     if REGISTER_START not in text: return None
     block=text.split(REGISTER_START,1)[1].split(REGISTER_END,1)[0]
-    match=re.search(r'<!-- portable-page-qualification-register-v[23]: ([^\n]*) -->\n$',block) or re.search(r'<pre>([\s\S]*)</pre>\n$',block)
+    match=re.search(r'<!-- portable-page-qualification-register-v[234]: ([^\n]*) -->\n$',block) or re.search(r'<pre>([\s\S]*)</pre>\n$',block)
     require(match is not None,'malformed-qualification-register')
     value=json.loads(html.unescape(match[1]))
-    require(value.get('schema') in ('portable-page-qualification-register-v1','portable-page-qualification-register-v2','portable-page-qualification-register-v3'),
+    require(value.get('schema') in ('portable-page-qualification-register-v1','portable-page-qualification-register-v2','portable-page-qualification-register-v3','portable-page-qualification-register-v4'),
         'unknown-qualification-register')
     require(REGISTER_START+block+REGISTER_END==register_text(value),'noncanonical-qualification-register')
     return value
@@ -619,6 +636,12 @@ def read_register(text):
 
 def _register_archive(register,paths):
     require(paths is not None,'register-archive-required')
+    if register['schema']=='portable-page-qualification-register-v4':
+        locators=[register['export_locator']]+register['source_locators']+register.get('selected_sources',[])
+        locators += [q['evidence'] for q in register['qualifications']+register['selected_targets'] if q.get('evidence')]
+        for locator in locators:
+            require(locator['key'] in paths and sha(paths[locator['key']])==locator['sha256'],'register-archive-evidence')
+        return
     # A verified archived snapshot proves the entire removed register survives,
     # including unknown/human-added qualifications. Never silently discard them.
     prefix='refresh-'+register['binding'][:20]+'/'
@@ -643,7 +666,7 @@ def register_text(register):
     import html
     header=(REGISTER_START+'Article package: '+register['publication_receipt']+'\n'+
         'Annotated export: '+register['annotated_export_locator']['key']+' (resolve through article package receipt)\n')
-    if register['schema']=='portable-page-qualification-register-v3':
+    if register['schema'] in ('portable-page-qualification-register-v3','portable-page-qualification-register-v4'):
         def esc(value): return html.escape(value if isinstance(value,str) else json.dumps(value,ensure_ascii=False,sort_keys=True)).replace('\n','&#10;').replace('\r','&#13;')
         parts=[header]
         if register['operator_qualification'].strip(): parts.append('<p>'+esc(register['operator_qualification'])+'</p>\n')
@@ -654,7 +677,7 @@ def register_text(register):
         for q in register['qualifications']:
             parts.append('<p>'+esc(q.get('scope',{k:q[k] for k in ('document','element_id','target') if k in q}))+': '+esc(q.get('reason',q.get('metadata')))+
                 (' Attributed proposals; originals unchanged: '+esc(q['resolutions']) if q.get('resolutions') else '')+'</p>\n')
-        parts.append('<!-- portable-page-qualification-register-v3: '+html.escape(json.dumps(register,ensure_ascii=False,sort_keys=True,separators=(',',':')))+' -->\n'+REGISTER_END)
+        parts.append('<!-- '+register['schema']+': '+html.escape(json.dumps(register,ensure_ascii=False,sort_keys=True,separators=(',',':')))+' -->\n'+REGISTER_END)
         return ''.join(parts)
     if register['schema'].endswith('-v1'):
         return header+'<pre>'+html.escape(json.dumps(register,ensure_ascii=False,sort_keys=True,indent=2))+'</pre>\n'+REGISTER_END
@@ -758,9 +781,15 @@ def _candidate_text(work,p,manifest,binding,submission,*,version=2,exported=None
     text=original
     for start,end,after in sorted(changes,reverse=True): text=text[:start]+after+text[end:]
     m,paths=pa.verify_local(manifest,set(pa.local_sources(manifest)))
-    register=qualification_register(exported,submission,m,p,sha(work/'export'/'annotated.html'),version=version,archive_paths=paths,previous=read_register(original))
+    if p.get('retention_policy')=='final-products-v1':
+        import final_products
+        register=final_products.page_register(work,p,manifest,exported,submission)
+    else:
+        register=qualification_register(exported,submission,m,p,sha(work/'export'/'annotated.html'),version=version,archive_paths=paths,previous=read_register(original))
     # Historical candidate read-back uses its original rendering contract.
     if version==1: text=without_register(text)
+    if p.get('source_archive'):
+        paths.update(pa.verify_local(p['source_archive'])[1])
     return install_register(text,register,archive_paths=paths)
 
 
@@ -836,7 +865,7 @@ def verify_completion(receipt_path,manifest_path,*,manifest_key,manifest_sha256,
     m,paths=pa.verify_local(manifest_path); pa.verify_source(manifest_path)
     require(m['schema']!=pa.DIAGNOSTIC_SCHEMA,'diagnostic-article-completion-forbidden')
     receipt=pa.load(receipt_path); pub=receipt['publication']
-    require(receipt['schema'] in ('portable-article-completion-v1','portable-article-completion-v2') and
+    require(receipt['schema'] in ('portable-article-completion-v1','portable-article-completion-v2','portable-article-completion-v3') and
         receipt['article']==m['article'] and m['article_key']==article_key==pub['article_key'],'completion-article-binding')
     require(pub['manifest_key']==manifest_key and pub['manifest_sha256']==manifest_sha256 and
         manifest_key==pa.revision_prefix(m,pub['prefix'])+'/manifests/'+manifest_sha256+'.json','completion-publication-pointer')
@@ -845,6 +874,9 @@ def verify_completion(receipt_path,manifest_path,*,manifest_key,manifest_sha256,
     expected.add((manifest_key,manifest_sha256,absolute(manifest_path).stat().st_size))
     require(expected=={(r['key'],r['sha256'],r['size']) for r in pub['receipts']} and
         all(r['method']=='read_back_sha256' for r in pub['receipts']),'publication-readback-inventory')
+    if m['schema']==pa.FINAL_SCHEMA:
+        import final_products
+        return final_products.verify_completion(receipt,m,paths,page)
     refresh=m['provenance']['refresh']; binding=refresh['binding']; prefix='refresh-'+binding[:20]+'/'
     require(receipt['binding']==binding,'completion-run-binding')
     p=pa.load(paths[prefix+'plan.json']); exported=pa.load(paths[prefix+'export/handoff.json'])
@@ -931,6 +963,9 @@ def publish(work_root,remote,bucket,prefix,*,runner=None):
         # Archive-only is explicit in the immutable plan (page=None). A planned
         # page refresh cannot be silently downgraded to bypass application.
         pa.verify_local(manifest)
+        if p.get('retention_policy')=='final-products-v1':
+            import final_products
+            return final_products.publish_refresh(work,p,manifest,m,roster,binding,history,exported,remote,bucket,prefix,runner)
         archive=work/'archive'
         if not archive.exists():
             updated=copy.deepcopy(m); sources=copy.deepcopy(pa.local_sources(manifest))

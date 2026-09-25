@@ -192,6 +192,18 @@ class RealArchiveTests(unittest.TestCase):
         pa.save(completed/'handoff.json',final)
         (completed/'summary.txt').write_text(final['summary']); (completed/'qualifications.txt').write_text(final['qualifications'])
         self.assertEqual(sp.verify_handoff(completed/'handoff.json',scripts,integration=scripts,enrichment_root=scripts,require_enriched=True),final)
+        # Durable initial-ingest verification no longer needs the runtime tree.
+        import final_products as fp
+        compact=root/'final-products'
+        fm=fp.from_ingest(completed/'handoff.json',compact,method=scripts,integration=scripts,enrichment_root=scripts)
+        self.assertEqual(fm['schema'],pa.FINAL_SCHEMA)
+        self.assertFalse(fm['source_status']['complete'])
+        self.assertTrue(fm['initial_ingest']['production_complete'])
+        body='Source package: '+str(compact/'manifest.json')+'\n'+final['qualifications']
+        fp.verify_ingest(compact/'manifest.json',fm['article'],body)
+        shutil.rmtree(root/'native-job'); shutil.rmtree(completed)
+        fp.verify_ingest(compact/'manifest.json',fm['article'],body)
+
 
     def test_source_association_cannot_be_overridden(self):
         root=self.directory()

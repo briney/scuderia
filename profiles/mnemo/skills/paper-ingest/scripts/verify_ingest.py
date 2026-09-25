@@ -761,13 +761,16 @@ def main():
                     help="explicit satellite topology with no author ledger; "
                          "full mode requires person pages, page-only may defer "
                          "their creation; refuses when a ledger exists")
+    ap.add_argument('--final-products', help='absolute finalized article manifest; replaces temporary source/enrichment handoffs')
     ap.add_argument('--source-package-handoff', help='absolute verified source-package handoff.json; required for the retained-PDF production route')
     ap.add_argument('--source-package-method', help='absolute explicitly trusted accepted PDF method directory (requires its PDF dependencies)')
     ap.add_argument('--require-enriched-source', action='store_true', help='new production route: require enriched handoff evidence and preserved qualifications')
     ap.add_argument('--enrichment-integration', help='absolute trusted qualified enrichment integration directory')
     ap.add_argument('--enrichment-root', help='absolute trusted frozen enrichment package directory')
     args = ap.parse_args()
-    if args.require_enriched_source and not all((args.source_package_handoff,args.enrichment_integration,args.enrichment_root)):
+    if args.final_products and args.source_package_handoff:
+        ap.error('choose final products or a temporary source handoff')
+    if args.require_enriched_source and not args.final_products and not all((args.source_package_handoff,args.enrichment_integration,args.enrichment_root)):
         ap.error('--require-enriched-source requires a source handoff and both trusted enrichment roots')
     if bool(args.enrichment_integration) != bool(args.enrichment_root):
         ap.error('both trusted enrichment roots must be supplied together')
@@ -928,6 +931,19 @@ def main():
             print("  Filled contract: OK" + (
                 " (PAGE_READY: needs-ingest true, wiring deferred to parent)"
                 if args.page_only else ""))
+
+    if args.final_products:
+        try:
+            import final_products
+            manifest = final_products.absolute(args.final_products)
+            pointer = os.path.relpath(manifest, os.path.dirname(os.path.abspath(paper_path)))
+            if ('Source package: '+pointer) not in required_sections(body).get('Ingest log', []):
+                raise ValueError('Ingest log requires finalized Source package: '+pointer)
+            final_products.verify_ingest(manifest, {key: fm.get(key) for key in ('slug','title','doi','pmid')}, body)
+            print('  Final products: OK (sources, scientific outputs and substantive qualifications verified)')
+        except (OSError, ValueError, KeyError, TypeError, ImportError) as exc:
+            print(f'  Final products: FAIL ({exc})')
+            failures += 1
 
     if args.source_package_handoff:
         try:

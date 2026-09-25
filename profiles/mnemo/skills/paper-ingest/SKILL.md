@@ -387,17 +387,16 @@ This completed-fill contract is shared by dives and queue drains. Verify:
   graph integration, and the propagation event are complete and read back.
 
 Run `verify_ingest.py <bare-slug> --instance <brain> --require-filled`.
-For the retained-source PDF route, add both `--source-package-handoff
-<absolute-handoff.json>` and `--source-package-method <absolute-trusted-method>`
-using the documented PDF interpreter. For every new retained-PDF ingest also
-supply `--require-enriched-source --enrichment-integration <trusted-integration>
---enrichment-root <trusted-frozen-enrichment-root>`. These options are mandatory
-for this route, including PAGE_READY checks; the final handoff must be v5 and
-its qualifications and annotated pointer must survive in the paper. Legacy
-v1/v2/v3 verification remains available for historical routes only.
-Revalidation binds the current sources, workflow,
-launcher evidence and exact generated summary to the paper identity and its
-relative Ingest log pointer. An earlier completion flag is insufficient.
+For the retained-source PDF route, first verify the v5 source/enrichment handoff
+and run `final_products.py ingest` as documented in `qualified-enrichment.md`.
+Then add `--final-products <absolute-final-package/manifest.json>
+--require-enriched-source`, using the documented PDF interpreter. These options
+are mandatory for new retained-PDF ingests, including PAGE_READY checks. Preserve
+the substantive qualifications and final-package pointer in the paper. Permanent
+retention is original sources plus final scientific products/provenance; completed
+job payloads and replay history are disposable after final verification. Historical
+handoff options remain available for old records. An earlier completion flag is
+insufficient; final product hashes, source identity and page qualifications are checked.
 For PAGE_READY add `--page-only`: the queue flag remains true and only
 well-shaped unresolved author references are deferred; other errors fail.
 After parent integration set `needs-ingest: false` and rerun without

@@ -23,6 +23,7 @@ from article_runtime import (absolute, relative_key, inside, sha, require, diges
                              tree, external, trusted_modules)
 
 SCHEMA = 'portable-article-manifest-v3'
+FINAL_SCHEMA = 'portable-article-manifest-v4'
 LEGACY_SCHEMA = 'portable-article-manifest-v2'
 DIAGNOSTIC_SCHEMA = 'selected-diagnostic-source-v1'
 ROLES = ('source-original', 'source-package', 'source-retention', 'enrichment-job',
@@ -91,7 +92,7 @@ def _hash(value):
 
 
 def validate_manifest(m):
-    require(m.get('schema') in (SCHEMA, LEGACY_SCHEMA, DIAGNOSTIC_SCHEMA), 'manifest-schema')
+    require(m.get('schema') in (SCHEMA, LEGACY_SCHEMA, FINAL_SCHEMA, DIAGNOSTIC_SCHEMA), 'manifest-schema')
     require('sources' not in m, 'operational-sources-forbidden-in-archive-manifest')
     if m['schema'] == DIAGNOSTIC_SCHEMA:
         require(m['article'] is None and m['article_key'] is None and m['scope']=='selected-diagnostic',
@@ -162,6 +163,9 @@ def validate_manifest(m):
     require(not status['complete'] or (not status['holds'] and status['acquisition_verified'] and
             status['extraction_verified'] and all(d['complete'] for d in docs.values())), 'contradictory-source-completeness')
     require(status['fixture'] or not any(d['fixture'] for d in docs.values()), 'fixture-promotion-forbidden')
+    if m['schema'] == FINAL_SCHEMA:
+        import final_products
+        final_products.validate(m)
     return m
 
 
@@ -206,6 +210,9 @@ def verify_source(manifest_path):
     representation; historical absolute receipt paths are never dereferenced.
     """
     m = validate_manifest(load(manifest_path))
+    if m['schema'] == FINAL_SCHEMA:
+        verify_local(manifest_path,set(m['common_dependencies']))
+        return m['source_status']
     if m['schema'] == DIAGNOSTIC_SCHEMA:
         return verify_diagnostic(manifest_path)
     if m['provenance'].get('source_schema') is None:
@@ -440,6 +447,8 @@ def build_manifest(retention, package, output, *, article=None, package_id,
         dict(kind='algorithm-policy', detail='Algorithms and code are deferred, never included in the eligible roster.')]
     m = dict(schema=SCHEMA, package_id=package_id, article=identity, article_key=article_key(identity),
         created_at=now_utc(), files=files, total_objects=len(files), documents=documents, elements=elements,
+        native_text_keys=sorted({'package/'+page['native_text'] for d in pkg.documents for page in d['pages'].values() if page.get('native_text')}),
+        text_pages=[dict(document=d['identity'],page=n,key='package/'+page['native_text']) for d in pkg.documents for n,page in sorted(d['pages'].items()) if page.get('native_text')],
         common_dependencies=common, dispositions=auto_dispositions + (dispositions or []),
         source_status=dict(complete=not mechanical_holds, fixture=fixture, holds=mechanical_holds,
             acquisition_verified=True, extraction_verified=True, identity_basis=retained['identity_basis'],
@@ -592,6 +601,19 @@ def qualification_projection(value, *, element=None, scope=None):
     model-based pruning, length limit, or implicit resolution across revisions.
     """
     result=[]
+    if isinstance(value,dict) and value.get('schema')=='article-scientific-products-v1':
+        for view in value['elements']:
+            if element is None or _history_matches(_history_scope(view),element):
+                if view['findings']:
+                    result.append(dict(element_id=view['element_id'],source_sha256=view['source_sha256'],findings=view['findings']))
+        for q in value['qualifications']:
+            scope=q.get('scope') if isinstance(q.get('scope'),dict) else _history_scope(q)
+            if element is None or _history_matches(scope,element):
+                result.append(dict(target=q.get('metadata_target',q.get('target','')),metadata=q.get('metadata',q.get('reason')),
+                                   scope=scope or 'unscoped',attribution=q.get('attribution',q.get('provenance'))))
+        if value['source_limitations']:
+            result.append(dict(target='/source_limitations',metadata=value['source_limitations']))
+        return result
     if isinstance(value,dict) and value.get('schema')=='source-package-handoff-v4':
         return result  # Raw mechanical evidence is not an observed scientific limitation.
     if isinstance(value,dict) and value.get('schema')=='source-package-handoff-v5':
@@ -727,8 +749,13 @@ def consume(manifest_path, elements=None, *, purpose='discovery', qualification=
     require(purpose != 'exact' or isinstance(qualification, str) and qualification.strip(), 'exact-use-requires-explicit-qualification')
     inherited=set(m['common_dependencies']).union(*(set(e['inherited']) for e in m['elements'] if e['element_id'] in ids))
     history=history_refs(paths,keys & inherited)
+    final = {}
+    if m['schema']==FINAL_SCHEMA:
+        products=load(paths[m['products_key']])
+        products['elements']=[e for e in products['elements'] if e['element_id'] in ids]
+        final=dict(products=products,source_documents=m['source_documents'],text_pages=m['text_pages'])
     return dict(schema='portable-article-consumer-v3', article=m['article'], elements=[e for e in m['elements'] if e['element_id'] in ids],
-                source_status=m['source_status'], dispositions=m['dispositions'], history=history,
+                source_status=m['source_status'], dispositions=m['dispositions'], history=history,**final,
                 purpose=purpose, qualification=qualification, scientific_acceptance='not-established',
                 **(dict(scope='selected-diagnostic',production_complete=False,page_refresh_complete=False)
                    if m['schema']==DIAGNOSTIC_SCHEMA else {}))
@@ -740,7 +767,7 @@ def revision_prefix(m, prefix):
 
 def object_key(m, prefix, record):
     # Schema is the storage contract: saved v2 keys never change meaning.
-    require(m.get('schema') in (SCHEMA, LEGACY_SCHEMA), 'manifest-schema')
+    require(m.get('schema') in (SCHEMA, LEGACY_SCHEMA, FINAL_SCHEMA), 'manifest-schema')
     root = (revision_prefix(m, prefix) if m['schema'] == LEGACY_SCHEMA else
             relative_key(prefix) + '/articles/' + m['article_key'])
     return root + '/objects/' + record['sha256']

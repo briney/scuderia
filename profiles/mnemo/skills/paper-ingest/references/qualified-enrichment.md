@@ -18,7 +18,7 @@ The capability selects all eligible source figures and tables, retaining its exi
 
 ## Operations
 
-Use absolute paths and a new external `attempt_dir` for every call; missing parents are created safely. Keep inputs in a separate directory from attempt/output roots. Retain all receipts, including refusals. `qualified-enrichment-schema.md` owns the full operation and submission schema; the native tool supplies argument names. No phase authorizes another automatically.
+Use absolute paths and a new external `attempt_dir` for every call; missing parents are created safely. Keep inputs in a separate directory from attempt/output roots. Keep all receipts, including refusals, while the job is active; final products replace them after verified finalization. `qualified-enrichment-schema.md` owns the full operation and submission schema; the native tool supplies argument names. No phase authorizes another automatically.
 
 1. `prepare`: provide the verified v1 `source_handoff`, a new job `output`, and the accepted `processor_cache`. Code enumerates all eligible figures/tables, counts the actual payloads and writes the seal and unapproved template. Never curate only favorable elements or use a test-root flag on production sources.
 2. Review the saved payload/count/overflow, model route and budget. A responsible parent/operator separately authors approval against the seal using the portable approval contract at `enrichment/approval.template.json`. Counting never grants approval.
@@ -52,13 +52,20 @@ Build a new handoff with the source arguments plus the verified annotated export
     <pdf-python> -B <scripts>/source_package.py handoff --retention <retention.json> --package <source-package> --launcher-result <source-summary-attempt/result.json> --method <scripts> --enrichment-handoff <export/handoff.json> --enrichment-launcher-result <export-attempt/result.json> --integration <scripts> --enrichment-root <scripts> --output <new-v5-handoff>
     <pdf-python> -B <scripts>/source_package.py verify --handoff <v5/handoff.json> --method <scripts> --integration <scripts> --enrichment-root <scripts> --require-enriched
 
-Keep the v5 `qualifications.txt` text exactly (an empty file is valid) in the paper and add both unformatted Ingest log pointers, relative to that paper:
+Finalize the verified v5 result into permanent scientific products before writing the paper's durable source pointer:
 
-    Source package: <relative-v5-handoff.json>
-    Annotated enrichment: <relative-export/annotated.html>
+    <pdf-python> -B <scripts>/final_products.py ingest --handoff <v5/handoff.json> --output <new-final-package> --method <scripts> --integration <scripts> --enrichment-root <scripts>
+
+Keep the v5 `qualifications.txt` text exactly (an empty file is valid) in the paper. Add the unformatted Ingest log pointer, relative to that paper:
+
+    Source package: <relative-final-package/manifest.json>
+
+The final package's `products_key` identifies its descriptions, structured values and substantive qualifications. It also retains originals, native text, crops and source mappings. Do not point the completed paper at temporary review packets, raw requests or annotated runtime exports.
 
 Complete Phase 10 with:
 
-    <pdf-python> -B <scripts>/verify_ingest.py <slug> --instance <instance> --require-filled --source-package-handoff <v5/handoff.json> --source-package-method <scripts> --require-enriched-source --enrichment-integration <scripts> --enrichment-root <scripts>
+    <pdf-python> -B <scripts>/verify_ingest.py <slug> --instance <instance> --require-filled --final-products <final-package/manifest.json> --require-enriched-source
 
-Add `--page-only` for the existing PAGE_READY contract, not to bypass source/enrichment checks. Legacy v1/v2/v3 verification remains for history; new production ingests use v4 intermediate evidence and v5 completion. The canonical qualification register and annotated pointer must survive unchanged; field-level prose must also preserve the relevant scientific limitation. Source/enrichment mechanical completion does not replace identity, bibliography, author wiring, graph integration or scientific review.
+Add `--page-only` for the existing PAGE_READY contract, not to bypass source/enrichment checks. The finalizer first reconstructs the current source/enrichment handoff, then durable verification checks retained product hashes, article identity and substantive qualifications without the original job directories. Legacy handoff options remain for historical records. Identity, bibliography, author wiring, graph integration and scientific review remain required.
+
+After final products and the paper pass verification, follow `portable-articles.md` for verified cleanup of completed temporary jobs. Active request reservations and incomplete enrichment are not cleanup candidates.
