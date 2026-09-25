@@ -10,10 +10,10 @@ def main(argv=None):
     parser.add_argument('--offline',action='store_true',help='Block all socket operations in this process')
     parser.add_argument('--workflow-evidence',type=Path,help=argparse.SUPPRESS)
     subs=parser.add_subparsers(dest='command',required=True)
-    p=subs.add_parser('prepare');p.add_argument('--scope',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--offline-fixture',action='store_true')
-    p=subs.add_parser('prepare-stage');p.add_argument('--root',type=Path,required=True);p.add_argument('--phase',choices=['classification','association'],required=True)
+    p=subs.add_parser('prepare');p.add_argument('--scope',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--offline-fixture',action='store_true');p.add_argument('--processor-cache',type=Path)
+    p=subs.add_parser('prepare-stage');p.add_argument('--root',type=Path,required=True);p.add_argument('--phase',choices=['classification','association'],required=True);p.add_argument('--processor-cache',type=Path)
     p=subs.add_parser('count');p.add_argument('--root',type=Path,required=True);p.add_argument('--phase',choices=['initial','classification','association'],required=True);p.add_argument('--processor-cache',type=Path,required=True)
-    p=subs.add_parser('seal');p.add_argument('--root',type=Path,required=True);p.add_argument('--phase',choices=['initial','classification','association'],required=True)
+    p=subs.add_parser('seal');p.add_argument('--root',type=Path,required=True);p.add_argument('--phase',choices=['initial','classification','association'],required=True);p.add_argument('--processor-cache',type=Path)
     p=subs.add_parser('execute');p.add_argument('--root',type=Path,required=True);p.add_argument('--phase',choices=['initial','classification','association'],required=True);p.add_argument('--approval',type=Path,required=True);p.add_argument('--authorize-posts',action='store_true')
     p=subs.add_parser('replay');p.add_argument('--root',type=Path,required=True);p.add_argument('--phase',choices=['initial','classification','association'],required=True);p.add_argument('--approval',type=Path,required=True);p.add_argument('--responses',type=Path,required=True)
     for name in ('report','finalize'):
@@ -32,7 +32,7 @@ def main(argv=None):
             result=workflow.prepare_stage(args.root,args.phase);print(json.dumps(dict(requests=len(result['requests']))))
         elif args.command=='count': gates.count_phase(args.root,args.phase,args.processor_cache)
         elif args.command=='seal':
-            gates.seal(args.root,args.phase);print('Unapproved template written. Parent must inspect and author approval.')
+            gates.prepare_phase(args.root,args.phase,args.processor_cache)
         elif args.command in ('execute','replay'):
             exit_code = execution.run_phase(args.root,args.phase,args.approval,
                 authorize=getattr(args,'authorize_posts',False),replay=getattr(args,'responses',None))
@@ -44,6 +44,12 @@ def main(argv=None):
             state = result
             print(json.dumps(dict(requested_work_complete=result['requested_work_complete'],human_acceptance='pending')))
             exit_code = 0 if result['requested_work_complete'] else 1
+        if args.command in ('prepare','prepare-stage'):
+            root = args.output if args.command == 'prepare' else args.root
+            phase = 'initial' if args.command == 'prepare' else args.phase
+            from .io import load
+            if args.processor_cache or not load(root/f'{phase}-plan.json')['requests']:
+                gates.prepare_phase(root,phase,args.processor_cache)
         if args.workflow_evidence:
             from .phase_evidence import operation_evidence
             from .io import save

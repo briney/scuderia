@@ -60,8 +60,14 @@ def safe(root, relative):
     return p
 
 
-def put(path, raw, replace=False):
+def outside_retention(path):
     p = Path(path).absolute()
+    require(not any((parent/"retention.json").exists() for parent in (p, *p.parents)), "write-inside-immutable-retention")
+    return p
+
+
+def put(path, raw, replace=False):
+    p = outside_retention(path)
     require(not any(x.is_symlink() for x in (p, *p.parents)), 'symlink-output-forbidden')
     require(not p.is_file() or p.stat().st_nlink == 1, 'hardlink-output-forbidden')
     p.parent.mkdir(parents=True, exist_ok=True)

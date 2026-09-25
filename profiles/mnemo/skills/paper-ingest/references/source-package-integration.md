@@ -102,30 +102,29 @@ The caller supplies endpoint and budget, not shared host constants. Output retai
 
 ## Explicit workflow gates
 
-Replace placeholder paths with absolute values; each operation needs its own new attempt directory with an existing parent. Attempts stay outside package, original inputs and report output. Deployment config supplies the trusted method/interpreter; the scope supplies endpoint/budget. Only the registered workflow tool runs phases in production.
+Replace placeholder paths with absolute values; each operation needs its own new attempt directory; missing parent directories are created safely. Attempts stay outside package, original inputs and report output. Deployment config supplies the trusted method/interpreter; the scope supplies endpoint/budget. Only the registered workflow tool runs phases in production.
 
-Initial phase tool arguments, in order:
+Prepare, count and seal the initial phase in one offline call:
 
 ```json
-{"operation":"prepare","scope_path":"/absolute/new-source-run/scope.json","output_dir":"/absolute/new-package","attempt_dir":"/absolute/attempts/prepare"}
-{"operation":"count","package_dir":"/absolute/new-package","phase":"initial","processor_cache":"/absolute/deployment/processor-cache","attempt_dir":"/absolute/attempts/count-initial"}
-{"operation":"report","package_dir":"/absolute/new-package","attempt_dir":"/absolute/attempts/report-initial"}
-{"operation":"seal","package_dir":"/absolute/new-package","phase":"initial","attempt_dir":"/absolute/attempts/seal-initial"}
+{"operation":"prepare","scope_path":"/absolute/new-source-run/scope.json","output_dir":"/absolute/new-package","processor_cache":"/absolute/deployment/processor-cache","attempt_dir":"/absolute/attempts/prepare"}
 ```
 
-The pre-execution report is expected to retain incomplete work, often with child exit 1. That is evidence for review, not permission to continue automatically. Read the phase-local count/seal evidence and review the exact bound inputs, overflow dispositions, deployment route and remaining budget. A responsible parent/operator separately authors approval against the seal. Never edit the unapproved template in place or set approval as a consequence of counting. Actual authorized execution is a distinct tool call, not an adapter operation:
+The receipt reports the next step. Read the phase-local plan, count and seal evidence and review the exact bound inputs, overflow dispositions, deployment route and remaining budget. A responsible parent/operator separately authors approval against the seal. Never edit the unapproved template in place or set approval as a consequence of counting. Actual authorized execution is a distinct tool call, not an adapter operation:
 
 ```json
 {"operation":"execute","package_dir":"/absolute/new-package","phase":"initial","approval_path":"/absolute/approvals/initial.json","authorize_posts":true,"timeout":14400,"attempt_dir":"/absolute/attempts/execute-initial"}
 ```
 
-After reviewing initial outputs, call `prepare-stage` with `phase: classification`; repeat count, report, seal, separately authored classification approval and explicit execute. Then `prepare-stage` with `phase: association`; repeat those same gates with an independent association seal/approval. Empty phases still need their phase completion evidence. Count remains the accepted full multimodal count; only measured overflow permits the method's existing reduction. Never trim or substitute unapproved input to avoid overflow.
+After reviewing initial outputs, call `prepare-stage` with `phase: classification` and the same processor cache. It counts and seals the phase; review its inputs and separately author classification approval before explicit execution. Do the same for association with its independent approval. Empty phases write sealed, zero-request completion evidence automatically, without a processor, approval, session or POST. This records an empty request roster, not proof that the source contains no content. Count remains the accepted full multimodal count; only measured overflow permits the method's existing reduction. Never trim or substitute unapproved input to avoid overflow.
 
 ```json
-{"operation":"prepare-stage","package_dir":"/absolute/new-package","phase":"classification","attempt_dir":"/absolute/attempts/prepare-classification"}
-{"operation":"prepare-stage","package_dir":"/absolute/new-package","phase":"association","attempt_dir":"/absolute/attempts/prepare-association"}
+{"operation":"prepare-stage","package_dir":"/absolute/new-package","phase":"classification","processor_cache":"/absolute/deployment/processor-cache","attempt_dir":"/absolute/attempts/prepare-classification"}
+{"operation":"prepare-stage","package_dir":"/absolute/new-package","phase":"association","processor_cache":"/absolute/deployment/processor-cache","attempt_dir":"/absolute/attempts/prepare-association"}
 {"operation":"finalize","package_dir":"/absolute/new-package","inspection_dir":"/absolute/new-inspections","attempt_dir":"/absolute/attempts/finalize"}
 ```
+
+If offline preparation stopped after writing its phase plan, resume with `seal`, the same `package_dir`, `phase`, `processor_cache`, and a new external attempt directory. It revalidates saved evidence, skips completed counting/sealing, and reports the next step. A partial count or incomplete preparation remains a hold; preserve it and resolve the cause before creating a new run. Never repeat `prepare` against an existing output. The separate `count` operation remains available for inspection before sealing. An optional `report` before execution describes incomplete work (normally exit 1); that is not spending authorization.
 
 The two prepare-stage examples belong at their respective gates, not adjacent unconditional calls. Omit `inspection_dir` if none was supplied; do not supply a fictitious path. `timeout` is tool wall-clock time, independent of the accepted method's fixed 1,200-second request timeout and 65,536 completion allowance. Choose sufficient wall time for an explicitly authorized serial phase. Persistent overflow, unknown reservations, partial/failed phases, logging failures or hard-killed children remain holds. Inspect process/phase evidence; do not retry/resume consumed or possibly posted requests. New authorization for a genuinely new run is a parent decision.
 

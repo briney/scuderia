@@ -26,6 +26,7 @@ def tree(root):
 
 def external(output, protected):
     output = absolute(output)
+    require(not any((p/'retention.json').exists() for p in (output, *output.parents)), 'write-inside-immutable-retention')
     for value in protected:
         path = absolute(value)
         require(not output.is_relative_to(path) and not path.is_relative_to(output), 'output-overlaps-protected-evidence')
@@ -34,8 +35,7 @@ def external(output, protected):
 
 def new(output, protected=()):
     output = external(output, protected)
-    require(output.parent.is_dir(), 'output-parent-must-exist')
-    output.mkdir(mode=0o700)
+    output.mkdir(mode=0o700, parents=True)
     return output
 
 

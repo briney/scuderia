@@ -15,7 +15,7 @@ import threading
 import time
 from typing import Any
 
-from .io import load, save, safe, sha, require
+from .io import load, save, safe, sha, require, outside_retention
 
 
 def utc_now():
@@ -59,7 +59,9 @@ def run_child(argv, cwd, attempt_dir, timeout):
     launch() only after separate artifact verification.
     """
     attempt = Path(attempt_dir)
-    attempt.mkdir(mode=0o700)
+    outside_retention(attempt)
+    absolute_path(str(attempt))
+    attempt.mkdir(mode=0o700, parents=True)
     record: dict[str, Any] = dict(schema='pdf-workflow-process-v1', started_at=utc_now(), ended_at=None,
                   argv=list(map(str, argv)), cwd=str(cwd), process_status='running',
                   exit_code=None, child_pid=None, termination=None, termination_errors=[], success=False,
@@ -177,6 +179,7 @@ def validated(args):
     required = REQUIRED[operation] | {'operation', 'attempt_dir'}
     allowed = required | {'offline', 'authorize_posts', 'timeout'}
     if operation == 'prepare': allowed.add('offline_fixture')
+    if operation in ('prepare','prepare-stage','seal'): allowed.add('processor_cache')
     if operation in ('report', 'finalize', 'summary'): allowed.add('inspection_dir')
     require(required <= args.keys() and args.keys() <= allowed, 'operation-arguments')
     value = dict(args)
@@ -195,8 +198,10 @@ def validated(args):
     require(not value.get('offline_fixture') or value.get('offline'), 'offline-fixture-requires-offline')
     paths = {k:absolute_path(v) for k,v in value.items() if k in PATH_FLAGS or k == 'attempt_dir'}
     attempt = paths['attempt_dir']
-    require(not attempt.exists() and attempt.parent.is_dir(), 'attempt-directory-must-be-new-with-existing-parent')
+    require(not attempt.exists(), 'attempt-directory-must-be-new')
+    outside_retention(attempt)
     root = paths.get('package_dir', paths.get('output_dir'))
+    outside_retention(root)
     require(not attempt.is_relative_to(root) and not root.is_relative_to(attempt), 'attempt-directory-must-be-external')
     for key, p in paths.items():
         if key in ('attempt_dir','output_dir','inspection_dir'): continue
@@ -205,7 +210,8 @@ def validated(args):
         else: require(p.is_file(), 'file-required:' + key)
     if 'output_dir' in paths:
         output = paths['output_dir']
-        require(not output.exists() and output.parent.is_dir(), 'output-must-be-new-with-existing-parent')
+        outside_retention(output)
+        require(not output.exists(), 'output-must-be-new')
         require(not output.is_relative_to(attempt) and not attempt.is_relative_to(output), 'output-attempt-overlap')
         if operation == 'summary':
             require(not output.is_relative_to(root), 'summary-output-must-be-external')
@@ -245,7 +251,7 @@ def launch(args, deployment=None):
             require(evidence_root in (root, args.get('output_dir')), 'unexpected-evidence-root')
             for name, expected in bindings.items():
                 require(sha(safe(evidence_root, name)) == expected, 'operation-artifact-changed')
-        for key in ('artifact_status','phase_status','fixture','requested_work_complete','facts_path','summary_path','results_path'):
+        for key in ('next_step','artifact_status','phase_status','fixture','requested_work_complete','facts_path','summary_path','results_path'):
             if key in receipt: result[key] = receipt[key]
         if args['operation'] in ('report', 'finalize', 'summary'):
             destination = args.get('output_dir', root)

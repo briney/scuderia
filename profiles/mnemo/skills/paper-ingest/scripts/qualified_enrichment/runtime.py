@@ -3,7 +3,7 @@ from pathlib import Path
 from pdf_enrichment import bindings, importer, live, trusted, requests
 from pdf_enrichment.package_io import SourcePackage
 from .records import require
-from .storage import absolute, tree, load, sha, save, new, code_hashes
+from .storage import absolute, tree, load, sha, save, new, code_hashes, external
 
 
 def outcomes(run, plan):
@@ -193,3 +193,32 @@ def read_job(job):
 def snapshot(path, kind):
     require(kind in ('qualified-job', 'v7-run'), 'snapshot-kind')
     return read_job(path) if kind == 'qualified-job' else read_run(path)
+
+
+def prepare_for_approval(job, cache=None):
+    """Resume offline bookkeeping at verified boundaries, never a consumed POST."""
+    job = external(job, []); state = read_job(job); run = job/'v7'
+    require(state['selection']['code'] == code_hashes(), 'selection-code-binding')
+    if not state['selection']['selected']:
+        return 'review-create'
+    if (run/'execution-session.json').exists():
+        return 'hold-inspect-evidence-no-retry' if state['execution_holds'] else 'review-create'
+    plan = bindings.verify(run)
+    require(not any((run/r['directory']/'reservation.json').exists() for r in plan['requests'] if r.get('id')),
+            'execution-reservation-no-resume')
+    if not (run/'counts.json').exists():
+        require(not (run/'count-session.json').exists(), 'partial-count-hold-new-run-required')
+        require(cache is not None, 'processor-cache-required')
+        live.count(run, absolute(cache))
+    live.verify_counts(run, plan)
+    if not (run/'seal.json').exists():
+        live.seal(run)
+    sealed = load(run/'seal.json')
+    require(sealed.get('schema') == 'enrichment-seal-v2' and
+            all(sealed[k] == plan[k] for k in ('code','method','source_package','fixture')), 'seal-binding')
+    for name, expected in sealed['files'].items():
+        from pdf_enrichment.io import safe
+        require(sha(safe(run,name)) == expected, 'seal-file-changed')
+    template = load(run/'approval.template.json')
+    require(template['approved'] is False and template['seal_sha256'] == sha(run/'seal.json'), 'unapproved-template-binding')
+    return 'review-and-author-approval'

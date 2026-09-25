@@ -12,14 +12,14 @@ SCHEMA = {
     'name': 'paper_workflow',
     'description': (
         'Run one public PDF source-package operation through its trusted CLI. '
-        'All paths must be absolute. attempt_dir must be NEW with an existing parent, outside the package. '
+        'All paths must be absolute. attempt_dir must be NEW with parents created safely, outside the package. '
         'prepare also needs scope_path/output_dir; prepare-stage needs phase; count needs phase/processor_cache; '
         'seal needs phase; execute needs phase/approval_path AND explicit authorize_posts=true; '
         'replay needs phase/approval_path/responses_path and an offline fixture. '
         'report/finalize refresh package review; summary writes read-only facts to a NEW external output_dir. '
         'Optional inspection_dir checks exact image-input provenance, not human acceptance. '
         'No retries/resume, next-phase approval, acquisition, arbitrary commands or model changes. '
-        'Returns actual child exit, process/artifact status, tool success, durable logs and report paths. '
+        'prepare with processor_cache also counts and seals; seal with processor_cache resumes offline bookkeeping. Returns actual child exit, process/artifact status, tool success, durable logs and report paths. '
         'timeout is the launcher wall-clock bound; application request timeout remains 1200 seconds.'
     ),
     'parameters': {

@@ -34,9 +34,9 @@ def main(argv=None):
         for field in required: c.add_argument('--'+field,required=True)
         for field in optional: c.add_argument('--'+field)
         return c
-    command('prepare',('source-handoff','output'),('test-root',))
+    command('prepare',('source-handoff','output'),('test-root','processor-cache'))
     command('count',('job','processor-cache'))
-    command('seal',('job',))
+    command('seal',('job',),('processor-cache',))
     c=command('execute',('job','approval')); c.add_argument('--authorize-posts',action='store_true')
     command('report',('job','output'))
     command('import-test-response',('job','responses'))
@@ -56,10 +56,16 @@ def main(argv=None):
         from pdf_enrichment import live,importer,bindings
         # All non-POST operations are offline by construction, not by operator preference.
         if args.offline or args.operation!='execute': offline()
-        artifacts={}; details={}; exit_code=0
+        artifacts={}; details={}; exit_code=0; next_step=None
         if args.operation=='prepare':
             details=runtime.prepare(args.source_handoff,args.output,args.method,args.test_root)
-            artifacts[str(absolute(args.output)/'selection.json')]=sha(absolute(args.output)/'selection.json')
+            job=absolute(args.output)
+            if args.processor_cache or not details['selected']:
+                next_step=runtime.prepare_for_approval(job,args.processor_cache)
+                for name in tree(job): artifacts[str(job/name)]=sha(job/name)
+            else:
+                next_step='seal-with-processor-cache'
+                artifacts[str(job/'selection.json')]=sha(job/'selection.json')
         elif args.operation in ('count','seal','execute','report','import-test-response'):
             job=absolute(args.job); state=runtime.read_job(job)
             run=job/'v7'
@@ -70,7 +76,8 @@ def main(argv=None):
             if args.operation=='count':
                 live.count(run,absolute(args.processor_cache)); names=['counts.json','counts.sha256']
             elif args.operation=='seal':
-                live.seal(run); names=['seal.json','approval.template.json']
+                next_step=runtime.prepare_for_approval(job,args.processor_cache)
+                names=['seal.json','approval.template.json']
             elif args.operation=='execute':
                 result=live.execute(run,absolute(args.approval),authorize=args.authorize_posts)
                 names=['execution-session.json','executed-approval.json','execution-complete.json']
@@ -121,6 +128,7 @@ def main(argv=None):
                      checked_artifacts=artifacts,artifact_status='verified',
                      production_executed=False if args.operation!='execute' else None,
                      note='Actual child operation; no scientific correctness or acceptance asserted.')
+        if next_step is not None: receipt['next_step']=next_step
         if args.operation == 'review-packet':
             from qualified_enrichment.records import digest
             receipt['review_packet_sha256'] = digest(details)

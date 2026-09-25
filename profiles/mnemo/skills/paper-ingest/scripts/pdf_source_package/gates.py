@@ -1,5 +1,6 @@
 """Full local counts, immutable phase approvals, one-attempt reservations."""
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 import copy
 import fcntl
@@ -173,3 +174,62 @@ def reserve(entry, row, origin):
             request_sha256=row['request_sha256'], approval_sha256=digest(entry.approval_bytes),
             seal_sha256=digest(entry.seal_bytes), transport_origin=origin, pid=os.getpid(),
             epoch=time.time(), state='reserved-may-have-posted'))
+
+
+def next_step(root, phase, status):
+    root = Path(root)
+    if status['uncertain_reservations'] or status['failed'] or (root/'stop.json').exists():
+        return 'hold-inspect-evidence-no-retry'
+    if status['status'] == 'complete':
+        channels = {c for d in load(root/'manifest.json')['documents'] for c in d['channels']}
+        for following in PHASES[PHASES.index(phase)+1:]:
+            if following not in channels:
+                continue
+            if not (root/f'{following}-plan.json').exists():
+                return 'prepare-stage:' + following
+            from .reporting import Evidence, basic_phase
+            evidence = Evidence(root)
+            downstream, _ = basic_phase(evidence, following); evidence.check()
+            if downstream['status'] != 'complete':
+                return next_step(root, following, downstream) + ':' + following
+        return 'finalize'
+    if (root/f'{phase}-session.json').exists() or status['attempted']:
+        return 'hold-inspect-evidence-no-retry'
+    if status['status'] == 'sealed':
+        return 'review-and-author-approval'
+    return 'seal-with-processor-cache'
+
+
+def prepare_phase(root, phase, cache=None):
+    """Count/seal at recorded boundaries; never approve or execute a request."""
+    from .reporting import Evidence, source_facts, basic_phase
+    root = Path(root); require(phase in PHASES, 'phase')
+    evidence = Evidence(root); source_facts(evidence)
+    status, _ = basic_phase(evidence, phase); evidence.check()
+    if status['status'] == 'complete':
+        return next_step(root, phase, status)
+    require(not (root/'stop.json').exists(), 'shared-stop-pending')
+    require(not (root/f'{phase}-session.json').exists() and not status['attempted'] and
+            not status['uncertain_reservations'], 'execution-started-no-resume')
+    plan = load(root/f'{phase}-plan.json')
+    if any(r['status'] == 'uncounted' for r in plan['requests']):
+        require(all(r['status'] == 'uncounted' and not (root/r['directory']/'count.json').exists()
+                    for r in plan['requests']), 'partial-count-hold-new-run-required')
+        require(cache is not None, 'processor-cache-required')
+        count_phase(root, phase, cache)
+    if not (root/f'{phase}-seal.json').exists():
+        seal(root, phase)
+    else:
+        frozen = load(root/f'{phase}-seal.json')
+        require(frozen['code'] == code_hashes(), 'code-changed')
+        template = expected(root, phase)
+        path = root/f'{phase}-approval.template.json'
+        if not path.exists(): save(path, template)
+        require(load(path) == template, 'approval-template-changed')
+    if not plan['requests']:
+        # No POST, session, approval or scientific empty-content claim is invented.
+        save(root/f'{phase}-complete.json', dict(phase=phase, all_requested_complete=True,
+             transport_origin='deterministic-empty', seal_sha256=sha(root/f'{phase}-seal.json'),
+             ended_at=datetime.now(timezone.utc).isoformat()))
+    evidence = Evidence(root); status, _ = basic_phase(evidence, phase); evidence.check()
+    return next_step(root, phase, status)

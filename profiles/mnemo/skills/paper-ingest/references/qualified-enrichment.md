@@ -16,17 +16,14 @@ The capability selects all eligible source figures and tables, retaining its exi
 
 ## Operations
 
-Use absolute paths and a new external `attempt_dir` with an existing parent for every call. Keep inputs in a separate directory from attempt/output roots. Retain all receipts, including refusals. `qualified-enrichment-schema.md` owns the full operation and submission schema; the native tool supplies argument names. No phase authorizes another automatically.
+Use absolute paths and a new external `attempt_dir` for every call; missing parents are created safely. Keep inputs in a separate directory from attempt/output roots. Retain all receipts, including refusals. `qualified-enrichment-schema.md` owns the full operation and submission schema; the native tool supplies argument names. No phase authorizes another automatically.
 
-1. `prepare`: `source_handoff` is the verified v1 handoff; `output` is a new qualified job. Code enumerates the full roster. Never curate only favorable elements or use a test-root flag on production sources.
-2. `count`: provide `job` and the accepted `processor_cache`. Review actual payload/count/overflow, model route and budget; preserve frozen extraction settings.
-3. `seal`: provide `job`. A responsible parent/operator separately authors approval against the resulting seal using the unchanged frozen approval contract. The generated template remains unapproved.
-4. `execute`: provide `job`, the separate `approval`, and explicit `authorize_posts: true`, only after authorization. No retry, fallback, budget reuse or automatic repair of consumed/uncertain requests. Do not set offline mode for actual execution.
-5. `report`: provide `job` and a new external `output`. Check process status and saved evidence separately from semantic success. For a zero-eligible job, skip count/seal/execute and retain the explicit zero-eligible disposition.
-6. `review-create`: provide the qualified `run` and new `output`. Production uses qualified jobs; `kind: v7-run` creates review-only dossiers for historical records and never retroactively promotes them.
-7. `review-packet`: provide `review_root`, exact `elements` and a new packet `output`. Bound review to actual targets and supplied source evidence. Use multiple small packets rather than truncated inventories. Optional `max_bytes` may be increased within the documented bound.
-8. `review-import`: provide `review_root`, `packet`, and a separately authored contextual-review submission. Record checks actually performed; unreviewed fields stay unreviewed. No review is fabricated merely to clear an exact-use gate.
-9. `export`: provide `review_root` and a new `output`. Preserve its actual successful attempt `result.json` for v2 construction. `verify-export` revalidates its `export_path`; a structural pass does not waive execution holds.
+1. `prepare`: provide the verified v1 `source_handoff`, a new job `output`, and the accepted `processor_cache`. Code enumerates all eligible figures/tables, counts the actual payloads and writes the seal and unapproved template. Never curate only favorable elements or use a test-root flag on production sources.
+2. Review the saved payload/count/overflow, model route and budget. A responsible parent/operator separately authors approval against the seal using the unchanged frozen approval contract. Counting never grants approval.
+3. `execute`: provide `job`, the separate `approval`, and explicit `authorize_posts: true`, only after authorization. No retry, fallback, budget reuse or automatic repair of consumed/uncertain requests. Do not set offline mode for actual execution.
+4. `report`: provide `job` and a new external `output`. Check process status and saved evidence separately from semantic success. A zero-eligible preparation reports `review-create`; skip count/seal/execute and retain its explicit disposition.
+
+To resume interrupted offline bookkeeping, use `seal` with `job`, `processor_cache`, and a new attempt directory. It revalidates evidence and skips completed counting/sealing. Partial counts remain holds; completed or uncertain execution is never restarted. Preparation without a cache and the separate `count` command remain supported for staged inspection. Never rerun preparation into an existing job. All output and attempt directories must stay outside immutable retained sources; misplaced writes are rejected before directory creation.
 
 Use explicit `offline: true` for non-execution operations. Original PDFs, native text, crops, raw responses and extraction outcomes remain unchanged. Corrections are separately attributed findings/proposals. New review decisions require a new export; do not overwrite or repin historical exports.
 

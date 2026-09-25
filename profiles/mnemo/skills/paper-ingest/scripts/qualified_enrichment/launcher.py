@@ -11,9 +11,9 @@ import subprocess
 import sys
 
 OPERATIONS = {
-    'prepare': ({'source_handoff','output'}, {'test_root'}),
+    'prepare': ({'source_handoff','output'}, {'test_root','processor_cache'}),
     'count': ({'job','processor_cache'}, set()),
-    'seal': ({'job'}, set()),
+    'seal': ({'job'}, {'processor_cache'}),
     'execute': ({'job','approval','authorize_posts'}, set()),
     'report': ({'job','output'}, set()),
     'import-test-response': ({'job','responses'}, set()),
@@ -82,11 +82,12 @@ def argv_for(args, deployment, attempt, *, historical=False):
     op=args['operation']; required,optional=OPERATIONS[op]
     require(required <= args.keys() and args.keys() <= required|optional|{'operation','attempt_dir','offline','timeout'}, 'operation-argument-fields')
     for key in PATHS & args.keys(): absolute(args[key])
-    written = {'output'} & args.keys()
+    written = {'output', 'attempt_dir'} & args.keys()
     if op in ('count','seal','execute','import-test-response'): written.add('job')
     if op == 'review-import': written.add('review_root')
     for key in written:
         output = absolute(args[key])
+        require(not any((p/'retention.json').exists() for p in (output, *output.parents)), 'write-inside-immutable-retention')
         for code in (deployment.integration_dir,deployment.enrichment_root,deployment.method_dir,deployment.adapter_dir):
             require(not output.is_relative_to(code) and not code.is_relative_to(output), 'write-overlaps-trusted-code')
     for key in ('offline','authorize_posts'):
@@ -128,7 +129,7 @@ def launch(args, deployment):
         require(not attempt.is_relative_to(p) and not p.is_relative_to(attempt),'attempt-must-be-external')
     timeout=args.get('timeout',14400)
     require(type(timeout) in (int,float) and math.isfinite(timeout) and 0<timeout<=86400,'bounded-timeout')
-    require(attempt.parent.is_dir(),'attempt-parent-required'); attempt.mkdir(mode=0o700)
+    attempt.mkdir(mode=0o700, parents=True)
     started=now(); pid=None; termination='normal'; exit_code=None
     env=dict(os.environ); env['PYTHONDONTWRITEBYTECODE']='1'
     if args.get('offline') or args['operation']!='execute':

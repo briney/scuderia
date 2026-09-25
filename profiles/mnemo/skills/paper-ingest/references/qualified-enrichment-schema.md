@@ -6,10 +6,10 @@ See `runtime.md` for deployment and `qualified-enrichment.md` for the production
 
 Pass these objects to `paper_enrichment`, or save one object for `operate.py`. All filesystem paths are absolute. Each invocation also needs `attempt_dir: <NEW_EXTERNAL_ATTEMPT>`. `offline: true` is required for test-root operations and recommended explicitly for all non-execute operations; non-execute operations install the offline guard regardless.
 
-1. `operation: prepare`, `source_handoff: <VERIFIED_V1/handoff.json>`, `output: <NEW_JOB>`.
+1. `operation: prepare`, `source_handoff: <VERIFIED_V1/handoff.json>`, `output: <NEW_JOB>`, optional `processor_cache: <ACCEPTED_OFFICIAL_CACHE>` to count and seal in the same offline call.
    The default is every eligible figure/table, not an operator-curated subset. Only an explicitly fixture-marked source handoff may use `test_root: <OWNED_TEST_ROOT>`; this is never production evidence.
 2. `operation: count`, `job: <JOB>`, `processor_cache: <ACCEPTED_OFFICIAL_CACHE>`.
-3. `operation: seal`, `job: <JOB>`.
+3. `operation: seal`, `job: <JOB>`, optional `processor_cache: <ACCEPTED_OFFICIAL_CACHE>` to count if needed. Saved complete counts/seals are verified and reused; interrupted counts and uncertain requests remain holds.
 4. Parent reviews the source/payload/count/serving route and separately authors approval from `<JOB>/v7/approval.template.json`. The template is deliberately unapproved. Follow the unchanged frozen v7 approval contract. This module never writes approved booleans, credentials or a post budget for the operator.
 5. After separate authorization, use operation `execute` with `job: <JOB>`, `approval: <SEPARATE_PARENT_APPROVAL.json>` and the explicit `authorize_posts` flag set to true. Do not pass `offline`, and do not reuse a consumed run. Existing offline environment markers cause refusal rather than being removed.
 6. `operation: report`, `job: <JOB>`, `output: <NEW_EXTERNAL_V7_REPORT>`. Report output must not be inside the run or source tree.

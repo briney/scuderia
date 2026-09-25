@@ -263,6 +263,11 @@ def basic_phase(evidence, phase):
         # A later phase's shared stop cannot rewrite this phase's history.
         complete = counts['completed'] == len(rows) and all(r['status'] == 'ready' for r in rows)
         require(marker['all_requested_complete'] is complete, 'completion-marker-contradiction')
+        if marker.get('transport_origin') == 'deterministic-empty':
+            require(not rows and marker['seal_sha256'] == evidence.files[seal_name], 'empty-completion-binding')
+            require(not (evidence.root/f'{phase}-session.json').exists() and not (evidence.root/f'{phase}-approval.json').exists(), 'empty-phase-has-execution')
+            counts.update(status='complete', ended_at=recorded_time(marker.get('ended_at')))
+            return counts, records
         session = evidence.json(f'{phase}-session.json')
         require(session['phase'] == phase and session['origin'] == marker['transport_origin'], 'completion-session-binding')
         approval = evidence.json(f'{phase}-approval.json')

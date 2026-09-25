@@ -34,10 +34,10 @@ def operation_evidence(root, operation, phase=None, output=None, state=None):
         require(counts['status'] != 'not-prepared', 'missing-phase-plan')
         plan = evidence.json(f'{selected}-plan.json')
         if operation in ('prepare', 'prepare-stage'):
-            require(all(r['status'] == 'uncounted' for r in plan['requests']), 'prepare-phase-status')
+            require(all(r['status'] in ('uncounted','ready','preflight-context-overflow') for r in plan['requests']), 'prepare-phase-status')
         if operation in ('count', 'seal'):
             require(all(r['status'] in ('ready','preflight-context-overflow') for r in plan['requests']), 'missing-counted-requests')
-        if operation == 'seal':
+        if (root/f'{selected}-seal.json').exists():
             evidence.json(f'{selected}-seal.json')
             template = evidence.json(f'{selected}-approval.template.json')
             require(template['approved'] is False, 'approval-template-not-unapproved')
@@ -46,6 +46,8 @@ def operation_evidence(root, operation, phase=None, output=None, state=None):
             require(counts['status'] in ('complete','incomplete'), 'missing-phase-completion')
             if counts['status'] != 'complete': value['artifact_status'] = 'incomplete'
         value['phase_status'] = counts
+        from .gates import next_step
+        value['next_step'] = next_step(root, selected, counts)
     evidence.check()
     value['evidence_roots'].setdefault(str(root), {}).update(evidence.files)
     return value

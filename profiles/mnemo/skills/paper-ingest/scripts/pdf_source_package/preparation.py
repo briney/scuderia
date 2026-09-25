@@ -61,7 +61,9 @@ def request_row(root, phase, ident, channel, doc, page, wire, inputs, **extra):
 
 
 def prepare(scope_path, output, fixture=False):
-    root = Path(output).absolute()
+    from .io import outside_retention
+    root = outside_retention(output)
+    require(not any(p.is_symlink() for p in (root, *root.parents)), "symlink-output-forbidden")
     require(not root.exists(), 'output-must-be-new')
     require(fitz.__version__ == '1.28.2', 'pymupdf-version-changed')
     scope = load(scope_path)

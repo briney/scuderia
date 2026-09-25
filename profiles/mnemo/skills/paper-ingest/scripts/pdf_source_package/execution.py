@@ -205,7 +205,9 @@ def usage_disposition(expected, actual, live):
 
 
 def run_phase(root, phase, approval, *, authorize=False, replay=None, transport=None):
-    root = Path(root).absolute(); manifest = load(root / 'manifest.json')
+    root = Path(root).absolute()
+    require(not (root/f'{phase}-complete.json').exists(), 'phase-already-complete')
+    manifest = load(root / 'manifest.json')
     live = replay is None and transport is None
     if live:
         require(authorize is True, 'explicit-authorize-required')
