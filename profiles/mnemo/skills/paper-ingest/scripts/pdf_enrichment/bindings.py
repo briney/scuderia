@@ -23,6 +23,10 @@ def request(run, row):
 
 
 def verify(run, *, for_execution=True):
+    return _verify(run,for_execution=for_execution)[0]
+
+
+def _verify(run, *, for_execution=True):
     from .package_io import SourcePackage
     from .accounting import accounting
     run=Path(run).absolute()
@@ -58,4 +62,4 @@ def verify(run, *, for_execution=True):
             require((saved_wire, saved_evidence) == (wire, evidence) and
                     (safe(run, row['directory'])/'prompt.txt').read_text() == prompt,
                     'incompatible-enrichment-payload-semantics')
-    return plan
+    return plan,pkg

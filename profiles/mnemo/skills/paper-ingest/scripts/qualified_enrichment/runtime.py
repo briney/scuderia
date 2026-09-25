@@ -93,9 +93,8 @@ def outcomes(run, plan):
 def read_run(run):
     run = absolute(run)
     before = tree(run)
-    plan = bindings.verify(run, for_execution=False)
+    plan, pkg = bindings._verify(run, for_execution=False)
     results, holds = outcomes(run, plan)
-    pkg = SourcePackage(plan['source_package']['root'], method=trusted.read_method_path())
     eligible = pkg.eligible_elements(['figure', 'table'])
     require({r['element_id'] for r in plan['requests']} == {r['element_id'] for r in eligible}, 'all-element-accounting-required')
     rows = {r['element_id']: r for r in plan['requests']}
@@ -112,8 +111,11 @@ def read_run(run):
                              outcome=value, evidence=ev, source_element=source['element'],
                              source_pdf=str(pkg.root/doc['raw'])))
     require(before == tree(run), 'run-changed-during-read')
+    source_bindings = tree(pkg.root)
+    require(source_bindings == {k:v for k,v in pkg.snapshot['files'].items() if '__pycache__' not in Path(k).parts},
+            'source-changed-during-read')
     return dict(kind='v7-run', path=str(run), bindings=before, plan=plan,
-                source_package=str(pkg.root), source_bindings=tree(pkg.root),
+                source_package=str(pkg.root), source_bindings=source_bindings,
                 elements=elements, execution_holds=holds, fixture=plan['fixture'],
                 documents=plan['documents'])
 

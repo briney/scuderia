@@ -250,6 +250,10 @@ def apply(dossier, decisions):
 
 
 def decisions(root, dossier):
+    return _reviewed_decisions(root,dossier)[0]
+
+
+def _reviewed_decisions(root, dossier):
     root = absolute(root)
     previous = sha(root/'dossier.json')
     entries = []
@@ -261,8 +265,7 @@ def decisions(root, dossier):
         require(value['previous_sha256'] == previous and value['sequence'] == index
                 and value['dossier_sha256'] == sha(root/'dossier.json'), 'review-chain-binding')
         entries.append(value); previous = sha(path)
-    apply(dossier, entries)
-    return entries
+    return entries,apply(dossier, entries)
 
 
 def import_review(root, packet_path, submission_path):

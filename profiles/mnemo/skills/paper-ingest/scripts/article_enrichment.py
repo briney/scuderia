@@ -374,7 +374,12 @@ def execute(work,binding,manifest_path,approval_path,*,authorize=False,fixture_t
 
 def execution_state(work,binding,manifest_path):
     """Recompute request accounting from immutable reservations and outcomes."""
-    v=verify(work,binding,manifest_path,for_execution=False); root=absolute(work)/'enrichment'
+    return _execution_state(work,binding,manifest_path,verify(work,binding,manifest_path,for_execution=False))
+
+
+def _execution_state(work,binding,manifest_path,v):
+    # Caller owns this operation's already-verified preparation. Never persist it.
+    root=absolute(work)/'enrichment'
     start=read_bound(root/'execution-start.json'); a=pa.load(root/'executed-approval.json')
     require(start['approval_sha256']==sha(root/'executed-approval.json') and start['binding']==binding and start['fixture'] is v['fixture'],'execution-start-binding')
     counts=approval(root,v,a); result=[]; rows={}; hashes={}; integrity_hold=False
@@ -437,7 +442,11 @@ def review_create(work,binding,manifest_path):
 
 
 def review_verify(work,binding,manifest_path):
-    state=execution_state(work,binding,manifest_path); root=absolute(work)/'review'
+    return _review_verify(work,binding,manifest_path,execution_state(work,binding,manifest_path))
+
+
+def _review_verify(work,binding,manifest_path,state):
+    root=absolute(work)/'review'
     dossier=read_bound(root/'dossier.json')
     require(dossier.get('schema') == 'portable-review-dossier-v2', 'unsupported-portable-dossier-format')
     # An immutable partial review remains readable if untouched siblings later
@@ -512,8 +521,12 @@ def consumer(work, binding, manifest_path, element_id, target='', *, purpose='di
 
 
 def verify_export(work,binding,manifest_path):
+    return _verify_export(work,binding,manifest_path,review_verify(work,binding,manifest_path))
+
+
+def _verify_export(work,binding,manifest_path,review):
     root=absolute(work); value=read_bound(root/'export'/'handoff.json')
-    dossier,_,views=review_verify(work,binding,manifest_path)
+    dossier,_,views=review
     from qualified_enrichment.exports import exact_view,content_targets
     for view in views: view['consumer_views']=[exact_view(view,p) for p in content_targets(view['outcome'])]
     v=read_bound(root/'enrichment'/'prepared.json')

@@ -187,6 +187,47 @@ class LegacyCompatibility(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, 'stale-source'):
                         reviews.verify(root/'review')
 
+    def test_export_reconstructs_decisions_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp).resolve(); run=root/'run'; run.mkdir(); src=root/'source'; src.mkdir()
+            state=dict(path=str(run),kind='v7-run',source_package=str(src),source_bindings={},
+                       elements=[],execution_holds=[],fixture=True,documents=[])
+            with patch.object(reviews,'snapshot',return_value=state):
+                reviews.create(run,'v7-run',root/'review')
+                with patch.object(reviews,'apply',wraps=reviews.apply) as apply:
+                    exports.build(root/'review')
+                    print('EXPORT-REVIEW-APPLICATIONS',apply.call_count)
+                    self.assertEqual(apply.call_count,1)
+                # Standalone review-chain validation still checks semantics.
+                with patch.object(reviews,'apply',side_effect=ValueError('invalid review')):
+                    with self.assertRaisesRegex(ValueError,'invalid review'):
+                        reviews.decisions(root/'review',pa.load(root/'review/dossier.json'))
+
+    def test_v7_read_reuses_source_but_rechecks_its_bytes(self):
+        from qualified_enrichment import runtime
+        from pdf_enrichment.io import tree_hash
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp).resolve(); run=root/'run'; run.mkdir(); src=root/'source'; src.mkdir()
+            plan=dict(schema='pdf-source-package-enrichment-v7',stage='enrichment-prepare-v7',
+                prompt_version='enrichment-prompts-v7',response_schema='enrichment-response-v7',
+                settings=requests.SETTINGS,model=requests.MODEL,requests=[],documents=[],kinds=[],selection=[],fixture=True,
+                code={'old.py':'1'*64},method={'root':'/retired/method','code':{'old.py':'2'*64}},
+                source_package=dict(root=str(src),tree_sha256=tree_hash(src)['tree_sha256']))
+            (run/'enrichment-plan.json').write_text(json.dumps(plan)); (run/'plan.sha256').write_text(sha(run/'enrichment-plan.json'))
+            with patch('pdf_enrichment.package_io.SourcePackage') as pkg, \
+                 patch.object(runtime,'SourcePackage',pkg),patch('pdf_enrichment.accounting.accounting'):
+                pkg.return_value.root=src; pkg.return_value.snapshot=tree_hash(src)
+                pkg.return_value.documents=[];pkg.return_value.eligible_elements.return_value=[]
+                result=runtime.read_run(run)
+                print('V7-SOURCE-RECONSTRUCTIONS',pkg.call_count)
+                self.assertEqual(pkg.call_count,1);self.assertEqual(result['source_bindings'],{})
+                def changed(*args):
+                    (src/'changed.txt').write_text('Mutation during outcome verification')
+                    return {},[]
+                with patch.object(runtime,'outcomes',side_effect=changed):
+                    with self.assertRaisesRegex(ValueError,'source-changed-during-read'):
+                        runtime.read_run(run)
+
     def test_source_handoff_keeps_recorded_code_provenance(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp).resolve()

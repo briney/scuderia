@@ -176,8 +176,7 @@ def eligibility(state):
 
 def build(root):
     root = absolute(root); dossier = reviews.verify(root)
-    entries = reviews.decisions(root,dossier)
-    views = reviews.apply(dossier,entries)
+    _, views = reviews._reviewed_decisions(root,dossier)
     for view in views:
         view['consumer_views'] = [exact_view(view,p) for p in content_targets(view['outcome'])]
     machine = dict(schema='qualified-enrichment-export-v1', review_root=str(root),

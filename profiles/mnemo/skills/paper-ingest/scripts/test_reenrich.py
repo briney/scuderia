@@ -136,6 +136,39 @@ class ReenrichTests(unittest.TestCase):
         c['full_distillation_reviewed']=full
         cp.write_text(json.dumps(c)); return cp
 
+    def test_status_missing_stage_prerequisites_returns_structured_hold(self):
+        import contextlib
+        import io
+        self.plan()
+        for name in ('enrichment/counts.json','enrichment/execution-start.json','review/dossier.json',
+                     'export/handoff.json','page-candidate/candidate.json'):
+            with self.subTest(artifact=name):
+                path=self.work/name; path.parent.mkdir(exist_ok=True); path.write_text('{}')
+                try:
+                    error=io.StringIO()
+                    with contextlib.redirect_stderr(error):
+                        self.assertEqual(rr.main(['execute','--work-root',str(self.work)]),2)
+                    self.assertEqual(json.loads(error.getvalue())['status'],'hold')
+                finally: path.unlink()
+
+    def test_status_reuses_verified_evidence_only_within_one_call(self):
+        from unittest.mock import patch
+        self.ready(); rr.candidate_import(self.work,self.no_change_candidate())
+        with patch.object(ae,'verify',wraps=ae.verify) as prepared, \
+             patch.object(ae,'_response',wraps=ae._response) as outcomes:
+            result=rr.execute(work_root=self.work)
+            counts=dict(prepared=prepared.call_count,outcomes=outcomes.call_count)
+        print('PORTABLE-STATUS-RECONSTRUCTIONS',counts)
+        self.assertEqual(result['next_step'],'apply')
+        self.assertEqual(counts,dict(prepared=1,outcomes=1))
+        # No validated state survives to the next operation/mutation boundary.
+        wire=self.work/'enrichment/requests/r000001/request-wire.json'
+        wire.write_text('{}')
+        for operation in (lambda: rr.execute(work_root=self.work),lambda: rr.apply(self.work,authorize=True),
+                          lambda: rr.advance(self.work,'review-create')):
+            with self.assertRaises(ValueError): operation()
+        self.assertFalse((self.work/'apply-start.json').exists())
+
     def test_unchanged_selected_science_installs_verified_register(self):
         self.ready(); original=self.page.read_text()
         rr.candidate_import(self.work,self.no_change_candidate()); rr.apply(self.work,authorize=True)

@@ -220,10 +220,8 @@ def context(work,*,check_page=True):
             expected=_resolve_elements(m,p['request']['elements']) if p['mode']=='selected' else [e['element_id'] for e in m['elements'] if e['eligible']]
         require(roster==expected,'roster-changed')
         keys=pa.closure_for(m,roster) if p['mode']=='selected' else {f['key'] for f in m['files']}
-        pa.verify_local(manifest,keys)
-        # Also detect mutation of any other currently materialized input. A
-        # selected restore may omit files, but cannot conceal changed local ones.
-        pa.verify_local(manifest,set(pa.local_sources(manifest)))
+        # Verify the required closure and all other materialized inputs once.
+        pa.verify_local(manifest,keys | set(pa.local_sources(manifest)))
         pa.verify_source(manifest)
     if p['page_path']:
         require(sha(work/'original-page.md')==p['page_sha256'],'original-page-snapshot-changed')
@@ -272,6 +270,7 @@ def execute(plan_value=None,*,work_root):
             fixture=m['source_status']['fixture'])
     next_step='adopt'
     enrichment=work/'enrichment'
+    prepared=state=review=exported=None
     if m: next_step='prepare'
     if (enrichment/'prepared.json').exists():
         prepared=ae.verify(work,binding,manifest,for_execution=False)
@@ -280,23 +279,29 @@ def execute(plan_value=None,*,work_root):
             requests={r['id']:dict(element_id=r['element_id'],status='pending') for r in prepared['requests']},
             counts=dict(pending=len(roster),uncertain=0,failed=0,completed=0),complete=False,integrity_hold=False)); next_step='count'
     if (enrichment/'counts.json').exists():
+        require(prepared is not None,'counts-without-preparation')
         ae.verify_counts(enrichment,prepared); next_step='seal'
     if (enrichment/'seal.json').exists(): next_step='approved-execute'
     if (enrichment/'execution-start.json').exists():
-        accounting=ae.execution_state(work,binding,manifest)['accounting']
+        require(prepared is not None,'execution-without-preparation')
+        state=ae._execution_state(work,binding,manifest,prepared)
+        accounting=state['accounting']
         receipts['enrichment']=dict(status='executed' if accounting['complete'] else 'partial',roster=roster,
             mode=p['mode'],fixture=p['fixture'],accounting=accounting)
         next_step=('approved-execute' if accounting['counts']['pending'] and not accounting['integrity_hold'] else
                    'review-create' if accounting['counts']['completed'] or accounting['complete'] else 'new-selected-run')
     if (work/'review'/'dossier.json').exists():
-        ae.review_verify(work,binding,manifest); next_step='review-import'
+        require(state is not None,'review-without-execution')
+        review=ae._review_verify(work,binding,manifest,state); next_step='review-import'
     if (work/'export'/'handoff.json').exists():
-        exported=ae.verify_export(work,binding,manifest)
+        require(review is not None,'export-without-review')
+        exported=ae._verify_export(work,binding,manifest,review)
         receipts['review-export']=dict(status='verified' if exported['execution_complete'] else 'partial',fixture=p['fixture'])
         next_step=('candidate-import' if p['page_path'] else 'publish') if exported['execution_complete'] else 'new-selected-run'
         if not p['page_path']: receipts['page-reconciliation']=dict(status='not-requested',applied=False)
     if (work/'page-candidate'/'candidate.json').exists():
-        _candidate_verify(work,p,binding,manifest)
+        require(exported is not None,'candidate-without-export')
+        _candidate_verify(work,p,binding,manifest,exported=exported)
         receipts['page-reconciliation']=dict(status='staged-operator-prose',applied=False); next_step='apply'
     stages={h['stage'] for h in history}
     if 'page-apply' in stages:
@@ -542,7 +547,7 @@ def install_register(text,register,*,archive_paths=None):
     return text[:match.end()]+register_text(register)+text[match.end():]
 
 
-def _candidate_text(work,p,manifest,binding,submission,*,version=2):
+def _candidate_text(work,p,manifest,binding,submission,*,version=2,exported=None):
     fields={'schema','binding','export_sha256','reviewer','qualification','full_distillation_reviewed','replacements'}
     require(set(submission) in (fields,fields|{'reconciliation_outcome'}),'candidate-fields')
     unchanged=submission.get('reconciliation_outcome')=='reviewed-no-scientific-text-change'
@@ -554,7 +559,8 @@ def _candidate_text(work,p,manifest,binding,submission,*,version=2):
     from qualified_enrichment.exports import exact_view
     reviews.provenance(submission['reviewer'])
     require(isinstance(submission['qualification'],str) and submission['qualification'].strip(),'candidate-qualification-required')
-    exported=ae.verify_export(work,binding,manifest); views={e['element_id']:e for e in exported['elements']}
+    if exported is None: exported=ae.verify_export(work,binding,manifest)
+    views={e['element_id']:e for e in exported['elements']}
     require(exported['execution_complete'],'partial-export-cannot-complete-page-refresh')
     if p['manifest'] is None or p['mode']=='full': require(submission['full_distillation_reviewed'] is True,'full-distillation-attestation-required')
     original=(work/'original-page.md').read_text(); sections=_sections(original)
@@ -615,14 +621,14 @@ def candidate_import(work_root,submission):
         return pa.load(root/'candidate.json')
 
 
-def _candidate_verify(work,p,binding,manifest):
+def _candidate_verify(work,p,binding,manifest,*,exported=None):
     root=work/'page-candidate'; value=ae.read_bound(root/'candidate.json')
     require(value['binding']==binding and value['original_sha256']==p['page_sha256'] and
         value['input_sha256']==sha(root/'input.json') and value['candidate_sha256']==sha(root/'page-candidate.md') and
         value['diff_sha256']==sha(root/'page-candidate.diff'),'candidate-changed')
     saved=(root/'page-candidate.md').read_text()
     version=1 if read_register(saved)['schema'].endswith('-v1') else 2
-    require(saved==_candidate_text(work,p,manifest,binding,pa.load(root/'input.json'),version=version),'candidate-regeneration-mismatch')
+    require(saved==_candidate_text(work,p,manifest,binding,pa.load(root/'input.json'),version=version,exported=exported),'candidate-regeneration-mismatch')
     return value
 
 
