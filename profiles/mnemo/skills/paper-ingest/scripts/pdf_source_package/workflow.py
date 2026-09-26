@@ -231,3 +231,41 @@ def final_state(root, inspection_dir=None):
     from .reporting import facts
     state['facts'] = facts(root, state, inspection_dir)
     return state
+
+
+def fork_source(source, output, phase):
+    """Copy verified upstream evidence into a new run; never reuse POST authority."""
+    from article_runtime import absolute, external
+    from .reporting import Evidence, source_facts, basic_phase
+    source=absolute(source); output=absolute(output)
+    require(phase in ('classification','association'),'reuse-downstream-phase-required')
+    external(output,[source]); require(not output.exists(),'output-must-be-new')
+    evidence=Evidence(source); manifest,_=source_facts(evidence)
+    phases=['initial'] if phase=='classification' else ['initial','classification']
+    for prior in phases:
+        counts,_=basic_phase(evidence,prior)
+        require(counts['status']=='complete','upstream-phase-incomplete:'+prior)
+        seal=evidence.json(f'{prior}-seal.json')
+        require(seal['code']==sealed_code_hashes(seal),'upstream-code-changed:'+prior)
+    evidence.check()
+    names=set(evidence.files)
+    names.update(name for name in ('scope.json','OFFLINE-FIXTURE') if (source/name).is_file())
+    # Retain historical templates for audit only; downstream phase has no seal/session.
+    for prior in phases:
+        template=f'{prior}-approval.template.json'
+        if (source/template).is_file(): names.add(template)
+    for name in names: absolute(source/name)
+    bindings={name:sha(source/name) for name in sorted(names)}
+    outside_retention(output); output.mkdir(parents=True)
+    for name,h in bindings.items():
+        raw=(source/name).read_bytes(); require(digest(raw)==h,'reuse-input-changed:'+name)
+        put(safe(output,name),raw)
+    for name,h in bindings.items(): require(sha(source/name)==h,'reuse-source-changed:'+name)
+    save(output/'reuse.json',dict(schema='pdf-upstream-reuse-v1',source=str(source),phase=phase,
+        reused_phases=phases,files=bindings,code=phase_code_hashes(phase),authorization='new-downstream-approval-required'))
+    check=Evidence(output); source_facts(check)
+    for prior in phases: basic_phase(check,prior)
+    check.check()
+    return dict(package_dir=str(output),reused_phases=phases,application_posts=0,
+                next_operation=dict(tool='paper_workflow',operation='prepare-stage',package_dir=str(output),phase=phase),
+                note='New downstream count, seal and approval required; original seals preserved byte-for-byte.')

@@ -97,6 +97,19 @@ def code_hashes():
             if p.is_file() and p.suffix in ('.py', '.txt', '.json')}
 
 
+def phase_code_hashes(phase):
+    """All shared code stays bound; omit only prompts unused by this phase."""
+    require(phase in ('initial','classification','association'),'phase')
+    excluded={'assets/association-prompt.txt','assets/association-schema.json'} if phase!='association' else set()
+    if phase=='initial': excluded.add('assets/classifier-prompt.txt')
+    return {name:value for name,value in code_hashes().items() if name not in excluded}
+
+
+def sealed_code_hashes(seal):
+    require(seal['schema'] in ('pdf-phase-seal-v1','pdf-phase-seal-v2'),'seal-schema')
+    return code_hashes() if seal['schema']=='pdf-phase-seal-v1' else phase_code_hashes(seal['phase'])
+
+
 def offline():
     """Inherited by CLI subprocesses through PDF_SOURCE_PACKAGE_OFFLINE."""
     os.environ['PDF_SOURCE_PACKAGE_OFFLINE'] = '1'

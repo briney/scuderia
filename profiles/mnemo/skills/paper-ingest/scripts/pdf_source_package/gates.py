@@ -73,7 +73,7 @@ def seal(root, phase):
     for row in plan['requests']:
         names.update(row['inputs']); names.update(row['directory'] + '/' + n for n in ('request-wire.json','count.json'))
     names.update(d['raw'] for d in manifest['documents'])
-    freeze = dict(schema='pdf-phase-seal-v1', phase=phase, code=code_hashes(),
+    freeze = dict(schema='pdf-phase-seal-v2', phase=phase, code=phase_code_hashes(phase),
                   files={n: sha(safe(root, n)) for n in sorted(names)})
     save(root / f'{phase}-seal.json', freeze)
     approval = expected(root, phase)
@@ -85,7 +85,7 @@ def expected(root, phase):
     root = Path(root); manifest = load(root / 'manifest.json'); plan = load(root / f'{phase}-plan.json')
     return dict(schema='pdf-parent-approval-v1', phase=phase, approved=False, approved_by=None,
         source_and_candidates_reviewed=False, payload_counts_reviewed=False, current_route_reviewed=False,
-        seal_sha256=sha(root / f'{phase}-seal.json'), code=code_hashes(), endpoint=manifest['endpoint'],
+        seal_sha256=sha(root / f'{phase}-seal.json'), code=sealed_code_hashes(load(root / f'{phase}-seal.json')), endpoint=manifest['endpoint'],
         settings=SETTINGS, timeout_seconds=TIMEOUT, retries=0, reasoning='omitted/default',
         requests=[dict(id=r['id'], request_sha256=r['request_sha256'], count=r['count']) for r in plan['requests'] if r['status']=='ready'],
         maximum_phase_posts=sum(r['status']=='ready' for r in plan['requests']), maximum_total_posts=manifest['maximum_posts'])
@@ -121,7 +121,7 @@ class EntrySnapshot:
                 all(a[k] is True for k in flags - {'approved_by'}), 'explicit-parent-approval-required')
         require(all(a[k] == want[k] for k in set(want) - flags), 'approval-bindings-changed')
         frozen = load(root / f'{phase}-seal.json')
-        require(frozen['code'] == code_hashes(), 'code-changed')
+        require(frozen['code'] == sealed_code_hashes(frozen), 'code-changed')
         stamps = []
         for name, h in frozen['files'].items():
             p = safe(root, name); before = stamp(p)
@@ -132,7 +132,7 @@ class EntrySnapshot:
             assets = Path(plan['processor']['cache']) / ('models--' + MODEL_REPO.replace('/', '--')) / 'snapshots' / REVISION
             require({p.name: sha(p) for p in sorted(assets.iterdir()) if p.is_file()} == plan['processor']['files'], 'processor-assets-changed')
         result = cls(root, phase, approval, approval_bytes, seal_bytes,
-                     plan_bytes, dumps(code_hashes()), tuple(stamps))
+                     plan_bytes, dumps(sealed_code_hashes(frozen)), tuple(stamps))
         result.check()
         return result
 
@@ -145,7 +145,7 @@ class EntrySnapshot:
         require(self.approval_path.read_bytes() == self.approval_bytes, 'entry-approval-changed')
         require((self.root / f'{self.phase}-seal.json').read_bytes() == self.seal_bytes, 'entry-seal-changed')
         require((self.root / f'{self.phase}-plan.json').read_bytes() == self.plan_bytes, 'entry-plan-changed')
-        require(dumps(code_hashes()) == self.code_bytes, 'entry-code-changed')
+        require(dumps(sealed_code_hashes(strict(self.seal_bytes))) == self.code_bytes, 'entry-code-changed')
         # Full shared content was hashed once at phase entry. Metadata changes
         # reject even coordinated edits; current request content is hashed again.
         for name, previous in self.shared_stamps:
@@ -221,7 +221,7 @@ def prepare_phase(root, phase, cache=None):
         seal(root, phase)
     else:
         frozen = load(root/f'{phase}-seal.json')
-        require(frozen['code'] == code_hashes(), 'code-changed')
+        require(frozen['code'] == sealed_code_hashes(frozen), 'code-changed')
         template = expected(root, phase)
         path = root/f'{phase}-approval.template.json'
         if not path.exists(): save(path, template)

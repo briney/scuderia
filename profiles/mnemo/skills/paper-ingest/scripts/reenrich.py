@@ -162,6 +162,8 @@ def plan(request,*,manifest=None,work_root,fixture=False,model_profile=None,page
 
 # Fixed public operations; input paths never select executable code.
 OPERATOR_FIELDS = {
+    'repair-plan': ({'manifest','work_root'}, {'page','page_scope','fixture'}),
+    'reuse-source': ({'work_root','output','phase'}, set()),
     'route': ({'article','page','work_root'}, {'manifest','elements','fixture','page_scope'}),
     'execute': ({'work_root'}, set()),
     'adopt': ({'work_root','manifest','identity_approval'}, set()),
@@ -191,6 +193,10 @@ def operator(arguments):
         if key in ('manifest','identity_approval','count_receipt','approval','submission','packet'):
             require(path.is_file(), f'file-required:{command}:{key}:{path}')
         if key=='cache': require(path.is_dir(), f'directory-required:{command}:{key}:{path}')
+    if command=='repair-plan': return repair_plan(**args)
+    if command=='reuse-source':
+        from pdf_source_package.workflow import fork_source
+        return fork_source(args['work_root'],args['output'],args['phase'])
     if command=='route': return route(**args)
     if command=='execute': return execute(**args)
     if command=='adopt': return adopt(**args)
@@ -222,6 +228,21 @@ def continuation(work, p, step):
     return dict(tool='paper_enrichment',operation='article',arguments=args,missing_inputs=missing,
                 artifacts=paths,executable=step in OPERATOR_FIELDS,
                 note='Supply a new external attempt_dir. Returned arguments never grant approval.')
+
+
+def repair_plan(manifest, *, work_root, page=None, page_scope=None, fixture=False, model_profile=None):
+    """New selected run over failed/uncertain products, with fresh approval gates."""
+    import final_products
+    manifest=absolute(manifest); m=final_products.verify(manifest)
+    _,paths=pa.verify_local(manifest)
+    products=pa.load(paths[m['products_key']])
+    eligible={e['element_id'] for e in m['elements'] if e['eligible']}
+    elements=[e['element_id'] for e in products['elements'] if e['element_id'] in eligible and
+              e.get('outcome',{}).get('status') in ('failed','uncertain','pending','unattempted')]
+    require(elements,'no-failed-or-uncertain-elements-to-repair')
+    plan(Request(m['article']['slug'],elements,page),manifest=manifest,work_root=work_root,fixture=fixture,
+         model_profile=model_profile,page_scope=page_scope)
+    return execute(work_root=work_root)
 
 
 def route(article, *, page, work_root, manifest=None, elements=None, fixture=False, model_profile=None, page_scope=None):
@@ -431,11 +452,17 @@ def execute(plan_value=None,*,work_root):
             production_complete=False,page_refresh_complete=False,fixture=p['fixture'],next_step=None if diagnostic_ready else next_step)
     complete=not held and all(x['status'] in ('verified','executed','applied','not-requested','verified-at-publication') for key,x in receipts.items() if key!='enrichment') and 'publish' in stages
     completion=completion_label(p) if complete else 'pending'
+    budget=None
+    if prepared and (enrichment/'counts.json').is_file():
+        counts=ae.verify_counts(enrichment,prepared)
+        budget=dict(requests=counts['requests'],timeout_seconds=1200,
+                    generation_feasibility='not-established-by-input-count',
+                    native_review_operation=dict(command='review-create',work_root=str(work)))
     return dict(schema='reenrich-run-v2',route=route_name(p),completion_verifier='reenrich.verify_completion',article=p['article'],mode=p['mode'],elements=roster,stage_receipts=receipts,
         status='finished' if complete else 'pending-operator-continuation',completion=completion,
         production_complete=complete and not p['fixture'],page_refresh_complete=complete and bool(p['page_path']),
         fixture=p['fixture'],next_step=None if complete else next_step,
-        next_operation=continuation(work,p,None if complete else next_step))
+        next_operation=continuation(work,p,None if complete else next_step),request_budget=budget)
 
 
 def advance(work_root,operation,*,cache=None,count_receipt=None,approval=None,authorize=False,fixture_transport=None,submission=None,vlm_concurrency=None,packet=None):

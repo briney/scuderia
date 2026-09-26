@@ -243,7 +243,7 @@ def basic_phase(evidence, phase):
     seal_name = f'{phase}-seal.json'
     if (evidence.root / seal_name).exists():
         seal = evidence.json(seal_name)
-        require(seal['phase'] == phase and seal['schema'] == 'pdf-phase-seal-v1', 'seal-phase')
+        require(seal['phase'] == phase and seal['schema'] in ('pdf-phase-seal-v1','pdf-phase-seal-v2'), 'seal-phase')
         required = {f'{phase}-plan.json', 'manifest.json'} | set(plan['dependencies'])
         for row in rows:
             required.update(row['inputs'])
