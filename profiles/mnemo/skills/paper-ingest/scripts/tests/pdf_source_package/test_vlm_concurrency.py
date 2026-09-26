@@ -263,3 +263,21 @@ class Interfaces(unittest.TestCase):
                 launcher.validated(dict(args, vlm_concurrency=value))
             with self.subTest(value=value), self.assertRaises(ValueError):
                 enrichment_launcher.argv_for(dict(enrichment_args, vlm_concurrency=value), deployment, self.root/'enrichment-attempt')
+
+    def test_plugin_refresh_does_not_reuse_prior_launcher_cache(self):
+        import hashlib
+        import runpy
+        import sys
+        import types
+        scripts = Path(execution.__file__).parents[1]
+        workflow = runpy.run_path(str(scripts/'paper-workflow/__init__.py'))
+        enrichment = runpy.run_path(str(scripts/'paper-enrichment/__init__.py'))
+        old_source = '_paper_workflow_method_' + hashlib.sha256(str(scripts).encode()).hexdigest()[:16]
+        old_enrichment = '_paper_enrichment_launcher_' + hashlib.sha256(str(scripts/'qualified_enrichment/launcher.py').encode()).hexdigest()[:16]
+        stale = types.ModuleType('prior_launcher')
+        package = types.ModuleType(old_source); package.__path__ = []
+        with patch.dict(sys.modules, {old_source: package, old_source+'.launcher': stale, old_enrichment: stale}):
+            for module in (workflow, enrichment):
+                loaded = module['runner'](str(scripts))
+                self.assertIsNot(loaded, stale)
+                self.assertTrue(callable(loaded.launch))

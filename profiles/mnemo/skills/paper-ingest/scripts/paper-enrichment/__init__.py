@@ -32,7 +32,7 @@ SCHEMA=dict(name='paper_enrichment',description=(
 
 def runner(root):
     path=Path(root)/'qualified_enrichment/launcher.py'
-    name='_paper_enrichment_launcher_'+hashlib.sha256(str(path).encode()).hexdigest()[:16]
+    name='_paper_enrichment_launcher_'+hashlib.sha256(str(path).encode()+path.read_bytes()).hexdigest()[:16]
     if name not in sys.modules:
         spec=importlib.util.spec_from_file_location(name,path)
         module=importlib.util.module_from_spec(spec); sys.modules[name]=module; spec.loader.exec_module(module)

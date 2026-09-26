@@ -44,7 +44,7 @@ def runner(method_dir):
     root = Path(method_dir)
     if not root.is_absolute() or not (root/'pdf_source_package/__init__.py').is_file():
         raise ValueError('trusted-method-unavailable')
-    name = '_paper_workflow_method_' + hashlib.sha256(str(root).encode()).hexdigest()[:16]
+    name = '_paper_workflow_method_' + hashlib.sha256(str(root).encode() + (root/'pdf_source_package/launcher.py').read_bytes()).hexdigest()[:16]
     if name not in sys.modules:
         spec = importlib.util.spec_from_file_location(name, root/'pdf_source_package/__init__.py',
                                                      submodule_search_locations=[str(root/'pdf_source_package')])
