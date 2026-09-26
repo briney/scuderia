@@ -66,7 +66,8 @@ def summarize(*, source_attempts=(), enrichment_attempts=()):
                         # Legacy and rejected responses may report usage without an accepted outcome.
                         try: usage=_load(d/'response-body.json').get('usage',{})
                         except (ValueError,UnicodeError,AttributeError): usage={}
-                    usage={k:v for k,v in (usage or {}).items() if k in ('prompt_tokens','completion_tokens','total_tokens') and type(v) is int and v>=0}
+                    if not isinstance(usage,dict): usage={}
+                    usage={k:v for k,v in usage.items() if k in ('prompt_tokens','completion_tokens','total_tokens') and type(v) is int and v>=0}
                     requests[identity]=dict(reservation_sha256=identity.split(':',1)[1],kind=kind,phase=phase,status=status,
                         started_at=timing.get('started_at',reserved.get('started_at')),
                         request_started_at=timing.get('request_started_at'),response_received_at=timing.get('response_received_at'),

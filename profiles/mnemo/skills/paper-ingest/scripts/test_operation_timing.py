@@ -31,3 +31,20 @@ class TimingTests(unittest.TestCase):
             self.assertEqual(result['attempts'][0]['phases'][0]['concurrency_source'],'environment')
             self.assertEqual(result['requests'][0]['response_received_at'],None)
             self.assertEqual(timing.summarize()['request_wall_seconds'],None)
+
+    def test_malformed_failed_response_usage_remains_missing(self):
+        import operation_timing as timing
+        with tempfile.TemporaryDirectory(dir=os.environ['SOURCE_PACKAGE_TEST_ROOT']) as tmp:
+            root=Path(tmp); request=root/'request'; request.mkdir()
+            pa.save(root/'initial-plan.json',dict(requests=[dict(directory='request')]))
+            pa.save(request/'reservation.json',dict(identity='failed'))
+            pa.save(request/'call.json',dict(status='http-failure',complete=False))
+            for usage in (['invalid'], 'invalid', 42, None):
+                with self.subTest(usage=usage):
+                    response=request/'response-body.json'
+                    if response.exists(): response.unlink()
+                    pa.save(response,dict(usage=usage))
+                    result=timing.summarize(source_attempts=[root])
+                    self.assertEqual(result['counts']['failed'],1)
+                    self.assertEqual(result['requests_missing_usage'],1)
+                    self.assertEqual(result['usage']['total_tokens'],0)

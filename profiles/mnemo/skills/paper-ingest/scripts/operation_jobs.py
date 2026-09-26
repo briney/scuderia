@@ -5,6 +5,7 @@ absence without a terminal receipt is uncertain, not permission to retry.
 """
 import argparse
 from dataclasses import asdict
+from datetime import datetime
 import fcntl
 import json
 import os
@@ -55,8 +56,9 @@ def start(kind, arguments, deployment):
     return status(root)
 
 
-def execution_progress(identity):
+def execution_progress(identity, process):
     """Read the worker's actual execution settings; never infer them from this caller."""
+    if not isinstance(process,dict) or not process.get('child_pid'): return None
     args=identity.get('arguments',{})
     if identity.get('kind')=='source' and args.get('operation')=='execute':
         path=absolute(args['package_dir'])/(args['phase']+'-session.json')
@@ -75,6 +77,10 @@ def execution_progress(identity):
         return None
     except (ValueError,OSError):
         return dict(status='updating')
+    if value.get('pid')!=process['child_pid']: return None
+    try:
+        if datetime.fromisoformat(value['started_at'].replace('Z','+00:00')) < datetime.fromisoformat(process['started_at'].replace('Z','+00:00')): return None
+    except (KeyError,ValueError,TypeError): return None
     return {k:value.get(k) for k in ('vlm_concurrency','concurrency_source','started_at')}
 
 
@@ -90,14 +96,12 @@ def status(attempt):
         value.update(status='finished' if terminal['result'].get('success') else 'failed',
                      success=bool(terminal['result'].get('success')),result=terminal['result'],next_operation=None)
         result=terminal['result']
-        execution=result.get('execution') or result.get('receipt',{}).get('details',{}).get('execution')
+        execution=result.get('execution') or (result.get('receipt') or {}).get('details',{}).get('execution')
         if execution is not None: value['execution']=execution
         # Results remain evidence-bound after the controlling session disappears.
         for path,h in terminal.get('artifacts',{}).items():
             require(sha(path)==h,'terminal-artifact-changed:'+path)
         return value
-    progress=execution_progress(job['identity'])
-    if progress is not None: value['execution']=progress
     running=False
     if (root/'worker.lock').exists():
         with (root/'worker.lock').open('rb') as lock:
@@ -105,9 +109,12 @@ def status(attempt):
             except BlockingIOError: running=True
     value['status']='running' if running else ('starting' if time.time()-job['created_at']<10 else 'uncertain')
     process=root/'worker/process.json'
+    if not process.exists(): process=root/'worker/running.json'
     if process.exists():
         try: value['process']=json.loads(process.read_text())
         except (ValueError,OSError): value['process']='updating'
+    progress=execution_progress(job['identity'],value.get('process'))
+    if progress is not None: value['execution']=progress
     if value['status']=='uncertain': value['diagnostic']='Supervisor absent without terminal evidence; inspect reservations; do not redispatch.'
     return value
 

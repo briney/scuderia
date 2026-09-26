@@ -376,7 +376,7 @@ def _execute(work,binding,manifest_path,approval_path,*,authorize=False,fixture_
         _seal_file(root/'execution-start.json',dict(approval_sha256=sha(root/'executed-approval.json'),fixture=fixture,
             binding=binding,**settings,started_at=pa.now_utc(),origin='offline-inference-double' if fixture else 'parent-authorized-live'))
     runs=root/'execution-runs'
-    _seal_file(runs/f'{len(list(runs.glob("*.json")))+1:06d}.json',dict(**settings,started_at=pa.now_utc()))
+    _seal_file(runs/f'{len(list(runs.glob("*.json")))+1:06d}.json',dict(**settings,pid=os.getpid(),started_at=pa.now_utc()))
     def pre_post():
         verify(work,binding,manifest_path); approval(root,v,pa.load(root/'executed-approval.json'))
         require(sha(approval_path)==sha(root/'executed-approval.json'),'execution-approval-changed')

@@ -166,10 +166,40 @@ class ProgressTests(unittest.TestCase):
             jobs.write(attempt/'job.json',dict(schema='paper-operation-job-v1',created_at=time.time(),
                 identity=dict(kind='source',arguments=args)))
             (attempt/'job.sha256').write_text(sha(attempt/'job.json'))
-            jobs.write(package/'initial-session.json',dict(vlm_concurrency=12,concurrency_source='environment',started_at='now'))
+            (attempt/'worker').mkdir()
+            jobs.write(attempt/'worker/process.json',dict(child_pid=42,started_at='2026-01-01T00:00:00Z'))
+            jobs.write(package/'initial-session.json',dict(pid=42,vlm_concurrency=12,concurrency_source='environment',started_at='2026-01-01T00:00:01Z'))
             result=jobs.status(attempt)
             self.assertEqual(result['execution']['vlm_concurrency'],12)
             self.assertEqual(result['execution']['concurrency_source'],'environment')
-            self.assertFalse((attempt/'worker').exists())
+            self.assertFalse((attempt/'worker/console.log').exists())
             (package/'initial-session.json').write_text('{')
             self.assertEqual(jobs.status(attempt)['execution'],{'status':'updating'})
+
+    def test_starting_continuation_never_reports_previous_worker_settings(self):
+        import operation_jobs as jobs
+        from article_runtime import sha
+        with tempfile.TemporaryDirectory(dir=os.environ['SOURCE_PACKAGE_TEST_ROOT']) as tmp:
+            root=Path(tmp); work=root/'work'; (work/'enrichment/execution-runs').mkdir(parents=True)
+            attempt=root/'attempt'; (attempt/'worker').mkdir(parents=True)
+            args=dict(operation='article',arguments=dict(command='approved-execute',work_root=str(work),vlm_concurrency=4))
+            jobs.write(attempt/'job.json',dict(schema='paper-operation-job-v1',created_at=time.time(),identity=dict(kind='enrichment',arguments=args)))
+            (attempt/'job.sha256').write_text(sha(attempt/'job.json'))
+            old=work/'enrichment/execution-runs/000001.json'
+            jobs.write(old,dict(pid=42,vlm_concurrency=12,concurrency_source='environment',started_at='2026-01-01T00:00:00Z'))
+            self.assertNotIn('execution',jobs.status(attempt))
+            jobs.write(attempt/'worker/running.json',dict(child_pid=42,started_at='2026-01-01T00:00:01Z'))
+            self.assertNotIn('execution',jobs.status(attempt))  # PID reuse is insufficient.
+            jobs.write(work/'enrichment/execution-runs/000002.json',dict(pid=42,vlm_concurrency=4,concurrency_source='argument',started_at='2026-01-01T00:00:02Z'))
+            self.assertEqual(jobs.status(attempt)['execution']['vlm_concurrency'],4)
+
+    def test_failed_worker_without_child_receipt_still_has_terminal_status(self):
+        import operation_jobs as jobs
+        from article_runtime import sha
+        with tempfile.TemporaryDirectory(dir=os.environ['SOURCE_PACKAGE_TEST_ROOT']) as tmp:
+            root=Path(tmp)
+            jobs.write(root/'job.json',dict(schema='paper-operation-job-v1',created_at=time.time(),identity={}))
+            binding=sha(root/'job.json'); (root/'job.sha256').write_text(binding)
+            jobs.write(root/'terminal.json',dict(job_sha256=binding,result=dict(success=False,receipt=None),artifacts={}))
+            (root/'terminal.sha256').write_text(sha(root/'terminal.json'))
+            self.assertEqual(jobs.status(root)['status'],'failed')
