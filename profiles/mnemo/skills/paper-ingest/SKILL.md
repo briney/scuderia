@@ -20,6 +20,8 @@ eval_contract:
     - "OWNERSHIP — each worker owns its assigned paper; shared writes have one owner"
     - "COMPLETION — citation provenance, author wiring, propagation, and final checks all land"
   hard_fails:
+    - Using text-only ingestion without failed PDF retrieval, or abstract-only ingestion without failed PDF and full-body retrieval.
+    - Skipping PDF extraction or figure/table enrichment because readable text is already available.
     - Declaring an unwired page-only result a complete ingest.
     - Clearing enrichment on abstract-only or substitute-preprint distillation.
     - Losing citing edges or wiring to a known wrong author identity.
@@ -64,7 +66,7 @@ They resolve under `skills/conventions/` through the profile binding.
 | Situation | Read |
 |---|---|
 | Invoking a helper | `references/script-commands.md`; resolve `scripts/` from this skill, use Python >=3.10 and required dependencies. |
-| New production ingest retaining any PDF | `references/source-package-integration.md`, `references/qualified-enrichment.md` and the document-format-parsing skill; use the deployed source workflow and qualified figure/table enrichment. |
+| New production ingest with a supplied or retrievable PDF (retention is mandatory) | `references/source-package-integration.md`, `references/qualified-enrichment.md` and the document-format-parsing skill; use the deployed source workflow and qualified figure/table enrichment. |
 | Portable article-package archive/restore or explicit existing-paper full/selected re-enrichment | `references/portable-articles.md`; use its shared CLI and dedicated completion verifier, not the new-ingest handoff contract. |
 | PubMed identity or PMC source | `references/pubmed-pmc-retrieval.md` |
 | arXiv, bioRxiv/medRxiv, or a conference/published twin | `references/preprint-conference-retrieval.md` |
@@ -153,6 +155,28 @@ and unresolved identities instead of silently dispatching them.
 
 ### 4. Full-text retrieval
 
+**Required source order: PDF → full-body text → abstract.** These are
+failure-gated fallbacks, not interchangeable ingestion modes:
+
+1. Retrieve and retain the original manuscript PDF (or use the supplied PDF),
+   verify its identity/version, and run the source-package and qualified
+   figure/table workflow below. Complete HTML/XML or PDF-to-text output may
+   assist reading; none replaces PDF processing when a PDF is available.
+2. Text-only ingestion is permitted only after bounded, recorded PDF retrieval
+   attempts through applicable authorized routes have failed to obtain the
+   manuscript PDF. Verify that the alternative contains the complete body.
+3. Abstract-only ingestion is permitted only after both PDF retrieval and
+   alternative full-body retrieval have failed. Record both sets of failures.
+
+A known PDF link must be attempted, not deferred because text is easier,
+context/time is short, or a helper already returned HTML/XML. An unattempted
+PDF lead leaves acquisition unresolved and completion on hold. A supplied or
+successfully downloaded PDF cannot become a retrieval failure because parsing,
+extraction, enrichment, or archival failed. Missing workflow capabilities or
+budget hold the PDF workflow; they do not authorize a text/abstract substitute.
+A failed extraction element can use the existing attributed partial-evidence
+review within that workflow; it does not authorize skipping the workflow.
+
 Use the applicable source reference. `fetch_fulltext.py` provides a useful
 HTTP ladder, not the full retrieval procedure: it lacks browser/paperclip
 routes and abstract-only closure. Validate every returned candidate even
@@ -169,7 +193,8 @@ instance-configured archive destination and existing authorization; absent acces
 or authorization is an explicit publication hold. Never claim an R2 pointer
 without verified archival. Retrieval alone does not imply archival.
 
-**Retained-source production route:** for new ingests retaining any PDF, follow
+**Required PDF production route:** for new ingests with any supplied or
+retrieved PDF, retain it and follow
 `references/source-package-integration.md`. Enable `fetch_fulltext.py
 --evidence-dir` and preserve other-route originals and failed attempts in new
 source/attempt directories. Record the inspected attachment listing and each
@@ -182,7 +207,8 @@ links, explicit endpoint and application-post budget. Use every physical page
 and all accepted extraction channels for manuscript and supplementary PDFs.
 Retain non-PDF attachments with deferred-extraction dispositions; deferred
 extraction alone is not an automatic completion hold or permission to make
-claims from unread data. Acquisition and PDF-extraction failures remain holds.
+claims from unread data. Acquisition and PDF-extraction failures remain recorded mechanical holds;
+only the attributed review in Phase 5 can establish page readiness despite them.
 
 Use the registered workflow capability (Hermes: `paper_workflow`) for actual
 phases. Preparation, counting, sealing, separately authored approval and
@@ -213,24 +239,28 @@ original pages and ordered crop fragments when visual evidence is required.
 
 **Acquisition closure:** make reasonable, recorded attempts through applicable
 authorized retrieval routes: canonical publisher/versioned source, available
-repository copies, and relevant index leads. Attempt known available-copy leads
-or explicitly record why they were deferred. Record actual responses and
+repository copies, and relevant index leads. Attempt known available-copy leads. Record any necessary deferral as a
+remaining obligation; it does not satisfy the failed-retrieval gates. Record actual responses and
 remaining blockers; do not require three providers to agree that access is
 closed. A missing credential, empty result, 403/429/5xx, or provider failure
 means unavailable or unresolved evidence, not proof that the paper is closed.
 Investigate contradictory metadata enough to account for the available leads;
-if access remains unresolved, a useful abstract-based page may still complete.
+only the failed-retrieval fallbacks above may complete a source-limited page.
 Do not repeat failed routes indefinitely or bypass access restrictions.
 
 For preprints, check the original versioned source, published twin and
 applicable repository routes in the preprint reference. Record the version
-actually used. A known unattempted source needs a specific deferral reason.
-Without a retained PDF, use the existing text/abstract distillation route;
-never manufacture a PDF package to satisfy the retained-PDF interface.
+actually used. A known unattempted source needs a specific deferral reason;
+unattempted manuscript-PDF leads hold completion.
+Absence of a retained PDF is not itself fallback eligibility. Apply the
+failed-retrieval gates above; never manufacture a PDF package to satisfy the
+retained-PDF interface.
 
-When justified abstract-only distillation is used, set `fulltext_source:
-abstract-only` and `needs-enrichment: true`. A preprint used instead of an
-existing published article also retains enrichment. A complete preprint
+For justified text-only or abstract-only fallback, retain `needs-enrichment:
+true` for the missing manuscript PDF and record concise attempted URLs and
+actual retrieval failures in the Ingest log. Abstract-only also sets
+`fulltext_source: abstract-only`; text-only uses the actual accepted provenance.
+A preprint used instead of an existing published article also retains enrichment. A complete preprint
 without a published twin need not be flagged. Attribute preview/caption-only
 claims to those exact sources; do not invent missing methods/results.
 
@@ -265,8 +295,9 @@ registers and extraction/audit dumps belong in the external package.
 A supported source-limited page may complete ingestion after ordinary parent
 integration and verification. Set `needs-ingest: false` then, even if acquisition,
 extraction or enrichment has recorded failures. Retain `needs-enrichment: true`
-for a concrete unresolved source or processing gap worth revisiting; abstract-only
-pages retain it. Missing redundant downloads alone do not require enrichment.
+for a concrete unresolved source or processing gap worth revisiting; text-only
+and abstract-only fallbacks retain it. Missing redundant copies alone do not
+require enrichment; the original manuscript PDF is not redundant with HTML/XML.
 Record material source limitations in the assessment's `source_limitations`
 and beside affected claims; leave that list empty when no substantive inadequacy
 is established. Never infer scientific limitations merely from incomplete
@@ -373,6 +404,15 @@ A paper worker never edits this inbox.
 
 This completed-fill contract is shared by dives and queue drains. Verify:
 
+- Source-route eligibility, checked by the parent as well as the worker:
+  a supplied/retrieved PDF requires the PDF workflow and final-product evidence;
+  text-only requires recorded failed PDF retrieval; abstract-only requires
+  recorded failed PDF and full-body retrieval. A provenance label, text dump,
+  or `verify_ingest.py` pass without package arguments cannot establish this.
+  Read the actual outcomes: an available PDF plus no extraction/figure/table
+  artifacts is incomplete, not a successful text-only ingest. Preserve genuine
+  no-figure/no-table results and reviewed element failures from the workflow;
+  do not fabricate artifacts to fill an expected count.
 - YAML, `kind: paper`, slug/filename agreement, nonblank title/venue, positive
   integer-valued year (integer or decimal string, not boolean), allowed status,
   explicit verified bare DOI or source-confirmed null, complete distinct

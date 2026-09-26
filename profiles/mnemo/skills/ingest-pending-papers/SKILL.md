@@ -215,6 +215,11 @@ Follow the runtime’s configured models and limits without changing pins.
    graph links plus the propagation packet. Parent-owned merges use the
    canonical path throughout; no shared file is edited by an in-flight leaf.
 
+   Verify fallback eligibility under paper-ingest Phase 4 from actual retrieval
+   outcomes, not merely the worker's chosen provenance: an available PDF requires
+   the PDF workflow; text-only requires failed PDF retrieval; abstract-only
+   requires failed PDF and full-body retrieval. Keep skipped PDF processing queued.
+
    Set `needs-ingest: false` only after those obligations are satisfied, then
    run full `verify_ingest.py --require-filled` without `--page-only`, retaining
    the same mandatory source/enrichment arguments for retained-PDF items, and run

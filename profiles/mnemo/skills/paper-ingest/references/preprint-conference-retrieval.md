@@ -82,14 +82,16 @@ landing-page H1 and a canonical-identity check will compare against it.
 
 ## Text, PDFs, and mirrors
 
-For the selected version try direct `arxiv.org/html/<id>v<N>` and
-`arxiv.org/pdf/<id>v<N>` as available. The helper may also supply a candidate
-via its generic publisher route; its `--out <prefix>` remains required.
+For the selected version retrieve and retain `arxiv.org/pdf/<id>v<N>`;
+`arxiv.org/html/<id>v<N>` may supplement reading or serve as the full-body
+fallback only after PDF retrieval fails under Phase 4. The helper may also
+supply a candidate via its generic publisher route; its `--out <prefix>` remains required.
 HTML is not universally available or lossless. Preserve whole text on disk
 or read chunks through the end; never call a 50,000-character slice full text.
 Inspect mathematical notation, table cells, conversion warnings, captions,
 and appendices against the original PDF where needed. Downloading HTML does
-not discharge the independent manuscript-PDF attempt.
+not discharge manuscript-PDF retrieval, retention, or the required source-package
+and figure/table workflow. A PyMuPDF/pdftotext text dump alone is not PDF ingestion.
 
 Paperclip is an optional indexed mirror, not necessarily a local/offline
 cache. Load `skills/paperclip-search/SKILL.md` when using it. Use observed IDs
