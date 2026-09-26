@@ -13,6 +13,12 @@ def concurrency_limit(value=None):
     return value
 
 
+def concurrency_settings(value=None):
+    source = ('argument' if value is not None else
+              'environment' if 'PAPER_INGEST_VLM_CONCURRENCY' in os.environ else 'fallback')
+    return dict(vlm_concurrency=concurrency_limit(value), concurrency_source=source)
+
+
 def run_requests(rows, prepare, request, consume, *, vlm_concurrency=None, stopped=lambda: False):
     """Only request runs in workers. Drain all dispatched calls before raising.
 

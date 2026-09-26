@@ -97,7 +97,7 @@ def main(argv=None):
                 elif args.operation=='execute':
                     result=ae.execute(job,binding,manifest,absolute(args.approval),authorize=args.authorize_posts,vlm_concurrency=args.vlm_concurrency)
                     exit_code=0 if result['accounting']['complete'] else 1
-                    details=result['accounting']
+                    details=dict(result['accounting'], execution=ae.execution_settings(job))
                 elif args.operation=='import-test-response':
                     raise ValueError('portable-fixtures-use-offline-executor-double')
                 else:
@@ -142,7 +142,7 @@ def main(argv=None):
                      checked_artifacts=artifacts,artifact_status='verified',
                      production_executed=False if args.operation!='execute' else None,
                      note='Actual child operation; no scientific correctness or acceptance asserted.')
-        if args.operation=='article': receipt['details']=details
+        if args.operation in ('article','execute'): receipt['details']=details
         if next_step is not None: receipt['next_step']=next_step
         if args.operation == 'review-packet':
             from qualified_enrichment.records import digest

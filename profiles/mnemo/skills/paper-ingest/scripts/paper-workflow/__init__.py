@@ -29,7 +29,7 @@ SCHEMA = {
             'phase': {'type': 'string', 'enum': ['initial','classification','association']},
             **{name: {'type':'string','minLength':1,'maxLength':4096} for name in PATHS},
             'background': {'type':'boolean','default':False,'description':'Return a durable attempt immediately; status/cancel use the same attempt_dir.'},
-            'vlm_concurrency': {'type':'integer','minimum':1,'description':'Execute only: per-paper active inference limit; defaults to PAPER_INGEST_VLM_CONCURRENCY or 3.'},
+            'vlm_concurrency': {'type':'integer','minimum':1,'description':'Execute only: omit to inherit PAPER_INGEST_VLM_CONCURRENCY (fallback 3 only when unset). Set only for an intentional user/operator override; never copy a historical run value.'},
             'authorize_posts': {'type':'boolean','default':False},
             'offline': {'type':'boolean','default':False},
             'offline_fixture': {'type':'boolean','default':False},

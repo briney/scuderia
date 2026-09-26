@@ -27,7 +27,7 @@ SCHEMA=dict(name='paper_enrichment',description=(
         'qualification':dict(type='string'), 'kind':dict(type='string',enum=['qualified-job','v7-run']),
         'max_bytes':dict(type='integer',minimum=1024,maximum=8000000),
         'background':dict(type='boolean',default=False,description='Run detached; status/cancel with the same attempt_dir reattach without dispatch.'),
-        'vlm_concurrency':dict(type='integer',minimum=1,description='Execute only: per-paper active inference limit; defaults to PAPER_INGEST_VLM_CONCURRENCY or 3.'),
+        'vlm_concurrency':dict(type='integer',minimum=1,description='Execute only: omit to inherit PAPER_INGEST_VLM_CONCURRENCY (fallback 3 only when unset). Set only for an intentional user/operator override; never copy a historical run value.'),
         'authorize_posts':dict(type='boolean',default=False),'offline':dict(type='boolean',default=False),
         'timeout':dict(type='number',exclusiveMinimum=0,maximum=86400,default=14400),
     }))

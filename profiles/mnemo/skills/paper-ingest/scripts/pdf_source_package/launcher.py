@@ -268,7 +268,7 @@ def launch(args, deployment=None):
             require(evidence_root in (root, args.get('output_dir')), 'unexpected-evidence-root')
             for name, expected in bindings.items():
                 require(sha(safe(evidence_root, name)) == expected, 'operation-artifact-changed')
-        for key in ('next_step','artifact_status','phase_status','fixture','requested_work_complete','facts_path','summary_path','results_path'):
+        for key in ('execution','next_step','artifact_status','phase_status','fixture','requested_work_complete','facts_path','summary_path','results_path'):
             if key in receipt: result[key] = receipt[key]
         if args['operation'] in ('report', 'finalize', 'summary'):
             destination = args.get('output_dir', root)

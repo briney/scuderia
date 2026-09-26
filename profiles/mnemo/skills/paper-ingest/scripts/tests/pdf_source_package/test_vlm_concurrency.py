@@ -53,7 +53,7 @@ class Scheduling(unittest.TestCase):
                 release.set()
                 raise ValueError('shared-failure')
         with self.assertRaisesRegex(ValueError, 'shared-failure'):
-            run_requests(range(8), prepare, request, consume)
+            run_requests(range(8), prepare, request, consume, vlm_concurrency=3)
         self.assertEqual(prepared, [0, 1, 2])
         self.assertEqual(sorted(recorded), [0, 1, 2])
 
@@ -81,7 +81,7 @@ class Scheduling(unittest.TestCase):
                 self.assertTrue(failed_done.wait(5))
         with patch.object(ThreadPoolExecutor, 'submit', tracked_submit):
             with self.assertRaisesRegex(ValueError, 'shared-failure'):
-                run_requests(range(6), prepare, request, consume)
+                run_requests(range(6), prepare, request, consume, vlm_concurrency=3)
         self.assertEqual(prepared, [0, 1, 2])
         self.assertEqual(sorted(recorded), [0, 1, 2])
 
@@ -108,6 +108,14 @@ class Scheduling(unittest.TestCase):
                 concurrency_limit(invalid)
         with patch.dict(os.environ, {'PAPER_INGEST_VLM_CONCURRENCY': '0'}):
             with self.assertRaises(ValueError): concurrency_limit()
+
+    def test_setting_provenance(self):
+        from pdf_source_package.concurrency import concurrency_settings
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(concurrency_settings(), dict(vlm_concurrency=3, concurrency_source='fallback'))
+        with patch.dict(os.environ, {'PAPER_INGEST_VLM_CONCURRENCY': '12'}):
+            self.assertEqual(concurrency_settings(), dict(vlm_concurrency=12, concurrency_source='environment'))
+            self.assertEqual(concurrency_settings(4), dict(vlm_concurrency=4, concurrency_source='argument'))
 
 
 class SourceExecution(unittest.TestCase):
@@ -148,7 +156,7 @@ class SourceExecution(unittest.TestCase):
             return dict(http_status=400, raw=b'{}')
         transport.origin = 'offline-inference-double'
         with patch.object(execution, 'save', side_effect=record):
-            self.assertEqual(execution.run_phase(self.job, 'initial', approval, transport=transport), 1)
+            self.assertEqual(execution.run_phase(self.job, 'initial', approval, transport=transport, vlm_concurrency=3), 1)
         self.assertEqual(len(sent), 3)
         requests = self.job/'requests'
         self.assertEqual(len(list(requests.glob('*/reservation.json'))), 3)
@@ -171,12 +179,22 @@ class SourceExecution(unittest.TestCase):
             self.assertEqual(threading.get_ident(), owner)
             return decoder(*args)
         with patch.object(execution, 'decode_export', side_effect=decode):
-            self.assertEqual(execution.run_phase(self.job, 'initial', approval, transport=transport), 0)
+            self.assertEqual(execution.run_phase(self.job, 'initial', approval, transport=transport, vlm_concurrency=3), 0)
         self.assertEqual(len(sent), len(set(sent)))
         self.assertEqual(len(sent), 6)
         self.assertEqual(len(list((self.job/'requests').glob('*/output-bindings.json'))), 6)
         with self.assertRaisesRegex(ValueError, 'phase-already-complete'):
+            execution.run_phase(self.job, 'initial', approval, transport=transport, vlm_concurrency=3)
+
+    def test_source_inherits_environment_and_records_origin(self):
+        approval = self.prepared()
+        def transport(payload, row):
+            return dict(http_status=400, raw=b'{}')
+        transport.origin = 'offline-inference-double'
+        with patch.dict(os.environ, {'PAPER_INGEST_VLM_CONCURRENCY': '12'}):
             execution.run_phase(self.job, 'initial', approval, transport=transport)
+        session = load(self.job/'initial-session.json')
+        self.assertEqual((session['vlm_concurrency'], session['concurrency_source']), (12, 'environment'))
 
 
 class EnrichmentExecution(unittest.TestCase):
@@ -196,12 +214,22 @@ class EnrichmentExecution(unittest.TestCase):
             self.assertEqual(threading.get_ident(), owner)
             return assemble(*args)
         with patch.object(ae, '_response', side_effect=response):
-            state = rr.advance(self.work, 'approved-execute', approval=approval, fixture_transport=transport)
+            with patch.dict(os.environ, {'PAPER_INGEST_VLM_CONCURRENCY': '12'}):
+                state = rr.advance(self.work, 'approved-execute', approval=approval, fixture_transport=transport)
         self.assertEqual(state['accounting']['counts']['completed'], 2)
+        self.assertEqual(load(self.work/'enrichment/execution-start.json')['concurrency_source'], 'environment')
         self.assertEqual(len(sent), len(set(sent)))
         again = rr.advance(self.work, 'approved-execute', approval=approval,
-                           fixture_transport=lambda *a: self.fail('consumed request reposted'))
+                           fixture_transport=lambda *a: self.fail('consumed request reposted'),vlm_concurrency=4)
         self.assertEqual(again, state)
+        self.assertEqual(ae.execution_settings(self.work)['vlm_concurrency'],4)
+        self.assertEqual(ae.execution_settings(self.work)['concurrency_source'],'argument')
+        self.assertEqual(load(self.work/'enrichment/execution-start.json')['vlm_concurrency'],12)
+        for row in load(self.work/'enrichment/prepared.json')['requests']:
+            d=self.work/'enrichment'/row['directory']
+            result=load(d/'outcome.json')
+            self.assertLessEqual(load(d/'reservation.json')['started_at'],result['response_received_at'])
+            self.assertLessEqual(result['response_received_at'],result['ended_at'])
 
     def test_fatal_response_retains_other_active_outcome(self):
         self.plan(selected=False); rr.advance(self.work, 'prepare')

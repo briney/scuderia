@@ -46,6 +46,9 @@ def operation_evidence(root, operation, phase=None, output=None, state=None):
             require(counts['status'] in ('complete','incomplete'), 'missing-phase-completion')
             if counts['status'] != 'complete': value['artifact_status'] = 'incomplete'
         value['phase_status'] = counts
+        if (root/f'{selected}-session.json').exists():
+            session = evidence.json(f'{selected}-session.json')
+            value['execution'] = {k:session.get(k) for k in ('vlm_concurrency','concurrency_source','started_at')}
         from .gates import next_step
         value['next_step'] = next_step(root, selected, counts)
     evidence.check()

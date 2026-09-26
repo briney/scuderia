@@ -8,7 +8,7 @@ import urllib.request
 import socket
 import os
 from .io import *
-from .concurrency import concurrency_limit, run_requests
+from .concurrency import concurrency_settings, run_requests
 from . import native, compact, grouped, caption, recovery, classification, association, gates
 
 
@@ -206,7 +206,8 @@ def usage_disposition(expected, actual, live):
 
 
 def run_phase(root, phase, approval, *, authorize=False, replay=None, transport=None, vlm_concurrency=None):
-    vlm_concurrency = concurrency_limit(vlm_concurrency)
+    settings = concurrency_settings(vlm_concurrency)
+    vlm_concurrency = settings['vlm_concurrency']
     root = Path(root).absolute()
     require(not (root/f'{phase}-complete.json').exists(), 'phase-already-complete')
     manifest = load(root / 'manifest.json')
@@ -232,7 +233,7 @@ def run_phase(root, phase, approval, *, authorize=False, replay=None, transport=
     if live: transport = LiveTransport(manifest)
     elif replay is not None: transport = ReplayTransport(replay)
     origin = transport.origin
-    save(root / f'{phase}-session.json', dict(phase=phase, origin=origin, approval_sha256=digest(entry.approval_bytes), pid=os.getpid(), vlm_concurrency=vlm_concurrency, started_at=runtime_timestamp()))
+    save(root / f'{phase}-session.json', dict(phase=phase, origin=origin, approval_sha256=digest(entry.approval_bytes), pid=os.getpid(), **settings, started_at=runtime_timestamp()))
     put(root / f'{phase}-approval.json', entry.approval_bytes)
     good = True
     def prepare(saved_row):
@@ -252,19 +253,20 @@ def run_phase(root, phase, approval, *, authorize=False, replay=None, transport=
     def request(item):
         saved_row, row, payload, _ = item
         started = time.monotonic()
+        request_started_at = runtime_timestamp()
         entry.check(saved_row, payload)
         try:
             received = transport(payload, row, lambda: entry.check(saved_row, payload)) if live else transport(payload, row)
         except (urllib.error.URLError,TimeoutError,ConnectionError,OSError) as exc:
             received = exception_result(exc)
-        return received, time.monotonic() - started
+        return received, time.monotonic() - started, request_started_at, runtime_timestamp()
 
     def consume(item, future):
         nonlocal good
         _, row, payload, call = item
         p = root / row['directory']
         try:
-            received, latency = future.result()
+            received, latency, request_started_at, received_at = future.result()
         except BaseException as exc:
             call.update(status='uncertain', complete=False, stop_pending=True, error_type=type(exc).__name__, ended_at=runtime_timestamp())
             save(p / 'call.json', call, replace=True)
@@ -272,7 +274,7 @@ def run_phase(root, phase, approval, *, authorize=False, replay=None, transport=
                 save(root/'stop.json', dict(request_id=row['id'], reason='request-integrity-or-interruption'))
             raise
         raw = received.pop('raw', None)
-        call.update(received, latency_seconds=latency)
+        call.update(received, latency_seconds=latency, request_started_at=request_started_at, response_received_at=received_at)
         if raw is not None:
             put(p / 'response-body.json', raw)
             call['saved_response_sha256'] = digest(raw)
