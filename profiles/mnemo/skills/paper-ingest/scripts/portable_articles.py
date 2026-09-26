@@ -821,6 +821,7 @@ class RcloneTransport:
 
 
 def _run_rclone(argv, *, output=None, timeout=300):
+    require(not any(os.environ.get(k)=='1' for k in ('PDF_ENRICHMENT_OFFLINE','PDF_SOURCE_PACKAGE_OFFLINE')), 'offline-rclone-forbidden')
     require(argv and argv[0] == 'rclone', 'rclone-argv-required')
     try:
         result = subprocess.run(argv, stdout=output if output is not None else subprocess.PIPE,

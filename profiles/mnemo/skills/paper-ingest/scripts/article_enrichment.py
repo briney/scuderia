@@ -544,7 +544,7 @@ def review_create(work,binding,manifest_path):
     state=execution_state(work,binding,manifest_path); elements=review_elements(work,binding,manifest_path,state)
     from qualified_enrichment import reviews, records
     root=pa.new_directory(absolute(work)/'review')
-    dossier=dict(schema='portable-review-dossier-v3',policy='observed-limitations-v1',binding=binding,request_accounting=state['accounting'],
+    dossier=dict(schema='portable-review-dossier-v3',policy='observed-limitations-v1',review_completion='roster-v1',binding=binding,request_accounting=state['accounting'],
         snapshot=dict(source_package='portable:'+sha(manifest_path),manifest=str(absolute(manifest_path)),
                       manifest_sha256=sha(manifest_path),source_files=reviews.source_files(pa.load(manifest_path)),elements=elements),notice=reviews.NOTICE)
     source=pa.load(manifest_path)['source_status'].get('readiness')
@@ -622,9 +622,22 @@ def review_import(work,binding,manifest_path,submission_path,packet_path=None):
     return entry
 
 
+def review_complete(dossier, entries):
+    if dossier.get('review_completion') != 'roster-v1': return bool(entries) or not dossier['snapshot']['elements']
+    from qualified_enrichment import reviews
+    required={e['element_id'] for e in dossier['snapshot']['elements']}
+    reviewed={e['element_id'] for entry in entries for e in entry['packet']['elements']}
+    missing=required-reviewed
+    if not missing: return True
+    oversized=set(reviews.packet_batches(dossier,'0'*64)['oversized'])
+    source_review=any(not entry['packet']['elements'] and entry['submission'].get('assessment',{}).get('usable_evidence')
+                      and entry['submission']['assessment'].get('source_refs') for entry in entries)
+    return missing<=oversized and source_review
+
+
 def export(work,binding,manifest_path):
     root=absolute(work); dossier,entries,views=review_verify(work,binding,manifest_path)
-    require(entries or not views,'operator-review-import-required')
+    require(review_complete(dossier,entries),'operator-review-import-required:all-roster-elements')
     value=_export_value(work,binding,manifest_path,(dossier,entries,views))
     destination=pa.new_directory(root/'export'); _seal_file(destination/'handoff.json',value)
     pa.put(destination/'annotated.html',_export_html(value).encode())
@@ -638,6 +651,7 @@ def _export_html(value):
 
 def _export_value(work,binding,manifest_path,review):
     root=absolute(work); dossier,entries,views=review
+    require(review_complete(dossier,entries),'operator-review-import-required:all-roster-elements')
     from qualified_enrichment import reviews
     from qualified_enrichment.exports import exact_view,content_targets
     current=reviews.policy(dossier)!='legacy'

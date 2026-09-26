@@ -123,20 +123,8 @@ def argv_for(args, deployment, attempt, *, historical=False):
     return command
 
 
-def launch(args, deployment):
-    if args.get('operation') in ('status','cancel'):
-        require(set(args)=={'operation','attempt_dir'},'job-control-fields')
-        import operation_jobs
-        return getattr(operation_jobs,args['operation'])(args['attempt_dir'])
-    if 'background' in args:
-        require(type(args['background']) is bool,'background-boolean-required')
-        args=dict(args); background=args.pop('background')
-        if background:
-            import operation_jobs
-            argv_for(args,deployment,absolute(args['attempt_dir'])/'worker')
-            return operation_jobs.start('enrichment',args,deployment)
-    attempt=absolute(args.get('attempt_dir'))
-    argv=argv_for(args,deployment,attempt)
+def preflight(args, deployment):
+    attempt=absolute(args.get("attempt_dir"))
     # Do not place process evidence into any input, output or trusted code tree.
     protected=[deployment.integration_dir,deployment.enrichment_root,deployment.method_dir,deployment.adapter_dir]
     for key in PATHS & args.keys():
@@ -149,11 +137,37 @@ def launch(args, deployment):
         require(isinstance(value,dict) and 'work_root' in value,'article-work-root-required')
         work=absolute(value['work_root'])
         require(not any(work.is_relative_to(code) or code.is_relative_to(work) for code in protected), 'article-work-overlaps-trusted-code')
-        protected.append(work)
+        nested_paths={'work_root','output','page','manifest','identity_approval','cache','count_receipt','approval','submission','packet'}
+        for key in nested_paths & value.keys():
+            path=absolute(value[key])
+            if key in ('work_root','output','page'):
+                require(not any((p/'retention.json').exists() for p in (path,*path.parents)), 'write-inside-immutable-retention')
+                require(not any(path.is_relative_to(code) or code.is_relative_to(path) for code in protected[:4]), 'write-overlaps-trusted-code')
+            protected.append(path)
+        require(not (args.get('offline') and value.get('command')=='publish'), 'offline-publication-forbidden')
     for p in protected:
         require(not attempt.is_relative_to(p) and not p.is_relative_to(attempt),'attempt-must-be-external')
     timeout=args.get('timeout',14400)
     require(type(timeout) in (int,float) and math.isfinite(timeout) and 0<timeout<=86400,'bounded-timeout')
+    return timeout
+
+
+def launch(args, deployment):
+    if args.get('operation') in ('status','cancel'):
+        require(set(args)=={'operation','attempt_dir'},'job-control-fields')
+        import operation_jobs
+        return getattr(operation_jobs,args['operation'])(args['attempt_dir'])
+    if 'background' in args:
+        require(type(args['background']) is bool,'background-boolean-required')
+        args=dict(args); background=args.pop('background')
+        if background:
+            import operation_jobs
+            argv_for(args,deployment,absolute(args['attempt_dir'])/'worker')
+            preflight(args,deployment)
+            return operation_jobs.start('enrichment',args,deployment)
+    attempt=absolute(args.get('attempt_dir'))
+    argv=argv_for(args,deployment,attempt)
+    timeout=preflight(args,deployment)
     attempt.mkdir(mode=0o700, parents=True)
     started=now(); pid=None; termination='normal'; exit_code=None
     env=dict(os.environ); env['PYTHONDONTWRITEBYTECODE']='1'
@@ -164,19 +178,22 @@ def launch(args, deployment):
     def interrupted(number, frame): raise KeyboardInterrupt()
     if threading.current_thread() is threading.main_thread():
         previous={number:signal.signal(number,interrupted) for number in (signal.SIGTERM,signal.SIGINT,signal.SIGHUP)}
-    save(attempt/'started.json',dict(started_at=started,operation=args['operation'],status='starting'))
-    with (attempt/'console.log').open('xb') as log:
-        child=subprocess.Popen(argv,cwd=deployment.integration_dir,env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
-        pid=child.pid
-        save(attempt/'running.json',dict(started_at=started,child_pid=pid,operation=args['operation'],status='running'))
-        try: exit_code=child.wait(timeout=timeout)
-        except (subprocess.TimeoutExpired,KeyboardInterrupt) as exc:
-            termination='timeout-killed' if isinstance(exc,subprocess.TimeoutExpired) else 'cancelled'
+    child=None
+    try:
+        save(attempt/'started.json',dict(started_at=started,operation=args['operation'],status='starting'))
+        with (attempt/'console.log').open('xb') as log:
+            child=subprocess.Popen(argv,cwd=deployment.integration_dir,env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+            pid=child.pid
+            save(attempt/'running.json',dict(started_at=started,child_pid=pid,operation=args['operation'],status='running'))
+            exit_code=child.wait(timeout=timeout)
+    except (subprocess.TimeoutExpired,KeyboardInterrupt) as exc:
+        termination='timeout-killed' if isinstance(exc,subprocess.TimeoutExpired) else 'cancelled'
+    finally:
+        if child is not None and child.poll() is None:
             try: os.killpg(child.pid,signal.SIGKILL)
             except ProcessLookupError: pass
             exit_code=child.wait()
-        finally:
-            for number,handler in previous.items(): signal.signal(number,handler)
+        for number,handler in previous.items(): signal.signal(number,handler)
     process=dict(schema='paper-enrichment-process-v1',operation=args['operation'],argv=argv,cwd=str(deployment.integration_dir),
                  started_at=started,ended_at=now(),child_pid=pid,exit_code=exit_code,termination=termination,
                  process_status='exited',attempt_dir=str(attempt),log=str(attempt/'console.log'),

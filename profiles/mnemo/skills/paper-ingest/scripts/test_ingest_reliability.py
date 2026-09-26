@@ -64,6 +64,11 @@ class ProjectionTests(unittest.TestCase):
 
 
 class PathTests(unittest.TestCase):
+    def test_offline_archive_transport_never_starts_rclone(self):
+        with patch.dict(os.environ,PDF_ENRICHMENT_OFFLINE='1'),patch.object(pa.subprocess,'run') as run:
+            with self.assertRaisesRegex(ValueError,'offline-rclone-forbidden'): pa._run_rclone(['rclone','lsf','test:bucket'])
+            run.assert_not_called()
+
     def test_internal_upload_and_readback_accept_system_temp_alias(self):
         with tempfile.TemporaryDirectory(dir=os.environ['SOURCE_PACKAGE_TEST_ROOT']) as tmp:
             root=Path(tmp); actual=root/'real'; actual.mkdir(); alias=root/'alias'; alias.symlink_to(actual,target_is_directory=True)
@@ -165,3 +170,29 @@ class PacketTests(unittest.TestCase):
         self.assertEqual(result['oversized'],['2'])
         self.assertEqual([e['element_id'] for p in result['packets'] for e in p['elements']],['0','1'])
         self.assertTrue(all(len(json.dumps(p,ensure_ascii=False,indent=2).encode())+1<=2500 for p in result['packets']))
+
+    def test_export_rejects_incomplete_batches_even_without_inventory(self):
+        import reenrich as rr
+        from qualified_enrichment import reviews
+        from test_reenrich import fixture_profile,count_and_approve,inference_double,reviewer
+        from article_runtime import digest
+        with tempfile.TemporaryDirectory(dir=os.environ['SOURCE_PACKAGE_TEST_ROOT']) as tmp:
+            root=Path(tmp); manifest,m=synthetic(root);work=root/'work'
+            rr.plan(rr.Request('synthetic'),manifest=manifest,work_root=work,fixture=True,model_profile=fixture_profile())
+            rr.advance(work,'prepare');ap=count_and_approve(work,root)
+            rr.advance(work,'approved-execute',approval=ap,fixture_transport=inference_double(work))
+            rr.advance(work,'review-create')
+            dossier=pa.load(work/'review/dossier.json'); ids=[e['element_id'] for e in dossier['snapshot']['elements']]
+            self.assertGreater(len(ids),1)
+            for i,eid in enumerate(ids):
+                packet=reviews.packet_value(dossier,pa.sha(work/'review/dossier.json'),[eid],8000000)
+                pp=root/f'packet-{i}.json';pa.save(pp,packet)
+                submission=root/f'review-{i}.json';pa.save(submission,dict(schema='contextual-review-v2',packet_sha256=digest(packet),reviewer=reviewer(),findings=[],coverage=[],resolutions=[]))
+                rr.advance(work,'review-import',packet=pp,submission=submission)
+                if i==0:
+                    (work/'review/packets.json').unlink()
+                    self.assertEqual(rr.execute(work_root=work)['next_step'],'review-import')
+                    with self.assertRaisesRegex(ValueError,'all-roster-elements'): rr.advance(work,'export')
+                    self.assertFalse((work/'export').exists())
+            self.assertEqual(rr.execute(work_root=work)['next_step'],'export')
+            rr.advance(work,'export')

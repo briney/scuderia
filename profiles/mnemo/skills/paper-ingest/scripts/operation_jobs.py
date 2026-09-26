@@ -15,7 +15,7 @@ import sys
 import threading
 import time
 
-from article_runtime import absolute, require, sha, digest
+from article_runtime import absolute, require, sha
 
 
 def write(path, value):
@@ -123,6 +123,10 @@ def worker(attempt, expected_hash):
         finally: stopped.set()
         artifacts={}
         if result.get('receipt'): artifacts.update(result['receipt'].get('checked_artifacts',{}))
+        if result.get('phase_evidence'):
+            receipt=json.loads(absolute(result['phase_evidence']).read_text())
+            for base,bindings in receipt['evidence_roots'].items():
+                for name,h in bindings.items(): artifacts[str(absolute(Path(base)/name))]=h
         for name in ('result.json','process.json','console.log','artifacts.json','phase-evidence.json'):
             path=root/'worker'/name
             if path.is_file(): artifacts[str(path)]=sha(path)

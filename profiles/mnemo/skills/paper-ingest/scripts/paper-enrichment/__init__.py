@@ -34,6 +34,8 @@ SCHEMA=dict(name='paper_enrichment',description=(
 
 
 def runner(root):
+    # Configured deployment code is trusted; detached control shares its helpers.
+    if str(root) not in sys.path: sys.path.insert(0,str(root))
     path=Path(root)/'qualified_enrichment/launcher.py'
     name='_paper_enrichment_launcher_'+hashlib.sha256(str(path).encode()+path.read_bytes()).hexdigest()[:16]
     if name not in sys.modules:

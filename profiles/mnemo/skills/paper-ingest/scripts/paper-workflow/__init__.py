@@ -41,6 +41,8 @@ SCHEMA = {
 
 
 def runner(method_dir):
+    # Configured deployment code is trusted; detached control shares its helpers.
+    if str(method_dir) not in sys.path: sys.path.insert(0,str(method_dir))
     """Load only the configured method, not PYTHONPATH or a caller-selected file."""
     root = Path(method_dir)
     if not root.is_absolute() or not (root/'pdf_source_package/__init__.py').is_file():

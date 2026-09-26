@@ -411,13 +411,8 @@ def execute(plan_value=None,*,work_root):
         next_step='approved-execute' if (enrichment/'seal.json').exists() else 'seal' if (enrichment/'counts.json').exists() else 'count'
     if (work/'review'/'dossier.json').exists():
         require(state is not None,'review-without-execution')
-        review=ae._review_verify(work,binding,manifest,state); next_step='export' if review[1] else 'review-import'
-        if (work/'review/packets.json').exists():
-            packets=pa.load(work/'review/packets.json')
-            reviewed={e['element_id'] for entry in review[1] for e in entry['packet']['elements']}
-            required={e for packet in packets['packets'] for e in packet['elements']}
-            source_review=any(not entry['packet']['elements'] and entry['submission'].get('assessment',{}).get('usable_evidence') for entry in review[1])
-            if not required<=reviewed or (packets['source_inspection_required'] and not source_review): next_step='review-import'
+        review=ae._review_verify(work,binding,manifest,state)
+        next_step='export' if ae.review_complete(review[0],review[1]) else 'review-import'
     if (work/'export'/'handoff.json').exists():
         require(review is not None,'export-without-review')
         exported=ae._verify_export(work,binding,manifest,review)

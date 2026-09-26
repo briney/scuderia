@@ -39,6 +39,8 @@ class JobTests(unittest.TestCase):
             self.assertEqual(check.returncode,0,check.stderr)
             self.assertEqual(json.loads(check.stdout)['result'],result['result'])
             self.assertEqual(len(list((root/'attempt').glob('worker'))),1)
+            (root/'package/manifest.json').write_text('{}')
+            with self.assertRaisesRegex(ValueError,'terminal-artifact-changed'): jobs.status(root/'attempt')
             changed=dict(args,output_dir=str(root/'different'))
             with self.assertRaisesRegex(ValueError,'different-operation'): jobs.start('source',changed,deployment)
 
@@ -93,3 +95,62 @@ class JobTests(unittest.TestCase):
                 time.sleep(.05)
             self.assertEqual(result['status'],'finished',result)
             self.assertEqual(launch(args,deployment)['job_sha256'],started['job_sha256'])
+
+    def test_installed_plugin_job_control_without_preloaded_script_path(self):
+        scripts=Path(__file__).parent
+        with tempfile.TemporaryDirectory(dir=os.environ['SOURCE_PACKAGE_TEST_ROOT']) as tmp:
+            for plugin in ('paper-workflow','paper-enrichment'):
+                code='''import importlib.util,json,pathlib,sys
+scripts=pathlib.Path(sys.argv[1]); plugin=sys.argv[2]
+spec=importlib.util.spec_from_file_location('installed_plugin',scripts/plugin/'__init__.py')
+m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+class Context:
+ def get_config(self,k,default=None): return sys.argv[3] if k=='python' else str(scripts)
+ def register_tool(self,**kw): self.dispatch=kw['handler']
+c=Context();m.register(c)
+print(c.dispatch(dict(operation='status',attempt_dir=sys.argv[4])))
+'''
+                result=subprocess.run([sys.executable,'-I','-S','-c',code,str(scripts),plugin,sys.executable,tmp],capture_output=True,text=True)
+                self.assertEqual(result.returncode,0,result.stderr)
+                value=json.loads(result.stdout)
+                self.assertEqual(value['diagnostic'],'operation-job-required',value)
+
+    def test_background_rejects_overlap_before_writing_and_nested_code_outputs(self):
+        import operation_jobs as jobs
+        from qualified_enrichment.launcher import Deployment,launch
+        scripts=Path(jobs.__file__).parent
+        d=Deployment(scripts,scripts,scripts,scripts,Path(sys.executable))
+        with tempfile.TemporaryDirectory(dir=os.environ['SOURCE_PACKAGE_TEST_ROOT']) as tmp:
+            root=Path(tmp); work=root/'work'
+            args=dict(operation='article',arguments=dict(command='execute',work_root=str(work)),background=True,attempt_dir=str(work/'attempt'))
+            with self.assertRaisesRegex(ValueError,'attempt-must-be-external'): launch(args,d)
+            self.assertFalse(work.exists())
+            args['attempt_dir']=str(root/'attempt');args['arguments'].update(command='reuse-source',output=str(scripts/'forbidden'),phase='association')
+            with self.assertRaisesRegex(ValueError,'write-overlaps-trusted-code'): launch(args,d)
+            self.assertFalse((root/'attempt').exists())
+            args['arguments']=dict(command='publish',work_root=str(work),remote='test',bucket='test',prefix='test');args['offline']=True
+            with self.assertRaisesRegex(ValueError,'offline-publication-forbidden'): launch(args,d)
+            self.assertFalse((root/'attempt').exists())
+
+    def test_cancel_during_running_receipt_reaps_child(self):
+        from unittest.mock import patch
+        from qualified_enrichment import launcher as l
+        scripts=Path(l.__file__).parent.parent; children=[]
+        d=l.Deployment(scripts,scripts,scripts,scripts,Path(sys.executable))
+        original_popen=subprocess.Popen; original_save=l.save
+        def spawn(*args,**kwargs):
+            child=original_popen([sys.executable,'-c','import time; time.sleep(30)'],**kwargs); children.append(child); return child
+        def save(path,value):
+            if path.name=='running.json': raise KeyboardInterrupt()
+            return original_save(path,value)
+        with tempfile.TemporaryDirectory(dir=os.environ['SOURCE_PACKAGE_TEST_ROOT']) as tmp:
+            root=Path(tmp)
+            args=dict(operation='article',arguments=dict(command='execute',work_root=str(root/'work')),attempt_dir=str(root/'attempt'))
+            try:
+                with patch.object(l.subprocess,'Popen',side_effect=spawn),patch.object(l,'save',side_effect=save):
+                    result=l.launch(args,d)
+                self.assertEqual(result['termination'],'cancelled')
+                self.assertIsNotNone(children[0].poll())
+            finally:
+                for child in children:
+                    if child.poll() is None: child.kill();child.wait()
