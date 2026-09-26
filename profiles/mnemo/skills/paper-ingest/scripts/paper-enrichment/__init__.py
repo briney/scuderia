@@ -17,7 +17,7 @@ SCHEMA=dict(name='paper_enrichment',description=(
     'Record only observed substantive limitations; empty qualifications are valid. Specialized exact use needs source inspection or qualification; algorithm-specification always needs inspection. '
     'prepare with processor_cache also counts and seals; seal with processor_cache resumes offline bookkeeping. Returns actual child exit and hash-checked artifact receipt, not a scientific correctness claim.'),
     parameters=dict(type='object',additionalProperties=False,required=['operation','attempt_dir'],properties={
-        'operation':dict(type='string',enum=['article','prepare','count','seal','execute','report','import-test-response','review-create','review-packet','review-import','export','verify-export','consume']),
+        'operation':dict(type='string',enum=['status','cancel','article','prepare','count','seal','execute','report','import-test-response','review-create','review-packet','review-import','export','verify-export','consume']),
         'arguments':dict(type='object',description='Article operation arguments: command and work_root, plus inputs returned by next_operation. Commands: route, execute (status), adopt, prepare, count, seal, approved-execute, review-create, review-import, export, candidate-import, apply, publish.'),
         **{k:dict(type='string',minLength=1,maxLength=4096) for k in PATHS},
         'elements':dict(type='array',items=dict(type='string'),minItems=0,uniqueItems=True),
@@ -26,6 +26,7 @@ SCHEMA=dict(name='paper_enrichment',description=(
         'purpose':dict(type='string',enum=['discovery','summary','exact','algorithm-specification']),
         'qualification':dict(type='string'), 'kind':dict(type='string',enum=['qualified-job','v7-run']),
         'max_bytes':dict(type='integer',minimum=1024,maximum=8000000),
+        'background':dict(type='boolean',default=False,description='Run detached; status/cancel with the same attempt_dir reattach without dispatch.'),
         'vlm_concurrency':dict(type='integer',minimum=1,description='Execute only: per-paper active inference limit; defaults to PAPER_INGEST_VLM_CONCURRENCY or 3.'),
         'authorize_posts':dict(type='boolean',default=False),'offline':dict(type='boolean',default=False),
         'timeout':dict(type='number',exclusiveMinimum=0,maximum=86400,default=14400),

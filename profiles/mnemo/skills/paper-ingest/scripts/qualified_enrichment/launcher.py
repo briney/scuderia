@@ -9,6 +9,7 @@ from pathlib import Path
 import signal
 import subprocess
 import sys
+import threading
 
 OPERATIONS = {
     'article': ({'arguments'}, set()),
@@ -123,6 +124,17 @@ def argv_for(args, deployment, attempt, *, historical=False):
 
 
 def launch(args, deployment):
+    if args.get('operation') in ('status','cancel'):
+        require(set(args)=={'operation','attempt_dir'},'job-control-fields')
+        import operation_jobs
+        return getattr(operation_jobs,args['operation'])(args['attempt_dir'])
+    if 'background' in args:
+        require(type(args['background']) is bool,'background-boolean-required')
+        args=dict(args); background=args.pop('background')
+        if background:
+            import operation_jobs
+            argv_for(args,deployment,absolute(args['attempt_dir'])/'worker')
+            return operation_jobs.start('enrichment',args,deployment)
     attempt=absolute(args.get('attempt_dir'))
     argv=argv_for(args,deployment,attempt)
     # Do not place process evidence into any input, output or trusted code tree.
@@ -148,13 +160,23 @@ def launch(args, deployment):
     network=args['operation']=='execute' or (args['operation']=='article' and args.get('arguments',{}).get('command') in ('approved-execute','publish'))
     if args.get('offline') or not network:
         env.update(PDF_ENRICHMENT_OFFLINE='1',PDF_SOURCE_PACKAGE_OFFLINE='1',HF_HUB_OFFLINE='1',TRANSFORMERS_OFFLINE='1')
+    previous={}
+    def interrupted(number, frame): raise KeyboardInterrupt()
+    if threading.current_thread() is threading.main_thread():
+        previous={number:signal.signal(number,interrupted) for number in (signal.SIGTERM,signal.SIGINT,signal.SIGHUP)}
+    save(attempt/'started.json',dict(started_at=started,operation=args['operation'],status='starting'))
     with (attempt/'console.log').open('xb') as log:
         child=subprocess.Popen(argv,cwd=deployment.integration_dir,env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
         pid=child.pid
+        save(attempt/'running.json',dict(started_at=started,child_pid=pid,operation=args['operation'],status='running'))
         try: exit_code=child.wait(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            termination='timeout-killed'
-            os.killpg(child.pid,signal.SIGKILL); exit_code=child.wait()
+        except (subprocess.TimeoutExpired,KeyboardInterrupt) as exc:
+            termination='timeout-killed' if isinstance(exc,subprocess.TimeoutExpired) else 'cancelled'
+            try: os.killpg(child.pid,signal.SIGKILL)
+            except ProcessLookupError: pass
+            exit_code=child.wait()
+        finally:
+            for number,handler in previous.items(): signal.signal(number,handler)
     process=dict(schema='paper-enrichment-process-v1',operation=args['operation'],argv=argv,cwd=str(deployment.integration_dir),
                  started_at=started,ended_at=now(),child_pid=pid,exit_code=exit_code,termination=termination,
                  process_status='exited',attempt_dir=str(attempt),log=str(attempt/'console.log'),

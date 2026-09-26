@@ -228,6 +228,18 @@ def validated(args):
 
 def launch(args, deployment=None):
     """Library/tool entry: one validated public operation, no automatic retry."""
+    if args.get('operation') in ('status','cancel'):
+        require(set(args)=={'operation','attempt_dir'},'job-control-fields')
+        import operation_jobs
+        return getattr(operation_jobs,args['operation'])(args['attempt_dir'])
+    if 'background' in args:
+        require(type(args['background']) is bool,'background-boolean-required')
+        args=dict(args); background=args.pop('background')
+        if background:
+            import operation_jobs
+            deployment=deployment or Deployment(); deployment.check()
+            if not Path(args['attempt_dir']).exists(): validated(args)
+            return operation_jobs.start('source',args,deployment)
     args = validated(args)
     deployment = deployment or Deployment()
     deployment.check()
