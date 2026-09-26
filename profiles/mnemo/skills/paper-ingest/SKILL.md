@@ -163,9 +163,11 @@ the helper misses, selects the wrong version, or returns a preview.
 **Independent obligations:** attempt readable body text, the original
 manuscript PDF, and each relevant supplement separately. Use observed source
 links rather than guessed attachment paths. Record which were obtained,
-failed, or unavailable; do not infer one from another. Archive only through
-the source-archive convention when required/requested; no R2 pointer is
-claimed without verified archival. Retrieval alone does not imply archival.
+failed, or unavailable; do not infer one from another. Archive retained-PDF final packages through the verified publication step in
+`references/qualified-enrichment.md` before reporting ingestion complete. Use the
+instance-configured archive destination and existing authorization; absent access
+or authorization is an explicit publication hold. Never claim an R2 pointer
+without verified archival. Retrieval alone does not imply archival.
 
 **Retained-source production route:** for new ingests retaining any PDF, follow
 `references/source-package-integration.md`. Enable `fetch_fulltext.py
@@ -240,8 +242,9 @@ capability (Hermes: `paper_enrichment`) and final v5 handoff. The code-owned
 roster includes all eligible figures/tables; algorithms are deferred by default.
 Retain failed/partial/unavailable outcomes. Page readiness may rely on usable native text after local visual failures; request accounting remains unchanged. Record only evidence-supported substantive limitations, not generic model fallibility or missing exhaustive review coverage. Empty qualifications are valid. Account for pending source work in the attributed assessment. Known acquisition/extraction failures need not block a supported page; integrity holds and fixture evidence still block production completion. Import actual
 review findings without replacing original extraction. An empty finding list
-or model-authored coverage is not certification. Preserve substantive qualifications
-beside affected content and the canonical qualification register in the paper.
+or model-authored coverage is not certification. Preserve concise substantive qualifications beside affected claims. Keep the
+canonical machine qualification register in the archive and JSON receipt, never
+in the paper Markdown.
 A source-only v4 handoff is intermediate evidence, not completion of this new
 route. Read the final handoff's exact generated summary,
 `facts.json`, acquisition dispositions and source material. Use the handoff's
@@ -254,11 +257,11 @@ exhaustive recall or human acceptance; new outputs do not inherit historical
 acceptance, and the development pilot does not impose human crop approval on
 every production ingest.
 
-Add unformatted `Source package: <relative-path-to-v5-handoff.json>` and
-`Annotated enrichment: <relative-path-to-annotated.html>` lines in the existing
-Ingest log, relative to the paper page; do not add frontmatter fields. Preserve
-the exact v5 `qualifications.txt` text in the paper. Record source versions,
-limitations and scientific review decisions.
+Finalize and publish the package through `references/qualified-enrichment.md`.
+Add its `Source package:` and `Article archive:` pointers to the existing Ingest
+log; do not add frontmatter fields. Keep source versions, concise claim-relevant
+limitations and scientific review decisions in the paper. Raw qualification
+registers and extraction/audit dumps belong in the external package.
 A supported source-limited page may complete ingestion after ordinary parent
 integration and verification. Set `needs-ingest: false` then, even if acquisition,
 extraction or enrichment has recorded failures. Retain `needs-enrichment: true`
@@ -391,8 +394,11 @@ For the retained-source PDF route, first verify the v5 source/enrichment handoff
 and run `final_products.py ingest` as documented in `qualified-enrichment.md`.
 Render manuscript figure embeds with `figure_embeds.py` before final page verification, as documented in `qualified-enrichment.md`; supplementary figures require essential context. Then add `--final-products <absolute-final-package/manifest.json>
 --require-enriched-source`, using the documented PDF interpreter. These options
-are mandatory for new retained-PDF ingests, including PAGE_READY checks. Preserve
-the substantive qualifications and final-package pointer in the paper. Permanent
+are mandatory for new retained-PDF ingests, including PAGE_READY checks. Parent
+completion also requires `--publication-receipt <durable-publication.json>` and
+the matching `Article archive:` pointer after hash-verified remote publication.
+PAGE_READY may defer publication to its parent; it is not completed ingestion.
+Preserve concise substantive caveats and final-package pointers in the paper. Permanent
 retention is original sources plus final scientific products/provenance; completed
 job payloads and replay history are disposable after final verification. Historical
 handoff options remain available for old records. An earlier completion flag is

@@ -761,6 +761,7 @@ def main():
                     help="explicit satellite topology with no author ledger; "
                          "full mode requires person pages, page-only may defer "
                          "their creation; refuses when a ledger exists")
+    ap.add_argument('--publication-receipt', help='durable verified archive publication JSON; required for final-product completion')
     ap.add_argument('--final-products', help='absolute finalized article manifest; replaces temporary source/enrichment handoffs')
     ap.add_argument('--source-package-handoff', help='absolute verified source-package handoff.json; required for the retained-PDF production route')
     ap.add_argument('--source-package-method', help='absolute explicitly trusted accepted PDF method directory (requires its PDF dependencies)')
@@ -768,6 +769,8 @@ def main():
     ap.add_argument('--enrichment-integration', help='absolute trusted qualified enrichment integration directory')
     ap.add_argument('--enrichment-root', help='absolute trusted frozen enrichment package directory')
     args = ap.parse_args()
+    if args.require_enriched_source and args.require_filled and not args.page_only and not args.final_products:
+        ap.error('production completion requires --final-products and verified archive publication; handoffs are intermediate')
     if args.final_products and args.source_package_handoff:
         ap.error('choose final products or a temporary source handoff')
     if args.require_enriched_source and not args.final_products and not all((args.source_package_handoff,args.enrichment_integration,args.enrichment_root)):
@@ -939,8 +942,14 @@ def main():
             pointer = os.path.relpath(manifest, os.path.dirname(os.path.abspath(paper_path)))
             if ('Source package: '+pointer) not in required_sections(body).get('Ingest log', []):
                 raise ValueError('Ingest log requires finalized Source package: '+pointer)
-            final_products.verify_ingest(manifest, {key: fm.get(key) for key in ('slug','title','doi','pmid')}, body, page=paper_path)
-            print('  Final products: OK (sources, scientific outputs and substantive qualifications verified)')
+            final_products.verify_ingest(manifest, {key: fm.get(key) for key in ('slug','title','doi','pmid')}, body, page=paper_path,
+                publication_receipt=args.publication_receipt, require_publication=not args.page_only)
+            if not args.page_only:
+                receipt_pointer = os.path.relpath(os.path.abspath(args.publication_receipt), os.path.dirname(os.path.abspath(paper_path)))
+                if ('Article archive: '+receipt_pointer) not in required_sections(body).get('Ingest log', []):
+                    raise ValueError('Ingest log requires Article archive: '+receipt_pointer)
+            print('  Final products: OK (sources, scientific outputs and qualifications verified; archive '+
+                  ('deferred to parent)' if args.page_only else 'publication verified)'))
         except (OSError, ValueError, KeyError, TypeError, ImportError) as exc:
             print(f'  Final products: FAIL ({exc})')
             failures += 1

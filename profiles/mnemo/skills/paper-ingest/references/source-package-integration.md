@@ -19,7 +19,7 @@ Historical evidence keeps its original schema while it is retained. New permanen
 | Qualified selection/dossier/export v1 | `qualified-selection-v1`, `uncertainty-dossier-v1`, `qualified-enrichment-export-v1` | Reconstruct selection, snapshot, review chain, warnings and exact readable export |
 | Portable plan v2 / review v2 / export v3 | Existing production and selected-diagnostic scope rules | Regenerate payloads, reconstruct outcomes/accounting, verify byte seals, review chains, qualifications and completion restrictions |
 | Current qualified selection v2 / dossier v2 / export v2; portable review v3 / export v4 | `observed-limitations-v1`, enriched source handoff v5 (v3 preserved for history), temporary page register v3, historical completion v2 | Shared request accounting, attributed usable-evidence readiness, substantive findings, source and integrity holds; historical formats above keep their original semantics |
-| Final products manifest v4 / page register v4 / completion v3 | Verified originals, final products and substantive qualifications; no execution replay | Verify content hashes, source/product bindings, publication read-back and current page/receipt binding |
+| Final products manifest v4 / archived qualification register v4 / completion v3 | Verified originals, final products and substantive qualifications; no execution replay | Verify content hashes, source/product bindings, publication read-back and current page/receipt binding |
 
 A known format is necessary, not sufficient: reconstruction must still match
 its retained evidence. Unknown formats, changed payload semantics, mismatched
@@ -72,7 +72,7 @@ In the existing Ingest log, add an unformatted line, relative to the paper page:
 
     Source package: ../relative/final-package/manifest.json
 
-Keep source version, URLs, acquisition limitations and scientific review decisions in that log. Add no frontmatter fields. Local retention is not external archival; existing source-archive requirements remain separate. Never invent R2 pointers.
+Keep source version, URLs, acquisition limitations and scientific review decisions in that log. Add no frontmatter fields. Local retention is not external archival. Parent completion requires `final_products.py publish-ingest` and `verify_ingest.py --publication-receipt` as documented in `qualified-enrichment.md`. Never invent R2 pointers.
 
 Phase 10: for new retained-PDF production ingests, run the finalizer and checks in `qualified-enrichment.md`. Use `verify_ingest.py <slug> --instance <instance> --require-filled --final-products <final-package/manifest.json> --require-enriched-source`, including for queued PAGE_READY checks.
 

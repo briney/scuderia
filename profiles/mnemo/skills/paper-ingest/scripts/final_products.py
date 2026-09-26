@@ -352,8 +352,12 @@ def page_register(work, plan, manifest, exported, submission):
     import reenrich as rr
     source, source_paths = pa.verify_local(manifest)
     previous = rr.read_register((absolute(work)/'original-page.md').read_text())
+    prior = source
     if plan.get('source_archive'):
-        source_paths.update(pa.verify_local(plan['source_archive'])[1])
+        prior, prior_paths = pa.verify_local(plan['source_archive'])
+        source_paths.update(prior_paths)
+    if previous is None:
+        previous = prior.get('completion', {}).get('page_register')
     current = rr._current_register(exported, submission, source, plan,
                                   sha(absolute(work)/'export/annotated.html'), source_paths, previous)
     retained_qualifications = list(current['qualifications'])
@@ -404,7 +408,12 @@ def publish_refresh(work, plan, manifest, source, roster, binding, history, expo
                       requests_successful=exported['execution_complete'], fixture=plan['fixture'], mode=plan['mode'], roster=roster)
     if plan.get('figure_embeds'): completion['figure_embeds']=True
     if plan['page_path']:
-        completion['register_sha256'] = pa.digest(rr.read_register(absolute(plan['page_path']).read_text()))
+        if plan.get('page_register_location') == 'archive':
+            register = ae.read_bound(work/'page-candidate/candidate.json')['page_register']
+            completion.update(page_register_location='archive', page_register=register)
+        else:
+            register = rr.read_register(absolute(plan['page_path']).read_text())
+        completion['register_sha256'] = pa.digest(register)
     if not archive.exists():
         pa.restore(work/'final-products/manifest.json', archive)
         updated = copy.deepcopy(m); updated['package_id'] = 'refresh-' + binding[:20]
@@ -451,6 +460,9 @@ def verify_completion(receipt, m, paths, page, manifest_path):
         page = absolute(page); rr._page_identity(page, m['article']['slug'], m['article'])
         require(sha(page) == facts['page_sha256'], 'completion-page-snapshot')
         register = rr.read_register(page.read_text())
+        if facts.get('page_register_location') == 'archive':
+            require(register is None, 'page-must-not-contain-register')
+            register = facts['page_register']
         require(register and pa.digest(register) == facts['register_sha256'] and register['binding'] == facts['binding'], 'completion-qualification-register-or-pointer')
         rr._register_archive(register, paths)
         if facts.get('figure_embeds'):
@@ -488,18 +500,59 @@ def from_ingest(handoff, destination, *, method, integration, enrichment_root):
     return m
 
 
-def verify_ingest(manifest, article, body, page=None):
+def verify_ingest(manifest, article, body, page=None, *, publication_receipt=None, require_publication=True):
     m = verify(manifest)
     require(all(m['article'].get(k) == v for k, v in article.items() if k in ('slug','title','doi','pmid')), 'final-ingest-article-binding')
     completed = m['initial_ingest']
     require(completed['production_complete'] is True and not m['source_status']['fixture'] and
             completed['readiness']['page_ready'] is True and not completed['readiness']['holds'], 'final-ingest-not-complete')
-    require(completed['qualifications'] in body, 'final-ingest-qualifications-missing')
+    # Complete machine qualifications live in the hash-bound manifest; readable
+    # claim-level caveats are checked by the parent's scientific review.
+    require(isinstance(completed['qualifications'], str), 'final-ingest-qualifications-missing')
     if completed.get('figure_embeds'):
         import figure_embeds
         require(page is not None, 'figure-page-path-required')
         figure_embeds.verify(body,manifest,page)
+    if require_publication:
+        require(publication_receipt is not None, 'publication-receipt-required')
+        verify_publication(manifest, pa.load(publication_receipt))
     return m
+
+
+def verify_publication(manifest, publication):
+    """Verify saved remote read-back against this exact local final inventory."""
+    m, _ = pa.verify_local(manifest)
+    require(publication.get('schema') == 'portable-article-publication-v2', 'publication-schema')
+    require(publication.get('verification_scope') == 'rclone-live-readback', 'offline-publication-not-production')
+    pa.RcloneTransport(publication['remote'], publication['bucket'])  # validate only
+    key = pa.revision_prefix(m, publication['prefix'])+'/manifests/'+sha(manifest)+'.json'
+    require(publication['manifest_sha256'] == sha(manifest) and publication['manifest_key'] == key and
+            publication['article_key'] == m['article_key'], 'publication-manifest-binding')
+    expected = {(pa.object_key(m, publication['prefix'], f), f['sha256'], f['size']) for f in m['files']}
+    expected.add((key, sha(manifest), absolute(manifest).stat().st_size))
+    rows = publication['receipts']
+    require(publication['objects'] == len(m['files']) and len(rows) == len(expected) and
+            expected == {(r['key'], r['sha256'], r['size']) for r in rows} and
+            all(r['method'] == 'read_back_sha256' for r in rows), 'publication-readback-inventory')
+    return publication
+
+
+def publish_ingest(manifest, receipt, remote, bucket, prefix):
+    """Publish permanent initial-ingest products; save a receipt only after read-back."""
+    m = verify(manifest)
+    require(m.get('initial_ingest', {}).get('production_complete') is True and
+            not m['source_status']['fixture'], 'final-ingest-not-complete')
+    receipt = absolute(receipt)
+    external(receipt, [absolute(manifest).parent])
+    if receipt.exists():
+        saved = verify_publication(manifest, pa.load(receipt))
+        require((saved['remote'], saved['bucket'], saved['prefix']) == (remote, bucket, prefix), 'publication-destination-changed')
+        return saved
+    publication = pa.publish(manifest, remote, bucket, prefix)
+    verify_publication(manifest, publication)
+    receipt.parent.mkdir(parents=True, exist_ok=True)
+    pa.save(receipt, publication)
+    return publication
 
 
 def main(argv=None):
@@ -511,12 +564,19 @@ def main(argv=None):
     ingest = commands.add_parser('ingest')
     for flag in ('handoff', 'output', 'method', 'integration', 'enrichment-root'):
         ingest.add_argument('--'+flag, required=True)
+    publish = commands.add_parser('publish-ingest')
+    for flag in ('manifest', 'receipt', 'remote', 'bucket', 'prefix'):
+        publish.add_argument('--'+flag, required=True)
     compact = commands.add_parser('compact')
     compact.add_argument('--manifest', required=True); compact.add_argument('--output', required=True)
     compact.add_argument('--page')
     check = commands.add_parser('verify'); check.add_argument('--manifest', required=True)
     args = parser.parse_args(argv)
     try:
+        if args.command == 'publish-ingest':
+            result = publish_ingest(args.manifest, args.receipt, args.remote, args.bucket, args.prefix)
+            print(json.dumps(result, indent=2))
+            return 0
         if args.command == 'ingest':
             m = from_ingest(args.handoff, args.output, method=args.method, integration=args.integration, enrichment_root=args.enrichment_root)
         elif args.command == 'compact':

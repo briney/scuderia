@@ -57,7 +57,7 @@ The assessment may also include `source_limitations`, a list of substantive
 source limitations supported by the reviewed evidence. Use an empty list when
 none is established. Do not hunt for limitations or list generic fallibility,
 redundant missing formats, or hypothetical omissions. These statements are
-preserved across later assessments, the initial handoff and refresh page's qualification register;
+preserved across later assessments, the initial handoff and refresh archive's qualification register;
 keep relevant qualifications beside affected claims too. Acquisition and
 extraction evidence remains available even when no source limitation is recorded.
 

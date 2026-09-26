@@ -141,7 +141,7 @@ def plan(request,*,manifest=None,work_root,fixture=False,model_profile=None,page
         require(len({s['heading'] for s in scopes})==len(scopes),'duplicate-page-scope')
     pending=[] if m else ['source-retrieval','package-construction','full-distillation-and-reconciliation']
     if not m and request.elements is not None: pending.append('selection-validation')
-    value=dict(schema=SCHEMA_PLAN,retention_policy='final-products-v1',figure_embeds=True,article=request.article,mode='selected' if request.elements is not None else 'full',
+    value=dict(schema=SCHEMA_PLAN,retention_policy='final-products-v1',page_register_location='archive',figure_embeds=True,article=request.article,mode='selected' if request.elements is not None else 'full',
         request=dict(article=request.article,elements=request.elements,page=str(request.page) if request.page else None),
         elements=roster,manifest=str(manifest) if manifest else None,manifest_sha256=sha(manifest) if manifest else None,
         article_identity=m['article'] if m else source_identity,source_archive=str(source_archive) if source_archive else None,
@@ -721,7 +721,7 @@ def _page_export(work,binding,manifest):
     return ae._verify_export(work,binding,manifest,review)
 
 
-def _candidate_text(work,p,manifest,binding,submission,*,version=2,exported=None):
+def _candidate_text(work,p,manifest,binding,submission,*,version=2,exported=None,return_register=False):
     fields={'schema','binding','export_sha256','reviewer','qualification','full_distillation_reviewed','replacements'}
     optional={'reconciliation_outcome'} | ({'figure_supplements'} if p.get('figure_embeds') else set())
     require(fields<=set(submission)<=fields|optional,'candidate-fields')
@@ -791,11 +791,16 @@ def _candidate_text(work,p,manifest,binding,submission,*,version=2,exported=None
     if version==1: text=without_register(text)
     if p.get('source_archive'):
         paths.update(pa.verify_local(p['source_archive'])[1])
-    text=install_register(text,register,archive_paths=paths)
+    if p.get('page_register_location') == 'archive':
+        old = read_register(text)
+        if old is not None: _register_archive(old, paths)
+        text = without_register(text)
+    else:
+        text=install_register(text,register,archive_paths=paths)
     if p.get('figure_embeds'):
         import figure_embeds
         text=figure_embeds.render(text,work/'final-products/manifest.json',p['page_path'],image_root=work/'archive',supplements=submission.get('figure_supplements'))
-    return text
+    return (text, register) if return_register else text
 
 
 def hashlib_sha(text):
@@ -808,13 +813,14 @@ def candidate_import(work_root,submission):
         work,p,manifest,_,_,binding,_=context(work_root)
         require(p['schema']!=DIAGNOSTIC_PLAN,'diagnostic-page-application-forbidden')
         require(p['page_path'],'page-not-planned')
-        value=pa.load(submission); text=_candidate_text(work,p,manifest,binding,value)
+        value=pa.load(submission); text,register=_candidate_text(work,p,manifest,binding,value,return_register=True)
         root=pa.new_directory(work/'page-candidate')
         pa.put(root/'page-candidate.md',text.encode()); pa.put(root/'input.json',absolute(submission).read_bytes())
         diff=''.join(difflib.unified_diff((work/'original-page.md').read_text().splitlines(True),text.splitlines(True),fromfile='original',tofile='candidate'))
         pa.put(root/'page-candidate.diff',diff.encode())
         ae._seal_file(root/'candidate.json',dict(binding=binding,original_sha256=p['page_sha256'],
-            candidate_sha256=sha(root/'page-candidate.md'),input_sha256=sha(root/'input.json'),diff_sha256=sha(root/'page-candidate.diff')))
+            candidate_sha256=sha(root/'page-candidate.md'),input_sha256=sha(root/'input.json'),diff_sha256=sha(root/'page-candidate.diff'),
+            **({'page_register': register} if p.get('page_register_location') == 'archive' else {})))
         _record(work,'candidate-import',[root/'candidate.json'],dict(candidate_sha256=sha(root/'page-candidate.md')))
         return pa.load(root/'candidate.json')
 
@@ -825,8 +831,12 @@ def _candidate_verify(work,p,binding,manifest,*,exported=None):
         value['input_sha256']==sha(root/'input.json') and value['candidate_sha256']==sha(root/'page-candidate.md') and
         value['diff_sha256']==sha(root/'page-candidate.diff'),'candidate-changed')
     saved=(root/'page-candidate.md').read_text()
-    version=int(read_register(saved)['schema'].rsplit('-v',1)[1])
-    require(saved==_candidate_text(work,p,manifest,binding,pa.load(root/'input.json'),version=version,exported=exported),'candidate-regeneration-mismatch')
+    register = read_register(saved)
+    version = int(register['schema'].rsplit('-v',1)[1]) if register else 3
+    text, expected = _candidate_text(work,p,manifest,binding,pa.load(root/'input.json'),version=version,exported=exported,return_register=True)
+    require(saved == text, 'candidate-regeneration-mismatch')
+    if p.get('page_register_location') == 'archive':
+        require(value.get('page_register') == expected, 'candidate-register-changed')
     return value
 
 

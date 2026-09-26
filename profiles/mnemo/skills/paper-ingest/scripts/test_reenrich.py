@@ -179,13 +179,14 @@ class ReenrichTests(unittest.TestCase):
             with self.assertRaises(ValueError): operation()
         self.assertFalse((self.work/'apply-start.json').exists())
 
-    def test_unchanged_selected_science_installs_verified_register(self):
+    def test_unchanged_selected_science_archives_verified_register(self):
         self.ready(); original=self.page.read_text()
         rr.candidate_import(self.work,self.no_change_candidate()); rr.apply(self.work,authorize=True)
         text=self.page.read_text()
-        self.assertIn('Unit assignment remains uncertain',text)
-        self.assertIn('Known unit uncertainty',text)
-        self.assertIn('Article package:',text); self.assertIn('Annotated export:',text)
+        self.assertIsNone(rr.read_register(text))
+        register=pa.load(self.work/'page-candidate/candidate.json')['page_register']
+        self.assertIn('Unit assignment remains uncertain',json.dumps(register))
+        self.assertIn('Known unit uncertainty',json.dumps(register))
         self.assertNotIn('Unreviewed aspects:',text)
         self.assertIn('Old scientific prose.',text)
         self.assertEqual(rr.without_register(text),original)
@@ -198,7 +199,7 @@ class ReenrichTests(unittest.TestCase):
         self.assertEqual(verified['schema'],'portable-article-completion-v3')
         with self.assertRaises(ValueError): rr.verify_completion(receipt,self.work/'archive'/'manifest.json',**dict(args,manifest_sha256='0'*64))
         saved=self.page.read_text()
-        for old in ('Unit assignment remains uncertain','Article package:','Annotated export:'):
+        for old in ('Old scientific prose.', 'Human prose stays byte-identical.'):
             self.page.write_text(saved.replace(old,'STRIPPED'))
             with self.assertRaises(ValueError): rr.verify_completion(receipt,self.work/'archive'/'manifest.json',**args)
         self.page.write_text(saved)
@@ -213,9 +214,12 @@ class ReenrichTests(unittest.TestCase):
         text=rr._candidate_text(self.work,p,self.manifest,exported['binding'],submission)
         self.assertNotIn('current_qualifications',text)
         self.assertNotIn('inherited_qualifications',text)
+        self.assertIsNone(rr.read_register(text))
+        import final_products as fp
+        register=fp.page_register(self.work,p,self.manifest,exported,submission)
+        text=rr.install_register(text,register)
         self.assertIn('Known unit uncertainty',text)
         self.assertIn('Unit assignment remains uncertain',text)
-        register=rr.read_register(text)
         self.assertEqual(register['schema'],'portable-page-qualification-register-v4')
         self.assertEqual(rr.install_register(text,register),text)
         # Verify current replacement against the archived snapshot. Genuine old
@@ -242,7 +246,7 @@ class ReenrichTests(unittest.TestCase):
         rr.publish(self.work,'fake','bucket','gate',runner=FakeRclone())
         prior_manifest=self.work/'archive/manifest.json'
         _,paths=pa.verify_local(prior_manifest)
-        first=rr.read_register(self.page.read_text()); incomplete=dict(paths)
+        first=pa.load(self.work/'completion.json')['page_register']; incomplete=dict(paths)
         del incomplete[first['export_locator']['key']]
         with self.assertRaisesRegex(ValueError,'register-archive'):
             rr._register_archive(first,incomplete)
@@ -254,7 +258,7 @@ class ReenrichTests(unittest.TestCase):
         rr.advance(self.work,'approved-execute',approval=approval,fixture_transport=inference_double(self.work))
         review_and_export(self.work,self.base)
         rr.candidate_import(self.work,self.no_change_candidate())
-        register=rr.read_register((self.work/'page-candidate/page-candidate.md').read_text())
+        register=pa.load(self.work/'page-candidate/candidate.json')['page_register']
         self.assertEqual({t['element_id'] for t in register['selected_targets']},{'main::table-1','supplement::table-1'})
         self.assertIn('Prior operator limitation outside the element evidence.',rr.register_text(register))
         self.assertIn('Prior exact-target limitation.',rr.register_text(register))
@@ -269,8 +273,8 @@ class ReenrichTests(unittest.TestCase):
         (self.manifest.parent/'local-map.json').write_text(json.dumps(mapping))
         self.ready(); rr.candidate_import(self.work,self.no_change_candidate())
         text=(self.work/'page-candidate/page-candidate.md').read_text()
-        visible=text.split('<!-- portable-page-qualification-register-v2:')[0]
-        self.assertIn('Lower panel unreadable',visible)
+        self.assertNotIn('Lower panel unreadable',text)
+        self.assertIn('Lower panel unreadable',json.dumps(pa.load(self.work/'page-candidate/candidate.json')['page_register']))
 
     def test_compact_rendering_cannot_add_page_sections(self):
         self.ready(); cp=self.no_change_candidate(); submission=pa.load(cp)
@@ -278,7 +282,7 @@ class ReenrichTests(unittest.TestCase):
         cp.write_text(json.dumps(submission)); rr.candidate_import(self.work,cp)
         text=(self.work/'page-candidate/page-candidate.md').read_text()
         self.assertEqual(set(rr._sections(text)),set(rr._sections(self.page.read_text())))
-        register=rr.read_register(text)
+        register=pa.load(self.work/'page-candidate/candidate.json')['page_register']
         self.assertEqual(register['operator_qualification'],submission['qualification'])
         self.assertNotIn('## Injected heading',rr._sections(text))
 
@@ -290,7 +294,7 @@ class ReenrichTests(unittest.TestCase):
         mapping=pa.load(self.manifest.parent/'local-map.json'); mapping['manifest_sha256']=pa.sha(self.manifest)
         (self.manifest.parent/'local-map.json').write_text(json.dumps(mapping))
         self.ready(); rr.candidate_import(self.work,self.no_change_candidate())
-        register=rr.read_register((self.work/'page-candidate/page-candidate.md').read_text())
+        register=pa.load(self.work/'page-candidate/candidate.json')['page_register']
         rows=[q for q in register['qualifications'] if q.get('metadata')=='Identical warning']
         self.assertEqual(len(rows),2)
         self.assertEqual({q['metadata_target'] for q in rows},{'/first/warning','/second/warning'})
@@ -312,6 +316,8 @@ class ReenrichTests(unittest.TestCase):
         submission['replacements'][0]['evidence'][0]['target']='/record/cells/0/raw_value'
         cp.write_text(json.dumps(submission)); rr.candidate_import(self.work,cp)
         text=(self.work/'page-candidate/page-candidate.md').read_text()
+        self.assertIsNone(rr.read_register(text))
+        text=json.dumps(pa.load(self.work/'page-candidate/candidate.json')['page_register'])
         self.assertIn('Applicable inherited warning',text); self.assertIn('Unscoped warning stays',text)
         for absent in ('Other document warning','Sibling target warning','Different source version warning'):
             self.assertNotIn(absent,text)
@@ -421,6 +427,8 @@ class ReenrichTests(unittest.TestCase):
         rr.candidate_import(self.work,candidate(self.work,self.base)); rr.apply(self.work,authorize=True)
         import html
         text=html.unescape(self.page.read_text())
+        self.assertIsNone(rr.read_register(text))
+        text=html.unescape(rr.register_text(pa.load(self.work/'page-candidate/candidate.json')['page_register']))
         self.assertIn('Attributed proposals',text); self.assertIn('Synthetic operator proposal only.',text)
         self.assertIn('Synthetic test operator',text); self.assertIn('"proposed_value": "42"',text)
         self.assertEqual(pa.load(self.work/'export/handoff.json')['elements'][0]['outcome'],original)

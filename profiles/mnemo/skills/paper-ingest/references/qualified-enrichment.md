@@ -56,7 +56,10 @@ Finalize the verified v5 result into permanent scientific products before writin
 
     <pdf-python> -B <scripts>/final_products.py ingest --handoff <v5/handoff.json> --output <new-final-package> --method <scripts> --integration <scripts> --enrichment-root <scripts>
 
-Keep the v5 `qualifications.txt` text exactly (an empty file is valid) in the paper. Add the unformatted Ingest log pointer, relative to that paper:
+Keep the complete qualification records in the final package. In the paper,
+include concise substantive caveats beside affected claims; do not paste raw
+registers or audit dumps. Add the unformatted Ingest log pointer, relative to
+that paper:
 
     Source package: <relative-final-package/manifest.json>
 
@@ -74,10 +77,24 @@ Generated blocks have ownership markers. Prose outside them is preserved. If a b
 
 Images remain in the local final package, outside Git and replicated through the existing source-package sync/archive process. Restore packages to their linked vault-relative locations. Before removing an older package, update every affected embed and verify the actual page links. A Markdown-only Git clone does not contain the images.
 
+Before parent completion, publish the final package to the instance-configured
+archive destination using its existing archive-write authorization:
+
+    <pdf-python> -B <scripts>/final_products.py publish-ingest --manifest <final-package/manifest.json> --receipt <durable-publication.json> --remote <remote> --bucket <bucket> --prefix <prefix>
+
+Use the instance's documented Git-backed publication-receipt directory, outside
+the final package and temporary job directories. This command saves the receipt
+only after every object and the manifest pass remote SHA-256 read-back. An
+existing matching receipt is reusable; a conflicting one is a hold. Failed
+publication remains pending; retry publication without rerunning models. Missing
+archive access is a hold, not permission to report ingestion complete.
+Add `Article archive: <relative-path-to-durable-publication.json>` to the paper's
+Ingest log. Include the receipt in the parent's scoped Git closeout.
+
 Complete Phase 10 with:
 
-    <pdf-python> -B <scripts>/verify_ingest.py <slug> --instance <instance> --require-filled --final-products <final-package/manifest.json> --require-enriched-source
+    <pdf-python> -B <scripts>/verify_ingest.py <slug> --instance <instance> --require-filled --final-products <final-package/manifest.json> --publication-receipt <durable-publication.json> --require-enriched-source
 
-Add `--page-only` for the existing PAGE_READY contract, not to bypass source/enrichment checks. The finalizer first reconstructs the current source/enrichment handoff, then durable verification checks retained product hashes, article identity and substantive qualifications without the original job directories. Legacy handoff options remain for historical records. Identity, bibliography, author wiring, graph integration and scientific review remain required.
+Add `--page-only` for the intermediate PAGE_READY contract: publication and shared integration may be deferred to the parent, while source/enrichment checks still run. The parent must rerun without `--page-only` and supply the publication receipt before clearing `needs-ingest`. The finalizer first reconstructs the current source/enrichment handoff, then durable verification checks retained product hashes, article identity and substantive qualifications without the original job directories. Legacy handoff options remain for historical records. Identity, bibliography, author wiring, graph integration and scientific review remain required.
 
 After final products and the paper pass verification, follow `portable-articles.md` for verified cleanup of completed temporary jobs. Active request reservations and incomplete enrichment are not cleanup candidates.

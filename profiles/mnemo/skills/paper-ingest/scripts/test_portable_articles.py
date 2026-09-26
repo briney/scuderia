@@ -203,9 +203,16 @@ class RealArchiveTests(unittest.TestCase):
         import figure_embeds
         figure_page=root/'paper.md'
         body=figure_embeds.render(body,compact/'manifest.json',figure_page)
-        fp.verify_ingest(compact/'manifest.json',fm['article'],body,page=figure_page)
+        with self.assertRaisesRegex(ValueError, 'publication-receipt-required'):
+            fp.verify_ingest(compact/'manifest.json',fm['article'],body,page=figure_page)
+        from unittest.mock import patch
+        from test_article_corrections import FakeRclone
+        publication = root/'publication.json'
+        with patch.object(pa, '_run_rclone', FakeRclone()):
+            fp.publish_ingest(compact/'manifest.json',publication,'fake','bucket','gate')
+        fp.verify_ingest(compact/'manifest.json',fm['article'],body,page=figure_page,publication_receipt=publication)
         shutil.rmtree(root/'native-job'); shutil.rmtree(completed)
-        fp.verify_ingest(compact/'manifest.json',fm['article'],body,page=figure_page)
+        fp.verify_ingest(compact/'manifest.json',fm['article'],body,page=figure_page,publication_receipt=publication)
 
 
     def test_source_association_cannot_be_overridden(self):

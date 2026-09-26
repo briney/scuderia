@@ -131,7 +131,8 @@ class FinalProducts(unittest.TestCase):
         shutil.rmtree(fixture.work); shutil.rmtree(fixture.base/'source')
         rr.verify_completion(saved_receipt, restored/'manifest.json', manifest_key=receipt['publication']['manifest_key'],
                              manifest_sha256=receipt['publication']['manifest_sha256'], article_key=fixture.m['article_key'], page=fixture.page)
-        register = rr.read_register(fixture.page.read_text())
+        self.assertIsNone(rr.read_register(fixture.page.read_text()))
+        register = receipt['page_register']
         self.assertEqual(register['schema'], 'portable-page-qualification-register-v4')
         self.assertTrue(register['qualifications'])
 
@@ -145,3 +146,75 @@ class FinalProducts(unittest.TestCase):
         self.assertEqual(rr.execute(work_root=self.root/'new-run')['next_step'], 'adopt')
         with self.assertRaises(ValueError):
             rr.advance(self.root/'new-run', 'prepare')
+
+    def test_initial_ingest_requires_verified_publication(self):
+        from unittest.mock import patch
+        out = self.root/'final'
+        m = fp.build(self.path, out)
+        manifest = out/'manifest.json'
+        # Isolate the publication gate from the independently tested source gate.
+        accepted = copy.deepcopy(m)
+        accepted['source_status']['fixture'] = False
+        accepted['initial_ingest'] = dict(production_complete=True,
+            readiness=dict(page_ready=True, holds=[]), qualifications='Archived qualification; do not dump into Markdown.')
+        receipt = self.root/'publication.json'
+        with patch.object(fp, 'verify', return_value=accepted):
+            with self.assertRaisesRegex(ValueError, 'publication-receipt-required'):
+                fp.verify_ingest(manifest, m['article'], '')
+            fp.verify_ingest(manifest, m['article'], '', require_publication=False)
+            pub = pa.publish(manifest, 'fake', 'bucket', 'gate', runner=FakeRclone())
+            pa.save(receipt, pub)
+            with self.assertRaisesRegex(ValueError, 'offline-publication-not-production'):
+                fp.verify_ingest(manifest, m['article'], '', publication_receipt=receipt)
+            with patch.object(pa, '_run_rclone', FakeRclone()):
+                receipt.unlink()
+                fp.publish_ingest(manifest, receipt, 'fake', 'bucket', 'gate')
+            fp.verify_ingest(manifest, m['article'], '', publication_receipt=receipt)
+            saved = pa.load(receipt)
+            for field in ('manifest_sha256', 'article_key'):
+                receipt.write_text(json.dumps(dict(saved, **{field: '0'*64})))
+                with self.assertRaises(ValueError):
+                    fp.verify_ingest(manifest, m['article'], '', publication_receipt=receipt)
+            receipt.write_text(json.dumps(dict(saved, receipts=saved['receipts'][:-1])))
+            with self.assertRaisesRegex(ValueError, 'publication-readback-inventory'):
+                fp.verify_ingest(manifest, m['article'], '', publication_receipt=receipt)
+
+    def test_failed_initial_publication_does_not_create_receipt(self):
+        from unittest.mock import patch
+        out = self.root/'final'; m = fp.build(self.path, out)
+        m['source_status']['fixture'] = False
+        m['initial_ingest'] = dict(production_complete=True)
+        receipt = self.root/'publication.json'
+        failed = FakeRclone(); failed.fail_after = 1
+        with patch.object(fp, 'verify', return_value=m), patch.object(pa, '_run_rclone', failed):
+            with self.assertRaisesRegex(ValueError, 'injected-transfer-interruption'):
+                fp.publish_ingest(out/'manifest.json', receipt, 'fake', 'bucket', 'gate')
+        self.assertFalse(receipt.exists())
+
+    def test_historical_embedded_register_receipt_still_verifies(self):
+        from test_reenrich import ReenrichTests, candidate
+        import reenrich as rr
+        fixture = ReenrichTests('runTest'); fixture.setUp(); self.addCleanup(fixture.doCleanups)
+        fixture.ready()
+        rr.candidate_import(fixture.work, candidate(fixture.work, fixture.base))
+        rr.apply(fixture.work, authorize=True)
+        rr.publish(fixture.work, 'fake', 'bucket', 'gate', runner=FakeRclone())
+        receipt = pa.load(fixture.work/'completion.json')
+        archive = fixture.work/'archive/manifest.json'
+        m = pa.load(archive); facts = m['completion']
+        register = facts.pop('page_register'); facts.pop('page_register_location')
+        fixture.page.write_text(rr.install_register(fixture.page.read_text(), register))
+        facts['page_sha256'] = pa.sha(fixture.page)
+        m['package_id'] = 'synthetic-historical-register'
+        archive.write_text(json.dumps(m))
+        mapping = pa.load(archive.parent/'local-map.json'); mapping['manifest_sha256'] = pa.sha(archive)
+        (archive.parent/'local-map.json').write_text(json.dumps(mapping))
+        receipt.pop('page_register'); receipt.pop('page_register_location'); receipt.update(facts)
+        receipt['publication'] = pa.publish(archive, 'fake', 'bucket', 'gate', runner=FakeRclone())
+        path = rr.page_receipt_path(fixture.page, facts['binding']); path.write_text(json.dumps(receipt))
+        pub = receipt['publication']
+        rr.verify_completion(path, archive, manifest_key=pub['manifest_key'], manifest_sha256=pub['manifest_sha256'],
+                             article_key=m['article_key'], page=fixture.page)
+        # A new candidate may migrate the old embedded register only with its evidence present.
+        _, paths = pa.verify_local(archive)
+        rr._register_archive(rr.read_register(fixture.page.read_text()), paths)
