@@ -66,6 +66,29 @@ Follow `portable-articles.md` for existing-article refresh. Operation/submission
 schemas are in `qualified-enrichment-schema.md`. Native tools remain the normal
 production route; these paths do not authorize spending or scientific approval.
 
+## Inference concurrency
+
+Source extraction and figure/table enrichment default to **three active VLM
+requests per paper**. Phase boundaries, reservations, result validation and PDF
+crop exports remain serial. Independent papers have independent limits: three
+papers at concurrency three can issue nine calls simultaneously.
+
+For an individual `execute` operation, set `vlm_concurrency` to a positive integer
+in either native tool; the source, enrichment and portable `approved-execute`
+CLIs accept `--vlm-concurrency`. To change the default for both executors, set
+`PAPER_INGEST_VLM_CONCURRENCY` in the launching process environment (for example,
+`8` or `12`). An explicit operation value takes precedence; `1` restores serial
+inference. No model, prompt, token allowance, request budget or timeout changes.
+The effective limit is recorded at execution start. A portable continuation can
+use a different limit for never-reserved requests under its existing approval.
+
+A failure classified as shared by the executor stops new dispatch; already-dispatched calls are drained and
+their results retained. A reservation remains consumed even if delivery or
+response retention is uncertain; concurrency never authorizes a retry. Abrupt
+process termination can still leave uncertain reservations requiring inspection.
+Changing only the runtime limit does not require resealing prepared work; changing
+executor code still requires the normal original-binding/idle-cutover discipline.
+
 ## Focused maintenance checks
 
 From any working directory, the default synthetic subprocess controls need no

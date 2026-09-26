@@ -24,6 +24,7 @@ SCHEMA=dict(name='paper_enrichment',description=(
         'purpose':dict(type='string',enum=['discovery','summary','exact','algorithm-specification']),
         'qualification':dict(type='string'), 'kind':dict(type='string',enum=['qualified-job','v7-run']),
         'max_bytes':dict(type='integer',minimum=1024,maximum=8000000),
+        'vlm_concurrency':dict(type='integer',minimum=1,description='Execute only: per-paper active inference limit; defaults to PAPER_INGEST_VLM_CONCURRENCY or 3.'),
         'authorize_posts':dict(type='boolean',default=False),'offline':dict(type='boolean',default=False),
         'timeout':dict(type='number',exclusiveMinimum=0,maximum=86400,default=14400),
     }))

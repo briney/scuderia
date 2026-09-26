@@ -40,7 +40,7 @@ def main(argv=None):
     command('prepare',('source-handoff','output'),('test-root','processor-cache'))
     command('count',('job','processor-cache'))
     command('seal',('job',),('processor-cache',))
-    c=command('execute',('job','approval')); c.add_argument('--authorize-posts',action='store_true')
+    c=command('execute',('job','approval')); c.add_argument('--authorize-posts',action='store_true'); c.add_argument('--vlm-concurrency',type=int)
     command('report',('job','output'))
     command('import-test-response',('job','responses'))
     command('review-create',('run','output'),('kind',))
@@ -86,7 +86,7 @@ def main(argv=None):
                 elif args.operation=='seal':
                     next_step=runtime.prepare_for_approval(job,args.processor_cache)
                 elif args.operation=='execute':
-                    result=ae.execute(job,binding,manifest,absolute(args.approval),authorize=args.authorize_posts)
+                    result=ae.execute(job,binding,manifest,absolute(args.approval),authorize=args.authorize_posts,vlm_concurrency=args.vlm_concurrency)
                     exit_code=0 if result['accounting']['complete'] else 1
                     details=result['accounting']
                 elif args.operation=='import-test-response':

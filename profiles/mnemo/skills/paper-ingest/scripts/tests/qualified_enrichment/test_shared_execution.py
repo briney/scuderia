@@ -25,7 +25,7 @@ class SharedExecution(unittest.TestCase):
         def transport(payload, row):
             sent.append(row['id'])
             response=good(payload,row)
-            if len(sent)==1:
+            if row['id']=='r000001':
                 envelope=json.loads(response['raw']); envelope['choices'][0]['message']['content']='{}'
                 response['raw']=json.dumps(envelope).encode()
             return response
@@ -61,7 +61,7 @@ class SharedExecution(unittest.TestCase):
         approval=self.prepared(); sent=[]
         def crash(payload,row): sent.append(row['id']); raise KeyboardInterrupt()
         with self.assertRaises(KeyboardInterrupt):
-            rr.advance(self.work,'approved-execute',approval=approval,fixture_transport=crash)
+            rr.advance(self.work,'approved-execute',approval=approval,fixture_transport=crash,vlm_concurrency=1)
         good=inference_double(self.work)
         def resume(payload,row): sent.append(row['id']); return good(payload,row)
         state=rr.advance(self.work,'approved-execute',approval=approval,fixture_transport=resume)
@@ -73,7 +73,7 @@ class SharedExecution(unittest.TestCase):
         approval=self.prepared(); sent=[]
         def denied(payload,row): sent.append(row['id']); return dict(http_status=401,raw=b'{}')
         with self.assertRaises(ValueError):
-            rr.advance(self.work,'approved-execute',approval=approval,fixture_transport=denied)
+            rr.advance(self.work,'approved-execute',approval=approval,fixture_transport=denied,vlm_concurrency=1)
         self.assertEqual(len(sent),1)
         with self.assertRaisesRegex(ValueError,'integrity-hold'):
             rr.advance(self.work,'approved-execute',approval=approval,fixture_transport=lambda *a:self.fail('fatal resumed'))

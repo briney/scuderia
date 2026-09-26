@@ -178,11 +178,15 @@ def validated(args):
     require(operation in OPERATIONS, 'unsupported-operation')
     required = REQUIRED[operation] | {'operation', 'attempt_dir'}
     allowed = required | {'offline', 'authorize_posts', 'timeout'}
+    if operation == 'execute': allowed.add('vlm_concurrency')
     if operation == 'prepare': allowed.add('offline_fixture')
     if operation in ('prepare','prepare-stage','seal'): allowed.add('processor_cache')
     if operation in ('report', 'finalize', 'summary'): allowed.add('inspection_dir')
     require(required <= args.keys() and args.keys() <= allowed, 'operation-arguments')
     value = dict(args)
+    if 'vlm_concurrency' in value:
+        from .concurrency import concurrency_limit
+        concurrency_limit(value['vlm_concurrency'])
     for flag in ('offline', 'authorize_posts', 'offline_fixture'):
         require(type(value.get(flag, False)) is bool, 'boolean-required:' + flag)
     timeout = value.get('timeout', 14400)
@@ -236,6 +240,7 @@ def launch(args, deployment=None):
         if key in args: argv += [flag, args[key]]
     if 'phase' in args: argv += ['--phase', args['phase']]
     if args.get('authorize_posts'): argv.append('--authorize-posts')
+    if 'vlm_concurrency' in args: argv += ['--vlm-concurrency', str(args['vlm_concurrency'])]
     if args.get('offline_fixture'): argv.append('--offline-fixture')
     process = run_child(argv, deployment.method_dir, attempt, args['timeout'])
     result = dict(process, operation=args['operation'], phase=args.get('phase'), attempt_dir=str(attempt),
@@ -278,6 +283,7 @@ def main(argv=None):
     for name in PATH_FLAGS: parser.add_argument('--' + name.replace('_','-'))
     parser.add_argument('--phase', choices=PHASES)
     parser.add_argument('--timeout', type=float, default=14400)
+    parser.add_argument('--vlm-concurrency', type=int)
     for name in ('offline', 'authorize-posts', 'offline-fixture'):
         parser.add_argument('--' + name, action='store_true', default=None)
     args = {k:v for k,v in vars(parser.parse_args(argv)).items() if v is not None}

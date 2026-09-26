@@ -14,7 +14,7 @@ OPERATIONS = {
     'prepare': ({'source_handoff','output'}, {'test_root','processor_cache'}),
     'count': ({'job','processor_cache'}, set()),
     'seal': ({'job'}, {'processor_cache'}),
-    'execute': ({'job','approval','authorize_posts'}, set()),
+    'execute': ({'job','approval','authorize_posts'}, {'vlm_concurrency'}),
     'report': ({'job','output'}, set()),
     'import-test-response': ({'job','responses'}, set()),
     'review-create': ({'run','output'}, {'kind'}),
@@ -93,6 +93,8 @@ def argv_for(args, deployment, attempt, *, historical=False):
     for key in ('offline','authorize_posts'):
         if key in args: require(type(args[key]) is bool,'boolean-required:'+key)
     if op=='execute': require(args['authorize_posts'] is True and not args.get('offline',False),'separate-approval-and-authorize-posts-required')
+    if 'vlm_concurrency' in args:
+        require(type(args['vlm_concurrency']) is int and args['vlm_concurrency'] > 0, 'vlm-concurrency-must-be-positive-integer')
     if args.get('test_root'): require(args.get('offline') is True,'test-root-requires-offline')
     if 'kind' in args: require(args['kind'] in ('qualified-job','v7-run'),'review-kind')
     if 'purpose' in args: require(args['purpose'] in ('discovery','summary','exact','algorithm-specification'),'consumer-purpose')

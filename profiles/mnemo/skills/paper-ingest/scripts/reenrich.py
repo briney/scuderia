@@ -344,7 +344,7 @@ def execute(plan_value=None,*,work_root):
         fixture=p['fixture'],next_step=None if complete else next_step)
 
 
-def advance(work_root,operation,*,cache=None,count_receipt=None,approval=None,authorize=False,fixture_transport=None,submission=None):
+def advance(work_root,operation,*,cache=None,count_receipt=None,approval=None,authorize=False,fixture_transport=None,submission=None,vlm_concurrency=None):
     with locked(work_root):
         work,p,manifest,m,roster,binding,_=context(work_root)
         require(manifest,'legacy-prerequisites-not-adopted')
@@ -356,7 +356,7 @@ def advance(work_root,operation,*,cache=None,count_receipt=None,approval=None,au
             value=ae.seal(work,binding,manifest); path=work/'enrichment'/'seal.json'
         elif operation=='approved-execute':
             before=tree(work/'enrichment')
-            value=ae.execute(work,binding,manifest,approval,authorize=authorize,fixture_transport=fixture_transport)
+            value=ae.execute(work,binding,manifest,approval,authorize=authorize,fixture_transport=fixture_transport,vlm_concurrency=vlm_concurrency)
             after=tree(work/'enrichment')
             if after!=before:
                 _record(work,operation,[work/'enrichment'/key for key in after if key not in before],value['accounting'])
@@ -1044,7 +1044,7 @@ def main(argv=None):
     for name in ('execute','prepare','count','seal','approved-execute','review-create','review-import','export','candidate-import','apply','adopt','publish'):
         s=sub.add_parser(name); s.add_argument('--work-root',required=True)
         if name=='count': s.add_argument('--cache'); s.add_argument('--count-receipt')
-        if name=='approved-execute': s.add_argument('--approval',required=True); s.add_argument('--authorize-posts',action='store_true')
+        if name=='approved-execute': s.add_argument('--approval',required=True); s.add_argument('--authorize-posts',action='store_true'); s.add_argument('--vlm-concurrency',type=int)
         if name in ('review-import','candidate-import'): s.add_argument('--submission',required=True)
         if name=='apply': s.add_argument('--authorize-page-apply',action='store_true')
         if name=='adopt': s.add_argument('--manifest',required=True); s.add_argument('--identity-approval',required=True)
@@ -1073,7 +1073,7 @@ def main(argv=None):
         elif args.command=='apply': result=apply(args.work_root,authorize=args.authorize_page_apply)
         elif args.command=='publish': result=publish(args.work_root,args.remote,args.bucket,args.prefix)
         else: result=advance(args.work_root,args.command,cache=getattr(args,'cache',None),count_receipt=getattr(args,'count_receipt',None),
-            approval=getattr(args,'approval',None),authorize=getattr(args,'authorize_posts',False),submission=getattr(args,'submission',None))
+            approval=getattr(args,'approval',None),authorize=getattr(args,'authorize_posts',False),submission=getattr(args,'submission',None),vlm_concurrency=getattr(args,'vlm_concurrency',None))
         print(json.dumps(result,indent=2)); return 0
     except (OSError,ValueError,KeyError,TypeError,ImportError) as exc:
         print(json.dumps(dict(status='hold',error=str(exc))),file=sys.stderr); return 2

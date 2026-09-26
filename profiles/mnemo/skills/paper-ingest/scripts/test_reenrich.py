@@ -522,9 +522,9 @@ class ReenrichTests(unittest.TestCase):
                             return dict(http_status=500,raw=b'{"error":"synthetic failure"}')
                         return success(raw,row)
                     if failure=='interrupt':
-                        with self.assertRaises(KeyboardInterrupt): rr.advance(work,'approved-execute',approval=ap,fixture_transport=transport)
+                        with self.assertRaises(KeyboardInterrupt): rr.advance(work,'approved-execute',approval=ap,fixture_transport=transport,vlm_concurrency=1)
                     else:
-                        rr.advance(work,'approved-execute',approval=ap,fixture_transport=transport)
+                        rr.advance(work,'approved-execute',approval=ap,fixture_transport=transport,vlm_concurrency=1)
                     state=rr.execute(work_root=work)['stage_receipts']['enrichment']['accounting']
                     self.assertEqual(state['requests'][failed]['status'],'failed' if failure=='http' else 'uncertain')
                     self.assertFalse(state['complete'])
@@ -532,13 +532,13 @@ class ReenrichTests(unittest.TestCase):
                         self.assertEqual(state['requests']['r000002']['status'],'pending')
                         before=pa.tree(work); original=ap.read_bytes(); a=pa.load(ap); a['approved_by']='Changed approver'; ap.write_text(json.dumps(a))
                         with self.assertRaisesRegex(ValueError,'approval-changed'):
-                            rr.advance(work,'approved-execute',approval=ap,fixture_transport=transport)
+                            rr.advance(work,'approved-execute',approval=ap,fixture_transport=transport,vlm_concurrency=1)
                         self.assertEqual(before,pa.tree(work)); ap.write_bytes(original)
                         source=self.base/'source/main-page.txt'; original=source.read_bytes(); source.write_bytes(b'changed')
-                        with self.assertRaises(ValueError): rr.advance(work,'approved-execute',approval=ap,fixture_transport=transport)
+                        with self.assertRaises(ValueError): rr.advance(work,'approved-execute',approval=ap,fixture_transport=transport,vlm_concurrency=1)
                         self.assertEqual(before,pa.tree(work)); source.write_bytes(original)
-                    rr.advance(work,'approved-execute',approval=ap,fixture_transport=transport)
-                    rr.advance(work,'approved-execute',approval=ap,fixture_transport=transport)
+                    rr.advance(work,'approved-execute',approval=ap,fixture_transport=transport,vlm_concurrency=1)
+                    rr.advance(work,'approved-execute',approval=ap,fixture_transport=transport,vlm_concurrency=1)
                     self.assertEqual(calls,['r000001','r000002'])
                     exported=review_and_export(work,self.base)
                     self.assertEqual(len(exported['elements']),2)
@@ -557,11 +557,11 @@ class ReenrichTests(unittest.TestCase):
         calls=[]; wrong=inference_double(self.work,wrong_model=True)
         def transport(raw,row): calls.append(row['id']); return wrong(raw,row)
         with self.assertRaisesRegex(ValueError,'model-mismatch'):
-            rr.advance(self.work,'approved-execute',approval=ap,fixture_transport=transport)
+            rr.advance(self.work,'approved-execute',approval=ap,fixture_transport=transport,vlm_concurrency=1)
         state=rr.execute(work_root=self.work)['stage_receipts']['enrichment']['accounting']
         self.assertEqual(state['counts'],dict(pending=1,uncertain=0,failed=1,completed=0))
         with self.assertRaisesRegex(ValueError,'execution-integrity-hold'):
-            rr.advance(self.work,'approved-execute',approval=ap,fixture_transport=transport)
+            rr.advance(self.work,'approved-execute',approval=ap,fixture_transport=transport,vlm_concurrency=1)
         self.assertEqual(calls,['r000001'])
 
     def test_interruption_consumes_request_without_retry(self):

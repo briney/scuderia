@@ -340,12 +340,15 @@ def _response(row,ev,raw,p,expected_tokens,fixture):
     return importer.assemble_response(row,ev,text,fixture),usage
 
 
-def execute(work,binding,manifest_path,approval_path,*,authorize=False,fixture_transport=None):
+def execute(work,binding,manifest_path,approval_path,*,authorize=False,fixture_transport=None,vlm_concurrency=None):
     with locked(absolute(work)/'enrichment'):
-        return _execute(work,binding,manifest_path,approval_path,authorize=authorize,fixture_transport=fixture_transport)
+        return _execute(work,binding,manifest_path,approval_path,authorize=authorize,fixture_transport=fixture_transport,vlm_concurrency=vlm_concurrency)
 
 
-def _execute(work,binding,manifest_path,approval_path,*,authorize=False,fixture_transport=None):
+def _execute(work,binding,manifest_path,approval_path,*,authorize=False,fixture_transport=None,vlm_concurrency=None):
+    from pdf_enrichment import trusted
+    concurrency=trusted.module('concurrency',trusted_modules()['pdf_source_package'])
+    vlm_concurrency=concurrency.concurrency_limit(vlm_concurrency)
     v=verify(work,binding,manifest_path); root=absolute(work)/'enrichment'
     value=pa.load(approval_path); counts=approval(root,v,value)
     fixture=fixture_transport is not None
@@ -362,29 +365,44 @@ def _execute(work,binding,manifest_path,approval_path,*,authorize=False,fixture_
     else:
         pa.put(root/'executed-approval.json',absolute(approval_path).read_bytes())
         _seal_file(root/'execution-start.json',dict(approval_sha256=sha(root/'executed-approval.json'),fixture=fixture,
-            binding=binding,started_at=pa.now_utc(),origin='offline-inference-double' if fixture else 'parent-authorized-live'))
+            binding=binding,vlm_concurrency=vlm_concurrency,started_at=pa.now_utc(),origin='offline-inference-double' if fixture else 'parent-authorized-live'))
     def pre_post():
         verify(work,binding,manifest_path); approval(root,v,pa.load(root/'executed-approval.json'))
         require(sha(approval_path)==sha(root/'executed-approval.json'),'execution-approval-changed')
-    for row in v['requests']:
+    state=execution_state(work,binding,manifest_path)
+    pending=[row for row in v['requests'] if state['accounting']['requests'][row['id']]['status']=='pending']
+    def prepare(row):
         pre_post()
         # Revalidate all prior outcomes before another post. A consumed request
         # is never posted again, including an interrupted write or lost response.
         state=execution_state(work,binding,manifest_path)
-        if state['accounting']['requests'][row['id']]['status']!='pending': continue
+        require(not state['accounting']['integrity_hold'],'execution-integrity-hold')
+        require(state['accounting']['requests'][row['id']]['status']=='pending','consumed-reservation')
         d=root/row['directory']; raw=(d/'request-wire.json').read_bytes()
         _seal_file(d/'reservation.json',dict(status='reserved-may-have-posted',request_sha256=row['request_sha256'],
             approval_sha256=sha(root/'executed-approval.json'),started_at=pa.now_utc()))
+        return row,raw
+
+    def request(item):
+        row,raw=item
+        if fixture: pre_post()
+        return fixture_transport(raw,row) if fixture else _post(raw,value,pre_post)
+
+    def consume(item,future):
+        row,_=item; d=root/row['directory']
         try:
-            if fixture: pre_post()
-            result=fixture_transport(raw,row) if fixture else _post(raw,value,pre_post)
+            result=future.result()
         except (OSError,ValueError) as exc:
             # Never save exception text: transports may include credentials.
             fatal=isinstance(exc,ValueError)
             _seal_file(d/'failure.json',dict(status='uncertain',reason=type(exc).__name__,fatal=fatal,
                 reservation_sha256=sha(d/'reservation.json'),response_sha256=None))
             if fatal: raise
-            continue
+            return
+        except BaseException as exc:
+            _seal_file(d/'failure.json',dict(status='uncertain',reason=type(exc).__name__,fatal=not isinstance(exc,(KeyboardInterrupt,SystemExit)),
+                reservation_sha256=sha(d/'reservation.json'),response_sha256=None))
+            raise
         pa.put(d/'response-body.json',result['raw'])
         try:
             require(result['http_status']==200,'http-failure')
@@ -395,9 +413,10 @@ def _execute(work,binding,manifest_path,approval_path,*,authorize=False,fixture_
             _seal_file(d/'failure.json',dict(status='failed',reason='response-rejected',fatal=fatal,http_status=result['http_status'],
                 reservation_sha256=sha(d/'reservation.json'),response_sha256=sha(d/'response-body.json')))
             if fatal: raise
-            continue
+            return
         _seal_file(d/'outcome.json',dict(outcome=outcome,usage=usage,returned_model=v['profile']['model'],
             fixture=fixture,response_sha256=sha(d/'response-body.json'),request_sha256=row['request_sha256'],**scope_fields(v)))
+    concurrency.run_requests(pending,prepare,request,consume,vlm_concurrency=vlm_concurrency)
     state=execution_state(work,binding,manifest_path)
     if state['accounting']['complete'] and not (root/'execution-complete.json').exists():
         _seal_file(root/'execution-complete.json',dict(binding=binding,fixture=fixture,

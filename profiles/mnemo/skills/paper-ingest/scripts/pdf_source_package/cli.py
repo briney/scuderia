@@ -14,7 +14,7 @@ def main(argv=None):
     p=subs.add_parser('prepare-stage');p.add_argument('--root',type=Path,required=True);p.add_argument('--phase',choices=['classification','association'],required=True);p.add_argument('--processor-cache',type=Path)
     p=subs.add_parser('count');p.add_argument('--root',type=Path,required=True);p.add_argument('--phase',choices=['initial','classification','association'],required=True);p.add_argument('--processor-cache',type=Path,required=True)
     p=subs.add_parser('seal');p.add_argument('--root',type=Path,required=True);p.add_argument('--phase',choices=['initial','classification','association'],required=True);p.add_argument('--processor-cache',type=Path)
-    p=subs.add_parser('execute');p.add_argument('--root',type=Path,required=True);p.add_argument('--phase',choices=['initial','classification','association'],required=True);p.add_argument('--approval',type=Path,required=True);p.add_argument('--authorize-posts',action='store_true')
+    p=subs.add_parser('execute');p.add_argument('--root',type=Path,required=True);p.add_argument('--phase',choices=['initial','classification','association'],required=True);p.add_argument('--approval',type=Path,required=True);p.add_argument('--authorize-posts',action='store_true');p.add_argument('--vlm-concurrency',type=int)
     p=subs.add_parser('replay');p.add_argument('--root',type=Path,required=True);p.add_argument('--phase',choices=['initial','classification','association'],required=True);p.add_argument('--approval',type=Path,required=True);p.add_argument('--responses',type=Path,required=True)
     for name in ('report','finalize'):
         p=subs.add_parser(name);p.add_argument('--root',type=Path,required=True);p.add_argument('--inspections',type=Path)
@@ -35,7 +35,7 @@ def main(argv=None):
             gates.prepare_phase(args.root,args.phase,args.processor_cache)
         elif args.command in ('execute','replay'):
             exit_code = execution.run_phase(args.root,args.phase,args.approval,
-                authorize=getattr(args,'authorize_posts',False),replay=getattr(args,'responses',None))
+                authorize=getattr(args,'authorize_posts',False),replay=getattr(args,'responses',None),vlm_concurrency=getattr(args,'vlm_concurrency',None))
         elif args.command == 'summary':
             state = review.export_summary(args.root,args.output,args.inspections)
             print(json.dumps(dict(requested_work_complete=state['requested_work_complete'],human_acceptance='pending',facts=str(args.output/'facts.json'),summary=str(args.output/'summary.txt'))))
