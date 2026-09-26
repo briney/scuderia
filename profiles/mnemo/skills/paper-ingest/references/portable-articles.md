@@ -50,6 +50,8 @@ Save the actual returned publication receipt, especially `manifest_key`, `manife
 
     <py> -B <scripts>/portable_articles.py restore --manifest-key <key> --manifest-sha256 <hash> --article-key <article-key> --remote <remote> --bucket <bucket> --prefix <prefix> --destination <new-restored-dir>
 
+When verifying a page with local figure embeds after restore, choose the final archive destination before downloading and preserve the page-to-archive relative layout. Copy the unchanged page and its companion publication receipt into that layout, then verify against the restored manifest. The local map contains absolute materialization paths; moving the downloaded directory alone does not relocate those bindings.
+
 Add `--element <element-id>` for a selected dependency closure. Full restore is required before publishing a whole-article revision or verifying its completion, even after selected enrichment. Selected materialization supports enrichment/export but is not a full archive; automatic partial-map merging is not implemented. Do not delete an existing materialization to retry into it.
 
 ## One full/selected request path
