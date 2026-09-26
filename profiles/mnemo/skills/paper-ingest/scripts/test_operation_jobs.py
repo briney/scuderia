@@ -154,3 +154,22 @@ print(c.dispatch(dict(operation='status',attempt_dir=sys.argv[4])))
             finally:
                 for child in children:
                     if child.poll() is None: child.kill();child.wait()
+
+
+class ProgressTests(unittest.TestCase):
+    def test_status_reads_worker_configuration_without_dispatch(self):
+        import operation_jobs as jobs
+        from article_runtime import sha
+        with tempfile.TemporaryDirectory(dir=os.environ['SOURCE_PACKAGE_TEST_ROOT']) as tmp:
+            root=Path(tmp); package=root/'package'; package.mkdir(); attempt=root/'attempt'; attempt.mkdir()
+            args=dict(operation='execute',package_dir=str(package),phase='initial')
+            jobs.write(attempt/'job.json',dict(schema='paper-operation-job-v1',created_at=time.time(),
+                identity=dict(kind='source',arguments=args)))
+            (attempt/'job.sha256').write_text(sha(attempt/'job.json'))
+            jobs.write(package/'initial-session.json',dict(vlm_concurrency=12,concurrency_source='environment',started_at='now'))
+            result=jobs.status(attempt)
+            self.assertEqual(result['execution']['vlm_concurrency'],12)
+            self.assertEqual(result['execution']['concurrency_source'],'environment')
+            self.assertFalse((attempt/'worker').exists())
+            (package/'initial-session.json').write_text('{')
+            self.assertEqual(jobs.status(attempt)['execution'],{'status':'updating'})

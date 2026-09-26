@@ -68,7 +68,7 @@ production route; these paths do not authorize spending or scientific approval.
 
 ## Operator continuations and detached execution
 
-For an existing page, use the configured `paper_enrichment` capability with
+After identity resolution and dedup, before constructing source commands, use the configured `paper_enrichment` capability with
 `operation: article` and `arguments: {command: route, article: <slug>,
 page: <absolute-page>, work_root: <new-durable-dir>}`. Supply `manifest` when
 available and `elements` only for an explicitly selected refresh. The route
@@ -76,6 +76,8 @@ checks actual page existence. A legacy text-only page still uses refresh:
 fresh source preparation, `adopt`, review, reconciliation, publication and
 `reenrich.verify_completion`. Never substitute an initial-ingest finalizer.
 A new page returns the initial-ingest route and its outstanding obligations.
+An explicit metadata-only request may stop at metadata; an ingestion/refresh request
+may not be silently reduced to metadata work because a full page already exists.
 
 Each native call needs a fresh external `attempt_dir`. Article status uses
 `operation: article`, `arguments: {command: execute, work_root: ...}`.
@@ -94,6 +96,20 @@ changed arguments require a new attempt and do not overwrite it. A missing
 terminal receipt is uncertain, never successful or permission to redispatch.
 Cancellation retains request reservations; possibly sent requests remain
 uncertain. Status/reattachment never approves or sends a model request.
+Use this job-scoped status, not `pgrep`, counts of log lines or guessed `worker/`
+paths. Prefer completion notifications; if polling is necessary, wait at most 30
+seconds. Give the user a phase/completed-count/elapsed-time update at least once
+per minute while interacting, and answer status questions promptly. A finished
+worker advances via the returned article continuation; it is not a reason to sleep.
+
+Use configured runtime/cache paths and the generated approval/packet templates.
+Do not search old private runs to reconstruct configuration or copy their approvals.
+For parser/runtime bugs, preserve the failed evidence and diagnose in an isolated
+checkout under the Git rules. Never stash/pop unrelated edits, restore shared files,
+or pipe a test command through a success-returning command that masks its exit.
+Use verified downstream reuse when its code bindings match; a binding mismatch is
+an explicit repair/migration hold, not permission to relabel old evidence or repeat
+all model calls automatically.
 
 Review packets are generated from the current dossier roster. Portable reviews
 write `review/packets.json`; when split, pass its exact packet path as `packet`
@@ -111,19 +127,21 @@ workaround is required. Path failures identify the rejected component.
 
 ## Inference concurrency
 
-Source extraction and figure/table enrichment default to **three active VLM
-requests per paper**. Phase boundaries, reservations, result validation and PDF
-crop exports remain serial. Independent papers have independent limits: three
-papers at concurrency three can issue nine calls simultaneously.
+Normal execution **omits `vlm_concurrency`** and inherits
+`PAPER_INGEST_VLM_CONCURRENCY` from the launching environment. Three is only the
+fallback when that variable is unset, not a value to copy into tool arguments.
+Set an explicit positive-integer override only for intentional user/operator
+instructions (CLI: `--vlm-concurrency`); it takes precedence over the environment.
+Historical approvals, run logs and example values never establish current settings.
+No model, prompt, token allowance, request budget or timeout changes are implied.
 
-For an individual `execute` operation, set `vlm_concurrency` to a positive integer
-in either native tool; the source, enrichment and portable `approved-execute`
-CLIs accept `--vlm-concurrency`. To change the default for both executors, set
-`PAPER_INGEST_VLM_CONCURRENCY` in the launching process environment (for example,
-`8` or `12`). An explicit operation value takes precedence; `1` restores serial
-inference. No model, prompt, token allowance, request budget or timeout changes.
-The effective limit is recorded at execution start. A portable continuation can
-use a different limit for never-reserved requests under its existing approval.
+The worker records effective `vlm_concurrency` and `concurrency_source`
+(`argument`, `environment`, `fallback`); native status exposes these after execution
+starts. Check that record instead of assuming a caller's shell setting was inherited.
+No unrelated environment values should be printed. Per-request reservations retain
+settings for enrichment continuations, which may change the limit for never-sent
+requests without retrying consumed requests. Phase boundaries and result processing
+remain serial; a one-request phase cannot use additional slots.
 
 A failure classified as shared by the executor stops new dispatch; already-dispatched calls are drained and
 their results retained. A reservation remains consumed even if delivery or
@@ -154,3 +172,22 @@ disposable outputs. Source-specific private regressions stay with the instance;
 they may use the same external fixture corpus and this trusted runtime. Do not
 copy their research content into the public skill. Exact local processor checks
 and installed-harness checks are separate opt-ins, not a paid acceptance campaign.
+
+## Timing and failed attempts
+
+Keep every failed and replacement attempt until finalization. For article `publish`,
+pass `source_attempts: [<source-package-dir>, ...]` and
+`enrichment_attempts: [<earlier-enrichment-job>, ...]`; the current enrichment job
+is included automatically. For initial finalization, use repeatable
+`final_products.py ingest --source-attempt <dir> --enrichment-attempt <dir>` flags.
+Include reused forks as well as their originals. These are explicit registrations,
+not a filesystem search: omitted attempts are outside the reported scope.
+
+The final manifest/refresh receipt retains a `timing` snapshot after scratch cleanup.
+Native completion output gives counts, token totals, overlapping request wall time
+and summed request time separately. Detailed request timestamps and per-phase
+settings stay in that external manifest, never in the paper page. Unknown legacy
+values stay unknown; failed responses with no usage are counted as missing usage.
+Refresh receipt intervals include operator wait. The snapshot ends before
+publication; upload/read-back and later cleanup are not included in its wall time.
+Timing is diagnostic and never satisfies a scientific acceptance or replay gate.

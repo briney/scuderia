@@ -38,7 +38,11 @@ prerequisite stub, or session boundary. Small jobs may run inline.
 ## Operational entry
 
 Read `references/runtime.md` before the first source/enrichment operation.
-Use the configured native capability and returned continuations. Existing pages,
+After identity resolution and dedup, invoke the article `route` operation from
+`runtime.md` before constructing source commands. Follow its returned continuations
+and named completion verifier; do not reconstruct commands from old run records.
+Omit concurrency overrides unless intentionally requested; inherit the configured
+environment and confirm the worker-reported value. Existing pages,
 including text-only pages without packages, route through the portable refresh
 contract. Use detached execution/status for long operations; never restart work
 because the conversation stopped waiting. A repeated deterministic failure needs

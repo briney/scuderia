@@ -55,6 +55,29 @@ def start(kind, arguments, deployment):
     return status(root)
 
 
+def execution_progress(identity):
+    """Read the worker's actual execution settings; never infer them from this caller."""
+    args=identity.get('arguments',{})
+    if identity.get('kind')=='source' and args.get('operation')=='execute':
+        path=absolute(args['package_dir'])/(args['phase']+'-session.json')
+    elif identity.get('kind')=='enrichment' and args.get('operation')=='execute':
+        path=absolute(args['job'])/'enrichment/execution-start.json'
+    elif args.get('operation')=='article' and args.get('arguments',{}).get('command')=='approved-execute':
+        path=absolute(args['arguments']['work_root'])/'enrichment/execution-start.json'
+    else:
+        return None
+    if path.name=='execution-start.json':
+        runs=sorted((path.parent/'execution-runs').glob('*.json'))
+        if runs: path=runs[-1]
+    try:
+        value=json.loads(path.read_text())
+    except FileNotFoundError:
+        return None
+    except (ValueError,OSError):
+        return dict(status='updating')
+    return {k:value.get(k) for k in ('vlm_concurrency','concurrency_source','started_at')}
+
+
 def status(attempt):
     root,job=load_job(attempt)
     value=dict(attempt_dir=str(root),job_sha256=sha(root/'job.json'),success=False,
@@ -66,10 +89,15 @@ def status(attempt):
         require(terminal['job_sha256']==value['job_sha256'],'terminal-job-binding')
         value.update(status='finished' if terminal['result'].get('success') else 'failed',
                      success=bool(terminal['result'].get('success')),result=terminal['result'],next_operation=None)
+        result=terminal['result']
+        execution=result.get('execution') or result.get('receipt',{}).get('details',{}).get('execution')
+        if execution is not None: value['execution']=execution
         # Results remain evidence-bound after the controlling session disappears.
         for path,h in terminal.get('artifacts',{}).items():
             require(sha(path)==h,'terminal-artifact-changed:'+path)
         return value
+    progress=execution_progress(job['identity'])
+    if progress is not None: value['execution']=progress
     running=False
     if (root/'worker.lock').exists():
         with (root/'worker.lock').open('rb') as lock:
