@@ -131,6 +131,9 @@ class FinalProducts(unittest.TestCase):
         shutil.rmtree(fixture.work); shutil.rmtree(fixture.base/'source')
         rr.verify_completion(saved_receipt, restored/'manifest.json', manifest_key=receipt['publication']['manifest_key'],
                              manifest_sha256=receipt['publication']['manifest_sha256'], article_key=fixture.m['article_key'], page=fixture.page)
+        self.assertEqual(pa.load(restored/'manifest.json')['completion']['timing'],receipt['timing'])
+        self.assertEqual(receipt['timing']['counts']['successful'],1)
+        self.assertIsNotNone(receipt['timing']['request_wall_seconds'])
         self.assertIsNone(rr.read_register(fixture.page.read_text()))
         register = receipt['page_register']
         self.assertEqual(register['schema'], 'portable-page-qualification-register-v4')

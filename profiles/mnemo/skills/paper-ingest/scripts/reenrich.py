@@ -176,7 +176,7 @@ OPERATOR_FIELDS = {
     'export': ({'work_root'}, set()),
     'candidate-import': ({'work_root','submission'}, set()),
     'apply': ({'work_root','authorize_page_apply'}, set()),
-    'publish': ({'work_root','remote','bucket','prefix'}, set()),
+    'publish': ({'work_root','remote','bucket','prefix'}, {'source_attempts','enrichment_attempts'}),
 }
 
 
@@ -457,7 +457,8 @@ def execute(plan_value=None,*,work_root):
         status='finished' if complete else 'pending-operator-continuation',completion=completion,
         production_complete=complete and not p['fixture'],page_refresh_complete=complete and bool(p['page_path']),
         fixture=p['fixture'],next_step=None if complete else next_step,
-        next_operation=continuation(work,p,None if complete else next_step),request_budget=budget)
+        next_operation=continuation(work,p,None if complete else next_step),request_budget=budget,
+        execution=ae.execution_settings(work),timing=__import__('operation_timing').concise(pa.load(work/'completion.json').get('timing')) if complete else None)
 
 
 def advance(work_root,operation,*,cache=None,count_receipt=None,approval=None,authorize=False,fixture_transport=None,submission=None,vlm_concurrency=None,packet=None):
@@ -1079,7 +1080,7 @@ def verify_completion(receipt_path,manifest_path,*,manifest_key,manifest_sha256,
     return receipt
 
 
-def publish(work_root,remote,bucket,prefix,*,runner=None):
+def publish(work_root,remote,bucket,prefix,*,runner=None,source_attempts=(),enrichment_attempts=()):
     with locked(work_root):
         work,p,manifest,m,roster,binding,history=context(work_root)
         require(p['schema']!=DIAGNOSTIC_PLAN,'diagnostic-publication-forbidden')
@@ -1096,7 +1097,7 @@ def publish(work_root,remote,bucket,prefix,*,runner=None):
         pa.verify_local(manifest)
         if p.get('retention_policy')=='final-products-v1':
             import final_products
-            return final_products.publish_refresh(work,p,manifest,m,roster,binding,history,exported,remote,bucket,prefix,runner)
+            return final_products.publish_refresh(work,p,manifest,m,roster,binding,history,exported,remote,bucket,prefix,runner,source_attempts=source_attempts,enrichment_attempts=enrichment_attempts)
         archive=work/'archive'
         if not archive.exists():
             updated=copy.deepcopy(m); sources=copy.deepcopy(pa.local_sources(manifest))

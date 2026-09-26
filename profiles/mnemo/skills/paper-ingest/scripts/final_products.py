@@ -395,7 +395,7 @@ def page_register(work, plan, manifest, exported, submission):
                     requests_successful=exported['execution_complete']))
 
 
-def publish_refresh(work, plan, manifest, source, roster, binding, history, exported, remote, bucket, prefix, runner):
+def publish_refresh(work, plan, manifest, source, roster, binding, history, exported, remote, bucket, prefix, runner, *, source_attempts=(), enrichment_attempts=()):
     """Publish the frozen final evidence after the existing runtime/apply gates."""
     import reenrich as rr
     import article_enrichment as ae
@@ -406,6 +406,9 @@ def publish_refresh(work, plan, manifest, source, roster, binding, history, expo
                       page_sha256=sha(plan['page_path']) if plan['page_path'] else None,
                       requests_accounted_for=exported.get('readiness', {}).get('requests_accounted_for', exported['execution_complete']),
                       requests_successful=exported['execution_complete'], fixture=plan['fixture'], mode=plan['mode'], roster=roster)
+    import operation_timing
+    completion['timing']=operation_timing.route_snapshot(operation_timing.summarize(
+        source_attempts=source_attempts,enrichment_attempts=[*enrichment_attempts,work]),plan,history)
     if plan.get('figure_embeds'): completion['figure_embeds']=True
     if plan['page_path']:
         if plan.get('page_register_location') == 'archive':
@@ -474,7 +477,7 @@ def verify_completion(receipt, m, paths, page, manifest_path):
     return receipt
 
 
-def from_ingest(handoff, destination, *, method, integration, enrichment_root):
+def from_ingest(handoff, destination, *, method, integration, enrichment_root, source_attempts=(), enrichment_attempts=()):
     """Finalize initial ingestion before authoring the page's durable pointers."""
     import source_package
     import article_enrichment as ae
@@ -491,6 +494,9 @@ def from_ingest(handoff, destination, *, method, integration, enrichment_root):
     m['initial_ingest'] = dict(source_handoff_sha256=sha(handoff), figure_embeds=True,
                               production_complete=verified['production_complete'],
                               readiness=exported['readiness'], qualifications=verified['qualifications'])
+    import operation_timing
+    m['initial_ingest']['timing']=operation_timing.summarize(source_attempts=source_attempts,
+        enrichment_attempts=[*enrichment_attempts,absolute(dossier['snapshot']['path'])])
     destination = absolute(destination)
     # This newly created package has not been published or referenced yet.
     (destination/'manifest.json').unlink(); pa.save(destination/'manifest.json', m)
@@ -564,6 +570,8 @@ def main(argv=None):
     ingest = commands.add_parser('ingest')
     for flag in ('handoff', 'output', 'method', 'integration', 'enrichment-root'):
         ingest.add_argument('--'+flag, required=True)
+    ingest.add_argument('--source-attempt',action='append',default=[])
+    ingest.add_argument('--enrichment-attempt',action='append',default=[])
     publish = commands.add_parser('publish-ingest')
     for flag in ('manifest', 'receipt', 'remote', 'bucket', 'prefix'):
         publish.add_argument('--'+flag, required=True)
@@ -578,13 +586,14 @@ def main(argv=None):
             print(json.dumps(result, indent=2))
             return 0
         if args.command == 'ingest':
-            m = from_ingest(args.handoff, args.output, method=args.method, integration=args.integration, enrichment_root=args.enrichment_root)
+            m = from_ingest(args.handoff, args.output, method=args.method, integration=args.integration, enrichment_root=args.enrichment_root,source_attempts=args.source_attempt,enrichment_attempts=args.enrichment_attempt)
         elif args.command == 'compact':
             m = build(args.manifest, args.output, page=args.page)
         else:
             m = verify(args.manifest)
         print(json.dumps(dict(schema=m['schema'], article=m['article'], objects=m['total_objects'],
-                              bytes=sum(f['size'] for f in m['files']), elements=len(m['elements'])), indent=2))
+                              bytes=sum(f['size'] for f in m['files']), elements=len(m['elements']),
+                              timing=__import__('operation_timing').concise(m.get('initial_ingest',{}).get('timing',m.get('completion',{}).get('timing')))), indent=2))
         return 0
     except (ValueError, OSError, KeyError, TypeError, ImportError) as exc:
         print(json.dumps(dict(status='hold', error=str(exc))), file=sys.stderr)

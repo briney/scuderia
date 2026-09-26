@@ -146,6 +146,29 @@ class ReenrichTests(unittest.TestCase):
         c['full_distillation_reviewed']=full
         cp.write_text(json.dumps(c)); return cp
 
+    def test_legacy_route_reaches_refresh_verifier(self):
+        status=rr.route('synthetic',page=self.page,work_root=self.work,fixture=True,
+            model_profile=fixture_profile(),page_scope=[dict(heading='## Results',elements=['main::table-1','supplement::table-1'])])
+        self.assertEqual(status['next_step'],'adopt')
+        approval=self.base/'adopt.json'
+        pa.save(approval,dict(plan_sha256=pa.sha(self.work/'plan.json'),manifest_sha256=pa.sha(self.manifest),
+            article=self.m['article'],requested_elements=None,approved_by='Synthetic operator',identity_and_scope_reviewed=True))
+        rr.operator(dict(status['next_operation']['arguments'],manifest=str(self.manifest),identity_approval=str(approval)))
+        rr.operator(rr.execute(work_root=self.work)['next_operation']['arguments'])
+        ap=count_and_approve(self.work,self.base)
+        rr.advance(self.work,'approved-execute',approval=ap,fixture_transport=inference_double(self.work))
+        review_and_export(self.work,self.base)
+        rr.candidate_import(self.work,self.no_change_candidate(full=True)); rr.apply(self.work,authorize=True)
+        rr.publish(self.work,'fake','bucket','gate',runner=FakeRclone())
+        status=rr.execute(work_root=self.work)
+        self.assertEqual(status['completion_verifier'],'reenrich.verify_completion')
+        receipt=self.work/'completion.json'; value=pa.load(receipt); pub=value['publication']
+        args=dict(manifest_key=pub['manifest_key'],manifest_sha256=pub['manifest_sha256'],article_key=self.m['article_key'],page=self.page)
+        rr.verify_completion(receipt,self.work/'archive/manifest.json',**args)
+        value['schema']='initial-ingest'; receipt.write_text(json.dumps(value))
+        with self.assertRaises(ValueError):
+            rr.verify_completion(receipt,self.work/'archive/manifest.json',**args)
+
     def test_status_missing_stage_prerequisites_returns_structured_hold(self):
         import contextlib
         import io
@@ -197,6 +220,8 @@ class ReenrichTests(unittest.TestCase):
         verified=rr.verify_completion(receipt,self.work/'archive'/'manifest.json',**args)
         self.assertEqual(verified['completion'],'offline-selected-refresh-complete')
         self.assertEqual(verified['schema'],'portable-article-completion-v3')
+        self.assertEqual(verified['timing']['counts']['successful'],1)
+        self.assertIsNotNone(verified['timing']['requests'][0]['response_received_at'])
         with self.assertRaises(ValueError): rr.verify_completion(receipt,self.work/'archive'/'manifest.json',**dict(args,manifest_sha256='0'*64))
         saved=self.page.read_text()
         for old in ('Old scientific prose.', 'Human prose stays byte-identical.'):
