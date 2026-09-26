@@ -118,3 +118,50 @@ class RouteTests(unittest.TestCase):
             self.assertFalse(result['production_complete'])
             with self.assertRaisesRegex(ValueError,'selected-refresh-requires-existing-page'):
                 rr.route('synthetic',page=page,work_root=root/'selected',elements=['table'])
+
+
+class OperatorTests(unittest.TestCase):
+    def test_native_article_route_and_status_return_exact_continuation(self):
+        import sys
+        from qualified_enrichment.launcher import Deployment,launch
+        scripts=Path(ae.__file__).parent
+        with tempfile.TemporaryDirectory(dir=os.environ['SOURCE_PACKAGE_TEST_ROOT']) as tmp:
+            root=Path(tmp); page=root/'paper.md'; page.write_text('---\nkind: paper\nslug: synthetic\n---\n# Synthetic\n')
+            args=dict(operation='article',arguments=dict(command='route',article='synthetic',page=str(page),work_root=str(root/'work')),
+                      attempt_dir=str(root/'attempt'),offline=True)
+            result=launch(args,Deployment(scripts,scripts,scripts,scripts,Path(sys.executable)))
+            self.assertTrue(result['success'],result)
+            value=json.loads((root/'attempt/operation-result.json').read_text())
+            self.assertEqual(value['next_operation']['arguments']['command'],'adopt')
+            self.assertEqual(value['next_operation']['missing_inputs'],['manifest','identity_approval'])
+            self.assertEqual(value['completion_verifier'],'reenrich.verify_completion')
+
+    def test_status_advances_to_export_after_review(self):
+        import reenrich as rr
+        from test_reenrich import fixture_profile,count_and_approve,inference_double,review_and_export
+        with tempfile.TemporaryDirectory(dir=os.environ['SOURCE_PACKAGE_TEST_ROOT']) as tmp:
+            root=Path(tmp); manifest,m=synthetic(root); work=root/'work'
+            rr.plan(rr.Request('synthetic'),manifest=manifest,work_root=work,fixture=True,model_profile=fixture_profile())
+            rr.advance(work,'prepare'); ap=count_and_approve(work,root)
+            rr.advance(work,'approved-execute',approval=ap,fixture_transport=inference_double(work))
+            with patch.object(ae,'export',return_value={}):
+                # Author/import the real review using existing fixture helper, but don't export yet.
+                with self.assertRaises(FileNotFoundError): review_and_export(work,root)
+            status=rr.execute(work_root=work)
+            self.assertEqual(status['next_step'],'export')
+            self.assertEqual(status['next_operation']['missing_inputs'],[])
+
+
+class PacketTests(unittest.TestCase):
+    def test_batches_bind_current_ids_and_report_oversized_elements(self):
+        from qualified_enrichment import reviews
+        dossier=dict(schema='portable-review-dossier-v3',policy='observed-limitations-v1',
+                     snapshot=dict(source_package='synthetic',source_files=[],elements=[]))
+        # Reuse production packet construction with minimal unresolved outcomes.
+        for i in range(3):
+            dossier['snapshot']['elements'].append(dict(element_id=str(i),source_sha256='0'*64,
+                outcome=dict(status='failed',reason='x'*(10000 if i==2 else 400)),evidence={},source_element={}))
+        result=reviews.packet_batches(dossier,'0'*64,max_bytes=2500)
+        self.assertEqual(result['oversized'],['2'])
+        self.assertEqual([e['element_id'] for p in result['packets'] for e in p['elements']],['0','1'])
+        self.assertTrue(all(len(json.dumps(p,ensure_ascii=False,indent=2).encode())+1<=2500 for p in result['packets']))

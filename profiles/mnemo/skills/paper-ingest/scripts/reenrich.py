@@ -160,6 +160,70 @@ def plan(request,*,manifest=None,work_root,fixture=False,model_profile=None,page
     return value
 
 
+# Fixed public operations; input paths never select executable code.
+OPERATOR_FIELDS = {
+    'route': ({'article','page','work_root'}, {'manifest','elements','fixture','page_scope'}),
+    'execute': ({'work_root'}, set()),
+    'adopt': ({'work_root','manifest','identity_approval'}, set()),
+    'prepare': ({'work_root'}, set()),
+    'count': ({'work_root'}, {'cache','count_receipt'}),
+    'seal': ({'work_root'}, set()),
+    'approved-execute': ({'work_root','approval','authorize_posts'}, {'vlm_concurrency'}),
+    'review-create': ({'work_root'}, set()),
+    'review-import': ({'work_root','submission'}, {'packet'}),
+    'export': ({'work_root'}, set()),
+    'candidate-import': ({'work_root','submission'}, set()),
+    'apply': ({'work_root','authorize_page_apply'}, set()),
+    'publish': ({'work_root','remote','bucket','prefix'}, set()),
+}
+
+
+def operator(arguments):
+    require(isinstance(arguments,dict), 'article-arguments-object-required')
+    command=arguments.get('command'); require(command in OPERATOR_FIELDS,'unsupported-article-command')
+    required,optional=OPERATOR_FIELDS[command]
+    require(required <= arguments.keys() and arguments.keys() <= required|optional|{'command'},
+            'article-operation-fields:'+str(command))
+    args={k:v for k,v in arguments.items() if k!='command'}
+    for key in ('page','work_root','manifest','identity_approval','cache','count_receipt','approval','submission','packet'):
+        if key not in args: continue
+        path=absolute(args[key])
+        if key in ('manifest','identity_approval','count_receipt','approval','submission','packet'):
+            require(path.is_file(), f'file-required:{command}:{key}:{path}')
+        if key=='cache': require(path.is_dir(), f'directory-required:{command}:{key}:{path}')
+    if command=='route': return route(**args)
+    if command=='execute': return execute(**args)
+    if command=='adopt': return adopt(**args)
+    if command=='candidate-import': candidate_import(args['work_root'],args['submission'])
+    elif command=='apply': apply(args['work_root'],authorize=args['authorize_page_apply'])
+    elif command=='publish': return publish(**args)
+    else:
+        if command=='approved-execute': args['authorize']=args.pop('authorize_posts')
+        if command=='count' and not args.get('cache') and not args.get('count_receipt'):
+            args['cache']=os.environ.get('REENRICH_PROCESSOR_CACHE')
+        advance(operation=command,**args)
+    return execute(work_root=args['work_root'])
+
+
+def continuation(work, p, step):
+    if step is None: return None
+    missing={'adopt':['manifest','identity_approval'], 'count':['cache-or-count_receipt'],
+             'approved-execute':['approval','authorize_posts'], 'review-import':['submission'],
+             'candidate-import':['submission'], 'apply':['authorize_page_apply'],
+             'publish':['remote','bucket','prefix']}.get(step,[])
+    args=dict(command=step,work_root=str(work))
+    if step=='count' and os.environ.get('REENRICH_PROCESSOR_CACHE'):
+        cache=absolute(os.environ['REENRICH_PROCESSOR_CACHE'])
+        if cache.is_dir(): args['cache']=str(cache); missing=[]
+    paths={name:str(work/relative) for name,relative in (
+        ('plan','plan.json'),('approval_template','enrichment/approval.template.json'),
+        ('review_packet','review/packet.json'),('review_packets','review/packets.json'),('source_inspection_packet','review/source-inspection-packet.json'),('export','export/handoff.json'),
+        ('page_candidate','page-candidate/page-candidate.md')) if (work/relative).is_file()}
+    return dict(tool='paper_enrichment',operation='article',arguments=args,missing_inputs=missing,
+                artifacts=paths,executable=step in OPERATOR_FIELDS,
+                note='Supply a new external attempt_dir. Returned arguments never grant approval.')
+
+
 def route(article, *, page, work_root, manifest=None, elements=None, fixture=False, model_profile=None, page_scope=None):
     """Choose by actual page existence; never silently turn a refresh into ingest."""
     page=absolute(page)
@@ -326,7 +390,13 @@ def execute(plan_value=None,*,work_root):
         next_step='approved-execute' if (enrichment/'seal.json').exists() else 'seal' if (enrichment/'counts.json').exists() else 'count'
     if (work/'review'/'dossier.json').exists():
         require(state is not None,'review-without-execution')
-        review=ae._review_verify(work,binding,manifest,state); next_step='review-import'
+        review=ae._review_verify(work,binding,manifest,state); next_step='export' if review[1] else 'review-import'
+        if (work/'review/packets.json').exists():
+            packets=pa.load(work/'review/packets.json')
+            reviewed={e['element_id'] for entry in review[1] for e in entry['packet']['elements']}
+            required={e for packet in packets['packets'] for e in packet['elements']}
+            source_review=any(not entry['packet']['elements'] and entry['submission'].get('assessment',{}).get('usable_evidence') for entry in review[1])
+            if not required<=reviewed or (packets['source_inspection_required'] and not source_review): next_step='review-import'
     if (work/'export'/'handoff.json').exists():
         require(review is not None,'export-without-review')
         exported=ae._verify_export(work,binding,manifest,review)
@@ -364,10 +434,11 @@ def execute(plan_value=None,*,work_root):
     return dict(schema='reenrich-run-v2',route=route_name(p),completion_verifier='reenrich.verify_completion',article=p['article'],mode=p['mode'],elements=roster,stage_receipts=receipts,
         status='finished' if complete else 'pending-operator-continuation',completion=completion,
         production_complete=complete and not p['fixture'],page_refresh_complete=complete and bool(p['page_path']),
-        fixture=p['fixture'],next_step=None if complete else next_step)
+        fixture=p['fixture'],next_step=None if complete else next_step,
+        next_operation=continuation(work,p,None if complete else next_step))
 
 
-def advance(work_root,operation,*,cache=None,count_receipt=None,approval=None,authorize=False,fixture_transport=None,submission=None,vlm_concurrency=None):
+def advance(work_root,operation,*,cache=None,count_receipt=None,approval=None,authorize=False,fixture_transport=None,submission=None,vlm_concurrency=None,packet=None):
     with locked(work_root):
         work,p,manifest,m,roster,binding,_=context(work_root)
         require(manifest,'legacy-prerequisites-not-adopted')
@@ -387,7 +458,7 @@ def advance(work_root,operation,*,cache=None,count_receipt=None,approval=None,au
         elif operation=='review-create':
             value=ae.review_create(work,binding,manifest); path=work/'review'/'dossier.json'
         elif operation=='review-import':
-            value=ae.review_import(work,binding,manifest,submission)
+            value=ae.review_import(work,binding,manifest,submission,packet_path=packet)
             path=work/'review'/'decisions'/f'{value["sequence"]:06d}.json'
         elif operation=='export':
             value=ae.export(work,binding,manifest); path=work/'export'/'handoff.json'
@@ -1073,6 +1144,7 @@ def main(argv=None):
         if name=='count': s.add_argument('--cache'); s.add_argument('--count-receipt')
         if name=='approved-execute': s.add_argument('--approval',required=True); s.add_argument('--authorize-posts',action='store_true'); s.add_argument('--vlm-concurrency',type=int)
         if name in ('review-import','candidate-import'): s.add_argument('--submission',required=True)
+        if name=='review-import': s.add_argument('--packet')
         if name=='apply': s.add_argument('--authorize-page-apply',action='store_true')
         if name=='adopt': s.add_argument('--manifest',required=True); s.add_argument('--identity-approval',required=True)
         if name=='publish':
@@ -1103,7 +1175,7 @@ def main(argv=None):
         elif args.command=='apply': result=apply(args.work_root,authorize=args.authorize_page_apply)
         elif args.command=='publish': result=publish(args.work_root,args.remote,args.bucket,args.prefix)
         else: result=advance(args.work_root,args.command,cache=getattr(args,'cache',None),count_receipt=getattr(args,'count_receipt',None),
-            approval=getattr(args,'approval',None),authorize=getattr(args,'authorize_posts',False),submission=getattr(args,'submission',None),vlm_concurrency=getattr(args,'vlm_concurrency',None))
+            approval=getattr(args,'approval',None),authorize=getattr(args,'authorize_posts',False),submission=getattr(args,'submission',None),vlm_concurrency=getattr(args,'vlm_concurrency',None),packet=getattr(args,'packet',None))
         print(json.dumps(result,indent=2)); return 0
     except (OSError,ValueError,KeyError,TypeError,ImportError) as exc:
         print(json.dumps(dict(status='hold',error=str(exc))),file=sys.stderr); return 2

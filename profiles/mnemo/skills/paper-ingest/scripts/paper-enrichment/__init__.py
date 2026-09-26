@@ -9,6 +9,7 @@ SETTINGS=('integration_dir','enrichment_root','method_dir','adapter_dir','python
 PATHS=('source_handoff','output','test_root','job','processor_cache','approval','responses',
        'run','review_root','packet','submission','export_path','source_inspection','attempt_dir')
 SCHEMA=dict(name='paper_enrichment',description=(
+    'Article routing/refresh uses operation=article with arguments={command,work_root,...}; deployment is configured. Follow receipt.details.next_operation; never replace a refresh with initial-ingest finalization. '
     'Run one qualified figure/table enrichment or contextual review operation. Trusted deployment paths are configured, not caller arguments. '
     'New preparation selects all eligible figures/tables; algorithms remain deferred. Preparation/review are offline. '
     'execute needs a separately authored approval and authorize_posts=true; local failures continue independent requests; explicit continuation sends only never-reserved siblings under identical approval/original budget. '
@@ -16,7 +17,8 @@ SCHEMA=dict(name='paper_enrichment',description=(
     'Record only observed substantive limitations; empty qualifications are valid. Specialized exact use needs source inspection or qualification; algorithm-specification always needs inspection. '
     'prepare with processor_cache also counts and seals; seal with processor_cache resumes offline bookkeeping. Returns actual child exit and hash-checked artifact receipt, not a scientific correctness claim.'),
     parameters=dict(type='object',additionalProperties=False,required=['operation','attempt_dir'],properties={
-        'operation':dict(type='string',enum=['prepare','count','seal','execute','report','import-test-response','review-create','review-packet','review-import','export','verify-export','consume']),
+        'operation':dict(type='string',enum=['article','prepare','count','seal','execute','report','import-test-response','review-create','review-packet','review-import','export','verify-export','consume']),
+        'arguments':dict(type='object',description='Article operation arguments: command and work_root, plus inputs returned by next_operation. Commands: route, execute (status), adopt, prepare, count, seal, approved-execute, review-create, review-import, export, candidate-import, apply, publish.'),
         **{k:dict(type='string',minLength=1,maxLength=4096) for k in PATHS},
         'elements':dict(type='array',items=dict(type='string'),minItems=0,uniqueItems=True),
         'aspects':dict(type='array',items=dict(type='string',enum=['content','source-association','notation','layout','units','headers']),minItems=1,uniqueItems=True),

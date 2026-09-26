@@ -121,8 +121,28 @@ def packet_value(dossier, dossier_hash, elements, max_bytes):
     return result
 
 
+def packet_batches(dossier, dossier_hash, max_bytes=8_000_000):
+    """Preserve the current roster, surfacing unsplittable elements explicitly."""
+    packets=[]; oversized=[]; batch=[]
+    for element in dossier['snapshot']['elements']:
+        eid=element['element_id']
+        try: packet_value(dossier,dossier_hash,batch+[eid],max_bytes)
+        except ValueError as exc:
+            if str(exc)!='packet-too-large-select-fewer-elements': raise
+            if batch: packets.append(packet_value(dossier,dossier_hash,batch,max_bytes)); batch=[]
+            try: packet_value(dossier,dossier_hash,[eid],max_bytes)
+            except ValueError as one:
+                if str(one)!='packet-too-large-select-fewer-elements': raise
+                oversized.append(eid); continue
+        batch.append(eid)
+    if batch: packets.append(packet_value(dossier,dossier_hash,batch,max_bytes))
+    if not dossier['snapshot']['elements']: packets=[packet_value(dossier,dossier_hash,[],max_bytes)]
+    return dict(packets=packets,oversized=oversized)
+
+
 def packet(root, elements, output, max_bytes=1_000_000):
     dossier = verify(root)
+    require(elements or not dossier['snapshot']['elements'], 'empty-selection-with-eligible-elements-use-current-roster')
     result = packet_value(dossier, sha(absolute(root)/'dossier.json'), elements, max_bytes)
     from .storage import external
     external(output, [absolute(root), absolute(dossier['snapshot']['path']), absolute(dossier['snapshot']['source_package'])])

@@ -37,6 +37,7 @@ def main(argv=None):
         for field in required: c.add_argument('--'+field,required=True)
         for field in optional: c.add_argument('--'+field)
         return c
+    command('article',('arguments-json',))
     command('prepare',('source-handoff','output'),('test-root','processor-cache'))
     command('count',('job','processor-cache'))
     command('seal',('job',),('processor-cache',))
@@ -58,9 +59,17 @@ def main(argv=None):
         from qualified_enrichment.records import require
         from pdf_enrichment import live,importer,bindings
         # All non-POST operations are offline by construction, not by operator preference.
-        if args.offline or args.operation!='execute': offline()
+        article_args=json.loads(args.arguments_json) if args.operation=='article' else None
+        network=args.operation=='execute' or (article_args is not None and article_args.get('command') in ('approved-execute','publish'))
+        if args.offline or not network: offline()
         artifacts={}; details={}; exit_code=0; next_step=None
-        if args.operation=='prepare':
+        if args.operation=='article':
+            import reenrich
+            details=reenrich.operator(article_args)
+            destination=absolute(args.receipt).parent/'operation-result.json'
+            save(destination,details); artifacts[str(destination)]=sha(destination)
+            next_step=details.get('next_step')
+        elif args.operation=='prepare':
             details=runtime.prepare(args.source_handoff,args.output,args.method,args.test_root)
             job=absolute(args.output)
             if args.processor_cache or not details['selected']:
@@ -133,6 +142,7 @@ def main(argv=None):
                      checked_artifacts=artifacts,artifact_status='verified',
                      production_executed=False if args.operation!='execute' else None,
                      note='Actual child operation; no scientific correctness or acceptance asserted.')
+        if args.operation=='article': receipt['details']=details
         if next_step is not None: receipt['next_step']=next_step
         if args.operation == 'review-packet':
             from qualified_enrichment.records import digest

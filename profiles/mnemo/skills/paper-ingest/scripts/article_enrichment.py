@@ -550,8 +550,17 @@ def review_create(work,binding,manifest_path):
     source=pa.load(manifest_path)['source_status'].get('readiness')
     if source is not None: dossier['snapshot']['source_readiness']=source
     _seal_file(root/'dossier.json',dossier)
-    packet=reviews.packet_value(dossier,sha(root/'dossier.json'),[e['element_id'] for e in elements],8000000)
-    if packet: pa.save(root/'packet.json',packet)
+    batches=reviews.packet_batches(dossier,sha(root/'dossier.json'))
+    inventory=[]
+    for i,packet in enumerate(batches['packets']):
+        name='packet.json' if len(batches['packets'])==1 else f'packet-{i+1:04d}.json'
+        pa.save(root/name,packet)
+        inventory.append(dict(path=name,elements=[e['element_id'] for e in packet['elements']]))
+    if batches['oversized']:
+        # Native source inspection is an explicit review, never a fabricated model result.
+        packet=reviews.packet_value(dossier,sha(root/'dossier.json'),[],8000000)
+        pa.save(root/'source-inspection-packet.json',packet)
+    pa.save(root/'packets.json',dict(packets=inventory,source_inspection_required=batches['oversized']))
     (root/'decisions').mkdir()
     return dossier
 
@@ -597,12 +606,15 @@ def _review_verify(work,binding,manifest_path,state):
     return dossier,entries,views
 
 
-def review_import(work,binding,manifest_path,submission_path):
+def review_import(work,binding,manifest_path,submission_path,packet_path=None):
     root=absolute(work)/'review'; dossier,entries,_=review_verify(work,binding,manifest_path)
     require(not (absolute(work)/'export').exists(),'export-frozen-new-run-required')
     from qualified_enrichment import reviews
-    packet=pa.load(root/'packet.json'); submission=pa.load(submission_path)
-    require(packet==reviews.packet_value(dossier,sha(root/'dossier.json'),[e['element_id'] for e in dossier['snapshot']['elements']],8000000),'review-packet-changed')
+    packet=pa.load(packet_path or root/'packet.json'); submission=pa.load(submission_path)
+    require(packet==reviews.packet_value(dossier,sha(root/'dossier.json'),[e['element_id'] for e in packet['elements']],8000000),'review-packet-changed')
+    if not packet['elements'] and dossier['snapshot']['elements']:
+        require(submission.get('assessment',{}).get('usable_evidence') is True and submission['assessment'].get('source_refs'),
+                'source-inspection-assessment-required')
     entry=dict(sequence=len(entries)+1,previous_sha256=sha(root/'decisions'/f'{len(entries):06d}.json') if entries else sha(root/'dossier.json'),
         dossier_sha256=sha(root/'dossier.json'),packet=packet,submission=submission,input_sha256=sha(submission_path),imported_at=pa.now_utc())
     reviews.apply(dossier,entries+[entry])

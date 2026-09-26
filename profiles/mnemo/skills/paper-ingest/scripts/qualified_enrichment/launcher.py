@@ -11,6 +11,7 @@ import subprocess
 import sys
 
 OPERATIONS = {
+    'article': ({'arguments'}, set()),
     'prepare': ({'source_handoff','output'}, {'test_root','processor_cache'}),
     'count': ({'job','processor_cache'}, set()),
     'seal': ({'job'}, {'processor_cache'}),
@@ -102,12 +103,16 @@ def argv_for(args, deployment, attempt, *, historical=False):
     command=[str(deployment.python),'-B','-u','-E',str(deployment.integration_dir/'entry.py'),
              '--enrichment-root',str(deployment.enrichment_root),'--adapter-dir',str(deployment.adapter_dir),
              '--method',str(deployment.method_dir),'--receipt',str(attempt/'artifacts.json')]
-    if args.get('offline') or op!='execute': command.append('--offline')
+    network=op=='execute' or (op=='article' and args.get('arguments',{}).get('command') in ('approved-execute','publish'))
+    if args.get('offline') or not network: command.append('--offline')
     command.append(op)
     for key in sorted(required|optional):
         if key not in args: continue
         value=args[key]
         if key=='authorize_posts': command.append('--authorize-posts')
+        elif key=='arguments':
+            require(isinstance(value,dict),'article-arguments-object-required')
+            command.append('--arguments-json='+json.dumps(value,allow_nan=False))
         elif key in ('elements','aspects'):
             require(isinstance(value,list) and (value or key=='elements') and len(value)==len(set(value)) and all(isinstance(x,str) and x for x in value),'explicit-unique-list')
             for item in value: command.append('--'+('element' if key=='elements' else 'aspect')+'='+item)
@@ -127,6 +132,12 @@ def launch(args, deployment):
         p=absolute(args[key])
         directory_keys={'job','run','review_root','processor_cache','output'}
         protected.append(p if p.is_dir() or key in directory_keys else p.parent)
+    if args['operation']=='article':
+        value=args['arguments']
+        require(isinstance(value,dict) and 'work_root' in value,'article-work-root-required')
+        work=absolute(value['work_root'])
+        require(not any(work.is_relative_to(code) or code.is_relative_to(work) for code in protected), 'article-work-overlaps-trusted-code')
+        protected.append(work)
     for p in protected:
         require(not attempt.is_relative_to(p) and not p.is_relative_to(attempt),'attempt-must-be-external')
     timeout=args.get('timeout',14400)
@@ -134,7 +145,8 @@ def launch(args, deployment):
     attempt.mkdir(mode=0o700, parents=True)
     started=now(); pid=None; termination='normal'; exit_code=None
     env=dict(os.environ); env['PYTHONDONTWRITEBYTECODE']='1'
-    if args.get('offline') or args['operation']!='execute':
+    network=args['operation']=='execute' or (args['operation']=='article' and args.get('arguments',{}).get('command') in ('approved-execute','publish'))
+    if args.get('offline') or not network:
         env.update(PDF_ENRICHMENT_OFFLINE='1',PDF_SOURCE_PACKAGE_OFFLINE='1',HF_HUB_OFFLINE='1',TRANSFORMERS_OFFLINE='1')
     with (attempt/'console.log').open('xb') as log:
         child=subprocess.Popen(argv,cwd=deployment.integration_dir,env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
