@@ -160,6 +160,29 @@ def plan(request,*,manifest=None,work_root,fixture=False,model_profile=None,page
     return value
 
 
+def route(article, *, page, work_root, manifest=None, elements=None, fixture=False, model_profile=None, page_scope=None):
+    """Choose by actual page existence; never silently turn a refresh into ingest."""
+    page=absolute(page)
+    if not page.exists():
+        require(elements is None, 'selected-refresh-requires-existing-page')
+        require(manifest is None, 'new-page-with-archive-requires-explicit-restore')
+        pa.article_key(dict(slug=article))
+        return dict(route='initial-ingest', article=article, page=str(page),
+                    completion_verifier='final_products.verify_ingest', production_complete=False,
+                    next_step='source-acquisition', remaining_obligations=['identity','source-acquisition','source-extraction',
+                    'enrichment','scientific-review','page-authoring','bibliography-authors-graph','publication','verify-ingest'])
+    plan(Request(article,elements,page),manifest=manifest,work_root=work_root,fixture=fixture,
+         model_profile=model_profile,page_scope=page_scope)
+    return execute(work_root=work_root)
+
+
+def route_name(plan):
+    if plan['schema']==DIAGNOSTIC_PLAN: return 'selected-diagnostic'
+    if not plan['page_path']: return plan['mode']+'-archive'
+    if not plan['manifest'] and not plan.get('source_archive'): return 'legacy-refresh'
+    return plan['mode']+'-refresh'
+
+
 def diagnostic_plan(manifest, elements, *, work_root, fixture=False, model_profile=None):
     manifest,work=absolute(manifest),absolute(work_root)
     m=pa.validate_manifest(pa.load(manifest)); pa.verify_source(manifest)
@@ -338,7 +361,7 @@ def execute(plan_value=None,*,work_root):
             production_complete=False,page_refresh_complete=False,fixture=p['fixture'],next_step=None if diagnostic_ready else next_step)
     complete=not held and all(x['status'] in ('verified','executed','applied','not-requested','verified-at-publication') for key,x in receipts.items() if key!='enrichment') and 'publish' in stages
     completion=completion_label(p) if complete else 'pending'
-    return dict(schema='reenrich-run-v2',article=p['article'],mode=p['mode'],elements=roster,stage_receipts=receipts,
+    return dict(schema='reenrich-run-v2',route=route_name(p),completion_verifier='reenrich.verify_completion',article=p['article'],mode=p['mode'],elements=roster,stage_receipts=receipts,
         status='finished' if complete else 'pending-operator-continuation',completion=completion,
         production_complete=complete and not p['fixture'],page_refresh_complete=complete and bool(p['page_path']),
         fixture=p['fixture'],next_step=None if complete else next_step)
@@ -1038,6 +1061,10 @@ def main(argv=None):
     p=sub.add_parser('plan'); p.add_argument('--article',required=True); p.add_argument('--element',action='append')
     for name in ('page','manifest','profile','page-scope'): p.add_argument('--'+name)
     p.add_argument('--fixture',action='store_true'); p.add_argument('--work-root',required=True)
+    r=sub.add_parser('route')
+    for name in ('article','page','work-root'): r.add_argument('--'+name,required=True)
+    for name in ('manifest','profile','page-scope'): r.add_argument('--'+name)
+    r.add_argument('--element',action='append'); r.add_argument('--fixture',action='store_true')
     d=sub.add_parser('diagnostic-plan')
     for name in ('manifest','work-root'): d.add_argument('--'+name,required=True)
     d.add_argument('--element',action='append',required=True); d.add_argument('--profile'); d.add_argument('--fixture',action='store_true')
@@ -1063,6 +1090,9 @@ def main(argv=None):
         elif args.command=='consume':
             work,p,manifest,_,_,binding,_=context(args.work_root)
             result=ae.consumer(work,binding,manifest,args.element,args.target,purpose=args.purpose,qualification=args.qualification)
+        elif args.command=='route': result=route(args.article,page=args.page,manifest=args.manifest,work_root=args.work_root,
+            elements=args.element,fixture=args.fixture,model_profile=pa.load(args.profile) if args.profile else None,
+            page_scope=pa.load(args.page_scope) if args.page_scope else None)
         elif args.command=='plan': result=plan(Request(args.article,args.element,args.page),manifest=args.manifest,work_root=args.work_root,
             fixture=args.fixture,model_profile=pa.load(args.profile) if args.profile else None,page_scope=pa.load(args.page_scope) if args.page_scope else None)
         elif args.command=='diagnostic-plan': result=diagnostic_plan(args.manifest,args.element,work_root=args.work_root,

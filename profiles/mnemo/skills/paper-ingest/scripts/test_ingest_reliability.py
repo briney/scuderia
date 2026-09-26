@@ -90,3 +90,31 @@ class PathTests(unittest.TestCase):
             with patch.object(pa,'MAX_MANIFEST_BYTES',8):
                 with self.assertRaisesRegex(ValueError,'json-size-limit:.*too-large.json.*8'):
                     pa.load(path)
+
+
+class RouteTests(unittest.TestCase):
+    def test_routes_existing_legacy_and_packaged_pages_to_refresh(self):
+        import reenrich as rr
+        with tempfile.TemporaryDirectory(dir=os.environ['SOURCE_PACKAGE_TEST_ROOT']) as tmp:
+            root=Path(tmp); manifest,m=synthetic(root)
+            page=root/'paper.md'; page.write_text('---\nkind: paper\nslug: synthetic\n---\n# Synthetic\n')
+            legacy=rr.route('synthetic',page=page,work_root=root/'legacy')
+            self.assertEqual(legacy['route'],'legacy-refresh')
+            self.assertEqual(legacy['completion_verifier'],'reenrich.verify_completion')
+            self.assertEqual(legacy['next_step'],'adopt')
+            packaged=rr.route('synthetic',page=page,manifest=manifest,work_root=root/'packaged',fixture=True)
+            self.assertEqual(packaged['route'],'full-refresh')
+            self.assertEqual(packaged['next_step'],'prepare')
+            page.write_text(page.read_text()+'Changed by human\n')
+            with self.assertRaisesRegex(ValueError,'page-changed'): rr.execute(work_root=root/'legacy')
+
+    def test_new_route_cannot_be_selected_refresh(self):
+        import reenrich as rr
+        with tempfile.TemporaryDirectory(dir=os.environ['SOURCE_PACKAGE_TEST_ROOT']) as tmp:
+            root=Path(tmp); page=root/'new.md'
+            result=rr.route('synthetic',page=page,work_root=root/'new')
+            self.assertEqual(result['route'],'initial-ingest')
+            self.assertEqual(result['completion_verifier'],'final_products.verify_ingest')
+            self.assertFalse(result['production_complete'])
+            with self.assertRaisesRegex(ValueError,'selected-refresh-requires-existing-page'):
+                rr.route('synthetic',page=page,work_root=root/'selected',elements=['table'])
