@@ -66,6 +66,49 @@ Follow `portable-articles.md` for existing-article refresh. Operation/submission
 schemas are in `qualified-enrichment-schema.md`. Native tools remain the normal
 production route; these paths do not authorize spending or scientific approval.
 
+## Operator continuations and detached execution
+
+For an existing page, use the configured `paper_enrichment` capability with
+`operation: article` and `arguments: {command: route, article: <slug>,
+page: <absolute-page>, work_root: <new-durable-dir>}`. Supply `manifest` when
+available and `elements` only for an explicitly selected refresh. The route
+checks actual page existence. A legacy text-only page still uses refresh:
+fresh source preparation, `adopt`, review, reconciliation, publication and
+`reenrich.verify_completion`. Never substitute an initial-ingest finalizer.
+A new page returns the initial-ingest route and its outstanding obligations.
+
+Each native call needs a fresh external `attempt_dir`. Article status uses
+`operation: article`, `arguments: {command: execute, work_root: ...}`.
+Read `receipt.details.next_operation`: it contains the exact continuation,
+available artifact paths and missing inputs. Missing scientific review and
+approval remain operator work. Runtime roots come from configured deployment,
+not copied environment assignments. The standalone `operate.py` accepts the
+same argument object with the existing explicit deployment file.
+
+For long operations, set `background: true`. The returned `attempt_dir` is the
+durable job identifier. Reattach with `{operation: status, attempt_dir: ...}`;
+request cancellation with `{operation: cancel, attempt_dir: ...}`. These two
+controls take no other fields. A lost conversation or tool wait does not cancel
+the worker. Repeating the identical background start attaches to that attempt;
+changed arguments require a new attempt and do not overwrite it. A missing
+terminal receipt is uncertain, never successful or permission to redispatch.
+Cancellation retains request reservations; possibly sent requests remain
+uncertain. Status/reattachment never approves or sends a model request.
+
+Review packets are generated from the current dossier roster. Portable reviews
+write `review/packets.json`; when split, pass its exact packet path as `packet`
+on `review-import`. Oversized individual elements remain listed under
+`source_inspection_required`, with a separate source-inspection packet requiring
+an attributed usable-evidence assessment and source references. Do not invent
+model results, truncate tables, copy old roster IDs or use an accidental empty
+selection. Ordinary native review-packet rejects empty selections when the
+dossier contains elements. Export derives completeness from the sealed dossier
+and imported decisions; editing or removing the packet index cannot waive review.
+
+Archive upload and read-back canonicalize their internally owned temporary
+root; external source symlinks/hardlinks remain forbidden. No shell TMPDIR
+workaround is required. Path failures identify the rejected component.
+
 ## Inference concurrency
 
 Source extraction and figure/table enrichment default to **three active VLM

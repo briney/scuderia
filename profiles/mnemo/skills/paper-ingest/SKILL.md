@@ -35,6 +35,15 @@ existing stubs use the same pipeline. A direct request or the calling
 workflow authorizes ingestion; delegation adds no eligibility classifier,
 prerequisite stub, or session boundary. Small jobs may run inline.
 
+## Operational entry
+
+Read `references/runtime.md` before the first source/enrichment operation.
+Use the configured native capability and returned continuations. Existing pages,
+including text-only pages without packages, route through the portable refresh
+contract. Use detached execution/status for long operations; never restart work
+because the conversation stopped waiting. A repeated deterministic failure needs
+its diagnostic addressed before another attempt, not guessed CLI variants.
+
 ## Ownership and completion
 
 - **Inline/full:** the primary owns the paper and its bibliography, author,

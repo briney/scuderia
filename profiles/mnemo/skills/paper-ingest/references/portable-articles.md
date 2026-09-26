@@ -62,6 +62,34 @@ With a finalized v4 package, a full plan retains its source-archive pin and wait
 
 Legacy plans omit `--manifest` and remain pending retrieval/source preparation. After the normal acquisition/extraction route and manifest construction, `adopt --work-root ... --manifest ... --approval ...` requires explicit identity approval with `plan_sha256`, `manifest_sha256`, `article`, original `requested_elements`, `approved_by`, and `identity_and_scope_reviewed: true`. It preserves the original plan. Full/legacy page refresh still requires full distillation/reconciliation review.
 
+## Bounded repairs and source reuse
+
+Use `paper_enrichment` operation `article`, command `repair-plan`, with a verified
+final `manifest` and a new `work_root` to select only failed, uncertain or
+unattempted elements. Optional `page` and `page_scope` retain the ordinary
+selected-page reconciliation contract. This is a new selected revision with
+fresh counts and approval; it neither resends successful siblings nor rewrites
+old attempts. Finalization preserves unselected scientific products and their
+qualifications. A repair is never a full article refresh.
+
+After a model prompt change, inspect one representative complex table (and a
+figure if its prompt changed) through an explicitly selected run before a
+larger batch. Exact input counts establish context fit only: status also exposes
+the output allowance and 1200-second request timeout. They do not establish
+that a huge table can finish. If an element is infeasible, retain its source and
+use the existing attributed native-evidence assessment; explicitly account for
+never-sent requests. Do not truncate or retry uncertain requests automatically.
+
+For a completed upstream source phase, command `reuse-source` takes
+`work_root` (the old source package), `output` (a new source package), and
+`phase` (`classification` or `association`). It copies only verified upstream
+evidence, preserves historical seals and returns the next source operation.
+Downstream count/seal/approval must be new. New v2 phase seals omit only proven
+unused downstream prompt assets; shared Python code remains bound to every
+phase. In particular, association label parsing also runs during initial
+normalization, so changing it invalidates upstream reuse. Historical v1 seals
+keep their original whole-code binding. No approvals are retroactively weakened.
+
 ## Selected diagnostic validation
 
 For explicitly selected saved elements in a current partial or multi-document source bundle, use the diagnostic-only adapter. It does not require or fabricate an acquisition manifest. It preserves the `pdf-source-package-v1` schema and recomputes the source reader's evidence, fixture origin, document identities, ordered fragments and type eligibility. It asserts no bibliographic article association. Only existing eligible logical figure/table IDs are accepted, never labels, unassociated candidates or caller-supplied type overrides.
