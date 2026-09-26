@@ -80,6 +80,17 @@ class PathTests(unittest.TestCase):
                 self.assertTrue(transport.upload(source,'object',pa.sha(source),source.stat().st_size)['reused'])
             self.assertEqual(list(actual.iterdir()),[])
 
+    def test_manifest_restore_accepts_system_temp_alias(self):
+        with tempfile.TemporaryDirectory(dir=os.environ['SOURCE_PACKAGE_TEST_ROOT']) as tmp:
+            root=Path(tmp); manifest,m=synthetic(root)
+            actual=root/'real';actual.mkdir();alias=root/'alias';alias.symlink_to(actual,target_is_directory=True)
+            fake=FakeRclone();publication=pa.publish(manifest,'fake','bucket','test',runner=fake)
+            with patch.object(tempfile,'tempdir',str(alias)):
+                pa.restore_remote(publication['manifest_key'],publication['manifest_sha256'],root/'restored',
+                    remote='fake',bucket='bucket',prefix='test',article_key=m['article_key'],runner=fake)
+            self.assertEqual(pa.verify_local(root/'restored/manifest.json')[0],m)
+            self.assertEqual(list(actual.iterdir()),[])
+
     def test_external_symlink_diagnostic_names_component(self):
         from article_runtime import absolute
         with tempfile.TemporaryDirectory(dir=os.environ['SOURCE_PACKAGE_TEST_ROOT']) as tmp:

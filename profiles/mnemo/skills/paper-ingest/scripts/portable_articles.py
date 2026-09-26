@@ -911,7 +911,7 @@ def restore_remote(manifest_key, manifest_sha256, destination, *, remote, bucket
     require(manifest_key.startswith(expected) and manifest_key.endswith('/manifests/'+manifest_sha256+'.json'), 'trusted-manifest-key-binding')
     # Caller supplies expected key AND hash and trusted transport, never a URL from archive data.
     transport = RcloneTransport(remote, bucket, runner)
-    with tempfile.TemporaryDirectory(prefix='article-manifest-') as tmp:
+    with tempfile.TemporaryDirectory(prefix='article-manifest-', dir=Path(tempfile.gettempdir()).resolve(strict=True)) as tmp:
         path = Path(tmp)/'manifest.json'
         transport.download(manifest_key, path, manifest_sha256, limit=MAX_MANIFEST_BYTES)
         m = validate_manifest(load(path))

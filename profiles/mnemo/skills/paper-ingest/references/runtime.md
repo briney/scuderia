@@ -105,7 +105,7 @@ selection. Ordinary native review-packet rejects empty selections when the
 dossier contains elements. Export derives completeness from the sealed dossier
 and imported decisions; editing or removing the packet index cannot waive review.
 
-Archive upload and read-back canonicalize their internally owned temporary
+Archive upload, read-back and manifest restore canonicalize their internally owned temporary
 root; external source symlinks/hardlinks remain forbidden. No shell TMPDIR
 workaround is required. Path failures identify the rejected component.
 
