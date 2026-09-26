@@ -1,7 +1,7 @@
 import copy, math, re
 from .io import require, digest, dumps
 
-LABEL = re.compile(r'(?<!\w)(?P<prefix>(?:(?:Extended Data|Supplementary)\s+)?)(?P<kind>Figure|Fig\.|Table|Algorithm|Data[ -]file)\s+(?P<number>S?\d+[A-Za-z]?)(?!\w)',re.I)
+LABEL = re.compile(r'(?<!\w)(?P<prefix>(?:(?:Extended Data|Supplementary)\s+)?)(?P<kind>Figure|Fig\.|Table|Algorithm|Data[ -]file)\s+(?P<number>S?\d+[A-Za-z]?|[A-Z]\.\d+)(?!\w)',re.I)
 
 
 def label_key(s):

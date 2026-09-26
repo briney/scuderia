@@ -41,6 +41,12 @@ def native_line(line, page):
         span['start']=offset if exact else None
         offset+=len(span['text'])
         span['end']=offset if exact else None
+    # ponytail: model payload keeps only the binding contract (span_id/start/end/text);
+    # font metrics and per-span geometry stay in the retained package/manifest, not the
+    # request wire. Matches the page-context projection; without this, dense numeric
+    # tables tokenize 2-3x over context. Upgrade: per-fragment chunking if a table
+    # still overflows with lean spans.
+    spans=[{k:s[k] for k in ('span_id','start','end','text')} for s in spans]
     return dict(line_id=line['id'],page=line.get('page',page),bbox=line['bbox'],text=text,
                 spans=spans,span_offsets_exact=exact,character_offset_basis='zero-based Unicode code points; end exclusive')
 

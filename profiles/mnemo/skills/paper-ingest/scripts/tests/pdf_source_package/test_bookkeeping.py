@@ -6,8 +6,27 @@ import unittest
 from unittest.mock import patch
 import pymupdf
 from pdf_source_package import preparation, gates, cli, launcher, workflow
+from pdf_source_package.association import label_key
 from pdf_source_package.io import save, load, sha, SETTINGS
 from pdf_source_package.phase_evidence import operation_evidence
+
+
+class AppendixLabelNamespace(unittest.TestCase):
+    def test_appendix_letter_dot_number_labels_parse(self):
+        self.assertEqual(label_key('Table D.1'), ('', 'table', 'd.1'))
+        self.assertEqual(label_key('Figure C.1'), ('', 'figure', 'c.1'))
+        self.assertEqual(label_key('Table K.3'), ('', 'table', 'k.3'))
+
+    def test_main_text_labels_still_parse(self):
+        self.assertEqual(label_key('Table 15a'), ('', 'table', '15a'))
+        self.assertEqual(label_key('Fig. 3'), ('', 'figure', '3'))
+        self.assertEqual(label_key('Table S2'), ('', 'table', 's2'))
+
+    def test_decimal_and_partial_numbers_still_rejected(self):
+        with self.assertRaises(ValueError):
+            label_key('Table 1.5')
+        with self.assertRaises(ValueError):
+            label_key('Table A.B')
 
 
 class Bookkeeping(unittest.TestCase):

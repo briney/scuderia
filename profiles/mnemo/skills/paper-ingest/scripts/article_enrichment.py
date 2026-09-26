@@ -72,6 +72,8 @@ def wire_for(element, paths, p):
         content.append(requests.image_part(paths[f['crop']].read_bytes()))
     # Page-level native context carries surrounding headings, units and footnotes;
     # it is explicitly not a claim that every line belongs to the element.
+    fragment_lines = {(l.get('page', f['page']), l['line_id'], l['text'], tuple(l.get('bbox') or []))
+                      for f in evidence['body_fragments'] for l in f.get('native_lines', [])}
     for key in element['context']['native_text_keys']:
         path = paths[key]
         if path.suffix == '.json':
@@ -79,10 +81,16 @@ def wire_for(element, paths, p):
             require(isinstance(lines, list) and all(isinstance(line, dict) and 'text' in line and 'id' in line for line in lines), 'native-context-line-schema')
             # Retain every line and literal text, not redundant per-character
             # geometry/font arrays. The exact original JSON remains a dependency.
-            context = json.dumps([dict(line_id=line['id'], text=line['text'], bbox=line.get('bbox')) for line in lines], ensure_ascii=False)
+            # ponytail: lines already carried by this element's body fragments
+            # (same page, id, text and geometry within this document) are dropped from the
+            # surrounding-context projection — each line still reaches the model
+            # exactly once, and full-page tables stop doubling their payload.
+            # Upgrade: per-fragment chunking if a table still overflows.
+            context = json.dumps([dict(line_id=line['id'], text=line['text'], bbox=line.get('bbox')) for line in lines
+                                  if (line.get('page'), line['id'], line['text'], tuple(line.get('bbox') or [])) not in fragment_lines], ensure_ascii=False)
         else:
             context = path.read_text()
-        content.append(dict(type='text',text='Surrounding native page context; association unverified; all native lines with literal text and bounding boxes:\n'+context))
+        content.append(dict(type='text',text='Surrounding native page context; association unverified; native lines not already supplied as fragment evidence, with literal text and bounding boxes:\n'+context))
     # Archive/consumer retention is broader than model context. Only projected
     # findings enter this request; originals remain in the verified dependency set.
     history_index = pa.prompt_history(paths, element['inherited'], element)

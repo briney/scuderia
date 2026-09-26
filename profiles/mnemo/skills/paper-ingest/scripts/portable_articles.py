@@ -28,7 +28,7 @@ LEGACY_SCHEMA = 'portable-article-manifest-v2'
 DIAGNOSTIC_SCHEMA = 'selected-diagnostic-source-v1'
 ROLES = ('source-original', 'source-package', 'source-retention', 'enrichment-job',
          'enrichment-review', 'enrichment-export', 'page', 'legacy-pdf', 'handoff')
-MAX_MANIFEST_BYTES = 32 * 1024 * 1024
+MAX_MANIFEST_BYTES = 256 * 1024 * 1024
 MAX_OBJECT_BYTES = 4 * 1024 * 1024 * 1024
 
 
