@@ -159,3 +159,22 @@ class Bookkeeping(unittest.TestCase):
         self.assertEqual(gates.prepare_phase(self.job,'initial'),'prepare-stage:association')
         workflow.prepare_stage(self.job,'association'); gates.prepare_phase(self.job,'association')
         self.assertEqual(gates.prepare_phase(self.job,'initial'),'finalize')
+
+
+class SubpanelPreludeLabels(unittest.TestCase):
+    def test_multipanel_caption_prelude_skipped(self):
+        from pdf_source_package.association import leading_labels
+        t = ('(a) Generative Perplexity (↓) vs. Sampling Iterations.\n'
+             '(b) Generated Text (small models)\n'
+             'Figure 1: Quality evaluation of unconditionally generated text.')
+        self.assertEqual(leading_labels(t), [dict(label='Figure 1', origin='native-text')])
+
+    def test_roman_numeral_prelude_skipped(self):
+        from pdf_source_package.association import leading_labels
+        self.assertEqual(leading_labels('i. first\nii. second\nTable 2: data'),
+                         [dict(label='Table 2', origin='native-text')])
+
+    def test_plain_captions_unchanged(self):
+        from pdf_source_package.association import leading_labels
+        self.assertEqual(leading_labels('Table 1: Zero-shot')[0]['label'], 'Table 1')
+        self.assertEqual(leading_labels('(a) only panel text here'), [])

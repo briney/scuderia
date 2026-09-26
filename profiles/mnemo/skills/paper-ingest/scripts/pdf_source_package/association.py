@@ -16,6 +16,14 @@ def label_key(s):
 def leading_labels(text):
     # An inline reference to another figure/table is not this caption's heading.
     text=re.sub(r'^\s*(?:caption|legend)\s+for\s+','',text,flags=re.I).lstrip()
+    # Subpanel prelude: multipanel figures print '(a) Panel title' lines above
+    # the caption heading ('Figure 1: ...'). Those lines are panel titles, not
+    # this caption's heading; skip them before matching. A prelude line either
+    # starts with a parenthesized panel letter or is a bare roman numeral.
+    while True:
+        m=re.match(r'^\s*(?:\([a-zA-Z](?:[ivxIVX]+)?\)|[ivxIVX]{1,3})[^\n]*(?:\n|$)',text)
+        if m is None: break
+        text=text[m.end():].lstrip()
     m=LABEL.match(text)
     return [] if m is None else [dict(label=m.group(),origin='native-text')]
 
