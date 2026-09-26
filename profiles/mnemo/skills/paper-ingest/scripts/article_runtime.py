@@ -24,7 +24,8 @@ def absolute(value):
     require(isinstance(value, (str, Path)) and bool(str(value)), 'absolute-path-required')
     p = Path(value)
     require(p.is_absolute() and '..' not in p.parts and '\\' not in str(p), 'absolute-nonsymlink-path-required')
-    require(not any(x.is_symlink() for x in (p, *p.parents)), 'symlink-forbidden')
+    for component in (p, *p.parents):
+        require(not component.is_symlink(), f'symlink-forbidden:{p}:component={component}')
     if p.exists() and not p.is_dir():
         s = p.stat()
         require(stat.S_ISREG(s.st_mode) and s.st_nlink == 1, 'regular-single-link-file-required')

@@ -46,7 +46,7 @@ def load(path):
     def constant(value):
         raise ValueError('nonfinite-json')
     p = absolute(path)
-    require(p.stat().st_size <= MAX_MANIFEST_BYTES, 'json-size-limit')
+    require(p.stat().st_size <= MAX_MANIFEST_BYTES, f'json-size-limit:{p}:bytes={p.stat().st_size}:limit={MAX_MANIFEST_BYTES}')
     return json.loads(p.read_bytes(), object_pairs_hook=pairs, parse_constant=constant)
 
 
@@ -802,7 +802,7 @@ class RcloneTransport:
         if expected_hash is not None: require(sha(p) == expected_hash, 'remote-object-hash-mismatch')
         return p
     def verify(self, key, expected_hash, expected_size):
-        with tempfile.TemporaryDirectory(prefix='article-readback-') as tmp:
+        with tempfile.TemporaryDirectory(prefix='article-readback-', dir=Path(tempfile.gettempdir()).resolve(strict=True)) as tmp:
             self.download(key, Path(tmp)/'object', expected_hash, expected_size)
         return dict(key=key, sha256=expected_hash, size=expected_size, method='read_back_sha256')
     def upload(self, local, key, expected_hash, expected_size):
@@ -811,7 +811,7 @@ class RcloneTransport:
         reused = self.object_exists(key)
         if not reused:
             # Upload a verified private snapshot, not a mutable external input.
-            with tempfile.TemporaryDirectory(prefix='article-upload-') as tmp:
+            with tempfile.TemporaryDirectory(prefix='article-upload-', dir=Path(tempfile.gettempdir()).resolve(strict=True)) as tmp:
                 snapshot = Path(tmp)/'object'; shutil.copyfile(p, snapshot)
                 require(sha(snapshot) == expected_hash and snapshot.stat().st_size == expected_size, 'local-upload-input-changed')
                 self.call(['copyto', str(snapshot), self._target(key), '--immutable', '--ignore-existing'])

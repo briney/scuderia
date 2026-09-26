@@ -61,3 +61,32 @@ class ProjectionTests(unittest.TestCase):
             with self.assertRaises(ValueError): tables.assemble(evidence,changed)
         value['notation_coverage']='all-cells-checked'
         with self.assertRaises(ValueError): tables.assemble(evidence,value)
+
+
+class PathTests(unittest.TestCase):
+    def test_internal_upload_and_readback_accept_system_temp_alias(self):
+        with tempfile.TemporaryDirectory(dir=os.environ['SOURCE_PACKAGE_TEST_ROOT']) as tmp:
+            root=Path(tmp); actual=root/'real'; actual.mkdir(); alias=root/'alias'; alias.symlink_to(actual,target_is_directory=True)
+            source=root/'source'; source.write_bytes(b'original')
+            fake=FakeRclone(); transport=pa.RcloneTransport('fake','bucket',runner=fake)
+            with patch.object(tempfile,'tempdir',str(alias)):
+                result=transport.upload(source,'object',pa.sha(source),source.stat().st_size)
+                self.assertEqual(result['method'],'read_back_sha256')
+                self.assertTrue(transport.upload(source,'object',pa.sha(source),source.stat().st_size)['reused'])
+            self.assertEqual(list(actual.iterdir()),[])
+
+    def test_external_symlink_diagnostic_names_component(self):
+        from article_runtime import absolute
+        with tempfile.TemporaryDirectory(dir=os.environ['SOURCE_PACKAGE_TEST_ROOT']) as tmp:
+            root=Path(tmp); real=root/'real'; real.mkdir(); alias=root/'alias'; alias.symlink_to(real,target_is_directory=True)
+            with self.assertRaisesRegex(ValueError,'symlink-forbidden:.*alias'):
+                absolute(alias/'source')
+            source=real/'source'; source.write_text('x'); os.link(source,real/'hardlink')
+            with self.assertRaisesRegex(ValueError,'regular-single-link-file-required'): absolute(source)
+
+    def test_manifest_limit_explains_size_and_path(self):
+        with tempfile.TemporaryDirectory(dir=os.environ['SOURCE_PACKAGE_TEST_ROOT']) as tmp:
+            path=Path(tmp)/'too-large.json'; path.write_text('{"data":123}')
+            with patch.object(pa,'MAX_MANIFEST_BYTES',8):
+                with self.assertRaisesRegex(ValueError,'json-size-limit:.*too-large.json.*8'):
+                    pa.load(path)
