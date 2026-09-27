@@ -12,6 +12,72 @@ NOTICE = ('Reference and literal-selection validation is not scientific verifica
           'layout or typography; model readings have no automatic precedence.')
 
 
+def table_summary(record):
+    cells=record.get('cells',[])
+    return dict(cell_count=len(cells),populated_count=sum(c.get('raw_value') is not None and c.get('raw_value')!='' for c in cells),
+        blank_count=sum(c.get('status')=='blank' for c in cells),unreadable_count=sum(c.get('status')=='unreadable' for c in cells),
+        unresolved_count=sum(c.get('status')=='unresolved' for c in cells),status=record.get('status'),complete=record.get('complete'),
+        provenance_notes=copy.deepcopy(record.get('provenance_notes',[])))
+
+
+def submission_template(packet):
+    result=dict(schema='contextual-review-v2' if packet['schema'].endswith('v2') else 'contextual-review-v1',
+        packet_sha256=digest(packet),reviewer={k:None for k in ('kind','identity','model','provider','check','timestamp')},
+        findings=[],coverage=[],resolutions=[])
+    if packet['schema'].endswith('v2'):
+        result['assessment']=dict(usable_evidence=None,reason=None,source_refs=[],unattempted={},source_limitations=[])
+    return result
+
+
+def write_guidance(packet, packet_path):
+    """Companions do not alter the authoritative packet or historical binding."""
+    import html
+    from pdf_enrichment import tables
+    path=absolute(packet_path)
+    template=path.with_suffix('.submission.template.json'); readable=path.with_suffix('.tables.html')
+    guidance=dict(packet=str(path),packet_sha256=digest(packet),submission_template=str(template),readable_tables=str(readable),
+        source_files=packet.get('source_files',[]),elements=[],
+        finding_fields=['element_id','source_sha256','target','category','reason','stage','evidence','competing_readings'],
+        coverage_fields=['element_id','target','aspect','evidence','reason'],
+        resolution_fields=['finding_id','reason','basis','evidence','agreement','proposed_value','aspect'],
+        source_reference_forms=[dict(key='from source_files',sha256='from source_files'),dict(key='PDF key',sha256='PDF hash',page='physical page',inspection='attributed inspection findings')],
+        notice=NOTICE+' Populate reviewer identity and decisions only after inspection. Native text is not pixel inspection.')
+    rendered=['<!doctype html><html lang="en"><meta charset="utf-8"><title>Table review</title>']
+    for element in packet['elements']:
+        refs=[]
+        for pointer,value in nodes(element['evidence']).items():
+            ref=dict(pointer=pointer,source_sha256=element['source_sha256'])
+            if isinstance(value,dict) and 'crop' in value: ref['kind']='crop'
+            elif isinstance(value,str) and pointer.endswith(('/text','/native_text')) and value:
+                ref.update(kind='native-text',text=value)
+            else: continue
+            try: evidence(element,[ref])
+            except ValueError: continue
+            refs.append(ref)
+        record=element['outcome'].get('record',{})
+        row=dict(element_id=element['element_id'],source_sha256=element['source_sha256'],targets=element['targets'],evidence_selectors=refs)
+        if record.get('kind')=='table':
+            row['table_summary']=table_summary(record)
+            rendered.extend(['<h2>'+html.escape(element['element_id'])+'</h2><pre>'+html.escape(json.dumps(row['table_summary'],ensure_ascii=False,indent=2))+'</pre>',tables.render_html(record)])
+        guidance['elements'].append(row)
+    save(template,submission_template(packet));save(path.with_suffix('.guidance.json'),guidance)
+    from .storage import put
+    put(readable,''.join(rendered)+'</html>')
+    return guidance
+
+
+def write_packets(root, dossier):
+    batches=packet_batches(dossier,sha(root/'dossier.json')); inventory=[]
+    for i,packet_data in enumerate(batches['packets']):
+        name='packet.json' if len(batches['packets'])==1 else f'packet-{i+1:04d}.json'
+        save(root/name,packet_data); guidance=write_guidance(packet_data,root/name)
+        inventory.append(dict(path=name,elements=[e['element_id'] for e in packet_data['elements']],guidance=guidance))
+    if batches['oversized']:
+        packet_data=packet_value(dossier,sha(root/'dossier.json'),[],8000000)
+        save(root/'source-inspection-packet.json',packet_data);write_guidance(packet_data,root/'source-inspection-packet.json')
+    save(root/'packets.json',dict(packets=inventory,source_inspection_required=batches['oversized']))
+
+
 def policy(dossier):
     require(dossier.get('schema') in (None,'portable-review-dossier-v2','portable-review-dossier-v3','uncertainty-dossier-v1','uncertainty-dossier-v2'),'unsupported-dossier-format')
     current=dossier.get('schema') in ('portable-review-dossier-v3','uncertainty-dossier-v2')
@@ -76,8 +142,9 @@ def create(path, kind, output):
     root = new(output, [absolute(path), absolute(state['source_package'])])
     current=state.get('selection',{}).get('schema')=='qualified-selection-v2'
     dossier = dict(schema='uncertainty-dossier-v2' if current else 'uncertainty-dossier-v1', snapshot=state, code=code_hashes(), notice=NOTICE)
-    if current: dossier['policy']='observed-limitations-v1'
+    if current: dossier.update(policy='observed-limitations-v1',review_completion='roster-v1')
     save(root/'dossier.json', dossier)
+    if current: write_packets(root,dossier)
     (root/'decisions').mkdir()
     return dossier
 
@@ -147,6 +214,7 @@ def packet(root, elements, output, max_bytes=1_000_000):
     from .storage import external
     external(output, [absolute(root), absolute(dossier['snapshot']['path']), absolute(dossier['snapshot']['source_package'])])
     save(absolute(output), result)
+    write_guidance(result,output)
     return result
 
 
@@ -210,7 +278,7 @@ def owners_for(element, pointer):
     return set()
 
 
-def apply(dossier, decisions, *, manifest=None, paths=None):
+def apply(dossier, decisions, *, manifest=None, paths=None, validate_new=False):
     elements = {e['element_id']: e for e in dossier['snapshot']['elements']}
     views = {key: project(value,policy=policy(dossier)) for key, value in elements.items()}
     current=policy(dossier)!='legacy'
@@ -244,6 +312,9 @@ def apply(dossier, decisions, *, manifest=None, paths=None):
             element = elements[eid]
             require(item['source_sha256'] == element['source_sha256'], 'finding-source-hash')
             target(element, item['target'])
+            if validate_new and entry is decisions[-1] and item['category']=='empty-table-extraction':
+                populated=table_summary(element['outcome'].get('record',{}))['populated_count']
+                require(populated==0,'empty-table-extraction-contradicted:populated='+str(populated))
             require(all(isinstance(item[k], str) and item[k].strip() for k in ('category','reason')), 'specific-free-text-reason-required')
             require(item['stage'] in ('extraction','answer'), 'finding-stage')
             refs = evidence(element, item['evidence'])
@@ -383,6 +454,6 @@ def import_review(root, packet_path, submission_path):
                      dossier_sha256=sha(root/'dossier.json'), packet=packet_data, submission=submission,
                      imported_at=now_utc(), import_attribution='Supplied review; not newly detected by this importer.',
                      input_sha256=sha(submission_path))
-        apply(dossier, entries+[entry])
+        apply(dossier, entries+[entry],validate_new=True)
         save(root/'decisions'/f'{sequence:06d}.json', entry)
         return entry

@@ -551,7 +551,7 @@ def verify_completion(receipt, m, paths, page, manifest_path):
     return receipt
 
 
-def from_ingest(handoff, destination, *, method, integration, enrichment_root, source_attempts=(), enrichment_attempts=()):
+def from_ingest(handoff, destination, *, method, integration, enrichment_root, source_attempts=(), enrichment_attempts=(), operation_started_at=None):
     """Finalize initial ingestion before authoring the page's durable pointers."""
     import source_package
     import article_enrichment as ae
@@ -567,6 +567,9 @@ def from_ingest(handoff, destination, *, method, integration, enrichment_root, s
     import operation_timing
     timing=operation_timing.summarize(source_attempts=[*source_attempts,absolute(verified['package'])],
         enrichment_attempts=[*enrichment_attempts,absolute(dossier['snapshot']['path'])])
+    if operation_started_at is not None:
+        ended_at=pa.now_utc()
+        timing['operation_interval']=dict(started_at=operation_started_at,ended_at=ended_at,elapsed_seconds=operation_timing.seconds(operation_started_at,ended_at))
     m = build(exported['manifest'], destination, exports=[exported])
     m['initial_ingest'] = dict(source_handoff_sha256=sha(handoff), figure_embeds=True,
                               production_complete=verified['production_complete'],

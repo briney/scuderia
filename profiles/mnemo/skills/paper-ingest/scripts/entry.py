@@ -111,7 +111,7 @@ def main(argv=None):
                     runtime.read_job(job)
         elif args.operation=='review-create':
             details=reviews.create(args.run,args.kind or 'qualified-job',args.output)
-            artifacts[str(absolute(args.output)/'dossier.json')]=sha(absolute(args.output)/'dossier.json')
+            for name in tree(absolute(args.output)): artifacts[str(absolute(args.output)/name)]=sha(absolute(args.output)/name)
         elif args.operation=='review-packet':
             details=reviews.packet(args.review_root,args.element,args.output,args.max_bytes)
             artifacts[str(absolute(args.output))]=sha(args.output)

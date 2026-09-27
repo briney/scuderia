@@ -113,6 +113,12 @@ def status(attempt):
         args=job['identity'].get('arguments',{})
         article_args=args.get('arguments',{})
         work=article_args.get('work_root')
+        if not work:
+            for field in ('package_dir','job','review_root','output_dir','output'):
+                if args.get(field):
+                    parent=Path(args[field]).parent
+                    if (parent/'plan.json').is_file() and json.loads((parent/'plan.json').read_text()).get('schema')=='initial-ingest-plan-v1':
+                        work=str(parent); break
         if work and (Path(work)/'plan.json').is_file():
             plan=json.loads((Path(work)/'plan.json').read_text())
             if plan.get('schema')=='initial-ingest-plan-v1':

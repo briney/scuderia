@@ -92,7 +92,7 @@ def status(work_root):
     op=None; step='source-acquisition'
     if not (work/'retention/retention.json').exists():
         op=article('initial-retain',missing=['acquisition.json','application_endpoint','max_application_posts'])
-        op['artifacts']['acquisition_template']=str(work/'acquisition.template.json')
+        op.setdefault('artifacts',{})['acquisition_template']=str(work/'acquisition.template.json')
     elif not (source/'manifest.json').exists():
         step='source-prepare'; op=native(step,'prepare',tool='paper_workflow',scope_path=str(work/'retention/scope.json'),output_dir=str(source),**cache_args)
     elif not (work/'source-handoff/handoff.json').exists():
@@ -141,9 +141,23 @@ def status(work_root):
     elif not (export/'handoff.json').exists():
         from qualified_enrichment import reviews
         dossier=reviews.verify(review)
-        if not (work/'review-packet.json').exists():
+        entries=reviews.decisions(review,dossier)
+        if (review/'packets.json').exists():
+            inventory=pa.load(review/'packets.json')
+            packets=[review/item['path'] for item in inventory['packets']]
+            if inventory['source_inspection_required']: packets.append(review/'source-inspection-packet.json')
+            imported={pa.digest(entry['packet']) for entry in entries}
+            remaining=[path for path in packets if pa.digest(pa.load(path)) not in imported]
+            if remaining:
+                packet=remaining[0]; step='review-import-'+str(len(entries)+1)
+                op=native(step,'review-import',review_root=str(review),packet=str(packet),missing=['submission'],
+                    artifacts=dict(submission_template=str(packet.with_suffix('.submission.template.json')),guidance=str(packet.with_suffix('.guidance.json'))))
+            else:
+                require(ae.review_complete(dossier,entries),'review-roster-incomplete')
+                step='export';op=native(step,'export',review_root=str(review),output=str(export))
+        elif not (work/'review-packet.json').exists():
             step='review-packet'; op=native(step,'review-packet',review_root=str(review),output=str(work/'review-packet.json'),elements=[e['element_id'] for e in dossier['snapshot']['elements']])
-        elif not list((review/'decisions').glob('*.json')):
+        elif not entries:
             step='review-import'; op=native(step,'review-import',review_root=str(review),packet=str(work/'review-packet.json'),missing=['submission'])
         else:
             step='export'; op=native(step,'export',review_root=str(review),output=str(export))
@@ -184,7 +198,7 @@ def operate(command, work_root, **args):
     elif command=='initial-finalize':
         registered=attempts(work)
         fp.from_ingest(work/'enriched-handoff/handoff.json',work/'final-products',method=code,integration=code,enrichment_root=code,
-            source_attempts=registered['source'],enrichment_attempts=registered['enrichment'])
+            source_attempts=registered['source'],enrichment_attempts=registered['enrichment'],operation_started_at=p['planned_at'])
     elif command=='initial-publish':
         fp.publish_ingest(work/'final-products/manifest.json',work/'publication.json',args['remote'],args['bucket'],args['prefix'])
     elif command=='initial-record-attempt': record_attempt(work,**args)

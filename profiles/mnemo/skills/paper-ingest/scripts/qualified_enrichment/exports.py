@@ -208,6 +208,8 @@ def build(root):
         machine.update(schema='qualified-enrichment-export-v2',policy=reviews.policy(dossier),manifest=dossier['snapshot']['manifest'],
                        request_accounting=accounting,execution_complete=accounting['complete'],assessment=assessment,readiness=ready)
         e=machine['eligibility']; e['holds']=sorted(set(e['holds']+ready['holds']))
+        if dossier.get('review_completion')=='roster-v1' and not ae.review_complete(dossier,entries):
+            e['holds']=sorted(set(e['holds']+['review-roster-incomplete']))
         e['qualified_production_eligible']=not e['holds']
         e['status']='qualified-production-eligible' if not e['holds'] else 'execution-hold'
     return machine
