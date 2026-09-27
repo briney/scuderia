@@ -14,6 +14,7 @@ from article_runtime import absolute, inside, external, require, sha
 
 POLICY = 'final-products-v1'
 PRODUCT_SCHEMA = 'article-scientific-products-v1'
+CORRECTED_PRODUCT_SCHEMA = 'article-scientific-products-v2'
 
 
 def _remap(value, aliases, field=None):
@@ -110,7 +111,94 @@ def _results(m, paths, exports, page):
                 value = dict(reason=register['operator_qualification'], provenance=register.get('reviewer'), scope='page')
                 if value not in products['qualifications']:
                     products['qualifications'].append(value)
+    return _supersessions(products)
+
+
+def _supersessions(products):
+    """Previously superseded metadata cannot become active again on refresh."""
+    for amendment in products.get('amendments',[]):
+        for change in amendment['changes']:
+            old=change['original']; target=change['target']
+            if target.startswith('/source_limitations/'):
+                products['source_limitations']=[x for x in products['source_limitations'] if x!=old]
+            elif target.startswith('/qualifications/'):
+                products['qualifications']=[x for x in products['qualifications'] if x!=old]
+            else:
+                for element in products['elements']:
+                    if element['element_id']==change['element_id'] and element['source_sha256']==change['source_sha256']:
+                        element['findings']=[x for x in element['findings'] if x!=old and not (old.get('id') and x.get('id')==old['id'])]
     return products
+
+
+def correct_review(manifest, submission, destination):
+    """Copy-on-write, attributed review metadata amendment; scientific outcomes stay intact."""
+    from qualified_enrichment import reviews
+    from qualified_enrichment.records import resolve_pointer
+    import json, hashlib
+    manifest=absolute(manifest);submission=absolute(submission);destination=absolute(destination)
+    m=verify(manifest);_,paths=pa.verify_local(manifest);request=pa.load(submission)
+    require(set(request)=={'schema','manifest_sha256','reviewer','reason','changes'} and
+            request['schema']=='article-review-correction-v1' and request['manifest_sha256']==sha(manifest),'correction-manifest-binding')
+    reviews.provenance(request['reviewer'])
+    require(isinstance(request['reason'],str) and request['reason'].strip(),'correction-reason')
+    require(isinstance(request['changes'],list) and request['changes'],'correction-changes')
+    products=copy.deepcopy(pa.load(paths[m['products_key']]))
+    records={f['key']:f for f in m['files']}; elements={e['element_id']:e for e in m['elements']}
+    edits=[];seen=set()
+    for change in request['changes']:
+        require(set(change)=={'target','old_sha256','replacement','source_refs'},'correction-change-fields')
+        target=change['target'];match=re.fullmatch(r'/(?:elements/(0|[1-9][0-9]*)/findings/(0|[1-9][0-9]*)|(source_limitations|qualifications)/(0|[1-9][0-9]*))',target)
+        require(match and target not in seen,'correction-review-metadata-only');seen.add(target)
+        try: old=resolve_pointer(products,target)
+        except (KeyError,IndexError): raise ValueError('correction-target-missing')
+        require(pa.digest(old)==change['old_sha256'],'correction-stale-target')
+        owner=products['elements'][int(match[1])] if match[1] is not None else None
+        replacement=change['replacement']
+        require(replacement is None or type(replacement) is type(old),'correction-replacement-type')
+        if replacement is not None:
+            require(isinstance(replacement,str) and replacement.strip(),'correction-replacement-must-be-limitation-text')
+        refs=change['source_refs'];require(isinstance(refs,list) and refs,'correction-source-evidence-required')
+        for ref in refs:
+            require(set(ref)=={'element_id','key','sha256','pointer'} and ref['element_id'] in elements,'correction-source-reference')
+            element=elements[ref['element_id']]
+            if owner: require(owner['element_id']==ref['element_id'],'correction-evidence-element')
+            key=ref['key'];require(key in paths and records[key]['sha256']==ref['sha256'],'correction-evidence-hash')
+            if key==m['products_key']:
+                prefix=re.match(r'/elements/(0|[1-9][0-9]*)/outcome(?:/|$)',ref['pointer'])
+                require(prefix is not None and products['elements'][int(prefix[1])]['element_id']==ref['element_id'],'correction-evidence-outcome-owner')
+            else:
+                require(key in element['context']['native_text_keys'],'correction-evidence-native-owner')
+            evidence=pa.load(paths[key]);resolve_pointer(evidence,ref['pointer'])
+        edits.append(dict(change,original=copy.deepcopy(old),**({k:owner[k] for k in ('element_id','source_sha256')} if owner else {})))
+    # Targets bind the old snapshot. Apply list edits in descending index order.
+    for change in sorted(edits,key=lambda c:tuple(int(x) if x.isdigit() else x for x in c['target'].split('/')),reverse=True):
+        parent,index=change['target'].rsplit('/',1);items=resolve_pointer(products,parent)
+        if change['replacement'] is None: del items[int(index)]
+        else: items[int(index)]=change['replacement']
+    products['schema']=CORRECTED_PRODUCT_SCHEMA
+    products.setdefault('amendments',[]).append(dict(prior_manifest_sha256=sha(manifest),prior_products_sha256=records[m['products_key']]['sha256'],
+        reviewer=request['reviewer'],reason=request['reason'],changes=edits,created_at=pa.now_utc()))
+    raw=(json.dumps(products,ensure_ascii=False,allow_nan=False,indent=2)+'\n').encode();h=hashlib.sha256(raw).hexdigest();key='results/'+h+'.json'
+    old_key=m['products_key'];new=_remap(m,{old_key:key});new['products_key']=key
+    new['common_dependencies']=[key if x==old_key else x for x in m['common_dependencies']]
+    new['files']=[dict(f,sha256=h,size=len(raw)) if f['key']==key else f for f in new['files']]
+    new['package_id']=m['package_id']+'-review-'+pa.digest(request)[:12]
+    new['created_at']=pa.now_utc();new['provenance']['review_parent_manifest_sha256']=sha(manifest)
+    if 'initial_ingest' in new:
+        original=new['initial_ingest']['qualifications']
+        superseded=[c['original'] if isinstance(c['original'],str) else c['original'].get('reason','') for c in edits]
+        new['initial_ingest']['recorded_qualifications']=original
+        new['initial_ingest']['qualifications']='\n'.join(line for line in original.splitlines() if not any(text and text in line for text in superseded))
+    pa.validate_manifest(new)
+    external(destination,[manifest.parent,submission]+[p.parent for p in paths.values()]);require(not destination.exists(),'destination-must-be-new')
+    pa.verify_local(manifest);require(sha(manifest)==request['manifest_sha256'],'correction-source-changed')
+    pa.new_directory(destination)
+    for f in new['files']: pa.put(inside(destination,f['key']),raw if f['key']==key else paths[f['key']].read_bytes())
+    pa.save(destination/'manifest.json',new)
+    pa.save(destination/'local-map.json',dict(schema='portable-article-local-map-v2',manifest_sha256=sha(destination/'manifest.json'),
+        sources={f['key']:dict(root=str(destination),path=f['key']) for f in new['files']}))
+    verify(destination/'manifest.json')
+    return new
 
 
 def build(manifest_path, destination, *, exports=(), page=None, qualifications=()):
@@ -316,7 +404,15 @@ def verify(manifest_path):
     require(pa.is_final_manifest(m), 'final-products-required')
     validate(m)
     products = pa.load(paths[m['products_key']])
-    require(products['schema'] == PRODUCT_SCHEMA, 'final-results-schema')
+    require(products['schema'] in (PRODUCT_SCHEMA,CORRECTED_PRODUCT_SCHEMA), 'final-results-schema')
+    if products['schema']==CORRECTED_PRODUCT_SCHEMA:
+        require(isinstance(products.get('amendments'),list) and products['amendments'],'corrected-products-amendments-required')
+        from qualified_enrichment import reviews
+        for amendment in products['amendments']:
+            reviews.provenance(amendment['reviewer'])
+            require(amendment['reason'] and amendment['changes'],'correction-attribution-required')
+            for change in amendment['changes']:
+                require(pa.digest(change['original'])==change['old_sha256'] and change['source_refs'],'correction-original-binding')
     elements = {e['element_id']: e for e in m['elements']}
     documents = {d['identity']: d for d in m['documents']}
     records = {f['key']: f for f in m['files']}
@@ -344,10 +440,14 @@ def _preserve_unprocessed(current_path, prior_path, destination):
     preserved={d['identity'] for d in prior['documents'] if d.get('source_id',d['identity'])!=selected}
     products=copy.deepcopy(pa.load(paths[current['products_key']]))
     old_products=pa.load(old_paths[prior['products_key']])
+    if old_products.get('amendments'):
+        products['schema']=CORRECTED_PRODUCT_SCHEMA
+        products['amendments']=copy.deepcopy(old_products['amendments'])
     kept_elements=[e for e in prior['elements'] if e['document'] in preserved]
     kept_ids={e['element_id'] for e in kept_elements}
     products['elements'].extend(copy.deepcopy(e) for e in old_products['elements'] if e['element_id'] in kept_ids)
     products['source_captions'].extend(copy.deepcopy(c) for c in old_products.get('source_captions',[]) if c['source_document'] in preserved)
+    _supersessions(products)
     current['documents'].extend(copy.deepcopy(d) for d in prior['documents'] if d['identity'] in preserved)
     current['elements'].extend(copy.deepcopy(kept_elements))
     identities={s['identity']:s for s in current['source_documents']}
@@ -655,6 +755,8 @@ def main(argv=None):
     compact = commands.add_parser('compact')
     compact.add_argument('--manifest', required=True); compact.add_argument('--output', required=True)
     compact.add_argument('--page')
+    correction = commands.add_parser('correct-review')
+    for flag in ('manifest','submission','output'): correction.add_argument('--'+flag,required=True)
     check = commands.add_parser('verify'); check.add_argument('--manifest', required=True)
     args = parser.parse_args(argv)
     try:
@@ -664,6 +766,8 @@ def main(argv=None):
             return 0
         if args.command == 'ingest':
             m = from_ingest(args.handoff, args.output, method=args.method, integration=args.integration, enrichment_root=args.enrichment_root,source_attempts=args.source_attempt,enrichment_attempts=args.enrichment_attempt)
+        elif args.command == 'correct-review':
+            m = correct_review(args.manifest,args.submission,args.output)
         elif args.command == 'compact':
             m = build(args.manifest, args.output, page=args.page)
         else:

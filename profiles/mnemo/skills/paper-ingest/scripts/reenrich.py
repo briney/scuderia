@@ -576,7 +576,7 @@ def _material_finding(finding,paths,evidence):
     archived=pa.load(paths[evidence['key']])
     view=next((v for v in archived.get('elements',[]) if v['element_id']==finding.get('element_id')),None)
     if view is None: return True
-    if archived.get('schema')=='article-scientific-products-v1': return True
+    if archived.get('schema') in ('article-scientific-products-v1','article-scientific-products-v2'): return True
     return _material_finding_in_view(finding,view)
 
 

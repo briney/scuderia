@@ -613,7 +613,7 @@ def qualification_projection(value, *, element=None, scope=None):
     model-based pruning, length limit, or implicit resolution across revisions.
     """
     result=[]
-    if isinstance(value,dict) and value.get('schema')=='article-scientific-products-v1':
+    if isinstance(value,dict) and value.get('schema') in ('article-scientific-products-v1','article-scientific-products-v2'):
         for view in value['elements']:
             if element is None or _history_matches(_history_scope(view),element):
                 if view['findings']:

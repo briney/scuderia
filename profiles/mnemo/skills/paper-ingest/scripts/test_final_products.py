@@ -207,6 +207,41 @@ class FinalProducts(unittest.TestCase):
         with self.assertRaises(ValueError):
             rr.advance(self.root/'new-run', 'prepare')
 
+    def test_review_correction_preserves_outcomes_and_survives_refresh(self):
+        old_finding=dict(id='false-empty',category='empty-table-extraction',status='unresolved',reason='All cells empty',resolutions=[])
+        view=dict(element_id='main::table-1',source_sha256=self.manifest['documents'][0]['source_sha256'],
+            outcome=dict(record=dict(cells=[dict(raw_value='007')])),findings=[old_finding])
+        exported=dict(elements=[view],assessment=dict(source_limitations=['All cells empty','Unrelated caveat']))
+        original=self.root/'original';fp.build(self.path,original,exports=[exported])
+        manifest=original/'manifest.json';m=fp.verify(manifest);products=pa.load(original/m['products_key'])
+        reviewer=dict(kind='orchestrator-import',identity='Synthetic reviewer',model=None,provider=None,check='Record inspection',timestamp='2026-01-01T00:00:00Z')
+        evidence=dict(element_id='main::table-1',key=m['products_key'],sha256=next(f['sha256'] for f in m['files'] if f['key']==m['products_key']),pointer='/elements/0/outcome/record/cells')
+        changes=[dict(target='/elements/0/findings/0',old_sha256=pa.digest(products['elements'][0]['findings'][0]),replacement=None,source_refs=[evidence]),
+                 dict(target='/source_limitations/0',old_sha256=pa.digest('All cells empty'),replacement=None,source_refs=[evidence])]
+        submission=dict(schema='article-review-correction-v1',manifest_sha256=pa.sha(manifest),reviewer=reviewer,reason='Values are populated',changes=changes)
+        correction=self.root/'correction.json';pa.save(correction,submission)
+        out=self.root/'corrected';new=fp.correct_review(manifest,correction,out)
+        data=pa.load(out/new['products_key'])
+        self.assertEqual(data['schema'],'article-scientific-products-v2')
+        self.assertEqual(data['elements'][0]['outcome'],view['outcome'])
+        self.assertEqual(data['elements'][0]['findings'],[])
+        self.assertEqual(data['source_limitations'],['Unrelated caveat'])
+        self.assertEqual(data['amendments'][0]['changes'][0]['original'],old_finding)
+        again=self.root/'again';fresh=fp.build(out/'manifest.json',again,exports=[exported])
+        reread=pa.load(again/fresh['products_key'])
+        self.assertEqual(reread['elements'][0]['findings'],[])
+        self.assertEqual(reread['source_limitations'],['Unrelated caveat'])
+        self.assertEqual({s['sha256'] for s in new['source_documents']},{s['sha256'] for s in m['source_documents']})
+        for bad in ('stale','outcome','evidence','attribution'):
+            value=copy.deepcopy(submission)
+            if bad=='stale':value['changes'][0]['old_sha256']='0'*64
+            if bad=='outcome':value['changes'][0]['target']='/elements/0/outcome'
+            if bad=='evidence':value['changes'][0]['source_refs'][0]['element_id']='supplement::table-1'
+            if bad=='attribution':value['reviewer']['identity']=''
+            path=self.root/(bad+'.json');pa.save(path,value)
+            with self.assertRaises(ValueError):fp.correct_review(manifest,path,self.root/(bad+'-out'))
+            self.assertFalse((self.root/(bad+'-out')).exists())
+
     def test_initial_timing_includes_current_source_and_fails_before_output(self):
         from unittest.mock import patch
         import article_enrichment as ae
