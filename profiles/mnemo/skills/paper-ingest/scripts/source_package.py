@@ -98,10 +98,10 @@ def identifier(value):
     return value
 
 
-def file_metadata(row, article):
+def file_metadata(row, article, *, scoped=False):
     identifier(row['id'])
     require(set(row) <= {'id','role','format','path','sha256','filename','source_url','discovery_url',
-                         'article_slug','identity_verification','page_count','extraction_disposition'}, 'unknown source fields; no selected-page/channel diagnostics')
+                         'article_slug','identity_verification','page_count','extraction_disposition'} | ({'relationship','publisher_description'} if scoped else set()), 'unknown source fields; no selected-page/channel diagnostics')
     require(row['role'] in ('manuscript', 'supplement', 'body'), 'source role')
     require(row['format'] in ('pdf', 'other'), 'source format')
     require(row['role'] != 'manuscript' or row['format'] == 'pdf', 'original manuscript must be PDF')
@@ -111,12 +111,17 @@ def file_metadata(row, article):
     identity = row['identity_verification']
     require(identity['status'] == 'operator-verified' and isinstance(identity['basis'], str) and identity['basis'].strip(),
             'operator identity verification required (not adapter verification)')
+    if 'relationship' in row:
+        require(scoped and row['relationship'] == 'alternative' and row['role'] == 'supplement' and row['format'] == 'pdf', 'alternative source must be a supplement-role PDF')
+    if 'publisher_description' in row:
+        require(isinstance(row['publisher_description'], str), 'publisher description must be text')
     public_url(row['source_url']); public_url(row['discovery_url'])
 
 
 def validate_acquisition(value):
-    require(value['schema'] == 'acquired-sources-v1', 'acquisition schema')
-    require(set(value) == {'schema','article','files','attempts','obligations','attachments'}, 'unknown acquisition fields')
+    require(value['schema'] in ('acquired-sources-v1','acquired-sources-v2'), 'acquisition schema')
+    scoped = value['schema'] == 'acquired-sources-v2'
+    require(set(value) == {'schema','article','files','attempts','obligations','attachments'} | ({'processing'} if scoped else set()), 'unknown acquisition fields')
     article = value['article']; identifier(article['slug'])
     require(all(k in article for k in ('title', 'doi', 'pmid', 'version')), 'explicit article identity fields required')
     require(isinstance(article['title'], str) and article['title'].strip() and article['version'], 'article title and version required')
@@ -127,7 +132,7 @@ def validate_acquisition(value):
     require(len(ids) == len(set(ids)) and len(aids) == len(set(aids)), 'duplicate source/attempt ID')
     require(len({r['sha256'] for r in files}) == len(files), 'duplicate source bytes; list aliases as discovery evidence, not duplicate files')
     for row in files:
-        file_metadata(row, article)
+        file_metadata(row, article, scoped=scoped)
     for row in attempts:
         identifier(row['id']); public_url(row['source_url'])
         require(row['outcome'] in ('failed','retrieved','unknown'), 'attempt outcome')
@@ -160,8 +165,35 @@ def validate_acquisition(value):
         else:
             require(item['status'] == 'missing' and item['disposition'] and
                     set(item['attempt_ids']) <= set(aids), 'missing attachment disposition')
-    require(len(retained) == len(set(retained)) and set(retained) == {r['id'] for r in files if r['role'] == 'supplement'},
-            'silent or duplicate attachment loss')
+    supplements = {r['id'] for r in files if r['role'] == 'supplement'}
+    if scoped:
+        require(supplements <= set(retained) <= {r['id'] for r in files if r['role'] in ('manuscript','supplement')}, 'silent attachment loss or unknown alias')
+        for item in items:
+            if item['status'] == 'retrieved':
+                row = next(r for r in files if r['id'] == item['file_id'])
+                require(item['observed_link'] in (row['source_url'], row['discovery_url']), 'attachment alias link binding')
+        processing_sources(value)
+    else:
+        require(len(retained) == len(set(retained)) and set(retained) == supplements,
+                'silent or duplicate attachment loss')
+
+
+def processing_sources(acquisition):
+    """Select processing inputs without changing retention or inferring boundaries."""
+    if acquisition['schema'] == 'acquired-sources-v1':
+        return [dict(r, pages=list(range(1, r['page_count']+1))) for r in acquisition['files'] if r['format']=='pdf']
+    require(acquisition['schema'] == 'acquired-sources-v2', 'acquisition schema')
+    processing = acquisition['processing']
+    require(set(processing) == {'policy','manuscript'} and processing['policy']=='manuscript-only-v1', 'processing policy')
+    selected = processing['manuscript']
+    require(set(selected) == {'source_id','pages','basis'}, 'manuscript scope fields')
+    require(isinstance(selected['basis'], str) and selected['basis'].strip(), 'manuscript boundary basis required')
+    rows = [r for r in acquisition['files'] if r['id']==selected['source_id']]
+    require(len(rows)==1 and rows[0]['role']=='manuscript' and rows[0]['format']=='pdf', 'processing manuscript source')
+    pages = selected['pages']
+    require(isinstance(pages,list) and pages and all(type(n) is int and n>0 for n in pages) and pages==sorted(set(pages)), 'processing physical pages')
+    if 'page_count' in rows[0]: require(pages[-1]<=rows[0]['page_count'], 'processing page out of range')
+    return [dict(rows[0], pages=list(pages))]
 
 
 def pdf_count(path):
@@ -177,6 +209,7 @@ def scope_for(acquisition, root, endpoint, budget):
     require(not u.query and not u.fragment, 'application endpoint cannot contain query or fragment')
     require(type(budget) is int and budget >= 0, 'explicit nonnegative application-post budget required')
     docs = []
+    selected = {r['id']: r['pages'] for r in processing_sources(acquisition)}
     for row in acquisition['files']:
         source = inside(root, row['path'])
         with source.open('rb') as stream:
@@ -188,10 +221,13 @@ def scope_for(acquisition, root, endpoint, budget):
         require(sha(source) == row['sha256'], 'retained source hash mismatch')
         count = pdf_count(source)
         require(row['page_count'] == count, 'source page count mismatch')
+        if row['id'] not in selected: continue
         docs.append(dict(identity=row['id'], source=str(source), sha256=row['sha256'], page_count=count,
-                         pages=list(range(1, count+1)), channels=list(CHANNELS)))
+                         pages=selected[row['id']], channels=list(CHANNELS)))
     require(docs, 'at least one acquired PDF required for this route')
-    return dict(documents=docs, max_application_posts=budget, application_endpoint=endpoint)
+    result = dict(documents=docs, max_application_posts=budget, application_endpoint=endpoint)
+    if acquisition['schema']=='acquired-sources-v2': result['processing']=acquisition['processing']
+    return result
 
 
 def prepare(input_path, output, endpoint, budget):
@@ -216,6 +252,11 @@ def prepare(input_path, output, endpoint, budget):
             row['page_count'] = count
         else:
             row['extraction_disposition'] = 'deferred-non-PDF' if row['role'] == 'supplement' else 'operator-readable-body'
+    if retained['schema']=='acquired-sources-v2':
+        selected = {r['id'] for r in processing_sources(retained)}
+        for row in retained['files']:
+            if row['role'] != 'body' and row['id'] not in selected:
+                row['extraction_disposition']='retained-unprocessed-'+('alternative' if row.get('relationship')=='alternative' else 'supplement')
     for attempt in retained['attempts']:
         for index, row in enumerate(attempt['artifacts']):
             raw = absolute(row['path']).read_bytes()
