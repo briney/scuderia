@@ -45,6 +45,43 @@ arXiv resolution tries DataCite before other indexes. Its author-count match
 is not proof of correct individual identities or every required author edge.
 The primary still checks source evidence, bibliography, wiring, and propagation.
 
+## Read-only PDF inspection
+
+For page counts, attachment identity checks, page excerpts and keyword locations,
+reuse installed `pdfinfo` and `pdftotext` before writing inline Python or a new
+helper. Check availability with `command -v pdfinfo` and `command -v pdftotext`,
+as separate commands. If absent, use the PDF skill's existing named reader with
+its configured interpreter; do not install dependencies during ingestion.
+
+Run each command separately with quoted, literal absolute paths. Use the terminal
+workdir field if a working directory is actually needed; these commands need none.
+Keep stderr visible and check each exit status. A scanner can reject a compound
+`cd ... && python -c ...` command because it cannot resolve the nested executable
+body, even when the inner inspection is read-only. Do not disable scanning, hide
+rejected code inside a new script, or treat an actual authorization denial as a
+syntax problem. Direct native commands are inspectable alternatives, not a promise
+that every environment will approve them.
+
+```sh
+pdfinfo "<absolute-source.pdf>"
+pdftotext -f 29 -l 36 -layout "<absolute-source.pdf>" -
+pdftotext -tsv "<absolute-source.pdf>" "<new-scratch>/document-words.tsv"
+rg -i 'term-one|term-two' "<new-scratch>/document-words.tsv"
+```
+
+The text command prints physical PDF pages **29–36 inclusive**; page numbers are
+one-based, so Python indices 28–35 correspond to this range. The TSV's second
+column, `page_num`, retains that physical page number for every word. Search the
+TSV for keywords, then read candidate pages with `-f`/`-l`; word counts are not
+page counts and multiword phrases may span rows. Verify the PDF conversion
+succeeded before searching its new scratch file. `rg` exit 1 means no matching
+text, while conversion errors or `rg` exit 2 are failures. Empty native text can
+mean an image-only page; keyword hits do not establish article identity or prove
+a supplement boundary. Inspect the actual title/header and source context.
+
+These are acquisition/inspection aids only. Preserve the original PDF unchanged;
+they do not replace retained-PDF extraction, figure/table enrichment or review.
+
 ## Host and transport failures
 
 Use named temporary files for downloaded payloads and scripts; do not depend

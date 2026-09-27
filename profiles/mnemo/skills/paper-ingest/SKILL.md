@@ -190,6 +190,10 @@ budget hold the PDF workflow; they do not authorize a text/abstract substitute.
 A failed extraction element can use the existing attributed partial-evidence
 review within that workflow; it does not authorize skipping the workflow.
 
+For PDF identity, page-range and keyword checks, use the native PDF inspection
+recipes in `references/script-commands.md`. Prefer direct installed commands
+with literal paths over inline Python wrapped in `cd ... &&`; keep errors visible.
+
 Use the applicable source reference. `fetch_fulltext.py` provides a useful
 HTTP ladder, not the full retrieval procedure: it lacks browser/paperclip
 routes and abstract-only closure. Validate every returned candidate even
