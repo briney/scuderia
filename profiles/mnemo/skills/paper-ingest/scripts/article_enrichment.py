@@ -423,7 +423,7 @@ def _execute(work,binding,manifest_path,approval_path,*,authorize=False,fixture_
         except (ValueError,KeyError,TypeError,IndexError) as exc:
             fatal=(str(exc) in ('response-model-mismatch','response-usage-count-mismatch') or
                    result['http_status'] in (301,302,303,307,308,401,403))
-            _seal_file(d/'failure.json',dict(status='failed',reason='response-rejected',fatal=fatal,http_status=result['http_status'],
+            _seal_file(d/'failure.json',dict(status='failed',reason='response-rejected',validation_error=str(exc),validation_error_type=type(exc).__name__,fatal=fatal,http_status=result['http_status'],
                 reservation_sha256=sha(d/'reservation.json'),response_sha256=sha(d/'response-body.json'),
                 request_started_at=request_started_at,response_received_at=received_at,ended_at=pa.now_utc()))
             if fatal: raise

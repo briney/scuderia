@@ -10,3 +10,5 @@ Output shape:
 {"status":"ok","groups":[{"source_document":"the supplied document ID","body_refs":["candidate ID"],"caption_note_refs":[],"label":null}],"unassociated":[{"candidate_id":"candidate ID","source_document":"the supplied document ID"}],"conflicts":[]}
 
 A conflict has exactly {"candidate_refs":["candidate ID"],"source_document":"the supplied document ID","reason":"ambiguous-association"}; reason must be ambiguous-association, overlapping-content, or insufficient-source. Set status to unresolved when any conflicts remain. Do not omit candidates. No previous associations, human expectations, or reviewer comments are supplied.
+
+If a caption-heading extraction failed, an unlabeled body plus an unlabeled continuation caption may still form a supported group, but its label must be null. For example, a continuation on the next physical page does not permit label "Figure S7" unless one of that group's supplied candidates has that label in observed_labels. Do not create a replacement heading candidate or reference an omitted native line.

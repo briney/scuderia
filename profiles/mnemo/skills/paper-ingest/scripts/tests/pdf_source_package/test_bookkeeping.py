@@ -62,6 +62,29 @@ class ClassificationLabelMerge(unittest.TestCase):
                     workflow.collect(root)
 
 
+class AssociationContinuation(unittest.TestCase):
+    def test_continuation_label_needs_a_retained_labeled_candidate(self):
+        import copy
+        from pdf_source_package import association as a
+        def candidate(ident,page,role,labels=()):
+            return dict(id=ident,source_document='synthetic',source_sha256='a'*64,page=page,role=role,
+                content_type='figure',type_origin='synthetic',native_text='Continuation text',
+                observed_labels=[dict(label=label,origin='native-text') for label in labels],
+                regions=[dict(id=ident+'-region',page=page,bbox=[0,0,10,10],lines=[])])
+        cs=[candidate('body',1,'body'),candidate('continued',2,'caption')]
+        value=dict(status='ok',groups=[dict(source_document='synthetic',body_refs=['body'],caption_note_refs=['continued'],label='Figure S7')],unassociated=[],conflicts=[])
+        with self.assertRaisesRegex(ValueError,'unsupported-label'):a.validate(value,cs)
+        value['groups'][0]['label']=None
+        self.assertEqual(a.validate(value,cs)['candidate_count'],2)
+        cs.append(candidate('heading',1,'caption',['Figure S7']))
+        value['groups'][0].update(label='Figure S7',caption_note_refs=['heading','continued'])
+        self.assertEqual(a.validate(value,cs)['candidate_count'],3)
+        wrong=copy.deepcopy(cs);wrong[1]['source_document']='another'
+        with self.assertRaisesRegex(ValueError,'cross-document'):a.validate(value,wrong)
+        value['groups'][0]['caption_note_refs'].append('invented-line-id')
+        with self.assertRaisesRegex(ValueError,'unknown-reference'):a.validate(value,cs)
+
+
 class Bookkeeping(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(dir=os.environ['PDF_TEST_WORK'])

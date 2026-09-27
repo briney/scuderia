@@ -32,6 +32,9 @@ class SharedExecution(unittest.TestCase):
         state = rr.advance(self.work, 'approved-execute', approval=approval, fixture_transport=transport)
         self.assertEqual(len(sent), 2)
         self.assertEqual(state['accounting']['counts']['failed'], 1)
+        failure=next(r['failure'] for r in state['accounting']['requests'].values() if r['status']=='failed')
+        self.assertTrue(failure['validation_error'])
+        self.assertNotEqual(failure['validation_error'],'response-rejected')
         self.assertEqual(state['accounting']['counts']['completed'], 1)
         again=rr.advance(self.work,'approved-execute',approval=approval,
                          fixture_transport=lambda *a:self.fail('consumed request reposted'))
@@ -92,3 +95,17 @@ class SharedExecution(unittest.TestCase):
             rr.advance(self.work,'approved-execute',approval=approval,
                        fixture_transport=lambda *a:self.fail('budget exceeded'))
         self.assertFalse((self.work/'enrichment/execution-start.json').exists())
+
+
+class RejectedContracts(unittest.TestCase):
+    def test_null_claim_and_wrong_caption_owner_remain_rejected(self):
+        from pdf_enrichment import references
+        evidence=dict(element_id='synthetic',captions=[
+            dict(region_id='caption-a',native_text='First',bbox=[0,0,1,1],lines=[dict(line_id='line-a',text='First')]),
+            dict(region_id='caption-b',native_text='Second',bbox=[0,0,1,1],lines=[dict(line_id='line-b',text='Second')])])
+        with self.assertRaisesRegex(ValueError,'claim-object'):references.claim(evidence,None)
+        with self.assertRaisesRegex(ValueError,'wrong-owner'):
+            references.caption_selection(evidence,'caption-a',['line-b'])
+        with self.assertRaisesRegex(ValueError,'unknown-or-ambiguous'):
+            references.caption_selection(evidence,'caption-a',['invented'])
+        self.assertEqual(references.caption_selection(evidence,'caption-a',['line-a'])[0]['text'],'First')
