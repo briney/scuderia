@@ -26,7 +26,10 @@ For portable operations, explicitly set all three trusted roots to that same pat
     export REENRICH_INTEGRATION_ROOT=<scripts>
     export PYTHONDONTWRITEBYTECODE=1
 
-Set the existing processor-cache setting to the instance's accepted local cache.
+Set `REENRICH_PROCESSOR_CACHE` (or `PDF_PROCESSOR_CACHE`) in the launching
+harness environment to the instance's accepted local processor cache. Initial
+continuations resolve this environment setting; without it, sealing returns
+`processor_cache` as a missing input. Verify inheritance in a fresh process.
 Never take executable paths or credentials from archived evidence.
 
 The Hermes binding installs the reviewed `scripts/paper-workflow/` and
@@ -72,10 +75,18 @@ After identity resolution and dedup, before constructing source commands, use th
 `operation: article` and `arguments: {command: route, article: <slug>,
 page: <absolute-page>, work_root: <new-durable-dir>}`. Supply `manifest` when
 available and `elements` only for an explicitly selected refresh. The route
-checks actual page existence. A legacy text-only page still uses refresh:
+persists its decision before drafting. An absent page or a genuine unfilled
+`stub` with a citation uses initial ingestion; an ambiguous stub holds. A rich
+page still uses refresh even if `needs-ingest` is true. A legacy text-only page uses refresh:
 fresh source preparation, `adopt`, review, reconciliation, publication and
 `reenrich.verify_completion`. Never substitute an initial-ingest finalizer.
-A new page returns the initial-ingest route and its outstanding obligations.
+The initial route writes `plan.json` and `acquisition.template.json`. Its exact
+continuations cover retention, source phases, enrichment, batched review, final
+products and publication. Fixed `initial-*` article commands adapt existing
+operations; they do not authorize inference or scientific acceptance. Drafting
+the page cannot change the saved route or final verifier. Attempt directories
+are generated beside the work root, outside the retained source tree. Active or
+uncertain workers return status, never replacement execution.
 An explicit metadata-only request may stop at metadata; an ingestion/refresh request
 may not be silently reduced to metadata work because a full page already exists.
 
@@ -177,8 +188,10 @@ and installed-harness checks are separate opt-ins, not a paid acceptance campaig
 
 Keep every failed and replacement attempt until finalization. For article `publish`,
 pass `source_attempts: [<source-package-dir>, ...]` and
-`enrichment_attempts: [<earlier-enrichment-job>, ...]`; the current enrichment job
-is included automatically. For initial finalization, use repeatable
+`enrichment_attempts: [<earlier-enrichment-job>, ...]`. Initial finalization
+automatically includes the current source package and enrichment job. Register
+additional current-workflow attempts through `initial-record-attempt`; source
+identity is checked. For standalone initial finalization, use repeatable
 `final_products.py ingest --source-attempt <dir> --enrichment-attempt <dir>` flags.
 Include reused forks as well as their originals. These are explicit registrations,
 not a filesystem search: omitted attempts are outside the reported scope.
@@ -189,5 +202,10 @@ and summed request time separately. Detailed request timestamps and per-phase
 settings stay in that external manifest, never in the paper page. Unknown legacy
 values stay unknown; failed responses with no usage are counted as missing usage.
 Refresh receipt intervals include operator wait. The snapshot ends before
-publication; upload/read-back and later cleanup are not included in its wall time.
+publication; receipts record upload/read-back in a separate publication interval.
+Initial operation intervals start at the saved routing decision. Per-phase status
+reports planned, pending, successful, failed and uncertain counts plus effective
+concurrency and its origin. Archive uploads use an independent bounded pool of
+four; this is unrelated to VLM concurrency. The manifest is published last after
+all objects verify; failure drains active uploads without scheduling more.
 Timing is diagnostic and never satisfies a scientific acceptance or replay gate.

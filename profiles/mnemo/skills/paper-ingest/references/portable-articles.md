@@ -16,7 +16,7 @@ The primary owns source identity, budget, review, durable receipts and final ver
 
 ## Archive layout and source identity
 
-Permanent packages use `portable-article-manifest-v4`; temporary source representations and historical archives retain their v2/v3 contracts:
+New manuscript-scoped permanent packages use `portable-article-manifest-v5`; historical all-PDF packages retain `portable-article-manifest-v4`; temporary source representations and historical archives retain their v2/v3 contracts:
 
     <prefix>/articles/<article-key>/objects/<sha256>
     <prefix>/articles/<article-key>/revisions/<revision-id>/manifests/<manifest-sha256>.json
@@ -56,11 +56,11 @@ Add `--element <element-id>` for a selected dependency closure. Full restore is 
 
 ## One full/selected request path
 
-The library uses `Request(article, elements=None, page=None)` and `plan`/`execute` plus explicit stage operations. The CLI uses `reenrich.py plan`: no `--element` means a full refresh; repeated `--element` selects exact IDs or unambiguous labels. An empty list is invalid. Algorithms/code remain deferred. Full scope includes the actual source inventory and acquisition dispositions. New source readiness metadata allows supported pages despite accounted-for missing supplements; it never claims those sources were retrieved. Legacy manifests retain their original completion rules.
+The library uses `Request(article, elements=None, page=None)` and `plan`/`execute` plus explicit stage operations. The CLI uses `reenrich.py plan`: no `--element` means a full refresh; repeated `--element` selects exact IDs or unambiguous labels. An empty list is invalid. Algorithms/code remain deferred. A default fresh refresh extracts only the selected manuscript under acquired-sources-v2. Full source retention still includes the actual inventory and acquisition dispositions. Existing supplementary outcomes, text and crops survive in `preserved_documents`; preserving them does not schedule supplementary inference. New source readiness metadata allows supported pages despite accounted-for missing supplements; it never claims those sources were retrieved. Legacy manifests retain their original completion rules.
 
     <py> -B <scripts>/reenrich.py plan --article <slug> --manifest <restored/manifest.json> --work-root <new-durable-work-dir>
 
-With a finalized v4 package, a full plan retains its source-archive pin and waits for fresh acquisition/extraction under the current protocol, followed by `adopt`. Its saved `source_archive` identifies verified originals for that preparation; old execution approvals never transfer. Add `--element <selector>` only for an explicitly targeted reinterpretation of existing final crops. That selected operation runs current enrichment but deliberately reuses the selected final extraction; it is not a full re-ingestion. Omit `--page` for archive-only work. For a paper refresh, add `--page <absolute-paper.md>`; selective page refresh also requires `--page-scope <json>` containing a list of `{heading, elements}` for real existing headings and exact element IDs. Planning binds current page, source, code and model hashes. A run planned with a page cannot later bypass page application by claiming archive-only completion.
+With a finalized v4/v5 package, a full plan retains its source-archive pin and waits for fresh acquisition/extraction under the current protocol, followed by `adopt`. Its saved `source_archive` identifies verified originals for that preparation; old execution approvals never transfer. Add `--element <selector>` only for an explicitly targeted reinterpretation of existing final crops. That selected operation runs current enrichment but deliberately reuses the selected final extraction; it is not a full re-ingestion. Omit `--page` for archive-only work. For a paper refresh, add `--page <absolute-paper.md>`; selective page refresh also requires `--page-scope <json>` containing a list of `{heading, elements}` for real existing headings and exact element IDs. Planning binds current page, source, code and model hashes. A run planned with a page cannot later bypass page application by claiming archive-only completion.
 
 Legacy plans omit `--manifest` and remain pending retrieval/source preparation. After the normal acquisition/extraction route and manifest construction, `adopt --work-root ... --manifest ... --approval ...` requires explicit identity approval with `plan_sha256`, `manifest_sha256`, `article`, original `requested_elements`, `approved_by`, and `identity_and_scope_reviewed: true`. It preserves the original plan. Full/legacy page refresh still requires full distillation/reconciliation review.
 
@@ -155,7 +155,7 @@ This is a separate completion contract from the new-ingest v5 handoff. Never fee
 
 ## Permanent retention and cleanup
 
-Retain one copy of each original manuscript/supplement/other acquired source; full extracted text (including pages without figures); final figure/table/caption crops; captions, descriptions, structured values and their headers/units/footnotes; source/page/region mappings; model/protocol provenance; and substantive unresolved findings/corrections. The finalizer writes an allowlist, deduplicates identical source bytes, and compiles the current result per element. It adds no generic limitations.
+Retain one copy of each original manuscript/supplement/other acquired source; extracted manuscript text (including manuscript pages without figures); final figure/table/caption crops; captions, descriptions, structured values and their headers/units/footnotes; source/page/region mappings; model/protocol provenance; and substantive unresolved findings/corrections. The finalizer writes an allowlist, deduplicates identical source bytes, and compiles the current result per element. It adds no generic limitations.
 
 Request/response envelopes, full-page renders, intermediate crop candidates, processor caches, seals/approvals, inspection overlays, review packets, old page candidates, failed attempts and restored verification copies are temporary. Keep them while a job is active; never delete the reservation state of a resumable job. After final publication, preserve the final package and durable receipt outside the job directory, verify them there, and only then remove that completed job's temporary directories. Do not delete a package referenced by another active job or a live page receipt. Full re-ingestion uses originals and current extraction, not a restored run.
 
@@ -164,3 +164,15 @@ For existing packages, build a separate compact directory, compare original hash
 ## Local manuscript figures
 
 New refresh plans generate local Markdown embeds before page application and hash binding, using the final archive's crop paths. Manuscript figures are included by default; prior explicitly selected supplementary figures retain their reasons. For newly selected supplementary figures, add an optional `figure_supplements` object to the page-candidate submission, mapping exact element IDs to reasons they are essential. The renderer inserts the blocks after protected prose checks; do not inject image blocks into scientific replacement text. Preserve relevant source/crop qualifications alongside it. The figure procedure and manual-edit safeguards are in `qualified-enrichment.md`. Completion checks verify the figure identities, ordered image hashes and real local links; temporary `final-products/` staging paths are never the page's durable image targets. Retain the final `archive/` directory when cleaning a refresh workspace.
+
+## Attributed corrections
+
+`final_products.py correct-review --help` describes the narrow immutable
+correction writer. Supply the prior manifest hash, reviewer/reason, exact finding
+or limitation targets and same-element evidence references. It creates a new
+revision with `article-scientific-products-v2` amendments; original metadata is
+preserved in the amendments, while source bytes and model outcomes stay unchanged.
+Readers still accept products-v1. Stale hashes, unsupported targets and altered
+outcomes are refused. Publish and verify the new revision before changing a page
+pointer. Subsequent refresh preserves amendments and suppresses the exact
+superseded findings; it does not globally suppress similar scientific caveats.

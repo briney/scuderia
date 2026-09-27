@@ -34,9 +34,8 @@ class InitialIngest(unittest.TestCase):
         outside=self.root/'outside';outside.mkdir();pa.save(outside/'initial-plan.json',dict(requests=[]))
         with self.assertRaises(ValueError): ii.record_attempt(self.work,kind='source',path=outside)
         source=self.work/'source';source.mkdir();pa.save(source/'initial-plan.json',dict(requests=[]))
-        ii.record_attempt(self.work,kind='source',path=source)
-        ii.record_attempt(self.work,kind='source',path=source)
-        self.assertEqual(len(ii.attempts(self.work)['source']),1)
+        with self.assertRaisesRegex(ValueError,'attempt-source-binding'):
+            ii.record_attempt(self.work,kind='source',path=source)
 
     def test_source_continuations_use_bound_scope_and_never_approve(self):
         import initial_ingest as ii
@@ -69,3 +68,65 @@ class InitialIngest(unittest.TestCase):
             workflow.prepare_stage(package,phase);gates.prepare_phase(package,phase,None)
         self.assertEqual(ii.status(self.work)['next_operation']['operation'],'report')
         self.assertEqual(ii.attempts(self.work)['source'],[str(package)])
+        import shutil
+        other=self.work/'other-source';shutil.copytree(package,other)
+        changed=pa.load(other/'manifest.json');changed['documents'][0]['sha256']='0'*64
+        (other/'manifest.json').write_text(__import__('json').dumps(changed))
+        with self.assertRaisesRegex(ValueError,'attempt-source-binding'):
+            ii.record_attempt(self.work,kind='source',path=other)
+        self.assertEqual(ii.attempts(self.work)['source'],[str(package)])
+
+    def test_remaining_continuations_keep_review_publication_and_active_job_gates(self):
+        # Artifact boundaries are doubles here; source preparation and final archive
+        # validation have separate real synthetic tests. No fixture is production.
+        from unittest.mock import patch
+        import initial_ingest as ii
+        import operation_jobs as jobs
+        from qualified_enrichment import runtime,reviews
+        ii.plan('synthetic',page=self.page,work_root=self.work,identity=None)
+        pa.save(self.work/'retention/retention.json',{})
+        pa.save(self.work/'source/manifest.json',{})
+        pa.save(self.work/'source-handoff/handoff.json',{})
+        value=ii.status(self.work)
+        self.assertEqual(value['next_step'],'enrichment-prepare')
+        self.assertEqual(value['next_operation']['source_handoff'],str(self.work/'source-handoff/handoff.json'))
+        pa.save(self.work/'enrichment-job/selection.json',{})
+        with patch.object(runtime,'read_job',return_value=dict(selection=dict(selected=['synthetic']))),patch.object(ii,'record_attempt'):
+            with patch.dict(os.environ,{'REENRICH_PROCESSOR_CACHE':str(self.root/'cache')}):
+                value=ii.status(self.work)
+                self.assertEqual(value['next_step'],'enrichment-seal')
+                self.assertEqual(value['next_operation']['processor_cache'],str(self.root/'cache'))
+            pa.save(self.work/'enrichment-job/enrichment/seal.json',{})
+            value=ii.status(self.work)
+            self.assertEqual(value['next_operation']['missing_inputs'],['approval','authorize_posts'])
+            self.assertNotIn('authorize_posts',value['next_operation'])
+            pa.save(self.work/'enrichment-job/enrichment/execution-start.json',{})
+            self.assertEqual(ii.status(self.work)['next_step'],'review-create')
+        review=self.work/'review';pa.save(review/'dossier.json',{})
+        packet=dict(elements=['synthetic']);pa.save(review/'packet-1.json',packet)
+        pa.save(review/'packets.json',dict(packets=[dict(path='packet-1.json')],source_inspection_required=[]))
+        with patch.object(reviews,'verify',return_value={}),patch.object(reviews,'decisions',return_value=[]):
+            value=ii.status(self.work)
+            self.assertEqual(value['next_operation']['packet'],str(review/'packet-1.json'))
+            self.assertEqual(value['next_operation']['missing_inputs'],['submission'])
+        with patch.object(reviews,'verify',return_value={}),patch.object(reviews,'decisions',return_value=[dict(packet=packet)]),patch.object(ii.ae,'review_complete',return_value=True):
+            self.assertEqual(ii.status(self.work)['next_step'],'export')
+        pa.save(self.work/'export/handoff.json',{})
+        self.assertEqual(ii.status(self.work)['next_step'],'initial-enriched-handoff')
+        pa.save(self.work/'enriched-handoff/handoff.json',{})
+        self.assertEqual(ii.status(self.work)['next_step'],'initial-finalize')
+        pa.save(self.work/'final-products/manifest.json',{})
+        value=ii.status(self.work)
+        self.assertEqual(value['next_step'],'initial-publish')
+        self.assertTrue(value['next_operation']['background'])
+        attempt=Path(value['next_operation']['attempt_dir'])
+        self.assertFalse(attempt.is_relative_to(self.work))
+        pa.save(attempt/'job.json',{})
+        for state in ('running','uncertain'):
+            with patch.object(jobs,'status',return_value=dict(status=state)),patch.object(jobs,'load_job',return_value=(None,dict(identity=dict(kind='enrichment')))):
+                self.assertEqual(ii.status(self.work)['next_operation']['operation'],'status')
+        pa.save(attempt/'terminal.json',{})
+        pa.save(self.work/'publication.json',{})
+        value=ii.status(self.work)
+        self.assertEqual(value['next_step'],'verify-ingest')
+        self.assertFalse(value['production_complete'])

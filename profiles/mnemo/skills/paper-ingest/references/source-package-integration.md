@@ -46,7 +46,7 @@ existing handoff uses recorded producer locations only as historical metadata.
 
 Phase 4: use the existing retrieval references. Readable body, original manuscript PDF and advertised supplements are separate obligations. Invoke `fetch_fulltext.py` with `--evidence-dir` for this route. Preserve browser/other-route downloads and diagnostics in new attempt directories too. Record attachment discovery as not inspected, inspected with none listed, or advertised with each attachment retrieved/missing. Validate article identity and version as an operator before declaring any acquired file accepted. A helper exit, HTTP status, hash or parseable PDF is not scientific identity verification. Retain the original downloads, including non-PDF attachments; their extraction is deferred.
 
-For every new production ingest with a supplied or retrieved PDF, retention and this route are mandatory under paper-ingest Phase 4; HTML/XML or a PDF text dump cannot substitute. Run adapter `prepare`, then use the registered `paper_workflow` capability for actual phases. In Hermes its tool binding is `paper_workflow`; do not replace it with generated shell pipelines or a second executor. New acquisitions use `acquired-sources-v2` with `processing: {policy: manuscript-only-v1, manuscript: {source_id, pages, basis}}`. Select sorted, unique, one-based physical manuscript pages with an operator-verified boundary basis; include manuscript methods, references, figures and tables. Retain every original, including supplements and alternative composite PDFs, but process only the selected manuscript source. An optional `relationship: alternative` on a supplement-role PDF requires its identity-verification basis to explain the relationship; preserve publisher descriptions. Retrieved attachment aliases may reference that same retained manuscript when the observed link binds to its source or discovery URL. Deferred supplements are intentional retention, not missing extraction. Historical acquired-sources-v1 retains every-PDF/all-page semantics. Arbitrary figure-only or selected-page diagnostics cannot satisfy production scope. Local acquisition/extraction failures remain recorded outcomes; usable evidence may support completion after attributed review. Preserve actual full-document scope, source integrity and all request accounting.
+For every new production ingest with a supplied or retrieved PDF, retention and this route are mandatory under paper-ingest Phase 4; HTML/XML or a PDF text dump cannot substitute. Run adapter `prepare`, then use the registered `paper_workflow` capability for actual phases. In Hermes its tool binding is `paper_workflow`; do not replace it with generated shell pipelines or a second executor. New acquisitions use `acquired-sources-v2` with `processing: {policy: manuscript-only-v1, manuscript: {source_id, pages, basis}}`. Select sorted, unique, one-based physical manuscript pages with an operator-verified boundary basis; include manuscript methods, references, figures and tables. Retain every original, including supplements and alternative composite PDFs, but process only the selected manuscript source. An optional `relationship: alternative` on a supplement-role PDF requires its identity-verification basis to explain the relationship; preserve publisher descriptions. Retrieved attachment aliases may reference that same retained manuscript when the observed link binds to its source or discovery URL. Deferred supplements are intentional retention, not missing extraction. Historical acquired-sources-v1 retains every-PDF/all-page semantics. Arbitrary figure-only or selected-page diagnostics cannot satisfy production scope. Local acquisition/extraction failures remain recorded outcomes; usable evidence may support completion after attributed review. Preserve the explicit manuscript processing scope, source integrity and all request accounting. Scoped completion does not assert extraction of excluded physical pages. Future targeted supplement work is separate; unread supplements cannot support page claims.
 
 Phase 5: produce a verified source-only v4 handoff as the input to qualified figure/table enrichment. Follow `qualified-enrichment.md` before treating the new production route as complete; verify the v5 handoff, then finalize it with `final_products.py ingest`; the final paper points to the compact product manifest, not a temporary handoff or annotated export. Read the final handoff's exact `summary.txt`, `facts`, retained acquisition dispositions, qualifications and source material. `documents[].pages` identifies original physical page imagery and page directories (`native-text.txt`, `native-text.json`); `documents[].candidates[].regions` and `logical.elements[].ordered_source_fragments` retain crop fragment order. `documents[].requests` exposes classification/association files and call evidence; candidate classification observations remain model observations. Resolve these package-relative paths against `package`, not the paper page. Do not infer scientific findings from counts or mechanically generated labels.
 
@@ -90,7 +90,27 @@ No authentication or cookie handlers are added; no request/response headers or e
 
 This recorder does not cover browser, paperclip, shell utilities or other tools. The operator must preserve their exact original downloads, unique-attempt diagnostics, status/exit evidence and exposed raw responses separately. Never overwrite a failed attempt. Do not claim a browser raw HTTP response exists when only a download or screenshot was available.
 
-## Acquisition manifest v1
+## Acquisition manifest v2 (new work)
+
+Use the v1 fields below plus `processing` and set `schema: acquired-sources-v2`:
+
+    "processing": {
+      "policy": "manuscript-only-v1",
+      "manuscript": {
+        "source_id": "main",
+        "pages": [1, 2, 3],
+        "basis": "Verified manuscript occupies physical pages 1–3; supplement starts at 4"
+      }
+    }
+
+The list is the complete manuscript range, not a selection of interesting pages.
+Retained originals keep their full byte hashes and page counts. Supplement PDFs
+may carry `relationship: alternative` and a source-backed identity basis for a
+composite/duplicate version. Optional `publisher_description` preserves context.
+Preparation renders and extracts only the selected manuscript pages, including
+neighbor context; excluded pages never enter classification or association.
+
+## Acquisition manifest v1 (historical field reference)
 
 `source_package.py prepare` consumes a JSON object with exactly these root fields:
 

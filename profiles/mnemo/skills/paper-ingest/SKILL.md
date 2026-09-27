@@ -220,9 +220,14 @@ Readable body text may be extracted from a retained original PDF, with its
 source recorded; obtaining text does not replace retaining the PDF.
 
 Run `source_package.py prepare` with operator-verified identity, observed
-links, explicit endpoint and application-post budget. Use every physical page
-and all accepted extraction channels for manuscript and supplementary PDFs.
-Retain non-PDF attachments with deferred-extraction dispositions; deferred
+links, explicit endpoint and application-post budget. New acquisitions use
+`acquired-sources-v2`: select one manuscript source and its verified physical
+page range, including methods, references, figures and tables. Process all
+accepted extraction channels within that range. Retain supplementary PDFs,
+other attachments and alternative composite PDFs without rendering, extraction
+or VLM requests. If only a composite is available, explicitly bind its manuscript
+pages; never infer boundaries from filenames alone. Retain attachments with
+`retained-unprocessed-supplement` or `retained-unprocessed-alternative` dispositions; deferred
 extraction alone is not an automatic completion hold or permission to make
 claims from unread data. Acquisition and PDF-extraction failures remain recorded mechanical holds;
 only the attributed review in Phase 5 can establish page readiness despite them.

@@ -43,6 +43,23 @@ def record_attempt(work_root, *, kind, path):
     work=absolute(work_root); value=ae.read_bound(work/'plan.json')
     require(value['schema']==SCHEMA and kind in ('source','enrichment'),'initial-attempt-kind')
     path=absolute(path); require(path.is_dir() and path.is_relative_to(work) and path!=work,'attempt-outside-workflow')
+    import source_package as sp
+    retention=work/'retention/retention.json'
+    manifest=path/('manifest.json' if kind=='source' else 'source/manifest.json')
+    require(retention.is_file() and manifest.is_file(),'attempt-source-binding')
+    acquisition=sp.validate_retention(retention)[0]['acquisition']
+    require(acquisition['article']['slug']==value['article'],'attempt-source-binding')
+    m=pa.load(manifest)
+    selected=sp.processing_sources(acquisition)
+    expected={(r['id'],r['sha256']) for r in selected}
+    actual={(r['identity'],r['sha256']) for r in m['documents']} if kind=='source' else {
+        (r['identity'],r['source_sha256']) for r in m['documents']}
+    require(actual==expected and m.get('processing')==acquisition['processing'],'attempt-source-binding')
+    if kind=='source':
+        sp.verify_processing_scope(acquisition,pa.load(path/'scope.json'),m['documents'])
+    else:
+        pa.verify_local(manifest)
+        require(m['article']==acquisition['article'],'attempt-source-binding')
     import operation_timing
     operation_timing.summarize(**{kind+'_attempts':[path]})
     directory=work/'registered-attempts'; directory.mkdir(exist_ok=True)

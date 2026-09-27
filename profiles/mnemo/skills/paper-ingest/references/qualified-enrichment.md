@@ -98,3 +98,17 @@ Complete Phase 10 with:
 Add `--page-only` for the intermediate PAGE_READY contract: publication and shared integration may be deferred to the parent, while source/enrichment checks still run. The parent must rerun without `--page-only` and supply the publication receipt before clearing `needs-ingest`. The finalizer first reconstructs the current source/enrichment handoff, then durable verification checks retained product hashes, article identity and substantive qualifications without the original job directories. Legacy handoff options remain for historical records. Identity, bibliography, author wiring, graph integration and scientific review remain required.
 
 After final products and the paper pass verification, follow `portable-articles.md` for verified cleanup of completed temporary jobs. Active request reservations and incomplete enrichment are not cleanup candidates.
+
+## Generated review aids
+
+`review-create` writes `packets.json`, bounded packets, unapproved
+`.submission.template.json` files, `.guidance.json` and `.tables.html` previews.
+Follow the returned packet paths and legal evidence selectors. Templates leave
+reviewer/assessment fields unset: the operator must inspect and attribute them.
+Read table cells from `raw_value` and keep literal values, blanks and unreadable
+cells distinct. Summaries report populated/blank/unreadable/unresolved counts
+and metadata limitations; HTML is an inspection aid, not new evidence. Newly
+imported claims of empty extraction are rejected when populated values exist.
+Historical review chains remain immutable and require explicit corrections.
+Current exports require every roster batch, including any oversized-element
+source-inspection packet. Scientific acceptance cannot be inferred from counts.

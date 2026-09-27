@@ -80,3 +80,17 @@ Automatically projected `saved-uncertainty` findings can combine content and str
 Each attributed proposal is retained. Agreement requires exact canonical JSON equality at overlapping targets, with type differences retained; there is no unit conversion, fuzzy text matching or scientific-equivalence inference. Different values at one target remain unresolved, including proposals under different finding IDs or aspect labels. For parent/child targets, the comparison selects the child's JSON Pointer from the proposed parent value; a missing or unrepresentable child is unresolved overlap, not agreement. Disjoint scopes are not conflicts. Comparisons are applied after collecting all decisions so a later/native/model proposal cannot override an earlier disagreement.
 
 Every consumer view and adjacent readable annotation retains relevant resolution history, including a formerly summary-only ancestor that now has proposals. A proposed change never replaces the original. Even an attributed resolved proposal requires qualification or source inspection for exact reuse when its value differs from its original finding target; coverage cannot waive this condition. A proposal exactly equal to the original does not itself block scoped exact reuse, but its attributed history remains visible. A parent-level proposed change conservatively qualifies affected descendant views; consumers needing narrower resolution should review the narrower target explicitly. The generic adapter qualification register retains resolved findings and complete attributed proposals as well as unresolved findings. Consumers must retain this history, not only `unresolved_findings` or `content`.
+
+## Generated review aids
+
+`review-create` writes `packets.json`, bounded packets, unapproved
+`.submission.template.json` files, `.guidance.json` and `.tables.html` previews.
+Follow the returned packet paths and legal evidence selectors. Templates leave
+reviewer/assessment fields unset: the operator must inspect and attribute them.
+Read table cells from `raw_value` and keep literal values, blanks and unreadable
+cells distinct. Summaries report populated/blank/unreadable/unresolved counts
+and metadata limitations; HTML is an inspection aid, not new evidence. Newly
+imported claims of empty extraction are rejected when populated values exist.
+Historical review chains remain immutable and require explicit corrections.
+Current exports require every roster batch, including any oversized-element
+source-inspection packet. Scientific acceptance cannot be inferred from counts.
