@@ -29,6 +29,39 @@ class AppendixLabelNamespace(unittest.TestCase):
             label_key('Table A.B')
 
 
+class ClassificationLabelMerge(unittest.TestCase):
+    def test_collection_preserves_headings_without_association_labels(self):
+        with tempfile.TemporaryDirectory(dir=os.environ['PDF_TEST_WORK']) as tmp:
+            root = Path(tmp)
+            save(root/'manifest.json', dict(fixture=True, documents=[dict(identity='synthetic')]))
+            labels = ['Figure 3', 'Equation 19', 'KEY RESOURCES TABLE', 'Table S2']
+            candidates = [dict(id=f'c{i}', source_document='synthetic', page=1,
+                regions=[dict(page=1, bbox=[0, i, 10, i+1])], observed_labels=[])
+                for i in range(len(labels))]
+            observations = [dict(candidate_id=c['id'], content_type='other', source_label=label,
+                label_evidence='native-text', uncertainty=[]) for c, label in zip(candidates, labels)]
+            for phase in ('initial', 'classification'):
+                directory = 'requests/'+phase
+                save(root/directory/'request-wire.json', {})
+                digest = sha(root/directory/'request-wire.json')
+                save(root/directory/'call.json', dict(request_sha256=digest,
+                    transport_origin='offline-fixture', selection_status='validated'))
+                save(root/directory/'reservation.json', dict(transport_origin='offline-fixture'))
+                save(root/directory/'candidates.json', candidates)
+                save(root/directory/'validation.json', {})
+                save(root/directory/'raw-selection.json', dict(classifications=observations))
+                save(root/directory/'output-bindings.json', workflow.output_bindings(root, directory))
+                save(root/f'{phase}-plan.json', dict(requests=[dict(document='synthetic',
+                    directory=directory, request_sha256=digest)]))
+            result = workflow.collect(root)['synthetic']
+            self.assertEqual([c['classification_observation']['source_label'] for c in result], labels)
+            self.assertEqual([[v['label'] for v in c['observed_labels']] for c in result],
+                             [['Figure 3'], [], [], ['Table S2']])
+            with patch.object(workflow.association, 'label_key', side_effect=RuntimeError('unexpected')):
+                with self.assertRaisesRegex(RuntimeError, 'unexpected'):
+                    workflow.collect(root)
+
+
 class Bookkeeping(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(dir=os.environ['PDF_TEST_WORK'])

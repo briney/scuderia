@@ -50,6 +50,11 @@ def collect(root):
                 c.update(classification_observation=copy.deepcopy(obs), content_type=obs['content_type'],
                          type_origin='model-classification-not-native-text')
                 if obs['source_label'] is not None:
+                    # Keep arbitrary observed headings, but only associate supported labels.
+                    try:
+                        association.label_key(obs['source_label'])
+                    except ValueError:
+                        continue
                     item=dict(label=obs['source_label'],origin='model-observation:'+obs['label_evidence'])
                     if item not in c['observed_labels']: c['observed_labels'].append(item)
     for cs in result.values():
