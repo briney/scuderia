@@ -124,7 +124,7 @@ def plan(request,*,manifest=None,work_root,fixture=False,model_profile=None,page
         pa.verify_source(manifest)
         roots=[manifest.parent]+[absolute(s['root']) for s in pa.local_sources(manifest).values()]
         external(work,roots)
-        if m['schema']==pa.FINAL_SCHEMA and request.elements is None:
+        if pa.is_final_manifest(m) and request.elements is None:
             # A retained article supplies originals, not a resumable extraction.
             source_archive=manifest; source_identity=m['article']
             manifest=None; m=None; roster=None
@@ -355,7 +355,7 @@ def adopt(work_root,manifest,*,identity_approval):
         require(p['manifest'] is None and not (work/'adoption.json').exists(),'legacy-adoption-only-once')
         path=absolute(manifest); m,_=pa.verify_local(path)  # full legacy prerequisites, not a partial restore
         pa.verify_source(path)
-        require(m['schema']!=pa.FINAL_SCHEMA,'fresh-source-preparation-required')
+        require(not pa.is_final_manifest(m),'fresh-source-preparation-required')
         external(work,[path.parent]+[absolute(s['root']) for s in pa.local_sources(path).values()])
         require(m['article']['slug']==p['article'],'legacy-article-mismatch')
         if p['page_path']: _page_identity(work/'original-page.md',p['article'],m['article'])
@@ -1006,7 +1006,7 @@ def verify_completion(receipt_path,manifest_path,*,manifest_key,manifest_sha256,
     expected.add((manifest_key,manifest_sha256,absolute(manifest_path).stat().st_size))
     require(expected=={(r['key'],r['sha256'],r['size']) for r in pub['receipts']} and
         all(r['method']=='read_back_sha256' for r in pub['receipts']),'publication-readback-inventory')
-    if m['schema']==pa.FINAL_SCHEMA:
+    if pa.is_final_manifest(m):
         import final_products
         return final_products.verify_completion(receipt,m,paths,page,manifest_path)
     refresh=m['provenance']['refresh']; binding=refresh['binding']; prefix='refresh-'+binding[:20]+'/'

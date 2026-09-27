@@ -30,7 +30,7 @@ def _remap(value, aliases, field=None):
 
 def _results(m, paths, exports, page):
     """Latest scientific result per element, not a stack of previous exports."""
-    if m['schema'] == pa.FINAL_SCHEMA:
+    if pa.is_final_manifest(m):
         products = copy.deepcopy(pa.load(paths[m['products_key']]))
     else:
         products = dict(schema=PRODUCT_SCHEMA, elements=[], source_limitations=[], qualifications=[])
@@ -43,7 +43,7 @@ def _results(m, paths, exports, page):
                 old_profiles[row['element_id']] = {k: copy.deepcopy(plan[k]) for k in ('model','settings','prompt_version','response_schema','prepared_at') if k in plan}
     results = {e['element_id']: e for e in products['elements']}
     saved = []
-    if m['schema'] != pa.FINAL_SCHEMA:
+    if not pa.is_final_manifest(m):
         # Inventory order is archive revision order, never filesystem mtime.
         for f in m['files']:
             if f['role'] == 'enrichment-export' and f['key'].endswith('/handoff.json'):
@@ -76,7 +76,7 @@ def _results(m, paths, exports, page):
             if limitation not in products['source_limitations']:
                 products['source_limitations'].append(limitation)
     products['elements'] = [results[k] for k in sorted(results)]
-    if m['schema'] != pa.FINAL_SCHEMA:
+    if not pa.is_final_manifest(m):
         import reenrich
         for e in m['elements']:
             for entry in pa.prompt_history(paths, set(m['common_dependencies']) | set(e['inherited']), e):
@@ -125,14 +125,14 @@ def build(manifest_path, destination, *, exports=(), page=None, qualifications=(
     records = {f['key']: f for f in m['files']}
     originals = {d['raw_key'] for d in m['documents']}
     originals.update(f['key'] for f in m['files'] if f['role'] == 'source-original')
-    if m['schema'] == pa.FINAL_SCHEMA:
+    if pa.is_final_manifest(m):
         originals.update(s['key'] for s in m['source_documents'])
     native = {key for e in m['elements'] for key in e['context']['native_text_keys']}
     native.update(f['key'] for f in m['files'] if f['key'].startswith('package/documents/') and f['key'].endswith(('/native-text.json','/native-text.txt')))
     native.update(m.get('native_text_keys', []))
     crops = {f['crop_key'] for e in m['elements'] for f in e['fragments']}
     crops.update(f['crop'] for e in m['elements'] for f in e['evidence'].get('body_fragments', []) + e['evidence'].get('captions', []))
-    captions = copy.deepcopy(pa.load(paths[m['products_key']]).get('source_captions', [])) if m['schema']==pa.FINAL_SCHEMA else []
+    captions = copy.deepcopy(pa.load(paths[m['products_key']]).get('source_captions', [])) if pa.is_final_manifest(m) else []
     if 'package/results.json' in paths:
         for document in pa.load(paths['package/results.json']).get('documents', []):
             for candidate in document.get('candidates', []):
@@ -171,7 +171,7 @@ def build(manifest_path, destination, *, exports=(), page=None, qualifications=(
             content[h] = (new_key, paths[key])
             files.append(dict(role='source-original' if key in originals else 'source-package', key=new_key, sha256=h, size=record['size']))
         aliases[key] = content[h][0]
-    if m['schema'] == pa.FINAL_SCHEMA:
+    if pa.is_final_manifest(m):
         sources = _remap(m['source_documents'], aliases)
     else:
         sources = []
@@ -196,7 +196,7 @@ def build(manifest_path, destination, *, exports=(), page=None, qualifications=(
             for source in sources:
                 row = next((r for r in acquisition['files'] if r['id'] == source.get('source_id', source['identity'])), None)
                 if row:
-                    source['acquisition'] = {k: copy.deepcopy(v) for k, v in row.items() if k not in ('path', 'page_count', 'sha256')}
+                    source['acquisition'] = {k: copy.deepcopy(v) for k, v in row.items() if k not in ('path', 'sha256')}
     unique = {}
     for q in products['qualifications']:
         identity = pa.digest({k:v for k,v in q.items() if k not in ('evidence','recorded_evidence')})
@@ -244,12 +244,13 @@ def build(manifest_path, destination, *, exports=(), page=None, qualifications=(
             if session: metadata['started_at'] = pa.load(session).get('started_at')
             if metadata not in processing: processing.append(metadata)
     provenance.update(retention_policy=POLICY, input_manifest_sha256=input_hash, processing=processing)
-    final = dict(schema=pa.FINAL_SCHEMA, package_id=m['package_id'], article=m['article'], article_key=m['article_key'],
+    final = dict(schema=pa.SCOPED_FINAL_SCHEMA if 'processing' in m else pa.FINAL_SCHEMA, package_id=m['package_id'], article=m['article'], article_key=m['article_key'],
                  created_at=m.get('created_at', pa.now_utc()), files=files, total_objects=len(files),
                  documents=_remap(m['documents'], aliases), elements=elements, source_documents=sources,
                  native_text_keys=sorted({aliases[k] for k in native}), text_pages=text_pages, caption_crop_keys=sorted(caption_keys), products_key=product_key,
                  common_dependencies=common, source_status=copy.deepcopy(m['source_status']), provenance=provenance,
                  dispositions=[copy.deepcopy(d) for d in m['dispositions'] if d['kind'] in ('acquisition', 'attachments', 'source-file-dispositions')])
+    if 'processing' in m: final['processing']=copy.deepcopy(m['processing'])
     pa.validate_manifest(final)
     pa.verify_local(manifest_path)
     require(sha(manifest_path) == input_hash, 'finalization-input-changed')
@@ -266,6 +267,28 @@ def build(manifest_path, destination, *, exports=(), page=None, qualifications=(
 
 def validate(m):
     require(m['provenance'].get('retention_policy') == POLICY, 'final-products-policy')
+    if m['schema']==pa.SCOPED_FINAL_SCHEMA:
+        import source_package as adapter
+        processing=m.get('processing'); require(isinstance(processing,dict),'final-processing-required')
+        selected=processing.get('manuscript', {})
+        source_id=selected.get('source_id')
+        document=next((d for d in m['documents'] if d.get('source_id',d['identity'])==source_id), None)
+        require(document is not None, 'final-processing-document')
+        sources=[s for s in m['source_documents'] if s.get('source_id',s['identity'])==source_id]
+        require(len(sources)==1 and sources[0]['sha256']==document['source_sha256'], 'final-processing-original')
+        scope=dict(processing=processing, documents=[dict(identity=source_id,pages=selected.get('pages'),channels=adapter.CHANNELS)])
+        adapter.verify_processing_scope(None,scope,[])
+        metadata=sources[0].get('acquisition', {})
+        if metadata:
+            require(metadata['role']=='manuscript' and metadata['format']=='pdf', 'final-processing-manuscript-role')
+            require(max(selected['pages'])<=metadata['page_count'], 'final-processing-page-range')
+        extra={d['identity'] for d in m['documents'] if d is not document}
+        require(extra==set(m.get('preserved_documents',[])), 'final-unprocessed-document-roster')
+        for page in m['text_pages']:
+            if page.get('document')==document['identity']: require(page.get('page') in selected['pages'], 'final-processing-text-page')
+        for element in m['elements']:
+            if element['document']==document['identity']:
+                require(all(f['page'] in selected['pages'] for f in element['fragments']), 'final-processing-fragment-page')
     records = {f['key']: f for f in m['files']}
     require(len({f['sha256'] for f in m['files']}) == len(records), 'duplicate-final-product-bytes')
     require(m['products_key'] in records and records[m['products_key']]['role'] == 'enrichment-export', 'missing-final-results')
@@ -290,7 +313,7 @@ def validate(m):
 
 def verify(manifest_path):
     m, paths = pa.verify_local(manifest_path)
-    require(m['schema'] == pa.FINAL_SCHEMA, 'final-products-required')
+    require(pa.is_final_manifest(m), 'final-products-required')
     validate(m)
     products = pa.load(paths[m['products_key']])
     require(products['schema'] == PRODUCT_SCHEMA, 'final-results-schema')
@@ -311,6 +334,54 @@ def verify(manifest_path):
                 e['source_sha256'] == elements[e['element_id']]['source_sha256'], 'result-source-binding')
         seen.add(e['element_id'])
     return m
+
+
+def _preserve_unprocessed(current_path, prior_path, destination):
+    """Keep prior supplementary science byte-for-byte while refreshing the manuscript."""
+    current=verify(current_path); prior=verify(prior_path)
+    _, paths=pa.verify_local(current_path); _, old_paths=pa.verify_local(prior_path)
+    selected=current['processing']['manuscript']['source_id']
+    preserved={d['identity'] for d in prior['documents'] if d.get('source_id',d['identity'])!=selected}
+    products=copy.deepcopy(pa.load(paths[current['products_key']]))
+    old_products=pa.load(old_paths[prior['products_key']])
+    kept_elements=[e for e in prior['elements'] if e['document'] in preserved]
+    kept_ids={e['element_id'] for e in kept_elements}
+    products['elements'].extend(copy.deepcopy(e) for e in old_products['elements'] if e['element_id'] in kept_ids)
+    products['source_captions'].extend(copy.deepcopy(c) for c in old_products.get('source_captions',[]) if c['source_document'] in preserved)
+    current['documents'].extend(copy.deepcopy(d) for d in prior['documents'] if d['identity'] in preserved)
+    current['elements'].extend(copy.deepcopy(kept_elements))
+    identities={s['identity']:s for s in current['source_documents']}
+    for source in prior['source_documents']:
+        if source['identity'] in identities:
+            # The manuscript may change version; retained supplementary identities may not silently change.
+            if source['identity'] in preserved:
+                require(identities[source['identity']]['sha256']==source['sha256'],'preserved-source-version-changed')
+        else: current['source_documents'].append(copy.deepcopy(source))
+    current['text_pages'].extend(copy.deepcopy(p) for p in prior['text_pages'] if p.get('document') in preserved)
+    current['native_text_keys']=sorted({p['key'] for p in current['text_pages']})
+    current['caption_crop_keys']=sorted({r['crop'] for c in products['source_captions'] for r in c.get('regions',[]) if r.get('crop')})
+    import json, hashlib
+    raw=(json.dumps(products,ensure_ascii=False,allow_nan=False,indent=2)+'\n').encode()
+    digest=hashlib.sha256(raw).hexdigest(); key='results/'+digest+'.json'
+    current['products_key']=key
+    common={key}|set(current['native_text_keys'])|set(current['caption_crop_keys'])|{s['key'] for s in current['source_documents']}
+    current['common_dependencies']=sorted(common)
+    wanted=set(common)
+    for element in current['elements']:
+        element['inherited']=[key]
+        deps=common|{f['crop_key'] for f in element['fragments']}|{f['crop'] for f in element['evidence'].get('body_fragments',[])+element['evidence'].get('captions',[])}
+        element['dependencies']=sorted(deps); wanted.update(deps)
+    records={r['key']:r for r in prior['files']+current['files']}
+    current['files']=[records[k] for k in sorted(wanted-{key})]+[dict(role='enrichment-export',key=key,sha256=digest,size=len(raw))]
+    current['total_objects']=len(current['files']); current['preserved_documents']=sorted(preserved)
+    pa.validate_manifest(current)
+    pa.new_directory(destination)
+    for name in sorted(wanted-{key}): pa.put(inside(destination,name),(paths.get(name) or old_paths[name]).read_bytes())
+    pa.put(inside(destination,key),raw); pa.save(destination/'manifest.json',current)
+    pa.save(destination/'local-map.json',dict(schema='portable-article-local-map-v2',manifest_sha256=sha(destination/'manifest.json'),
+        sources={f['key']:dict(root=str(destination),path=f['key']) for f in current['files']}))
+    verify(destination/'manifest.json')
+    return current
 
 
 def prepare_refresh(work, plan, manifest, exported, qualifications=None):
@@ -343,7 +414,10 @@ def prepare_refresh(work, plan, manifest, exported, qualifications=None):
         retained.extend(dict(scope='Prior source evidence', reason=reason) for reason in products['source_limitations'])
     enriched = copy.deepcopy(exported)
     enriched['processing'] = dict(prepared_at=prepared['prepared_at'], protocol_sha256=pa.digest(prepared['code']))
-    m = build(manifest, root, exports=[enriched], page=work/'original-page.md' if plan['page_path'] else None, qualifications=retained)
+    preserve=bool(plan.get('source_archive') and pa.load(manifest).get('processing'))
+    target=work/'current-final-products' if preserve else root
+    m = build(manifest, target, exports=[enriched], page=work/'original-page.md' if plan['page_path'] else None, qualifications=retained)
+    if preserve: m=_preserve_unprocessed(target/'manifest.json', plan['source_archive'], root)
     ae._seal_file(work/'final-products-input.json', dict(inputs=binding, qualifications_sha256=pa.digest(qualifications or []), manifest_sha256=sha(root/'manifest.json')))
     return m
 

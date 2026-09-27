@@ -62,6 +62,35 @@ class FinalProducts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'corrupt'):
             fp.verify(out/'manifest.json')
 
+    def test_scoped_final_retains_unprocessed_originals_after_restore(self):
+        m=self.manifest
+        m['processing']=dict(policy='manuscript-only-v1',manuscript=dict(source_id='main', pages=[1,2], basis='Verified manuscript pages'))
+        # The intermediate fixture already has retained bytes; only main is processed.
+        other=m['documents'].pop()
+        for row in m['files']:
+            if row['key']==other['raw_key']: row['role']='source-original'
+        m['elements']=[e for e in m['elements'] if e['document']=='main']
+        m['native_text_keys']=[k for k in m['native_text_keys'] if '/supplement/' not in k]
+        self.path.write_text(json.dumps(m))
+        mapping=pa.load(self.path.parent/'local-map.json'); mapping['manifest_sha256']=pa.sha(self.path)
+        (self.path.parent/'local-map.json').write_text(json.dumps(mapping))
+        out=self.root/'scoped'; final=fp.build(self.path,out)
+        self.assertEqual(final['schema'], 'portable-article-manifest-v5')
+        self.assertEqual(final['processing'],m['processing'])
+        self.assertEqual([d['identity'] for d in final['documents']], ['main'])
+        originals={r['sha256'] for r in final['source_documents']}
+        fake=FakeRclone(); receipt=pa.publish(out/'manifest.json','fake','bucket','gate',runner=fake)
+        shutil.rmtree(self.root/'source'); shutil.rmtree(self.path.parent); shutil.rmtree(out)
+        dest=self.root/'restored'
+        pa.restore_remote(receipt['manifest_key'],receipt['manifest_sha256'],dest,
+            remote='fake',bucket='bucket',prefix='gate',article_key=final['article_key'],runner=fake)
+        restored=fp.verify(dest/'manifest.json')
+        self.assertEqual({r['sha256'] for r in restored['source_documents']},originals)
+        broken=copy.deepcopy(restored); broken['processing']['manuscript']['source_id']='missing'
+        with self.assertRaises(ValueError): pa.validate_manifest(broken)
+        del broken['processing']
+        with self.assertRaises(ValueError): pa.validate_manifest(broken)
+
     def test_frozen_refresh_rejects_changed_qualifications(self):
         work = self.root/'work'; (work/'export').mkdir(parents=True)
         exported = dict(elements=[])
@@ -92,6 +121,34 @@ class FinalProducts(unittest.TestCase):
         self.assertEqual(products['elements'][0]['outcome']['record'], 'current')
         self.assertTrue(any(isinstance(q.get('metadata'),dict) and q['metadata'].get('resolutions')==old['findings'][0]['resolutions'] for q in products['qualifications']))
         self.assertEqual(products['elements'][0]['provenance']['processing']['prepared_at'], '2026-09-26T12:00:00Z')
+
+    def test_manuscript_refresh_preserves_prior_supplement_products(self):
+        import article_enrichment as ae
+        prior=self.root/'prior'
+        view=dict(element_id='supplement::table-1',source_sha256=self.manifest['documents'][1]['source_sha256'],
+                  outcome=dict(record=dict(cells=[dict(raw_value='007')])), findings=[])
+        fp.build(self.path,prior,exports=[dict(elements=[view])])
+        m=self.manifest
+        m['processing']=dict(policy='manuscript-only-v1',manuscript=dict(source_id='main',pages=[1,2],basis='Verified boundary'))
+        other=m['documents'].pop()
+        for row in m['files']:
+            if row['key']==other['raw_key']: row['role']='source-original'
+        m['elements']=[e for e in m['elements'] if e['document']=='main']
+        m['native_text_keys']=[k for k in m['native_text_keys'] if '/supplement/' not in k]
+        self.path.write_text(json.dumps(m)); mapping=pa.load(self.path.parent/'local-map.json')
+        mapping['manifest_sha256']=pa.sha(self.path); (self.path.parent/'local-map.json').write_text(json.dumps(mapping))
+        work=self.root/'refresh'; (work/'export').mkdir(parents=True)
+        exported=dict(elements=[]); pa.save(work/'export/handoff.json',exported)
+        ae._seal_file(work/'enrichment/prepared.json',dict(prepared_at='2026-09-26T12:00:00Z',code={}))
+        final=fp.prepare_refresh(work,dict(page_path=None,source_archive=str(prior/'manifest.json')), self.path,exported)
+        products=pa.load(work/'final-products'/final['products_key'])
+        self.assertEqual(products['elements'][0]['outcome'],view['outcome'])
+        self.assertEqual(final['preserved_documents'],['supplement'])
+        old=fp.verify(prior/'manifest.json')
+        old_si=next(e for e in old['elements'] if e['document']=='supplement')
+        new_si=next(e for e in final['elements'] if e['document']=='supplement')
+        self.assertEqual(old_si['fragments'],new_si['fragments'])
+        fp.verify(work/'final-products/manifest.json')
 
     def test_wrong_source_result_rejected_before_output(self):
         out = self.root/'bad'

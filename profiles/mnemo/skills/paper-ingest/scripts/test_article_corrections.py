@@ -270,7 +270,7 @@ class Corrections(unittest.TestCase):
     def test_real_rclone_local_cli_remote_manifest_roundtrip(self):
         # The real subprocess adapter, using rclone's local backend, never R2.
         import subprocess, sys
-        env=dict(os.environ,RCLONE_CONFIG=str(self.root/'empty-rclone.conf'),RCLONE_CONFIG_OFFLINE_TYPE='local')
+        env=dict(os.environ,PDF_ENRICHMENT_OFFLINE='0',PDF_SOURCE_PACKAGE_OFFLINE='0',RCLONE_CONFIG=str(self.root/'empty-rclone.conf'),RCLONE_CONFIG_OFFLINE_TYPE='local')
         (self.root/'empty-rclone.conf').write_text('')
         command=[sys.executable,'-B',str(Path(pa.__file__))]
         pub=subprocess.run(command+['publish','--manifest',str(self.path),'--remote','offline','--bucket','bucket','--prefix','gate'],
@@ -287,7 +287,7 @@ class Corrections(unittest.TestCase):
     def test_subprocess_timeout_becomes_hold(self):
         import subprocess
         from unittest.mock import patch
-        with patch('portable_articles.subprocess.run',side_effect=subprocess.TimeoutExpired('rclone',300)):
+        with patch.dict(os.environ,PDF_ENRICHMENT_OFFLINE='0',PDF_SOURCE_PACKAGE_OFFLINE='0'), patch('portable_articles.subprocess.run',side_effect=subprocess.TimeoutExpired('rclone',300)):
             with self.assertRaisesRegex(ValueError,'rclone-timeout'): pa._run_rclone(['rclone','lsf','fake:bucket/object'])
     def test_hardlink_refused(self):
         target=self.root/'source'/'main-page.txt'

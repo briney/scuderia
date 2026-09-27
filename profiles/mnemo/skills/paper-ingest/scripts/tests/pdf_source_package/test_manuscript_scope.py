@@ -125,6 +125,17 @@ class ManuscriptScope(unittest.TestCase):
         reader=SourcePackage(package, method=Path(preparation.__file__).parent.parent)
         self.assertEqual(list(reader.documents[0]['pages']), [1,2])
         self.assertTrue(reader.documents[0]['source_complete'])
+        import portable_articles as pa
+        import final_products as fp
+        archive=self.root/'archive'
+        built=pa.build_manifest(Path(result['retention']), package, archive, package_id='synthetic-scoped', test_root=self.root)
+        self.assertEqual([d['identity'] for d in built['documents']], ['main'])
+        self.assertNotIn('diagnostic-not-whole-document', built['source_status']['readiness']['holds'])
+        pa.verify_source(archive/'manifest.json')
+        final=fp.build(archive/'manifest.json',self.root/'final')
+        self.assertEqual(len(final['source_documents']),4)
+        self.assertEqual(final['processing'],value['processing'])
+
         docs=[dict(extraction_scope='selected-pages')]
         with self.assertRaisesRegex(ValueError,'diagnostic'):
             sp.verify_processing_scope(dict(schema='acquired-sources-v1'), {}, docs)

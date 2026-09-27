@@ -24,6 +24,11 @@ from article_runtime import (absolute, relative_key, inside, sha, require, diges
 
 SCHEMA = 'portable-article-manifest-v3'
 FINAL_SCHEMA = 'portable-article-manifest-v4'
+SCOPED_FINAL_SCHEMA = 'portable-article-manifest-v5'
+
+def is_final_manifest(m):
+    return m.get('schema') in (FINAL_SCHEMA, SCOPED_FINAL_SCHEMA)
+
 LEGACY_SCHEMA = 'portable-article-manifest-v2'
 DIAGNOSTIC_SCHEMA = 'selected-diagnostic-source-v1'
 ROLES = ('source-original', 'source-package', 'source-retention', 'enrichment-job',
@@ -92,7 +97,7 @@ def _hash(value):
 
 
 def validate_manifest(m):
-    require(m.get('schema') in (SCHEMA, LEGACY_SCHEMA, FINAL_SCHEMA, DIAGNOSTIC_SCHEMA), 'manifest-schema')
+    require(m.get('schema') in (SCHEMA, LEGACY_SCHEMA, FINAL_SCHEMA, SCOPED_FINAL_SCHEMA, DIAGNOSTIC_SCHEMA), 'manifest-schema')
     require('sources' not in m, 'operational-sources-forbidden-in-archive-manifest')
     if m['schema'] == DIAGNOSTIC_SCHEMA:
         require(m['article'] is None and m['article_key'] is None and m['scope']=='selected-diagnostic',
@@ -163,7 +168,7 @@ def validate_manifest(m):
     require(not status['complete'] or (not status['holds'] and status['acquisition_verified'] and
             status['extraction_verified'] and all(d['complete'] for d in docs.values())), 'contradictory-source-completeness')
     require(status['fixture'] or not any(d['fixture'] for d in docs.values()), 'fixture-promotion-forbidden')
-    if m['schema'] == FINAL_SCHEMA:
+    if is_final_manifest(m):
         import final_products
         final_products.validate(m)
     return m
@@ -210,7 +215,7 @@ def verify_source(manifest_path):
     representation; historical absolute receipt paths are never dereferenced.
     """
     m = validate_manifest(load(manifest_path))
-    if m['schema'] == FINAL_SCHEMA:
+    if is_final_manifest(m):
         verify_local(manifest_path,set(m['common_dependencies']))
         return m['source_status']
     if m['schema'] == DIAGNOSTIC_SCHEMA:
@@ -248,8 +253,10 @@ def verify_source(manifest_path):
     package = load(paths['package/manifest.json'])
     require(package['schema'] == m['provenance']['source_schema'] == 'pdf-source-package-v1', 'source-package-schema-binding')
     docs = {d['identity']: d for d in package['documents']}
-    source_rows = {r['id']: r for r in acquisition['files'] if r['format'] == 'pdf'}
+    source_rows = {r['id']: r for r in adapter.processing_sources(acquisition)}
     scope = load(paths['retention/scope.json'])
+    require(m.get('processing') == acquisition.get('processing') == package.get('processing'), 'portable-processing-binding')
+    if 'processing' in acquisition: adapter.verify_processing_scope(acquisition, scope, package['documents'])
     require({d['identity'] for d in scope['documents']} == set(source_rows), 'retained-scope-source-roster')
     require(set(docs) == {d['identity'] for d in m['documents']}, 'source-document-roster-binding')
     for d in m['documents']:
@@ -258,7 +265,7 @@ def verify_source(manifest_path):
                 doc['page_count'] == src['page_count'] and d['source_version'] == m['article']['version'] and
                 d['raw_key'] == 'package/'+doc['raw'] and
                 m['provenance']['original_document_bindings'][d['identity']] == d['source_id'], 'source-document-version-binding')
-        if m['source_status']['complete']:
+        if m['source_status']['complete'] and 'processing' not in acquisition:
             require(doc['extraction_scope'] == 'whole-document' and
                     doc['selected_pages'] == list(range(1, doc['page_count']+1)), 'diagnostic-not-complete')
     facts = [r['detail'] for r in m['dispositions'] if r['kind'] == 'source-extraction']
@@ -266,7 +273,7 @@ def verify_source(manifest_path):
     if 'readiness' in m['source_status']:
         expected = adapter.source_readiness(acquisition, facts[0], fixture=m['source_status']['fixture'],
                                             stopped='package/stop.json' in inventory)
-        if any(doc['extraction_scope'] != 'whole-document' or doc['selected_pages'] != list(range(1,doc['page_count']+1)) or set(doc['channels']) != {'caption','figure','structured','classification','association'} for doc in docs.values()):
+        if 'processing' not in acquisition and any(doc['extraction_scope'] != 'whole-document' or doc['selected_pages'] != list(range(1,doc['page_count']+1)) or set(doc['channels']) != {'caption','figure','structured','classification','association'} for doc in docs.values()):
             expected['holds'] = sorted(set(expected['holds'] + ['diagnostic-not-whole-document']))
         require(m['source_status']['readiness'] == expected, 'source-readiness-binding')
         require(not any(h.startswith('diagnostic-not-whole-document:') for h in m['source_status']['holds']) or
@@ -327,7 +334,11 @@ def build_manifest(retention, package, output, *, article=None, package_id,
     pkg = SourcePackage(package, method=roots['pdf_source_package'])
     require(not pkg.historical, 'current-verified-package-required')
     state = pkg.current_state
-    pdfs = {r['id']: r for r in retained['acquisition']['files'] if r['format'] == 'pdf'}
+    acquisition = retained['acquisition']
+    require(load(package/'scope.json') == scope, 'portable-retention-scope-binding')
+    require(pkg.manifest.get('processing') == acquisition.get('processing'), 'portable-processing-binding')
+    if 'processing' in acquisition: adapter.verify_processing_scope(acquisition, scope, pkg.manifest['documents'])
+    pdfs = {r['id']: r for r in adapter.processing_sources(acquisition)}
     bindings = document_bindings or {d['identity']: d['identity'] for d in pkg.documents}
     require(set(bindings) == {d['identity'] for d in pkg.documents} and
             set(bindings.values()) == set(pdfs) and len(bindings) == len(pdfs), 'source-document-association-required')
@@ -335,7 +346,7 @@ def build_manifest(retention, package, output, *, article=None, package_id,
     for d in pkg.documents:
         row = pdfs[bindings[d['identity']]]
         require(d['sha256'] == row['sha256'] and d['page_count'] == row['page_count'], 'source-document-hash-association')
-        if d['extraction_scope'] != 'whole-document' or set(d['pages']) != set(range(1, d['page_count']+1)) or set(d['channels']) != {'caption','figure','structured','classification','association'}:
+        if 'processing' not in acquisition and (d['extraction_scope'] != 'whole-document' or set(d['pages']) != set(range(1, d['page_count']+1)) or set(d['channels']) != {'caption','figure','structured','classification','association'}):
             diagnostic_documents.append(d['identity'])
     files, sources = [], {}
     _collect_tree(files, sources, 'source-retention', retention.parent, 'retention/', 'Unchanged acquisition, original identity basis and diagnostics')
@@ -457,6 +468,7 @@ def build_manifest(retention, package, output, *, article=None, package_id,
             method_code=tree(roots['pdf_source_package']/'pdf_source_package'),
             fixture=fixture, original_document_bindings=bindings,
             statement='Identity is operator asserted; hashes and extraction bindings are code verified. Scientific acceptance is not established.'))
+    if 'processing' in acquisition: m['processing']=copy.deepcopy(acquisition['processing'])
     if diagnostic_documents:
         m['source_status']['readiness']['holds'] = sorted(set(m['source_status']['readiness']['holds'] + ['diagnostic-not-whole-document']))
     validate_manifest(m)
@@ -750,7 +762,7 @@ def consume(manifest_path, elements=None, *, purpose='discovery', qualification=
     inherited=set(m['common_dependencies']).union(*(set(e['inherited']) for e in m['elements'] if e['element_id'] in ids))
     history=history_refs(paths,keys & inherited)
     final = {}
-    if m['schema']==FINAL_SCHEMA:
+    if is_final_manifest(m):
         products=load(paths[m['products_key']])
         products['elements']=[e for e in products['elements'] if e['element_id'] in ids]
         final=dict(products=products,source_documents=m['source_documents'],text_pages=m['text_pages'])
@@ -767,7 +779,7 @@ def revision_prefix(m, prefix):
 
 def object_key(m, prefix, record):
     # Schema is the storage contract: saved v2 keys never change meaning.
-    require(m.get('schema') in (SCHEMA, LEGACY_SCHEMA, FINAL_SCHEMA), 'manifest-schema')
+    require(m.get('schema') in (SCHEMA, LEGACY_SCHEMA, FINAL_SCHEMA, SCOPED_FINAL_SCHEMA), 'manifest-schema')
     root = (revision_prefix(m, prefix) if m['schema'] == LEGACY_SCHEMA else
             relative_key(prefix) + '/articles/' + m['article_key'])
     return root + '/objects/' + record['sha256']
