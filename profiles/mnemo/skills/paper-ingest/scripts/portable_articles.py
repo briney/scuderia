@@ -165,8 +165,12 @@ def validate_manifest(m):
         require(m['schema'] != DIAGNOSTIC_SCHEMA, 'diagnostic-source-readiness-forbidden')
     require(all(type(status[k]) is bool for k in ('complete', 'fixture', 'acquisition_verified', 'extraction_verified')), 'typed-source-status')
     require(isinstance(status['holds'], list) and isinstance(m['dispositions'], list), 'typed-source-holds')
+    completed_docs=list(docs.values())
+    if m['schema']==SCOPED_FINAL_SCHEMA:
+        selected=m.get('processing',{}).get('manuscript',{}).get('source_id')
+        completed_docs=[d for d in docs.values() if d.get('source_id',d['identity'])==selected]
     require(not status['complete'] or (not status['holds'] and status['acquisition_verified'] and
-            status['extraction_verified'] and all(d['complete'] for d in docs.values())), 'contradictory-source-completeness')
+            status['extraction_verified'] and completed_docs and all(d['complete'] for d in completed_docs)), 'contradictory-source-completeness')
     require(status['fixture'] or not any(d['fixture'] for d in docs.values()), 'fixture-promotion-forbidden')
     if is_final_manifest(m):
         import final_products

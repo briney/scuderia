@@ -334,3 +334,81 @@ class FinalProducts(unittest.TestCase):
         # A new candidate may migrate the old embedded register only with its evidence present.
         _, paths = pa.verify_local(archive)
         rr._register_archive(rr.read_register(fixture.page.read_text()), paths)
+
+    def _rewrite_manifest(self, path, value):
+        path.write_text(json.dumps(value))
+        mapping=pa.load(path.parent/'local-map.json');mapping['manifest_sha256']=pa.sha(path)
+        (path.parent/'local-map.json').write_text(json.dumps(mapping))
+
+    def test_incomplete_preserved_supplement_does_not_block_current_scope(self):
+        self.test_manuscript_refresh_preserves_prior_supplement_products()
+        prior=self.root/'prior/manifest.json';m=pa.load(prior)
+        supplement=next(d for d in m['documents'] if d['identity']=='supplement')
+        supplement.update(complete=False,gaps=['Historical extraction failed'])
+        m['source_status']['complete']=False;self._rewrite_manifest(prior,m);fp.verify(prior)
+        out=self.root/'preserved-incomplete'
+        final=fp._preserve_unprocessed(self.root/'refresh/current-final-products/manifest.json',prior,out)
+        self.assertTrue(final['source_status']['complete'])
+        old=next(d for d in final['documents'] if d['identity']=='supplement')
+        self.assertFalse(old['complete']);self.assertEqual(old['gaps'],supplement['gaps'])
+        fp.verify(out/'manifest.json')
+
+    def test_compact_preserves_historical_document_roster(self):
+        self.test_manuscript_refresh_preserves_prior_supplement_products()
+        source=self.root/'refresh/final-products/manifest.json';out=self.root/'recompact'
+        before=fp.verify(source);after=fp.build(source,out)
+        self.assertEqual(after['preserved_documents'],before['preserved_documents'])
+        self.assertEqual(after['documents'],before['documents']);fp.verify(out/'manifest.json')
+
+    def test_correction_qualification_text_is_owner_scoped(self):
+        self.test_review_correction_preserves_outcomes_and_survives_refresh()
+        manifest=self.root/'original/manifest.json';m=pa.load(manifest)
+        lines=['Element main::table-1; target : All cells empty',
+               'Element supplement::table-1; target : All cells empty',
+               'Source limitation: All cells empty in a separate unreadable table']
+        m['initial_ingest']=dict(qualifications='\n'.join(lines));self._rewrite_manifest(manifest,m)
+        request=pa.load(self.root/'correction.json');request['manifest_sha256']=pa.sha(manifest)
+        request['changes']=request['changes'][:1];submission=self.root/'owner-correction.json';pa.save(submission,request)
+        result=fp.correct_review(manifest,submission,self.root/'owner-corrected')
+        self.assertEqual(result['initial_ingest']['qualifications'],'\n'.join(lines[1:]))
+        self.assertEqual(result['initial_ingest']['recorded_qualifications'],'\n'.join(lines))
+
+    def test_renamed_manuscript_is_not_preserved_as_supplement(self):
+        self.test_manuscript_refresh_preserves_prior_supplement_products()
+        prior=self.root/'prior/manifest.json';old=pa.load(prior)
+        for source in old['source_documents']:
+            if source['identity'] in ('main','supplement'):
+                source['role']='manuscript' if source['identity']=='main' else 'supplement'
+        self._rewrite_manifest(prior,old)
+        current=self.root/'refresh/current-final-products/manifest.json'
+        def rename(value):
+            if isinstance(value,dict):return {k:rename(v) for k,v in value.items()}
+            if isinstance(value,list):return [rename(v) for v in value]
+            if isinstance(value,str):return 'renamed-main' if value=='main' else value.replace('main::','renamed-main::')
+            return value
+        self._rewrite_manifest(current,rename(pa.load(current)));fp.verify(current)
+        result=fp._preserve_unprocessed(current,prior,self.root/'renamed')
+        self.assertEqual(result['preserved_documents'],['supplement'])
+        self.assertEqual([d['identity'] for d in result['documents']],['renamed-main','supplement'])
+        repeated=fp._preserve_unprocessed(current,self.root/'renamed/manifest.json',self.root/'renamed-again')
+        self.assertEqual(repeated['preserved_documents'],['supplement'])
+        for source in old['source_documents']:source['role']=None
+        self._rewrite_manifest(prior,old)
+        with self.assertRaisesRegex(ValueError,'prior-manuscript-identity-ambiguous'):
+            fp._preserve_unprocessed(current,prior,self.root/'ambiguous')
+
+    def test_corrected_findings_do_not_return_as_metadata_or_hide_new_findings(self):
+        self.test_review_correction_preserves_outcomes_and_survives_refresh()
+        corrected=self.root/'corrected/manifest.json';m=fp.verify(corrected)
+        products=pa.load(corrected.parent/m['products_key']);change=products['amendments'][0]['changes'][0]
+        old=change['original'];scope={k:change[k] for k in ('element_id','source_sha256')}
+        revised=dict(old,reason='New source-backed concern using the same local finding ID')
+        export=dict(elements=[dict(scope,outcome=products['elements'][0]['outcome'],findings=[revised])])
+        qualifications=[dict(scope=scope,metadata=old),dict(scope=scope,metadata=revised),
+                        dict(scope=dict(element_id='supplement::table-1',source_sha256=m['documents'][1]['source_sha256']),metadata=old)]
+        out=self.root/'metadata-refresh';fresh=fp.build(corrected,out,exports=[export],qualifications=qualifications)
+        result=pa.load(out/fresh['products_key'])
+        with self.subTest('new-finding'): self.assertEqual(result['elements'][0]['findings'],[revised])
+        with self.subTest('old-metadata'): self.assertNotIn(qualifications[0],result['qualifications'])
+        self.assertIn(qualifications[1],result['qualifications'])
+        self.assertIn(qualifications[2],result['qualifications'])

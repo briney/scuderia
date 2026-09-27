@@ -126,7 +126,10 @@ def _supersessions(products):
             else:
                 for element in products['elements']:
                     if element['element_id']==change['element_id'] and element['source_sha256']==change['source_sha256']:
-                        element['findings']=[x for x in element['findings'] if x!=old and not (old.get('id') and x.get('id')==old['id'])]
+                        element['findings']=[x for x in element['findings'] if x!=old]
+                products['qualifications']=[q for q in products['qualifications'] if not (
+                    isinstance(q.get('scope'),dict) and
+                    all(q['scope'].get(k)==change[k] for k in ('element_id','source_sha256')) and q.get('metadata')==old)]
     return products
 
 
@@ -186,9 +189,22 @@ def correct_review(manifest, submission, destination):
     new['created_at']=pa.now_utc();new['provenance']['review_parent_manifest_sha256']=sha(manifest)
     if 'initial_ingest' in new:
         original=new['initial_ingest']['qualifications']
-        superseded=[c['original'] if isinstance(c['original'],str) else c['original'].get('reason','') for c in edits]
+        # Match the canonical projection's owner and target, never reason substrings.
+        replacements={}
+        for change in edits:
+            old=change['original']
+            if change['target'].startswith('/source_limitations/'):
+                replacements['Source limitation: '+old]=('Source limitation: '+change['replacement']) if change['replacement'] else None
+            elif change.get('element_id'):
+                line='Element '+change['element_id']+'; target '+old.get('target','')+': '+old['reason']
+                replacements[line]=None
+        active={'Source limitation: '+reason for reason in products['source_limitations']}
+        active.update('Element '+element['element_id']+'; target '+finding.get('target','')+': '+finding['reason']
+            for element in products['elements'] for finding in element.get('findings',[]))
         new['initial_ingest']['recorded_qualifications']=original
-        new['initial_ingest']['qualifications']='\n'.join(line for line in original.splitlines() if not any(text and text in line for text in superseded))
+        new['initial_ingest']['qualifications']='\n'.join(
+            replacements.get(line,line) if line not in active else line for line in original.splitlines()
+            if line in active or replacements.get(line,line) is not None)
     pa.validate_manifest(new)
     external(destination,[manifest.parent,submission]+[p.parent for p in paths.values()]);require(not destination.exists(),'destination-must-be-new')
     pa.verify_local(manifest);require(sha(manifest)==request['manifest_sha256'],'correction-source-changed')
@@ -248,6 +264,7 @@ def build(manifest_path, destination, *, exports=(), page=None, qualifications=(
             value['recorded_evidence'] = value.pop('evidence')
         if value not in products['qualifications']:
             products['qualifications'].append(value)
+    _supersessions(products)
     aliases, content, files = {}, {}, []
     for key in sorted(wanted, key=lambda k: (k not in originals, k not in native, k)):
         record = records[key]; h = record['sha256']
@@ -339,6 +356,7 @@ def build(manifest_path, destination, *, exports=(), page=None, qualifications=(
                  common_dependencies=common, source_status=copy.deepcopy(m['source_status']), provenance=provenance,
                  dispositions=[copy.deepcopy(d) for d in m['dispositions'] if d['kind'] in ('acquisition', 'attachments', 'source-file-dispositions')])
     if 'processing' in m: final['processing']=copy.deepcopy(m['processing'])
+    if 'preserved_documents' in m: final['preserved_documents']=copy.deepcopy(m['preserved_documents'])
     pa.validate_manifest(final)
     pa.verify_local(manifest_path)
     require(sha(manifest_path) == input_hash, 'finalization-input-changed')
@@ -437,7 +455,14 @@ def _preserve_unprocessed(current_path, prior_path, destination):
     current=verify(current_path); prior=verify(prior_path)
     _, paths=pa.verify_local(current_path); _, old_paths=pa.verify_local(prior_path)
     selected=current['processing']['manuscript']['source_id']
-    preserved={d['identity'] for d in prior['documents'] if d.get('source_id',d['identity'])!=selected}
+    prior_selected=prior.get('processing',{}).get('manuscript',{}).get('source_id')
+    manuscript_ids={s.get('source_id') or s['identity'] for s in prior['source_documents']
+        if s.get('role')=='manuscript' or s.get('acquisition',{}).get('role')=='manuscript'}
+    if prior_selected is not None: manuscript_ids={prior_selected}
+    if not manuscript_ids and any(d.get('source_id',d['identity'])==selected for d in prior['documents']):
+        manuscript_ids.add(selected)  # Legacy archives may omit roles but retain the same bound identity.
+    require(len(manuscript_ids)==1,'prior-manuscript-identity-ambiguous')
+    preserved={d['identity'] for d in prior['documents'] if d.get('source_id',d['identity']) not in manuscript_ids}
     products=copy.deepcopy(pa.load(paths[current['products_key']]))
     old_products=pa.load(old_paths[prior['products_key']])
     if old_products.get('amendments'):
