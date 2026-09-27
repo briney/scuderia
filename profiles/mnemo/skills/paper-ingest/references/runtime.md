@@ -209,3 +209,7 @@ concurrency and its origin. Archive uploads use an independent bounded pool of
 four; this is unrelated to VLM concurrency. The manifest is published last after
 all objects verify; failure drains active uploads without scheduling more.
 Timing is diagnostic and never satisfies a scientific acceptance or replay gate.
+
+## Article storage
+
+Use working and restore roots outside the brain instance. Pages retain only an `Article archive:` pointer to Git-backed receipt metadata, with no image embeds or local source-package links. Before routing an archived page for refresh, restore the package externally with `portable_articles.py restore` using the trusted receipt and `portable-articles.md`, then pass its manifest. Initial receipts contain publication pins directly; completion receipts nest them under `publication`. Never recreate a vault-local `source-packages/` directory.

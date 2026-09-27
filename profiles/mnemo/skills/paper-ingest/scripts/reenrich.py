@@ -110,7 +110,8 @@ def _same_plan(left,right):
 def plan(request,*,manifest=None,work_root,fixture=False,model_profile=None,page_scope=None):
     if isinstance(request,dict): request=Request(**request)
     require(isinstance(request,Request),'request-required')
-    work=absolute(work_root); p=ae.profile(model_profile); m=None; source_archive=None; source_identity=None
+    from article_runtime import outside_instance
+    work=outside_instance(work_root); p=ae.profile(model_profile); m=None; source_archive=None; source_identity=None
     if manifest:
         manifest=absolute(manifest); m=pa.validate_manifest(pa.load(manifest))
         require(m['schema']!=pa.DIAGNOSTIC_SCHEMA, 'diagnostic-requires-diagnostic-plan')
@@ -141,7 +142,7 @@ def plan(request,*,manifest=None,work_root,fixture=False,model_profile=None,page
         require(len({s['heading'] for s in scopes})==len(scopes),'duplicate-page-scope')
     pending=[] if m else ['source-retrieval','package-construction','full-distillation-and-reconciliation']
     if not m and request.elements is not None: pending.append('selection-validation')
-    value=dict(schema=SCHEMA_PLAN,retention_policy='final-products-v1',page_register_location='archive',figure_embeds=True,article=request.article,mode='selected' if request.elements is not None else 'full',
+    value=dict(schema=SCHEMA_PLAN,retention_policy='final-products-v1',page_register_location='archive',figure_embeds=False,page_storage='archive-only-v1',article=request.article,mode='selected' if request.elements is not None else 'full',
         request=dict(article=request.article,elements=request.elements,page=str(request.page) if request.page else None),
         elements=roster,manifest=str(manifest) if manifest else None,manifest_sha256=sha(manifest) if manifest else None,
         article_identity=m['article'] if m else source_identity,source_archive=str(source_archive) if source_archive else None,
@@ -265,6 +266,7 @@ def route(article, *, page, work_root, manifest=None, elements=None, fixture=Fal
     if page.exists() and manifest is None:
         _page_identity(page,article,identity)
         text=page.read_text(); header=re.match(r'\A---\n([\s\S]*?)\n(?:---|\.\.\.)\n',text)
+        require(not re.search(r'^Article archive:\s*\S',text,re.MULTILINE),'archived-page-requires-external-restore')
         metadata=yaml.safe_load(header[1]); sections=_sections(text)
         if 'stub' in (metadata.get('tags') or []) and 'Source package:' not in text:
             substantive=any('## '+name in sections and text[slice(*sections['## '+name])].strip() for name in ('Abstract','Context','Approach','Findings','Analysis'))
@@ -939,6 +941,19 @@ def _candidate_text(work,p,manifest,binding,submission,*,version=2,exported=None
     if p.get('figure_embeds'):
         import figure_embeds
         text=figure_embeds.render(text,work/'final-products/manifest.json',p['page_path'],image_root=work/'archive',supplements=submission.get('figure_supplements'))
+    if p.get('page_storage')=='archive-only-v1':
+        import figure_embeds
+        text=figure_embeds.archive_only(text)
+        pointer='Article archive: '+page_receipt_name(p['page_path'],binding)
+        if re.search(r'^Article archive:.*$',text,re.MULTILINE):
+            text=re.sub(r'^Article archive:.*$',lambda _: pointer,text,flags=re.MULTILINE)
+        else:
+            sections=_sections(text)
+            if '## Ingest log' in sections:
+                end=sections['## Ingest log'][1]
+                text=text[:end].rstrip()+'\n\n'+pointer+'\n\n'+text[end:]
+            else:
+                text=text.rstrip()+'\n\n## Ingest log\n\n'+pointer+'\n'
     return (text, register) if return_register else text
 
 

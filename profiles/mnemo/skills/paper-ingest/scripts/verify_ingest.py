@@ -940,7 +940,8 @@ def main():
             import final_products
             manifest = final_products.absolute(args.final_products)
             pointer = os.path.relpath(manifest, os.path.dirname(os.path.abspath(paper_path)))
-            if ('Source package: '+pointer) not in required_sections(body).get('Ingest log', []):
+            archived_only=final_products.verify(manifest).get('initial_ingest',{}).get('page_storage')=='archive-only-v1'
+            if not archived_only and ('Source package: '+pointer) not in required_sections(body).get('Ingest log', []):
                 raise ValueError('Ingest log requires finalized Source package: '+pointer)
             final_products.verify_ingest(manifest, {key: fm.get(key) for key in ('slug','title','doi','pmid')}, body, page=paper_path,
                 publication_receipt=args.publication_receipt, require_publication=not args.page_only)

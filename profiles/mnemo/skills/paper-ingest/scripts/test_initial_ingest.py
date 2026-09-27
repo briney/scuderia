@@ -4,6 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 import portable_articles as pa
+import article_enrichment as ae
 import reenrich as rr
 
 class InitialIngest(unittest.TestCase):
@@ -126,7 +127,10 @@ class InitialIngest(unittest.TestCase):
             with patch.object(jobs,'status',return_value=dict(status=state)),patch.object(jobs,'load_job',return_value=(None,dict(identity=dict(kind='enrichment')))):
                 self.assertEqual(ii.status(self.work)['next_operation']['operation'],'status')
         pa.save(attempt/'terminal.json',{})
-        pa.save(self.work/'publication.json',{})
+        receipt=ii.publication_receipt(self.work,ae.read_bound(self.work/'plan.json'))
+        self.assertEqual(receipt.parent,self.page.parent)
+        pa.save(receipt,{})
         value=ii.status(self.work)
         self.assertEqual(value['next_step'],'verify-ingest')
+        self.assertEqual(value['next_operation']['artifacts']['publication_receipt'],str(receipt))
         self.assertFalse(value['production_complete'])

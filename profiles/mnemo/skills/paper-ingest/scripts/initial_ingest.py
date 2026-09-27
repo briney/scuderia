@@ -10,7 +10,8 @@ SCHEMA='initial-ingest-plan-v1'
 
 
 def plan(article, *, page, work_root, identity):
-    work=absolute(work_root); page=absolute(page)
+    from article_runtime import outside_instance
+    work=outside_instance(work_root); page=absolute(page)
     if work.exists():
         saved=ae.read_bound(work/'plan.json')
         require(saved['schema']==SCHEMA and saved['article']==article and saved['page']==str(page),'initial-route-binding')
@@ -19,7 +20,7 @@ def plan(article, *, page, work_root, identity):
     pa.new_directory(work)
     value=dict(schema=SCHEMA,route='initial-ingest',article=article,page=str(page),
         page_sha256=sha(page) if page.exists() else None,identity=identity,
-        processing_policy='manuscript-only-v1',planned_at=pa.now_utc())
+        processing_policy='manuscript-only-v1',page_storage='archive-only-v1',planned_at=pa.now_utc())
     ae._seal_file(work/'plan.json',value)
     if page.exists(): pa.put(work/'original-page.md',page.read_bytes())
     pa.save(work/'acquisition.template.json',dict(schema='acquired-sources-v2',
@@ -27,6 +28,12 @@ def plan(article, *, page, work_root, identity):
         obligations=dict(body=None,manuscript=None),attachments=dict(status='not-inspected',items=[]),
         processing=dict(policy='manuscript-only-v1',manuscript=dict(source_id=None,pages=[],basis=None))))
     return status(work)
+
+
+def publication_receipt(work, plan):
+    if plan.get('page_storage')!='archive-only-v1': return work/'publication.json'
+    page=absolute(plan['page'])
+    return page.with_name(page.name+'.archive-'+sha(work/'final-products/manifest.json')[:20]+'.json')
 
 
 def attempts(work_root):
@@ -181,11 +188,11 @@ def status(work_root):
     elif not (work/'enriched-handoff/handoff.json').exists():
         step='initial-enriched-handoff'; op=native(step,'article',arguments=dict(command='initial-handoff',work_root=str(work),enriched=True))
     elif not (work/'final-products/manifest.json').exists(): step='initial-finalize'; op=article(step)
-    elif not (work/'publication.json').exists():
+    elif not publication_receipt(work,p).exists():
         step='initial-publish'; op=article(step,missing=['remote','bucket','prefix'])
     else:
         step='verify-ingest'; op=dict(missing_inputs=['scientific-page-review','bibliography-authors-graph','verify_ingest.py'],
-            artifacts=dict(manifest=str(work/'final-products/manifest.json'),publication_receipt=str(work/'publication.json')))
+            artifacts=dict(manifest=str(work/'final-products/manifest.json'),publication_receipt=str(publication_receipt(work,p))))
     return dict(schema=SCHEMA,route=p['route'],article=p['article'],page=p['page'],
         completion_verifier='final_products.verify_ingest',production_complete=False,next_step=step,next_operation=op,
         elapsed_seconds=__import__('operation_timing').seconds(p['planned_at'],pa.now_utc()))
@@ -217,7 +224,7 @@ def operate(command, work_root, **args):
         fp.from_ingest(work/'enriched-handoff/handoff.json',work/'final-products',method=code,integration=code,enrichment_root=code,
             source_attempts=registered['source'],enrichment_attempts=registered['enrichment'],operation_started_at=p['planned_at'])
     elif command=='initial-publish':
-        fp.publish_ingest(work/'final-products/manifest.json',work/'publication.json',args['remote'],args['bucket'],args['prefix'])
+        fp.publish_ingest(work/'final-products/manifest.json',publication_receipt(work,p),args['remote'],args['bucket'],args['prefix'])
     elif command=='initial-record-attempt': record_attempt(work,**args)
     else: raise ValueError('unknown-initial-operation')
     return status(work)

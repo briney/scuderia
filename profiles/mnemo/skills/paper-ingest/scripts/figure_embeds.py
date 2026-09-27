@@ -126,3 +126,18 @@ def main():
         print(str(exc));return 2
 
 if __name__=='__main__': raise SystemExit(main())
+
+
+def archive_only(text):
+    """Remove unchanged tool-owned illustrations and obsolete local payload pointers."""
+    blocks(text)  # Preserve manually edited captions by requiring reconciliation.
+    text=PATTERN.sub('',text)
+    text=re.sub(r'^## Figures\n(?:[ \t]*\n)*(?=## |\Z)','',text,flags=re.MULTILINE)
+    text=re.sub(r'^(?:Source package|Enrichment products|Annotated enrichment):[^\n]*(?:\n|$)','',text,flags=re.MULTILINE)
+    verify_archive_only(text)
+    return text
+
+
+def verify_archive_only(text):
+    require(not re.search(r'<!-- /?paper-figure|!\[|<img\b|^(?:Source package|Enrichment products|Annotated enrichment):',text,re.MULTILINE|re.IGNORECASE),
+            'archive-only-page-must-not-embed-images-or-local-source-pointers')

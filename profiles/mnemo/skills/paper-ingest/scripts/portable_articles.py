@@ -69,6 +69,8 @@ def save(path, value):
 
 
 def new_directory(path):
+    from article_runtime import outside_instance
+    outside_instance(path)
     p = absolute(path)
     require(p.parent.is_dir(), 'output-parent-must-exist')
     p.mkdir(mode=0o700)
@@ -949,6 +951,8 @@ def restore(manifest_path, destination, *, elements=None, include_package=True, 
 
 def restore_remote(manifest_key, manifest_sha256, destination, *, remote, bucket, prefix, article_key,
                    runner=None, **kwargs):
+    from article_runtime import outside_instance
+    outside_instance(destination)
     relative_key(manifest_key); relative_key(prefix); _hash(manifest_sha256); _hash(article_key)
     expected = prefix + '/articles/' + article_key + '/revisions/'
     require(manifest_key.startswith(expected) and manifest_key.endswith('/manifests/'+manifest_sha256+'.json'), 'trusted-manifest-key-binding')

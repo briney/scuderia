@@ -117,3 +117,11 @@ def locked(root):
     with p.open('a+b') as stream:
         fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
         yield
+
+
+def outside_instance(path):
+    """Article payloads and operation state belong outside a bound brain vault."""
+    path=absolute(path)
+    require(not any((parent/'instance.yaml').is_file() for parent in (path,*path.parents)),
+            'article-work-must-be-outside-instance:'+str(path))
+    return path

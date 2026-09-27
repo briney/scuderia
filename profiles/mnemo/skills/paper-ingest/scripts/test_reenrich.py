@@ -212,7 +212,7 @@ class ReenrichTests(unittest.TestCase):
         self.assertIn('Known unit uncertainty',json.dumps(register))
         self.assertNotIn('Unreviewed aspects:',text)
         self.assertIn('Old scientific prose.',text)
-        self.assertEqual(rr.without_register(text),original)
+        self.assertEqual(text.split('\n\n## Ingest log')[0]+'\n',original)
         rr.publish(self.work,'fake','bucket','gate',runner=FakeRclone())
         pub=pa.load(self.work/'publication.json')
         receipt=rr.page_receipt_path(self.page,pa.load(self.work/'export'/'handoff.json')['binding'])
@@ -306,7 +306,7 @@ class ReenrichTests(unittest.TestCase):
         submission['qualification']='First line.\n## Injected heading\nStill a qualification.'
         cp.write_text(json.dumps(submission)); rr.candidate_import(self.work,cp)
         text=(self.work/'page-candidate/page-candidate.md').read_text()
-        self.assertEqual(set(rr._sections(text)),set(rr._sections(self.page.read_text())))
+        self.assertEqual(set(rr._sections(text)),set(rr._sections(self.page.read_text()))|{'## Ingest log'})
         register=pa.load(self.work/'page-candidate/candidate.json')['page_register']
         self.assertEqual(register['operator_qualification'],submission['qualification'])
         self.assertNotIn('## Injected heading',rr._sections(text))
@@ -482,7 +482,7 @@ class ReenrichTests(unittest.TestCase):
         self.assertFalse(result['production_complete'])
         self.assertIn('Human annotation',self.page.read_text()); self.assertIn('[[preserved-link]]',self.page.read_text())
         self.assertTrue(self.page.read_text().startswith('---\nkind: paper\nslug: synthetic\n---\n'))
-        self.assertTrue(self.page.read_text().endswith('## Unchanged\nHuman prose stays byte-identical.\n'))
+        self.assertIn('## Unchanged\nHuman prose stays byte-identical.\n\n## Ingest log',self.page.read_text())
         self.assertEqual(len(pa.load(self.work/'enrichment'/'prepared.json')['requests']),2)
         self.assertEqual(rr.execute(work_root=self.work)['completion'],result['completion'])
     def test_selected_finished_and_relocated_consumer(self):

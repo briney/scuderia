@@ -53,7 +53,7 @@ class FigureEmbeds(unittest.TestCase):
         self.assertNotIn('caption.png',value)
         self.assertIn('\\<control\\>',value)
 
-    def test_refresh_supplement_selection_reaches_publication(self):
+    def test_new_refresh_publishes_without_local_figure_embeds(self):
         from test_reenrich import ReenrichTests, candidate
         from test_article_corrections import FakeRclone
         import reenrich as rr
@@ -68,10 +68,13 @@ class FigureEmbeds(unittest.TestCase):
         path=candidate(fixture.work,fixture.base);value=pa.load(path)
         value['figure_supplements']={fixture.m['elements'][1]['element_id']:'Necessary control.'}
         path.write_text(json.dumps(value))
+        with self.assertRaises(ValueError):rr.candidate_import(fixture.work,path)
+        value.pop('figure_supplements');path.write_text(json.dumps(value))
         rr.candidate_import(fixture.work,path);rr.apply(fixture.work,authorize=True)
         rr.publish(fixture.work,'fake','bucket','gate',runner=FakeRclone())
-        self.assertEqual(fe.verify(fixture.page.read_text(),fixture.work/'archive/manifest.json',fixture.page),2)
-        self.assertTrue(pa.load(fixture.work/'completion.json')['figure_embeds'])
+        self.assertEqual(fe.blocks(fixture.page.read_text()),[])
+        self.assertIn('Article archive: '+rr.page_receipt_name(fixture.page,pa.load(fixture.work/'completion.json')['binding']),fixture.page.read_text())
+        self.assertEqual(pa.load(fixture.work/'completion.json')['page_storage'],'archive-only-v1')
 
     def test_unknown_source_role_does_not_silently_omit_figures(self):
         m=pa.load(self.manifest);m['documents'][0].pop('source_role')

@@ -219,7 +219,8 @@ def correct_review(manifest, submission, destination):
 
 def build(manifest_path, destination, *, exports=(), page=None, qualifications=()):
     """Copy an allowlist into a new self-contained directory; inputs stay intact."""
-    manifest_path, destination = absolute(manifest_path), absolute(destination)
+    from article_runtime import outside_instance
+    manifest_path, destination = absolute(manifest_path), outside_instance(destination)
     m, paths = pa.verify_local(manifest_path)
     pa.verify_source(manifest_path)
     require(m['schema'] != pa.DIAGNOSTIC_SCHEMA, 'diagnostic-finalization-forbidden')
@@ -609,6 +610,7 @@ def publish_refresh(work, plan, manifest, source, roster, binding, history, expo
     completion['timing']=operation_timing.route_snapshot(operation_timing.summarize(
         source_attempts=source_attempts,enrichment_attempts=[*enrichment_attempts,work]),plan,history)
     if plan.get('figure_embeds'): completion['figure_embeds']=True
+    if plan.get('page_storage'): completion['page_storage']=plan['page_storage']
     if plan['page_path']:
         if plan.get('page_register_location') == 'archive':
             register = ae.read_bound(work/'page-candidate/candidate.json')['page_register']
@@ -667,6 +669,10 @@ def verify_completion(receipt, m, paths, page, manifest_path):
             register = facts['page_register']
         require(register and pa.digest(register) == facts['register_sha256'] and register['binding'] == facts['binding'], 'completion-qualification-register-or-pointer')
         rr._register_archive(register, paths)
+        if facts.get('page_storage')=='archive-only-v1':
+            import figure_embeds
+            figure_embeds.verify_archive_only(page.read_text())
+            require(('Article archive: '+register['publication_receipt']) in page.read_text().splitlines(), 'completion-page-archive-pointer')
         if facts.get('figure_embeds'):
             import figure_embeds
             figure_embeds.verify(page.read_text(), manifest_path, page)
@@ -696,7 +702,7 @@ def from_ingest(handoff, destination, *, method, integration, enrichment_root, s
         ended_at=pa.now_utc()
         timing['operation_interval']=dict(started_at=operation_started_at,ended_at=ended_at,elapsed_seconds=operation_timing.seconds(operation_started_at,ended_at))
     m = build(exported['manifest'], destination, exports=[exported])
-    m['initial_ingest'] = dict(source_handoff_sha256=sha(handoff), figure_embeds=True,
+    m['initial_ingest'] = dict(source_handoff_sha256=sha(handoff), figure_embeds=False, page_storage='archive-only-v1',
                               production_complete=verified['production_complete'],
                               readiness=exported['readiness'], qualifications=verified['qualifications'], timing=timing)
     destination = absolute(destination)
@@ -717,6 +723,9 @@ def verify_ingest(manifest, article, body, page=None, *, publication_receipt=Non
     # Complete machine qualifications live in the hash-bound manifest; readable
     # claim-level caveats are checked by the parent's scientific review.
     require(isinstance(completed['qualifications'], str), 'final-ingest-qualifications-missing')
+    if completed.get('page_storage')=='archive-only-v1':
+        import figure_embeds
+        figure_embeds.verify_archive_only(body)
     if completed.get('figure_embeds'):
         import figure_embeds
         require(page is not None, 'figure-page-path-required')

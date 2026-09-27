@@ -76,7 +76,8 @@ def save(path, value):
 
 
 def new_directory(path):
-    p = absolute(path)
+    from article_runtime import outside_instance
+    p = outside_instance(path)
     require(p.parent.is_dir(), 'output parent must exist')
     p.mkdir(mode=0o700)
     return p
@@ -259,6 +260,8 @@ def scope_for(acquisition, root, endpoint, budget):
 
 
 def prepare(input_path, output, endpoint, budget):
+    from article_runtime import outside_instance
+    outside_instance(output)
     source = absolute(input_path); value = load(source)
     validate_acquisition(value)
     # Validate every declared input before reserving a destination. Failure after

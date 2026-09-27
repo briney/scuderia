@@ -310,7 +310,7 @@ acceptance, and the development pilot does not impose human crop approval on
 every production ingest.
 
 Finalize and publish the package through `references/qualified-enrichment.md`.
-Add its `Source package:` and `Article archive:` pointers to the existing Ingest
+Add its `Article archive:` pointer to the existing Ingest
 log; do not add frontmatter fields. Keep source versions, concise claim-relevant
 limitations and scientific review decisions in the paper. Raw qualification
 registers and extraction/audit dumps belong in the external package.
@@ -454,7 +454,7 @@ This completed-fill contract is shared by dives and queue drains. Verify:
 Run `verify_ingest.py <bare-slug> --instance <brain> --require-filled`.
 For the retained-source PDF route, first verify the v5 source/enrichment handoff
 and run `final_products.py ingest` as documented in `qualified-enrichment.md`.
-Render manuscript figure embeds with `figure_embeds.py` before final page verification, as documented in `qualified-enrichment.md`; supplementary figures require essential context. Then add `--final-products <absolute-final-package/manifest.json>
+Keep paper pages free of embedded images and local article material; use external working directories and the durable archive receipt described in `qualified-enrichment.md`. Add `--final-products <absolute-final-package/manifest.json>
 --require-enriched-source`, using the documented PDF interpreter. These options
 are mandatory for new retained-PDF ingests, including PAGE_READY checks. Parent
 completion also requires `--publication-receipt <durable-publication.json>` and

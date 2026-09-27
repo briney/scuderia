@@ -56,26 +56,9 @@ Finalize the verified v5 result into permanent scientific products before writin
 
     <pdf-python> -B <scripts>/final_products.py ingest --handoff <v5/handoff.json> --output <new-final-package> --method <scripts> --integration <scripts> --enrichment-root <scripts>
 
-Keep the complete qualification records in the final package. In the paper,
-include concise substantive caveats beside affected claims; do not paste raw
-registers or audit dumps. Add the unformatted Ingest log pointer, relative to
-that paper:
+Keep complete qualification records and all article material in the archived final package: originals, manuscript text, crops, captions, descriptions, structured values and source mappings. Paper pages contain scientific prose and concise claim-relevant caveats, with no embedded images or local source-package pointers. Do not invoke `figure_embeds.py render` for new ingests. Historical figure-bearing receipts retain their original verification contract.
 
-    Source package: <relative-final-package/manifest.json>
-
-The final package's `products_key` identifies its descriptions, structured values and substantive qualifications. It also retains originals, native text, crops and source mappings. Do not point the completed paper at temporary review packets, raw requests or annotated runtime exports.
-
-Before the final page check, render manuscript figures from the compact package:
-
-    <pdf-python> -B <scripts>/figure_embeds.py render --manifest <final-package/manifest.json> --page <paper.md> --output <new-candidate.md>
-
-Review and apply the candidate under the original-page guard, before recording any page completion hash. The renderer embeds retained figure-body crops with standard Markdown relative links and extracted source captions as text. It does not copy images, embed caption screenshots, or rerun extraction/model requests. New figures default to a Figures section before the Ingest log; whole figure blocks can be moved beside the discussion. Keep panel fragments in source order. Preserve source-caption/crop qualifications beside the affected figure; distinguish model interpretations from source captions. A failed model description alone is not a reason to hide an intact image.
-
-Supplementary figures are opt-in: add `--supplement 'ELEMENT_ID=why this figure is essential to the page'` only when needed for context. The reason remains with the figure. No automatic supplementary gallery. Missing figure bodies are stated explicitly rather than fabricated. Unknown source roles require source-metadata reconciliation, not guessing from the figure number.
-
-Generated blocks have ownership markers. Prose outside them is preserved. If a block was manually edited, regeneration holds for reconciliation instead of overwriting it; retain that edited content while reconciling a new candidate. Do not bypass the guard by silently removing markers. Full blocks can be repositioned without changing their contents. Initial finalized packages require figure verification; old completion formats keep their original contract.
-
-Images remain in the local final package, outside Git and replicated through the existing source-package sync/archive process. Restore packages to their linked vault-relative locations. Before removing an older package, update every affected embed and verify the actual page links. A Markdown-only Git clone does not contain the images.
+All acquisition, extraction, finalization and restore directories must be outside the brain instance. The durable publication receipt is small metadata and belongs in Git-backed instance storage; it is the paper's sole article-package pointer.
 
 Before parent completion, publish the final package to the instance-configured
 archive destination using its existing archive-write authorization:

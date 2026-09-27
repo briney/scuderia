@@ -826,6 +826,13 @@ class TestCanonicalChecks(unittest.TestCase):
 
 
 class TestSourcePackageOption(CliCase):
+    def test_final_archive_only_page_needs_no_local_package_pointer(self):
+        metadata={'initial_ingest':{'page_storage':'archive-only-v1'}}
+        with patch('final_products.verify',return_value=metadata),patch('final_products.verify_ingest',return_value=metadata):
+            rc,out,err=self.verify('--final-products',str(Path(self.brain)/'outside-manifest.json'),'--page-only')
+        self.assertIn('Final products: OK',out,err)
+
+
     def test_source_handoff_requires_trusted_method(self):
         rc, out, err = self.verify('--source-package-handoff', str(Path(self.brain)/'missing.json'))
         self.assertEqual(rc,2,out+err)
