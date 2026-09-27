@@ -233,6 +233,9 @@ def final_state(root, inspection_dir=None):
     state = dict(schema='pdf-final-state-v1',fixture=manifest['fixture'],documents=docs,
         requested_work_complete=all(d['requested_work_complete'] for d in docs),human_acceptance='pending',
         exhaustive_extraction_established=False)
+    if 'processing' in manifest:
+        from source_package import verify_processing_scope
+        state['processing_scope']=verify_processing_scope(None, load(root/'scope.json'), docs)
     from .reporting import facts
     state['facts'] = facts(root, state, inspection_dir)
     return state

@@ -67,12 +67,13 @@ class SourcePackage:
             d = by_doc[identity]
             require(sha(self.root / doc['raw']) == doc['sha256'], 'source-hash-mismatch:' + identity)
             self._candidates[identity] = d['candidates']
+            complete = state.get('processing_scope', {}).get('complete', d['complete_package'])
             self.documents.append(dict(identity=identity, raw=doc['raw'], sha256=doc['sha256'],
                                        page_count=doc['page_count'], channels=list(doc.get('channels', [])),
                                        extraction_scope=doc.get('extraction_scope'), elements=d['logical']['elements'],
                                        pages={p['page']: p for p in doc['pages']},
-                                       schema='pdf-source-package-v1', source_complete=d['complete_package'],
-                                       source_status='complete' if d['complete_package'] else 'source-incomplete',
+                                       schema='pdf-source-package-v1', source_complete=complete,
+                                       source_status='complete' if complete else 'source-incomplete',
                                        gaps=d['gaps'], logical_dispositions={k:v for k,v in d['logical'].items() if k!='elements'},
                                        candidate_count=len(d['candidates']), source_fixture=state['fixture']))
 

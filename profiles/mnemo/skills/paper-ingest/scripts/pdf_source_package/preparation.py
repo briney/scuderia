@@ -11,11 +11,12 @@ from .io import ASSETS, SETTINGS, TIMEOUT, LIMIT, require, load, save, put, sha,
 CHANNELS = ('caption', 'figure', 'structured', 'classification', 'association')
 
 
-def context(source, number, count):
+def context(source, number, count, *, allowed_pages=None):
     """Original physical prev/current/next images, in accepted render order."""
     parts, images = [], []
     with fitz.open(source) as pdf:
         for n in range(max(1, number - 1), min(count, number + 1) + 1):
+            if allowed_pages is not None and n not in allowed_pages: continue
             pix = pdf[n - 1].get_pixmap(dpi=150, alpha=False)
             raw = pix.tobytes('png')
             label = f'Page {n}; image {pix.width} x {pix.height} pixels; ' + ('CENTRAL' if n == number else 'context only')
@@ -82,6 +83,10 @@ def prepare(scope_path, output, fixture=False):
         put(root / 'OFFLINE-FIXTURE', 'Never promote replay or synthetic output to live inference.\n')
     save(root / 'scope.json', scope)
     docs, requests = [], []
+    processing = scope.get('processing')
+    if processing is not None:
+        from source_package import verify_processing_scope
+        verify_processing_scope(None, scope, [])
     for index, item in enumerate(scope['documents'], 1):
         identity = item['identity']
         require(isinstance(identity, str) and identity.strip(), 'document-identity')
@@ -105,7 +110,7 @@ def prepare(scope_path, output, fixture=False):
             page_count=count, selected_pages=sorted(pages), channels=channels,
             extraction_scope='whole-document' if len(pages) == count else 'selected-pages',
             package_kind='figure-only-diagnostic' if channels == ['figure'] else 'channel-scoped-package', pages=[])
-        for n in range(1, count + 1):
+        for n in sorted(pages) if processing is not None else range(1, count + 1):
             d = f'{directory}/pages/p{n:04d}'; dest = root / d
             with fitz.open(root / retained) as pdf:
                 p = pdf[n - 1]
@@ -135,7 +140,7 @@ def prepare(scope_path, output, fixture=False):
                 page_image=d + '/source-page.png', requests={}, **metadata)
             save(dest / 'reporting-policy.json', policy)
             if n in pages and policy['disposition'] != 'policy-excluded':
-                parts, images = context(root / retained, n, count)
+                parts, images = context(root / retained, n, count, allowed_pages=pages if processing is not None else None)
                 save(dest / 'context.json', images)
                 # Classification reuses these exact original image parts, never an overlay.
                 save(dest / 'original-wire.json', dict(SETTINGS, messages=[dict(role='user',content=[dict(type='text',text='Source context')] + parts)]))
@@ -171,6 +176,7 @@ def prepare(scope_path, output, fixture=False):
         settings=SETTINGS, endpoint=endpoint, credential_env=scope.get('credential_env','LITELLM_API_KEY'),
         timeout_seconds=TIMEOUT, context_limit=LIMIT, retries=0, reasoning='omitted/default',
         maximum_posts=scope['max_application_posts'], human_acceptance='pending', exhaustive_extraction_established=False)
+    if processing is not None: manifest['processing']=copy.deepcopy(processing)
     save(root / 'manifest.json', manifest)
     save(root / 'initial-plan.json', dict(phase='initial', requests=requests, dependencies=['manifest.json','scope.json']))
     return manifest

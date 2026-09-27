@@ -71,3 +71,60 @@ class ManuscriptScope(unittest.TestCase):
             with self.assertRaises(ValueError): self.prepare(value, 'bad-file-'+str(index))
         value=copy.deepcopy(self.value); value['processing']['policy']='unknown'
         with self.assertRaises(ValueError): self.prepare(value, 'bad-policy')
+
+    def test_composite_boundary_blocks_all_processing_and_neighbor_context(self):
+        from unittest.mock import patch
+        from pdf_source_package import preparation, workflow, reporting
+        value=copy.deepcopy(self.value)
+        value['files'][0]['path']=value['files'][2]['path']
+        value['files'][0]['sha256']=value['files'][2]['sha256']
+        value['files']=value['files'][:1]
+        value['attachments']=dict(status='none-listed', inspected_url='https://example.invalid/article', items=[])
+        result=self.prepare(value)
+        package=self.root/'package'
+        get_text=pymupdf.Page.get_text; get_pixmap=pymupdf.Page.get_pixmap
+        def text(page, *args, **kwargs):
+            self.assertLess(page.number, 3, 'excluded native extraction')
+            return get_text(page, *args, **kwargs)
+        def pixmap(page, *args, **kwargs):
+            self.assertLess(page.number, 3, 'excluded page rendering')
+            return get_pixmap(page, *args, **kwargs)
+        with patch.object(pymupdf.Page, 'get_text', text), patch.object(pymupdf.Page, 'get_pixmap', pixmap):
+            manifest=preparation.prepare(result['scope'], package, fixture=True)
+        doc=manifest['documents'][0]
+        self.assertEqual([p['page'] for p in doc['pages']], [1,2,3])
+        self.assertFalse((package/doc['directory']/'pages/p0004').exists())
+        self.assertEqual([p['page'] for p in sp.load(package/doc['pages'][-1]['directory']/'context.json')], [2,3])
+        self.assertEqual(sp.sha(package/doc['raw']), value['files'][0]['sha256'])
+        reporting.source_facts(reporting.Evidence(package))
+        scope=sp.load(result['scope'])
+        bound=sp.verify_processing_scope(sp.load(result['retention'])['acquisition'], scope, manifest['documents'])
+        self.assertEqual(bound['pages'], [1,2,3])
+        changed=copy.deepcopy(scope); changed['documents'][0]['pages']=[1,2]
+        with self.assertRaises(ValueError): sp.verify_processing_scope(sp.load(result['retention'])['acquisition'], changed, manifest['documents'])
+        wire=preparation.association_request(package, doc, [], doc['pages'], all_native=True)
+        self.assertNotIn('combined page 4', str(wire))
+        self.assertNotIn('combined page 5', str(wire))
+        state=workflow.final_state(package)
+        self.assertFalse(state['documents'][0]['complete_package'])
+
+    def test_empty_scoped_work_complete_without_claiming_complete_pdf(self):
+        from unittest.mock import patch
+        from pdf_source_package import preparation, workflow, gates
+        value=copy.deepcopy(self.value); value['processing']['manuscript']['pages']=[1,2]
+        result=self.prepare(value); package=self.root/'empty'
+        with patch.object(preparation.classification, 'reporting_disposition', return_value=dict(disposition='policy-excluded')):
+            preparation.prepare(result['scope'], package, fixture=True)
+        gates.prepare_phase(package,'initial',None)
+        for phase in ('classification','association'):
+            workflow.prepare_stage(package,phase); gates.prepare_phase(package,phase,None)
+        state=workflow.final_state(package)
+        self.assertTrue(state['processing_scope']['complete'])
+        self.assertFalse(state['documents'][0]['complete_package'])
+        from pdf_enrichment.package_io import SourcePackage
+        reader=SourcePackage(package, method=Path(preparation.__file__).parent.parent)
+        self.assertEqual(list(reader.documents[0]['pages']), [1,2])
+        self.assertTrue(reader.documents[0]['source_complete'])
+        docs=[dict(extraction_scope='selected-pages')]
+        with self.assertRaisesRegex(ValueError,'diagnostic'):
+            sp.verify_processing_scope(dict(schema='acquired-sources-v1'), {}, docs)

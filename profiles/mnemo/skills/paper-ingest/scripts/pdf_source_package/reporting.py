@@ -53,7 +53,8 @@ def source_facts(evidence):
             count = len(pdf)
         require(count == doc['page_count'], 'source-page-count')
         require(evidence.json(doc['directory'] + '/document.json') == doc, 'document-manifest-mismatch')
-        require([p['page'] for p in doc['pages']] == list(range(1, count + 1)), 'page-inventory-range')
+        expected_pages = doc['selected_pages'] if 'processing' in manifest else list(range(1, count + 1))
+        require([p['page'] for p in doc['pages']] == expected_pages, 'page-inventory-range')
         require([p['page'] for p in doc['pages'] if p['selected']] == doc['selected_pages'], 'selected-page-mismatch')
         pages['original_retained'] += count
         for page in doc['pages']:
@@ -125,8 +126,9 @@ def association_scope(evidence, row, wire):
     data = strict(content[0]['text'].split('\nSOURCE EVIDENCE\n', 1)[1])
     included, omitted = data['source_physical_pages'], data['image_omitted_pages']
     doc = next(d for d in evidence.json('manifest.json')['documents'] if d['identity'] == row['document'])
-    require(len(set(included + omitted)) == len(included + omitted) == doc['page_count'] and
-            set(included + omitted) == set(range(1, doc['page_count'] + 1)), 'association-image-page-scope')
+    expected_pages = {p['page'] for p in doc['pages']}
+    require(len(set(included + omitted)) == len(included + omitted) == len(expected_pages) and
+            set(included + omitted) == expected_pages, 'association-image-page-scope')
     images = [p['image_url']['url'] for p in content if p['type'] == 'image_url']
     require(len(images) == len(included), 'association-image-count')
     for n, image in zip(included, images):

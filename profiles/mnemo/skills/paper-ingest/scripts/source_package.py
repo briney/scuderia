@@ -196,6 +196,34 @@ def processing_sources(acquisition):
     return [dict(rows[0], pages=list(pages))]
 
 
+def verify_processing_scope(acquisition, scope, documents):
+    """Verify selected source/pages; acquisition=None checks preparation shape only."""
+    processing = scope.get('processing')
+    if processing is None:
+        require(acquisition is None or acquisition['schema']=='acquired-sources-v1', 'missing processing binding')
+        require(all(d['extraction_scope']=='whole-document' for d in documents), 'selected-page diagnostic not production scope')
+        return dict(policy='all-pdfs-v1', complete=all(d.get('complete_package',False) for d in documents))
+    selected = processing.get('manuscript', {})
+    require(processing.get('policy')=='manuscript-only-v1' and set(processing)=={'policy','manuscript'} and
+            set(selected)=={'source_id','pages','basis'}, 'processing binding fields')
+    pages=selected['pages']
+    require(isinstance(selected['basis'],str) and selected['basis'].strip() and isinstance(pages,list) and pages and
+            all(type(n) is int and n>0 for n in pages) and pages==sorted(set(pages)), 'processing binding pages/basis')
+    sources=scope['documents']
+    require(len(sources)==1 and sources[0]['identity']==selected['source_id'] and sources[0]['pages']==pages and
+            set(sources[0]['channels'])==set(CHANNELS), 'processing source/page/channel binding')
+    if acquisition is not None:
+        require(acquisition['schema']=='acquired-sources-v2' and acquisition['processing']==processing, 'acquisition processing binding')
+        row=processing_sources(acquisition)[0]
+        require(row['sha256']==sources[0]['sha256'] and row['page_count']==sources[0]['page_count'], 'processing original binding')
+    if documents:
+        require(len(documents)==1 and documents[0]['identity']==selected['source_id'] and
+                [p['page'] for p in documents[0]['pages']]==pages and
+                all(p['selected'] for p in documents[0]['pages']), 'processing document binding')
+    return dict(policy=processing['policy'], source_id=selected['source_id'], pages=list(pages),
+                complete=bool(documents) and all(d.get('requested_work_complete',False) and d.get('logical',{}).get('complete',False) for d in documents))
+
+
 def pdf_count(path):
     import pymupdf
     with pymupdf.open(path) as pdf:
@@ -368,8 +396,10 @@ def verified_state(retention_path, package, launcher_result, method, *, historic
     require(len(manifest['documents']) == len(scope['documents']), 'workflow source count mismatch')
     for doc, source in zip(manifest['documents'],scope['documents']):
         require(all(doc[k] == source[k] for k in ('identity','sha256','page_count','channels')), 'workflow source identity/hash/page/channel mismatch')
-        require(doc['selected_pages'] == source['pages'] and doc['extraction_scope'] == 'whole-document', 'selected-page diagnostic not production scope')
+        require(doc['selected_pages'] == source['pages'], 'workflow selected pages mismatch')
         require(sha(inside(package,doc['raw'])) == source['sha256'], 'workflow retained PDF mismatch')
+    require(manifest.get('processing') == scope.get('processing'), 'workflow processing binding')
+    verify_processing_scope(retention['acquisition'], scope, manifest['documents'])
     state = final_state(package,inspections)
     recomputed = operation_evidence(package,operation,output=destination,state=state)
     require(receipt == recomputed, 'stale or corrupt launcher receipt')
@@ -379,6 +409,8 @@ def verified_state(retention_path, package, launcher_result, method, *, historic
     require(result['summary'] == summary, 'launcher summary mismatch')
     require(package_bindings == tree_hashes(package), 'package changed during verification')
     if inspections and inspections.exists(): require(inspection_bindings == tree_hashes(inspections), 'inspection changed during verification')
+    if 'processing' in scope:
+        state['processing_scope']=verify_processing_scope(retention['acquisition'], scope, state['documents'])
     return retention, state, summary, inspections
 
 
@@ -392,7 +424,9 @@ def holds_for(retention, state, package):
     if any(x['status'] == 'missing' for x in attachments['items']): holds.append('advertised-attachments-missing')
     if state['fixture'] or (Path(package)/'OFFLINE-FIXTURE').exists(): holds.append('fixture-not-production')
     if not state['requested_work_complete']: holds.append('requested-work-incomplete')
-    if not all(d['complete_package'] for d in state['documents']): holds.append('incomplete-full-document-package')
+    if 'processing_scope' in state:
+        if not state['processing_scope']['complete']: holds.append('incomplete-manuscript-scope')
+    elif not all(d['complete_package'] for d in state['documents']): holds.append('incomplete-full-document-package')
     for phase, row in state['facts']['phases'].items():
         if row['status'] != 'complete' or row['uncertain_reservations']: holds.append('phase-hold-'+phase)
         if row['fixture_or_replay_calls']: holds.append('fixture-or-replay-'+phase)
