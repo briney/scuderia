@@ -846,7 +846,7 @@ def _run_rclone(argv, *, output=None, timeout=300):
     return result.stdout.decode('utf-8') if output is None else ''
 
 
-def publish(manifest_path, remote, bucket, prefix, *, runner=None):
+def publish(manifest_path, remote, bucket, prefix, *, runner=None, concurrency=4):
     started_at=now_utc()
     relative_key(prefix)
     path = absolute(manifest_path)
@@ -854,9 +854,33 @@ def publish(manifest_path, remote, bucket, prefix, *, runner=None):
     require(m['schema'] != DIAGNOSTIC_SCHEMA, 'diagnostic-publication-forbidden')
     initial = sha(path)
     transport = RcloneTransport(remote, bucket, runner)
-    receipts = []
-    for f in m['files']:
-        receipts.append(transport.upload(paths[f['key']], object_key(m, prefix, f), f['sha256'], f['size']))
+    require(type(concurrency) is int and concurrency>0,'publication-concurrency-positive-integer')
+    from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
+    receipts=[None]*len(m['files']); pending={}; rows=iter(enumerate(m['files'])); error=None
+    with ThreadPoolExecutor(max_workers=concurrency,thread_name_prefix='article-upload') as pool:
+        def submit():
+            item=next(rows,None)
+            if item is None:return False
+            index,f=item
+            pending[pool.submit(transport.upload,paths[f['key']],object_key(m,prefix,f),f['sha256'],f['size'])]=index
+            return True
+        try:
+            for _ in range(min(concurrency,len(receipts))):submit()
+            while pending:
+                done,_=wait(pending,return_when=FIRST_COMPLETED)
+                for future in done:
+                    index=pending.pop(future)
+                    try:receipts[index]=future.result()
+                    except BaseException as exc:error=error or exc
+                if error is None:
+                    for _ in done:
+                        if not submit():break
+        except BaseException as exc:error=error or exc
+        finally:
+            for future,index in pending.items():
+                try:receipts[index]=future.result()
+                except BaseException as exc:error=error or exc
+    if error is not None:raise error
     verify_local(path)
     require(sha(path) == initial, 'manifest-changed-during-publish')
     key = revision_prefix(m, prefix) + '/manifests/' + initial + '.json'
@@ -866,7 +890,7 @@ def publish(manifest_path, remote, bucket, prefix, *, runner=None):
     return dict(schema='portable-article-publication-v2', publication_interval=dict(started_at=started_at,ended_at=ended_at,elapsed_seconds=seconds(started_at,ended_at)), prefix=prefix, article_key=m['article_key'],
         verification_scope='offline-transport-double' if runner is not None else 'rclone-live-readback',
         remote=remote, bucket=bucket, manifest_key=key, manifest_sha256=initial,
-        objects=len(m['files']), uploaded=sum(not r['reused'] for r in receipts), receipts=receipts, published_at=now_utc())
+        objects=len(m['files']), publication_concurrency=concurrency, uploaded=sum(not r['reused'] for r in receipts), receipts=receipts, published_at=now_utc())
 
 
 def restore(manifest_path, destination, *, elements=None, include_package=True, include_enrichment=True,

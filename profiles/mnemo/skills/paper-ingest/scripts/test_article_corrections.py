@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import shutil
 import tempfile
+import threading
 import unittest
 
 import portable_articles as pa
@@ -66,8 +67,10 @@ def synthetic(root):
 
 class FakeRclone:
     def __init__(self):
-        self.store={}; self.calls=[]; self.corrupt=None; self.fail_after=None
+        self.store={}; self.calls=[]; self.corrupt=None; self.fail_after=None; self.lock=threading.RLock()
     def __call__(self, argv, *, output=None, timeout=300):
+        with self.lock: return self.call(argv,output=output,timeout=timeout)
+    def call(self, argv, *, output=None, timeout=300):
         self.calls.append(argv)
         target=next(a for a in argv if a.startswith('fake:'))
         key=target.split('/',1)[1]
@@ -91,6 +94,53 @@ class Corrections(unittest.TestCase):
         self.tmp=tempfile.TemporaryDirectory(dir=os.environ['SOURCE_PACKAGE_TEST_ROOT'],prefix='contract-')
         self.addCleanup(self.tmp.cleanup); self.root=Path(self.tmp.name)
         self.path,self.value=synthetic(self.root)
+    def test_parallel_publication_is_bounded_ordered_and_manifest_last(self):
+        from unittest.mock import patch
+        import time
+        original=pa.RcloneTransport.upload; lock=threading.Lock(); barrier=threading.Barrier(4)
+        active=peak=started=finished=0; total=len(self.value['files'])
+        def upload(transport,local,key,h,size):
+            nonlocal active,peak,started,finished
+            if '/manifests/' in key:
+                self.assertEqual(finished,total)
+                self.assertEqual(active,0)
+                return original(transport,local,key,h,size)
+            with lock: active+=1;peak=max(peak,active);started+=1;order=started
+            try:
+                if order<=4:barrier.wait(timeout=3)
+                time.sleep(.002*(5-order%4))
+                return original(transport,local,key,h,size)
+            finally:
+                with lock:active-=1;finished+=1
+        fake=FakeRclone()
+        with patch.object(pa.RcloneTransport,'upload',upload):
+            result=pa.publish(self.path,'fake','bucket','gate',runner=fake)
+        self.assertEqual(peak,4)
+        self.assertEqual([r['key'] for r in result['receipts'][:-1]],[pa.object_key(self.value,'gate',f) for f in self.value['files']])
+        self.assertEqual(result['receipts'][-1]['key'],result['manifest_key'])
+
+    def test_failure_and_cancellation_drain_without_manifest_or_new_dispatch(self):
+        from unittest.mock import patch
+        import time
+        for error in (ValueError('corrupt-readback'),KeyboardInterrupt()):
+            with self.subTest(error=type(error).__name__):
+                active=0;started=[];finished=[];lock=threading.Lock();barrier=threading.Barrier(4)
+                def upload(transport,local,key,h,size):
+                    nonlocal active
+                    self.assertNotIn('/manifests/',key)
+                    with lock:active+=1;started.append(key);number=len(started)
+                    try:
+                        barrier.wait(timeout=3)
+                        if number==1:raise error
+                        time.sleep(.03)
+                        return dict(key=key,sha256=h,size=size,reused=False,method='read_back_sha256')
+                    finally:
+                        with lock:active-=1;finished.append(key)
+                with patch.object(pa.RcloneTransport,'upload',upload):
+                    with self.assertRaises(type(error)):
+                        pa.publish(self.path,'fake','bucket','gate',runner=FakeRclone())
+                self.assertEqual(active,0);self.assertEqual(len(started),4);self.assertCountEqual(started,finished)
+
     def test_shared_article_objects_across_revisions(self):
         fake=FakeRclone(); first=pa.publish(self.path,'fake','bucket','gate',runner=fake)
         newer=copy.deepcopy(self.value); newer['package_id']='revision-two'

@@ -105,6 +105,18 @@ class ManuscriptScope(unittest.TestCase):
         wire=preparation.association_request(package, doc, [], doc['pages'], all_native=True)
         self.assertNotIn('combined page 4', str(wire))
         self.assertNotIn('combined page 5', str(wire))
+        candidates=[dict(id=role,source_document='main',source_sha256=doc['sha256'],page=n,role=role,
+            content_type='figure',type_origin='synthetic',observed_labels=[],native_text='continuation',
+            regions=[dict(id=role+'-region',page=n,bbox=[0,0,10,10],coordinate_system='page-points')])
+            for role,n in [('body',1),('caption',3)]]
+        compact=preparation.association_request(package,doc,candidates,[doc['pages'][0],doc['pages'][2]],all_native=True)
+        import json
+        payload=json.loads(compact['messages'][0]['content'][0]['text'].split('SOURCE EVIDENCE\n',1)[1])
+        self.assertEqual([c['id'] for c in payload['candidates']],['body','caption'])
+        self.assertEqual(payload['source_physical_pages'],[1,3])
+        self.assertEqual([p['page'] for p in payload['native_page_text']],[1,2,3])
+        self.assertEqual(payload['image_omitted_pages'],[2])
+
         state=workflow.final_state(package)
         self.assertFalse(state['documents'][0]['complete_package'])
 
