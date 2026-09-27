@@ -164,7 +164,12 @@ def plan(request,*,manifest=None,work_root,fixture=False,model_profile=None,page
 OPERATOR_FIELDS = {
     'repair-plan': ({'manifest','work_root'}, {'page','page_scope','fixture'}),
     'reuse-source': ({'work_root','output','phase'}, set()),
-    'route': ({'article','page','work_root'}, {'manifest','elements','fixture','page_scope'}),
+    'route': ({'article','page','work_root'}, {'manifest','elements','fixture','page_scope','identity'}),
+    'initial-retain': ({'work_root','application_endpoint','max_application_posts'}, set()),
+    'initial-handoff': ({'work_root'}, {'enriched'}),
+    'initial-finalize': ({'work_root'}, set()),
+    'initial-publish': ({'work_root','remote','bucket','prefix'}, set()),
+    'initial-record-attempt': ({'work_root','kind','path'}, set()),
     'execute': ({'work_root'}, set()),
     'adopt': ({'work_root','manifest','identity_approval'}, set()),
     'prepare': ({'work_root'}, set()),
@@ -193,6 +198,9 @@ def operator(arguments):
         if key in ('manifest','identity_approval','count_receipt','approval','submission','packet'):
             require(path.is_file(), f'file-required:{command}:{key}:{path}')
         if key=='cache': require(path.is_dir(), f'directory-required:{command}:{key}:{path}')
+    if command.startswith('initial-'):
+        import initial_ingest
+        return initial_ingest.operate(command,**args)
     if command=='repair-plan': return repair_plan(**args)
     if command=='reuse-source':
         from pdf_source_package.workflow import fork_source
@@ -245,17 +253,28 @@ def repair_plan(manifest, *, work_root, page=None, page_scope=None, fixture=Fals
     return execute(work_root=work_root)
 
 
-def route(article, *, page, work_root, manifest=None, elements=None, fixture=False, model_profile=None, page_scope=None):
+def route(article, *, page, work_root, manifest=None, elements=None, fixture=False, model_profile=None, page_scope=None, identity=None):
     """Choose by actual page existence; never silently turn a refresh into ingest."""
     page=absolute(page)
-    if not page.exists():
+    import initial_ingest
+    import yaml
+    saved=absolute(work_root)/'plan.json'
+    if saved.exists() and ae.read_bound(saved).get('schema')==initial_ingest.SCHEMA:
+        return initial_ingest.plan(article,page=page,work_root=work_root,identity=identity)
+    stub=False
+    if page.exists() and manifest is None:
+        _page_identity(page,article,identity)
+        text=page.read_text(); header=re.match(r'\A---\n([\s\S]*?)\n(?:---|\.\.\.)\n',text)
+        metadata=yaml.safe_load(header[1]); sections=_sections(text)
+        if 'stub' in (metadata.get('tags') or []) and 'Source package:' not in text:
+            substantive=any('## '+name in sections and text[slice(*sections['## '+name])].strip() for name in ('Abstract','Context','Approach','Findings','Analysis'))
+            if not substantive:
+                require('## Citation' in sections and bool(text[slice(*sections['## Citation'])].strip()),'ambiguous-stub-missing-citation')
+                stub=True
+    if not page.exists() or stub:
         require(elements is None, 'selected-refresh-requires-existing-page')
         require(manifest is None, 'new-page-with-archive-requires-explicit-restore')
-        pa.article_key(dict(slug=article))
-        return dict(route='initial-ingest', article=article, page=str(page),
-                    completion_verifier='final_products.verify_ingest', production_complete=False,
-                    next_step='source-acquisition', remaining_obligations=['identity','source-acquisition','source-extraction',
-                    'enrichment','scientific-review','page-authoring','bibliography-authors-graph','publication','verify-ingest'])
+        return initial_ingest.plan(article,page=page,work_root=work_root,identity=identity)
     plan(Request(article,elements,page),manifest=manifest,work_root=work_root,fixture=fixture,
          model_profile=model_profile,page_scope=page_scope)
     return execute(work_root=work_root)
@@ -373,6 +392,9 @@ def adopt(work_root,manifest,*,identity_approval):
 
 def execute(plan_value=None,*,work_root):
     """Validate all current bindings and report the next explicit continuation."""
+    import initial_ingest
+    if ae.read_bound(absolute(work_root)/'plan.json').get('schema')==initial_ingest.SCHEMA:
+        return initial_ingest.status(work_root)
     work,p,manifest,m,roster,binding,history=context(work_root)
     if plan_value is not None: require(plan_value==p,'different-plan-in-work-root')
     receipts={n:dict(status='pending-operator') for n in STAGES}

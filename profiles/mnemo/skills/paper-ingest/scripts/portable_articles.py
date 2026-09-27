@@ -847,6 +847,7 @@ def _run_rclone(argv, *, output=None, timeout=300):
 
 
 def publish(manifest_path, remote, bucket, prefix, *, runner=None):
+    started_at=now_utc()
     relative_key(prefix)
     path = absolute(manifest_path)
     m, paths = verify_local(path)  # even reused remote objects do not waive current input validation
@@ -860,7 +861,9 @@ def publish(manifest_path, remote, bucket, prefix, *, runner=None):
     require(sha(path) == initial, 'manifest-changed-during-publish')
     key = revision_prefix(m, prefix) + '/manifests/' + initial + '.json'
     receipts.append(transport.upload(path, key, initial, path.stat().st_size))
-    return dict(schema='portable-article-publication-v2', prefix=prefix, article_key=m['article_key'],
+    ended_at=now_utc()
+    from operation_timing import seconds
+    return dict(schema='portable-article-publication-v2', publication_interval=dict(started_at=started_at,ended_at=ended_at,elapsed_seconds=seconds(started_at,ended_at)), prefix=prefix, article_key=m['article_key'],
         verification_scope='offline-transport-double' if runner is not None else 'rclone-live-readback',
         remote=remote, bucket=bucket, manifest_key=key, manifest_sha256=initial,
         objects=len(m['files']), uploaded=sum(not r['reused'] for r in receipts), receipts=receipts, published_at=now_utc())

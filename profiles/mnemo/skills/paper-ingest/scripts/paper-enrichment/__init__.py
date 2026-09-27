@@ -18,7 +18,7 @@ SCHEMA=dict(name='paper_enrichment',description=(
     'prepare with processor_cache also counts and seals; seal with processor_cache resumes offline bookkeeping. Returns actual child exit and hash-checked artifact receipt, not a scientific correctness claim.'),
     parameters=dict(type='object',additionalProperties=False,required=['operation','attempt_dir'],properties={
         'operation':dict(type='string',enum=['status','cancel','article','prepare','count','seal','execute','report','import-test-response','review-create','review-packet','review-import','export','verify-export','consume']),
-        'arguments':dict(type='object',description='Article operation arguments: command and work_root, plus inputs returned by next_operation. Commands: route, execute (status), adopt, prepare, count, seal, approved-execute, review-create, review-import, export, candidate-import, apply, publish.'),
+        'arguments':dict(type='object',description='Article operation arguments: command and work_root, plus inputs returned by next_operation. Commands: route, execute (status), initial-retain, initial-handoff, initial-finalize, initial-publish, initial-record-attempt, adopt, prepare, count, seal, approved-execute, review-create, review-import, export, candidate-import, apply, publish.'),
         **{k:dict(type='string',minLength=1,maxLength=4096) for k in PATHS},
         'elements':dict(type='array',items=dict(type='string'),minItems=0,uniqueItems=True),
         'aspects':dict(type='array',items=dict(type='string',enum=['content','source-association','notation','layout','units','headers']),minItems=1,uniqueItems=True),

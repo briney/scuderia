@@ -81,7 +81,19 @@ def execution_progress(identity, process):
     try:
         if datetime.fromisoformat(value['started_at'].replace('Z','+00:00')) < datetime.fromisoformat(process['started_at'].replace('Z','+00:00')): return None
     except (KeyError,ValueError,TypeError): return None
-    return {k:value.get(k) for k in ('vlm_concurrency','concurrency_source','started_at')}
+    progress={k:value.get(k) for k in ('vlm_concurrency','concurrency_source','started_at')}
+    from datetime import timezone
+    import operation_timing
+    progress['elapsed_seconds']=operation_timing.seconds(value.get('started_at'),datetime.now(timezone.utc).isoformat())
+    root=path.parent.parent if path.name=='execution-start.json' or path.parent.name=='execution-runs' else path.parent
+    if path.parent.name=='execution-runs': root=root.parent
+    kind='source' if identity.get('kind')=='source' else 'enrichment'
+    try:
+        timing=operation_timing.summarize(**{kind+'_attempts':[root]})
+        progress['counts']=timing['counts']
+        progress['pending']=sum(phase['counts']['pending'] for attempt in timing['attempts'] for phase in attempt['phases'])
+    except (ValueError,OSError,KeyError): progress['counts_status']='not-yet-readable'
+    return progress
 
 
 def status(attempt):
@@ -98,6 +110,14 @@ def status(attempt):
         result=terminal['result']
         execution=result.get('execution') or (result.get('receipt') or {}).get('details',{}).get('execution')
         if execution is not None: value['execution']=execution
+        args=job['identity'].get('arguments',{})
+        article_args=args.get('arguments',{})
+        work=article_args.get('work_root')
+        if work and (Path(work)/'plan.json').is_file():
+            plan=json.loads((Path(work)/'plan.json').read_text())
+            if plan.get('schema')=='initial-ingest-plan-v1':
+                value['next_operation']=dict(tool='paper_enrichment',operation='article',
+                    arguments=dict(command='execute',work_root=work),attempt_dir=str(root.parent/(root.name+'-continuation')))
         # Results remain evidence-bound after the controlling session disappears.
         for path,h in terminal.get('artifacts',{}).items():
             require(sha(path)==h,'terminal-artifact-changed:'+path)

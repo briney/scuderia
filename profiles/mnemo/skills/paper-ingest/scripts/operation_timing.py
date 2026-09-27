@@ -48,12 +48,17 @@ def summarize(*, source_attempts=(), enrichment_attempts=()):
                     elapsed_seconds=seconds(session.get('started_at'),complete.get('ended_at',complete.get('finished_at'))),
                     executions=[pa.load(p) for p in sorted((base/'execution-runs').glob('*.json'))] if kind=='enrichment' else [],
                     vlm_concurrency=session.get('vlm_concurrency'),concurrency_source=session.get('concurrency_source')))
+                phases[-1]['counts']=dict(planned=len(plan['requests']),pending=0,successful=0,failed=0,uncertain=0)
                 for row in plan['requests']:
                     d=absolute(base/row['directory']); require(d.is_relative_to(base) and d!=base,'timing-request-path-escape')
                     reservation=d/'reservation.json'
-                    if not reservation.is_file(): continue
+                    if not reservation.is_file():
+                        phases[-1]['counts']['pending']+=1
+                        continue
                     identity=kind+':'+sha(reservation)
-                    if identity in requests: reused+=1; continue
+                    if identity in requests:
+                        phases[-1]['counts'][requests[identity]['status']]+=1
+                        reused+=1; continue
                     reserved=pa.load(reservation)
                     outcome=_load(d/('call.json' if kind=='source' else 'outcome.json'))
                     failure=_load(d/'failure.json') if kind=='enrichment' else {}
@@ -61,6 +66,7 @@ def summarize(*, source_attempts=(), enrichment_attempts=()):
                     successful=bool(outcome.get('complete')) if kind=='source' else bool(outcome)
                     status='successful' if successful else ('failed' if failure.get('status')=='failed' or
                         (kind=='source' and outcome.get('status') not in (None,'in-flight','uncertain','transport-timeout','transport-failure')) else 'uncertain')
+                    phases[-1]['counts'][status]+=1
                     usage=outcome.get('usage')
                     if not isinstance(usage,dict):
                         # Legacy and rejected responses may report usage without an accepted outcome.
@@ -103,7 +109,7 @@ def route_snapshot(value, plan, history):
         intervals.append(dict(stage=row['stage'],started_at=previous,ended_at=row['created_at'],
             elapsed_seconds=seconds(previous,row['created_at'])))
         previous=row['created_at']
-    return dict(value,route_intervals=intervals,snapshot_boundary='before-publication; receipt intervals include operator wait')
+    return dict(value,operation_interval=dict(started_at=plan['planned_at'],ended_at=previous,elapsed_seconds=seconds(plan['planned_at'],previous)),route_intervals=intervals,snapshot_boundary='before-publication; receipt intervals include operator wait')
 
 
 def concise(value):

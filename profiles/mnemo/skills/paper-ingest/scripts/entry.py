@@ -60,7 +60,7 @@ def main(argv=None):
         from pdf_enrichment import live,importer,bindings
         # All non-POST operations are offline by construction, not by operator preference.
         article_args=json.loads(args.arguments_json) if args.operation=='article' else None
-        network=args.operation=='execute' or (article_args is not None and article_args.get('command') in ('approved-execute','publish'))
+        network=args.operation=='execute' or (article_args is not None and article_args.get('command') in ('approved-execute','publish','initial-publish'))
         if args.offline or not network: offline()
         artifacts={}; details={}; exit_code=0; next_step=None
         if args.operation=='article':

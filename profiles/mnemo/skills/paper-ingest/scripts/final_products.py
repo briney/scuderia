@@ -564,13 +564,13 @@ def from_ingest(handoff, destination, *, method, integration, enrichment_root, s
     prepared = ae.read_bound(absolute(dossier['snapshot']['path'])/'enrichment/prepared.json')
     exported['profile'] = prepared['profile']; exported['fixture'] = prepared['fixture']
     exported['processing'] = dict(prepared_at=prepared['prepared_at'], protocol_sha256=pa.digest(prepared['code']))
+    import operation_timing
+    timing=operation_timing.summarize(source_attempts=[*source_attempts,absolute(verified['package'])],
+        enrichment_attempts=[*enrichment_attempts,absolute(dossier['snapshot']['path'])])
     m = build(exported['manifest'], destination, exports=[exported])
     m['initial_ingest'] = dict(source_handoff_sha256=sha(handoff), figure_embeds=True,
                               production_complete=verified['production_complete'],
-                              readiness=exported['readiness'], qualifications=verified['qualifications'])
-    import operation_timing
-    m['initial_ingest']['timing']=operation_timing.summarize(source_attempts=source_attempts,
-        enrichment_attempts=[*enrichment_attempts,absolute(dossier['snapshot']['path'])])
+                              readiness=exported['readiness'], qualifications=verified['qualifications'], timing=timing)
     destination = absolute(destination)
     # This newly created package has not been published or referenced yet.
     (destination/'manifest.json').unlink(); pa.save(destination/'manifest.json', m)

@@ -104,7 +104,7 @@ def argv_for(args, deployment, attempt, *, historical=False):
     command=[str(deployment.python),'-B','-u','-E',str(deployment.integration_dir/'entry.py'),
              '--enrichment-root',str(deployment.enrichment_root),'--adapter-dir',str(deployment.adapter_dir),
              '--method',str(deployment.method_dir),'--receipt',str(attempt/'artifacts.json')]
-    network=op=='execute' or (op=='article' and args.get('arguments',{}).get('command') in ('approved-execute','publish'))
+    network=op=='execute' or (op=='article' and args.get('arguments',{}).get('command') in ('approved-execute','publish','initial-publish'))
     if args.get('offline') or not network: command.append('--offline')
     command.append(op)
     for key in sorted(required|optional):
@@ -144,7 +144,7 @@ def preflight(args, deployment):
                 require(not any((p/'retention.json').exists() for p in (path,*path.parents)), 'write-inside-immutable-retention')
                 require(not any(path.is_relative_to(code) or code.is_relative_to(path) for code in protected[:4]), 'write-overlaps-trusted-code')
             protected.append(path)
-        require(not (args.get('offline') and value.get('command')=='publish'), 'offline-publication-forbidden')
+        require(not (args.get('offline') and value.get('command') in ('publish','initial-publish')), 'offline-publication-forbidden')
     for p in protected:
         require(not attempt.is_relative_to(p) and not p.is_relative_to(attempt),'attempt-must-be-external')
     timeout=args.get('timeout',14400)
@@ -171,7 +171,7 @@ def launch(args, deployment):
     attempt.mkdir(mode=0o700, parents=True)
     started=now(); pid=None; termination='normal'; exit_code=None
     env=dict(os.environ); env['PYTHONDONTWRITEBYTECODE']='1'
-    network=args['operation']=='execute' or (args['operation']=='article' and args.get('arguments',{}).get('command') in ('approved-execute','publish'))
+    network=args['operation']=='execute' or (args['operation']=='article' and args.get('arguments',{}).get('command') in ('approved-execute','publish','initial-publish'))
     if args.get('offline') or not network:
         env.update(PDF_ENRICHMENT_OFFLINE='1',PDF_SOURCE_PACKAGE_OFFLINE='1',HF_HUB_OFFLINE='1',TRANSFORMERS_OFFLINE='1')
     previous={}

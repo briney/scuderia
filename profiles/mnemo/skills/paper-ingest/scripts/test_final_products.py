@@ -207,6 +207,27 @@ class FinalProducts(unittest.TestCase):
         with self.assertRaises(ValueError):
             rr.advance(self.root/'new-run', 'prepare')
 
+    def test_initial_timing_includes_current_source_and_fails_before_output(self):
+        from unittest.mock import patch
+        import article_enrichment as ae
+        source=self.root/'source-run';source.mkdir()
+        for phase in ('initial','classification','association'):
+            pa.save(source/(phase+'-plan.json'),dict(requests=[]))
+        job=self.root/'job';(job/'enrichment').mkdir(parents=True)
+        ae._seal_file(job/'enrichment/prepared.json',dict(requests=[],profile={},fixture=True,code={},prepared_at='2026-01-01T00:00:00Z'))
+        review=self.root/'review';review.mkdir();pa.save(review/'dossier.json',dict(snapshot=dict(path=str(job))))
+        handoff=self.root/'handoff.json';pa.save(handoff,{})
+        value=dict(schema='source-package-handoff-v5',package=str(source),production_complete=True,qualifications='',
+            enrichment=dict(schema='qualified-enrichment-export-v2',review_root=str(review),manifest=str(self.path),elements=[],readiness={}))
+        out=self.root/'timed'
+        with patch('source_package.verify_handoff',return_value=value):
+            with self.assertRaisesRegex(ValueError,'timing-attempt'):
+                fp.from_ingest(handoff,out,method=self.root,integration=self.root,enrichment_root=self.root,source_attempts=[self.root/'missing'])
+            self.assertFalse(out.exists())
+            final=fp.from_ingest(handoff,out,method=self.root,integration=self.root,enrichment_root=self.root)
+        phases=[phase['phase'] for attempt in final['initial_ingest']['timing']['attempts'] for phase in attempt['phases']]
+        self.assertEqual(phases,['initial','classification','association','enrichment'])
+
     def test_initial_ingest_requires_verified_publication(self):
         from unittest.mock import patch
         out = self.root/'final'
