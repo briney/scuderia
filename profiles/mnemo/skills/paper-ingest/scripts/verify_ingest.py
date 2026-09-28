@@ -761,6 +761,7 @@ def main():
                     help="explicit satellite topology with no author ledger; "
                          "full mode requires person pages, page-only may defer "
                          "their creation; refuses when a ledger exists")
+    ap.add_argument('--article-package', help='modern manuscript article manifest with retained sources and focused review')
     ap.add_argument('--publication-receipt', help='durable verified archive publication JSON; required for final-product completion')
     ap.add_argument('--final-products', help='absolute finalized article manifest; replaces temporary source/enrichment handoffs')
     ap.add_argument('--source-package-handoff', help='absolute verified source-package handoff.json; required for the retained-PDF production route')
@@ -771,6 +772,8 @@ def main():
     args = ap.parse_args()
     if args.require_enriched_source and args.require_filled and not args.page_only and not args.final_products:
         ap.error('production completion requires --final-products and verified archive publication; handoffs are intermediate')
+    if args.article_package and (args.final_products or args.source_package_handoff or args.require_enriched_source):
+        ap.error('modern article packages cannot select a legacy contract')
     if args.final_products and args.source_package_handoff:
         ap.error('choose final products or a temporary source handoff')
     if args.require_enriched_source and not args.final_products and not all((args.source_package_handoff,args.enrichment_integration,args.enrichment_root)):
@@ -953,6 +956,26 @@ def main():
                   ('deferred to parent)' if args.page_only else 'publication verified)'))
         except (OSError, ValueError, KeyError, TypeError, ImportError) as exc:
             print(f'  Final products: FAIL ({exc})')
+            failures += 1
+
+    if args.article_package:
+        try:
+            from pathlib import Path
+            sys.path.insert(0, str(Path(__file__).resolve().parents[3]/'tools'))
+            from manuscript_ingest import archive
+            package = archive.verify(Path(args.article_package))
+            if any(fm.get(k) != package['identity'].get(k) for k in ('slug','title','doi','pmid')):
+                raise ValueError('article-page-identity-mismatch')
+            snapshot = Path(args.article_package).parent/('pending-page.md' if args.page_only else 'page.md')
+            if archive.w.sha(Path(paper_path)) != archive.w.sha(snapshot):
+                raise ValueError('article-page-snapshot-mismatch')
+            if not args.page_only:
+                if not args.publication_receipt:
+                    raise ValueError('publication-receipt-required')
+                archive.publication_check(Path(args.article_package), archive.pa.load(args.publication_receipt))
+            print('  Article package: OK (retained sources and reviewed page snapshot; scientific truth requires source review)')
+        except (OSError, ValueError, KeyError, TypeError, ImportError) as exc:
+            print(f'  Article package: FAIL ({exc})')
             failures += 1
 
     if args.source_package_handoff:

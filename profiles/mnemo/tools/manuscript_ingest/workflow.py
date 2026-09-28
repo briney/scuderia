@@ -153,3 +153,96 @@ def stage(job_id,markdown,review_note,*,runtime_root):
             next_action='Correct, qualify, or omit held claims and stage a new revision.' if holds else 'Publish this reviewed revision; archive verification precedes guarded page application.',
             artifacts=dict(revision=revision,draft=str(draft/'page.md'),diff=str(draft/'page.diff'),review=str(draft/'review.txt')))
         store_job(job,runtime_root); return result(job,runtime_root)
+
+
+def integration_check(job,settings):
+    """Existing page/identity checks plus author edges and propagation read-back."""
+    import importlib.util
+    import subprocess
+    import sys
+    import yaml
+    helper=Path(__file__).resolve().parents[2]/'skills/paper-ingest/scripts/verify_ingest.py'
+    spec=importlib.util.spec_from_file_location('_manuscript_verify_ingest',helper)
+    verifier=importlib.util.module_from_spec(spec); spec.loader.exec_module(verifier)
+    page=Path(job['page']); text=page.read_text(); fm=page_metadata(text); final=dict(fm,**{'needs-ingest':False})
+    issues=verifier.filled_contract_checks(final,text,page.stem)
+    argv=[sys.executable,'-B',str(helper),page.stem,'--instance',settings['instance']]
+    # This subprocess checks canonical identity and forward graph links. No inference.
+    checked=subprocess.run(argv,capture_output=True,text=True,timeout=180)
+    if checked.returncode:issues.append(checked.stdout[-12000:] or 'page-identity-or-graph-check-failed')
+    instance=Path(settings['instance']); ledger_path=instance/'people/_ledger.yaml'
+    ledger=yaml.safe_load(ledger_path.read_text()) if ledger_path.exists() else {}
+    entries=ledger.get('authors',[]) if isinstance(ledger,dict) else ledger if isinstance(ledger,list) else []
+    # The convention uses entries; handle older authors-shaped ledgers read-only.
+    if isinstance(ledger,dict):entries=ledger.get('entries',entries)
+    target='papers/'+page.stem
+    for author in fm.get('authors',[]):
+        person=instance/(author+'.md')
+        if person.exists():
+            meta=page_metadata(person.read_text()); edges=meta.get('author_on',[])
+        else:
+            entry=next((e for e in entries if isinstance(e,dict) and e.get('slug')==author.removeprefix('people/')),None)
+            edges=entry.get('citations',[]) if entry else []
+        if target not in edges:issues.append('author-edge-missing:'+author)
+    inbox=instance/'docs/rem-cycle/inbox.yaml'
+    events=yaml.safe_load(inbox.read_text()) if inbox.exists() else {}
+    if not isinstance(events,dict) or not any(e.get('page')==target and e.get('event') in ('ingest','stub-filled') for e in events.get('items',[]) if isinstance(e,dict)):
+        issues.append('propagation-event-missing')
+    if not re.search(r'bibliograph|[Dd]eferred stubs',text,re.I):issues.append('Record source-backed bibliography decisions in the Ingest log.')
+    return issues
+
+
+def apply_bytes(path,raw,expected_hash):
+    """Compare immediately before atomic replacement; never overwrite a stale page."""
+    path=absolute(path)
+    require((sha(path) if path.exists() else None)==expected_hash,'concurrent-page-edit')
+    fd,name=tempfile.mkstemp(dir=path.parent,prefix='.paper-')
+    try:
+        with os.fdopen(fd,'wb') as f:f.write(raw); f.flush(); os.fsync(f.fileno())
+        require((sha(path) if path.exists() else None)==expected_hash,'concurrent-page-edit')
+        os.replace(name,path)
+    finally:
+        if os.path.exists(name):os.unlink(name)
+
+
+def publish(job_id,revision,*,runtime_root):
+    from . import archive
+    work=job_path(job_id,runtime_root); settings=config(runtime_root)
+    with locked(work):
+        job=load_job(job_id,runtime_root)
+        require(type(revision) is int and revision==job['revision'],'publish-current-reviewed-revision')
+        if job.get('applied_revision'):require(job['applied_revision']==revision,'different-revision-already-applied')
+        manifest=archive.build(job_id,revision,runtime_root=runtime_root); m=archive.verify(manifest)
+        page=absolute(job['page']); root=manifest.parent; pending=root/'pending-page.md'; final=root/'page.md'
+        if job['status']=='complete':
+            require(sha(page)==sha(final),'completed-page-changed')
+            return result(job,runtime_root)
+        publication_path=root/'publication.json'
+        try:
+            if publication_path.exists():pub=archive.publication_check(manifest,json.loads(publication_path.read_text()))
+            else:
+                pub=archive.publish(manifest,destination=settings['archive']); save(publication_path,pub)
+        except (ValueError,OSError,KeyError) as exc:
+            job.update(status='publication-pending',blocking_reason=str(exc),next_action='Retry publish after archive availability/configuration is corrected; no inference will repeat.')
+            store_job(job,runtime_root); return result(job,runtime_root)
+        current=sha(page) if page.exists() else None
+        if current not in (job['original_sha256'],sha(pending),sha(final)):
+            job.update(status='held',blocking_reason='concurrent-page-edit',next_action='Preserve the live edit. Reconcile it with this candidate before application.')
+            store_job(job,runtime_root); return result(job,runtime_root)
+        receipt=page.parent/m['receipt_name']
+        if receipt.exists():require(json.loads(receipt.read_text())==pub,'existing-publication-receipt-changed')
+        else:save(receipt,pub)
+        if current==job['original_sha256']:apply_bytes(page,pending.read_bytes(),current)
+        job['applied_revision']=revision; job.update(status='integration-pending',next_action='Complete author, graph, bibliography, and propagation obligations, then publish again.',blocking_reason=None)
+        store_job(job,runtime_root)
+        try: issues=integration_check(job,settings)
+        except Exception as exc:issues=['integration-check-unavailable:'+type(exc).__name__]
+        if issues:
+            job.update(blocking_reason='integration-obligations',artifacts={**job['artifacts'],'integration_obligations':issues,'manifest':str(manifest),'receipt':str(receipt)})
+        else:
+            current=sha(page)
+            require(current in (sha(pending),sha(final)),'concurrent-page-edit')
+            if current!=sha(final):apply_bytes(page,final.read_bytes(),current)
+            job.update(status='complete',blocking_reason=None,next_action='Ingestion is complete; commit the reviewed owned page, receipt, and integration edits using git-ops.',
+                artifacts={**job['artifacts'],'manifest':str(manifest),'receipt':str(receipt),'integration_obligations':[]})
+        store_job(job,runtime_root); return result(job,runtime_root)
