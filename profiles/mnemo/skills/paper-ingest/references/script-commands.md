@@ -6,6 +6,7 @@ candidates; verify sources and retain originals outside the brain.
 
 | Helper | Invocation / output contract |
 |---|---|
+| `fetch_source.py` | `--url <public-HTTP(S)-URL> --evidence-dir <NEW-absolute-dir> --filename <safe-basename>`; parent directory must already exist outside the brain. One retrieval with normal redirects, no automatic retry or parsing. Reuses the fulltext helper’s raw request/response evidence. Exit 0 returns JSON with `file`, `bytes`, `sha256`, `status`, `source_url`, `final_url`, and `evidence_dir`; read the returned file. Exit 2 means failure and never supplies an accepted source. Preserves bytes under `derived/<filename>`; use the correct extension and verify actual content. No authentication or caller-supplied headers; existing directories are refused. |
 | `fetch_fulltext.py` | `--out <prefix>` required; optional `--pmid`, `--doi`, `--pmcid`, `--publisher-url`, `--skip-publisher`. Production source retention adds `--evidence-dir <NEW-absolute-dir>` and requires `--out <that-dir>/derived/<prefix>`; every HTTP attempt/retry/redirect retains raw bytes or explicit missing/partial/error evidence. No headers/credentials are saved. Without it legacy behavior is unchanged. JSON gives `provenance`, `text_file`, `chars`, `figures_dir`, `notes`. Read `text_file`: `.txt` is appended even if the prefix already ends in `.txt`. Exit 0 includes `provenance: none`; validate the candidate body independently. |
 | `dedup_check.py` | `--doi`, `--pmid`, `--title` (at least one), `--instance <brain>`, optional `--json`. Exit 0=no match; 1=matches with STUB/FULL state; 2=invocation error. Similar-title matches require review. |
 | `validate_identifiers.py` | `--batch <json-file> --recover`; single input uses `--title`, `--author`, `--year`, optional `--pmid`, `--doi`, `--pmcid`. Batch entries use those same field names. Read validated/recovered/HOLD results and the `dispatch` list; surface retraction flags. |
@@ -32,6 +33,31 @@ The final verifier checks local graph/ledger structure and DOI/PMID identity;
 arXiv resolution tries DataCite before other indexes. Its author-count match
 is not proof of correct individual identities or every required author edge.
 The primary still checks source evidence, bibliography, wiring, and propagation.
+
+## Direct metadata and document retrieval
+
+Use the named helper for observed API/document URLs, including bioRxiv/medRxiv,
+Crossref, DataCite, PubMed/EPMC, and versioned manuscript or supplement links.
+Use the actual full DOI in bioRxiv/medRxiv details URLs, not just its suffix.
+Resolve placeholders to quoted literal values and run each command separately:
+
+```sh
+"<python>" "<scripts>/fetch_source.py" --url "https://api.biorxiv.org/details/biorxiv/<full-doi>" --evidence-dir "<existing-external-parent>/metadata-attempt-1" --filename "details.json"
+"<python>" "<scripts>/fetch_source.py" --url "<verified-versioned-pdf-url>" --evidence-dir "<existing-external-parent>/manuscript-attempt-1" --filename "manuscript.pdf"
+```
+
+The helper creates the new evidence directory. Use the file reader for returned
+JSON/XML/HTML; preserve complete metadata and authors, paging through long records.
+For PDF bytes, use the inspection commands below and then the manuscript runtime.
+A filename or HTTP 200 does not establish format, identity or full text: reject
+challenge pages and empty collections after reading the response. Retrieved
+supplements are retained only. Retry only under the existing bounded retrieval
+policy, using a new evidence directory; retain earlier failure evidence.
+
+Keep routine retrieval out of `python -c`, interpreter heredocs and shell pipelines.
+These canonical helpers are reviewed code, not permission exemptions: if a helper
+is denied, report the denial and use only a separately authorized alternative.
+Do not copy rejected payloads into temporary scripts or change security settings.
 
 ## Read-only PDF inspection
 
@@ -68,7 +94,8 @@ mean an image-only page; keyword hits do not establish article identity or prove
 a supplement boundary. Inspect the actual title/header and source context.
 
 These are acquisition/inspection aids only. Preserve the original PDF unchanged;
-they do not replace retained-PDF extraction, figure/table enrichment or review.
+they do not replace full manuscript reading through the runtime, focused
+scientific review, external archiving or final integration.
 
 ## Host and transport failures
 

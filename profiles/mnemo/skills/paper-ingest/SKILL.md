@@ -135,9 +135,19 @@ rewrite provenance to make it fit. Old substantive qualifications remain evidenc
 and must be reflected where relevant to the refreshed scientific claims.
 
 For a new paper use existing acquisition helpers and applicable source references.
+For an observed metadata, PDF, XML or HTML URL, use `fetch_source.py` from
+`references/script-commands.md`; use `fetch_fulltext.py` for its supported discovery
+routes. Run the named helper directly, then read its returned file with the file
+reader (or the documented XML/PDF reader). Do not assemble routine retrieval from
+inline Python, interpreter heredocs, dynamically executed code, or compound
+shell/download/parser commands. Keep downloads and inspection as separate tool
+calls. If no existing helper covers a needed operation, report the gap or use an
+already-authorized browser/source tool; do not hide a rejected command in a new
+script or broaden approval settings. A permission denial remains a denial.
 Retain the original manuscript PDF when available; readable publisher XML/HTML
-may assist reading. Use `fetch_fulltext.py --evidence-dir` outside the brain and
-validate retrieved candidates against the article, not a helper success label.
+may assist reading. When using `fetch_fulltext.py`, supply `--evidence-dir`
+outside the brain. Validate retrieved candidates against the article, not a
+helper success label; do not redownload sources already retained and verified.
 Record unavailable source/attachment retrieval as a retention gap. Retain obtained
 supplements and alternative/composite PDFs without processing. Choose exactly one
 manuscript; when only a composite is available, supply explicitly verified physical

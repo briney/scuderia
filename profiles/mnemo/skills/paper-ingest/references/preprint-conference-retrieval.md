@@ -90,8 +90,9 @@ HTML is not universally available or lossless. Preserve whole text on disk
 or read chunks through the end; never call a 50,000-character slice full text.
 Inspect mathematical notation, table cells, conversion warnings, captions,
 and appendices against the original PDF where needed. Downloading HTML does
-not discharge manuscript-PDF retrieval, retention, or the required source-package
-and figure/table workflow. A PyMuPDF/pdftotext text dump alone is not PDF ingestion.
+not discharge manuscript-PDF retrieval and external retention. Use the manuscript
+runtime for full reading and focused source checks; no exhaustive figure/table
+processing is required. A text dump alone does not establish complete ingestion.
 
 Paperclip is an optional indexed mirror, not necessarily a local/offline
 cache. Load `skills/paperclip-search/SKILL.md` when using it. Use observed IDs
@@ -110,15 +111,18 @@ input actually supplied by the user.
 
 ## bioRxiv / medRxiv
 
-1. Resolve the full DOI through
-   `https://api.biorxiv.org/details/{biorxiv|medrxiv}/<full-doi>`; inspect the
+1. Retrieve the full DOI metadata with `fetch_source.py` as documented in
+   `script-commands.md`, using
+   `https://api.biorxiv.org/details/{biorxiv|medrxiv}/<full-doi>`. Read the returned
+   JSON with the file reader, not an inline Python download/parser. Inspect the
    actual collection/field shape for title, complete authors, abstract,
    date/version, and published-version DOI (often `published`). Verify a
    reported published twin before preferring it. The observed `10.64898`
    prefix uses the same bioRxiv metadata workflow; do not restrict to 10.1101.
-2. Select the requested/current source version and follow its `.full.pdf`,
-   HTML, and available repository links. The helper's special branch covers
-   only 10.1101 and can fall back to v1; its output does not settle version.
+2. Select the requested/current source version and retrieve its observed `.full.pdf`,
+   HTML, and available repository links with the same direct-source helper.
+   The separate `fetch_fulltext.py` discovery branch covers only 10.1101 and can
+   fall back to v1; its output does not settle version.
    `source.xml` has been front-matter-only in observed bioRxiv retrievals;
    inspect body presence rather than assuming JATS implies complete text.
 3. EPMC may index the preprint under a PPR record: query by DOI, then inspect
