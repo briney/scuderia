@@ -106,6 +106,14 @@ cross-page merges/renames; the parent verifies the canonical target, preserves
 the union of citation/provenance data, and repairs inbound references before
 removing a duplicate. Re-read current files before mutation.
 
+For a corpus refresh, load `skills/ingest-pending-papers/references/corpus-refresh.md`.
+Draft from the full manuscript, keeping the old page only as a source of valid
+links, provenance and identifiable human notes. Do not paraphrase legacy claims
+as evidence. Keep filenames stable; ambiguous annotations or identity corrections
+are explicit per-item holds. Preserve the existing page until archive publication
+and guarded replacement are ready. An inaccessible full manuscript does not
+satisfy a refresh, even if an abstract-only legacy page exists.
+
 ### 3. Retraction and integrity check
 
 Check publication types and correction/withdrawal relations in the canonical

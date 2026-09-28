@@ -64,6 +64,9 @@ Deduplication and renames belong to the parent under paper-ingest Phase 2.
 Keep every original input mapped to its canonical page; repair inbound links and
 preserve citation/provenance unions before deleting a confirmed duplicate.
 
+For a frozen legacy-paper refresh, load `references/corpus-refresh.md`. Its
+explicit selection replaces ordinary queue scanning for that invocation.
+
 ## Worker and parent ownership
 
 Prefer one isolated stage-only worker per paper. Give it the selected path,

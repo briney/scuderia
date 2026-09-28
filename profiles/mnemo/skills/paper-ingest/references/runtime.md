@@ -81,3 +81,13 @@ archive settings and restores metadata and sources outside the instance.
 Historical local receipts remain readable. Old unpublished drafts containing
 local receipt filenames must be staged again within their existing job before
 publication; retain existing sources and completed inspections.
+
+## Frozen refresh campaigns
+
+The external `campaign.py` CLI selects and reconciles existing jobs; it never
+replaces these operations. `status` after a missing model summary, retained
+sources, staged drafts and publication/integration artifacts support recovery.
+Campaign completion additionally requires manuscript reading and matching final
+page/archive evidence. Git publication is tracked separately. Resolve canonical
+path corrections before `start`; never silently change a job's bound slug.
+See `skills/ingest-pending-papers/references/corpus-refresh.md` for bounded runs.

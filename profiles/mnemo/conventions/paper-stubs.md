@@ -77,14 +77,14 @@ small jobs can run inline.
 - Snapshot the input path, citation seed, `cited_by`, provenance, and attempt
   fields before dispatch. A same-page fill preserves existing citing entries
   in order; concurrent valid additions may extend the list and must not be lost.
-- A page-only child returns `PAGE_READY` with the canonical output path and
-  deferred obligations. It removes the stub tag after writing the distillation
-  but retains `needs-ingest: true` until the parent completes required wiring.
-  A crash therefore leaves the paper discoverable by the next drain.
-- Once source checks, bibliography decisions, author wiring, and graph updates
-  are verified, the parent sets `needs-ingest: false` and runs final checks.
-  `needs-enrichment` is independent: abstract-only or preprint-in-place-of-
-  published distillation remains true even when the ingest itself is complete.
+- A page-only child returns `PAGE_READY` with an external staged draft, runtime
+  job ID/revision and deferred obligations. The live page may still be the old
+  stub. The child does not publish or change shared files.
+- The parent reviews sources/draft, publishes and completes bibliography,
+  author and graph/propagation wiring. The runtime owns queue-state transitions;
+  only a final `publish` returning complete establishes completed ingestion.
+  `needs-enrichment` remains independent for genuine scientific limitations.
+  Missing essential full text is an access hold, not abstract-only success.
 - An actual failed attempt increments `ingest_attempts` and records
   `last_ingest_attempt` plus an Ingest-log diagnostic. Success never resets the
   accumulated failure count. Absence on a first attempt may be initialized to
@@ -97,8 +97,8 @@ small jobs can run inline.
   alone is not evidence of a successful merge.
 - A provider error after a write is neither automatic success nor automatic
   failure. Inspect the artifact and complete the same checks as any other fill.
-  An abstract-only page that meets the retrieval-closure contract belongs in
-  enrichment, not an endless failed-ingest retry loop.
+  Keep an existing abstract-only page intact on an access hold; record the
+  limitation and do not blindly retry or claim it meets the manuscript standard.
 
 Every producer lints its changed pages. Every drain accounts for each original
 queue item exactly once (verified fill/merge, failed, held, skipped, or deferred),
