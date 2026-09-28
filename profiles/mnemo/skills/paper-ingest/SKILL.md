@@ -1,107 +1,67 @@
 ---
 name: paper-ingest
-description: "Use when ingesting one paper or filling a paper stub. Resolve identity, retrieve sources, distill, integrate, and verify."
+description: "Use when ingesting a scientific paper, filling a paper stub, or refreshing an existing paper page."
 triggers:
   - "ingest this paper"
-  - "ingest a paper"
-  - "paper ingest"
   - "fill a paper stub"
-  - "stub fill"
-  - "ingest this DOI"
-  - "add this paper to the brain"
   - "re-enrich this paper"
-  - "selectively re-enrich a figure or table"
-  - "archive or restore an article package"
 eval_contract:
-  goal: Resolve and faithfully distill one paper, then complete its required bibliography, author, and graph integration.
+  goal: Produce a useful source-grounded manuscript page with archived originals and completed author, bibliography and graph integration.
   dimensions:
-    - "IDENTITY — title, identifiers, version, and complete individual authors match verified sources"
-    - "EVIDENCE — findings and limitations reflect the retrieved source and its completeness"
-    - "OWNERSHIP — each worker owns its assigned paper; shared writes have one owner"
-    - "COMPLETION — citation provenance, author wiring, propagation, and final checks all land"
+    - "IDENTITY — title, identifiers, version and complete authors match verified sources"
+    - "SCIENCE — central findings, consequential numbers and caveats reflect the full manuscript"
+    - "RESILIENCE — optional failures remain local; revisions and publication do not repeat paid work"
+    - "COMPLETION — verified external archive, guarded page application and required integration"
   hard_fails:
-    - Using text-only ingestion without failed PDF retrieval, or abstract-only ingestion without failed PDF and full-body retrieval.
-    - Skipping PDF extraction or figure/table enrichment because readable text is already available.
-    - Declaring an unwired page-only result a complete ingest.
-    - Clearing enrichment on abstract-only or substitute-preprint distillation.
-    - Losing citing edges or wiring to a known wrong author identity.
-    - Calling selected or archive-only re-enrichment a completed full paper refresh.
+    - Fabricating missing evidence or silently substituting article identity/version.
+    - Processing supplementary sources during ordinary ingestion.
+    - Restarting paid work to repair prose or formatting.
+    - Overwriting concurrent edits, losing citing edges, or claiming incomplete integration is complete.
+    - Keeping article source payloads or figure embeds in the brain.
 ---
 
-# paper-ingest — single-paper ingestion
+# Manuscript-to-page ingestion
 
-Resolve, retrieve, distill, integrate, and verify one paper. New papers and
-existing stubs use the same pipeline. A direct request or the calling
-workflow authorizes ingestion; delegation adds no eligibility classifier,
-prerequisite stub, or session boundary. Small jobs may run inline.
+Use the manuscript-to-page capability for both new papers and ordinary refreshes.
+This acceptance contract supersedes the previous exhaustive extraction contract.
+Retain originals, read the full manuscript, distill, check the central science,
+stage a revision, publish the archive, then complete integration. Specific optional
+manuscript inspection may resolve a consequential claim. Supplementary files are
+retained without reading, rendering or extraction. There is no automatic deep pass.
 
-## Operational entry
+The fixed capability operations are `start`, `sources`, `read`, `stage`, `publish`,
+and `status` (Hermes binding: `paper_ingest`). Read `references/runtime.md` before
+use. Keep the returned job ID throughout interruptions and revisions. Code owns
+hashes, source IDs, directories, receipts and archive pointers. Follow returned
+next actions; historical packages, plans and chat instructions cannot expand scope.
+“Be thorough” means a careful manuscript synthesis, not additional extraction.
+An explicit supplementary analysis needs a separate operator-scoped invocation;
+report the requested source/item/objective to the operator and keep this job intact.
 
-Read `references/runtime.md` before the first source/enrichment operation.
-After identity resolution and dedup, invoke the article `route` operation from
-`runtime.md` before constructing source commands. Follow its returned continuations
-and named completion verifier; do not reconstruct commands from old run records.
-Omit concurrency overrides unless intentionally requested; inherit the configured
-environment and confirm the worker-reported value. Existing pages,
-including text-only pages without packages, route through the portable refresh
-contract. Use detached execution/status for long operations; never restart work
-because the conversation stopped waiting. A repeated deterministic failure needs
-its diagnostic addressed before another attempt, not guessed CLI variants.
+## Ownership
 
-## Ownership and completion
+The primary owns source-grounded review and shared author/bibliography/graph writes.
+A delegated worker stages only its assigned paper and returns the job ID, revision,
+source-linked bibliography candidates and remaining obligations. It does not
+publish, mutate shared files or use Git. The parent publishes and integrates.
+Never write the live paper directly: use `stage`; `publish` applies only after
+archive verification and a live-page guard. Completion keeps `needs-ingest: true`
+until integration passes. `needs-enrichment` describes actual scientific limitations.
 
-- **Inline/full:** the primary owns the paper and its bibliography, author,
-  graph, propagation, and final-verification work.
-- **Delegated/page-only:** the worker owns only its assigned paper and
-  uniquely prefixed source/scratch files. It resolves author identities but
-  does not mutate people, the ledger, concepts, bibliography stubs, or the
-  inbox; it does not rename/delete other pages or perform Git operations.
-  Parallel paper workers always use this mode. The parent owns shared writes.
-- After distillation remove the stub tag but retain `needs-ingest: true`.
-  Return PAGE_READY with source-linked bibliography candidates and remaining
-  obligations. Only the primary/parent clears the flag after integration and
-  verification. `needs-enrichment` describes source limitations, independently.
-- Return `status` (PAGE_READY, SUCCESS, FAILURE, or SKIP), `input_path` when
-  updating, `canonical_path`, `changed_paths`, `remaining_obligations`, and
-  `diagnostic`. Report holds explicitly in the diagnostic; do not count them
-  as success. A vanished input path does not prove a merge succeeded.
-- Save source metadata or re-fetchable identifiers, not merely author counts
-  or a child summary that may be truncated. Parents read returned pages and
-  source-linked evidence, opening original passages as needed; they do not
-  routinely reload every manuscript. File existence is not completion.
-
-Read the profile conventions for `frontmatter.md`, `page-kinds.md`,
-`quality.md`, `graph-and-links.md`, `paper-stubs.md`, and `author-ledger.md`.
-They resolve under `skills/conventions/` through the profile binding.
-
-## Conditional reading
+Read the profile conventions for frontmatter, page kinds, quality, graph links,
+paper stubs and author ledger. Conditional references:
 
 | Situation | Read |
 |---|---|
-| Invoking a helper | `references/script-commands.md`; resolve `scripts/` from this skill, use Python >=3.10 and required dependencies. |
-| New production ingest with a supplied or retrievable PDF (retention is mandatory) | `references/source-package-integration.md`, `references/qualified-enrichment.md` and the document-format-parsing skill; use the deployed source workflow and qualified figure/table enrichment. |
-| Portable article-package archive/restore or explicit existing-paper full/selected re-enrichment | `references/portable-articles.md`; use its shared CLI and dedicated completion verifier, not the new-ingest handoff contract. |
-| PubMed identity or PMC source | `references/pubmed-pmc-retrieval.md` |
-| arXiv, bioRxiv/medRxiv, or a conference/published twin | `references/preprint-conference-retrieval.md` |
-| Publisher access failure, archive fallback, or browser download | `references/publisher-blocks.md`; for Nature markup/access states also `references/nature-metadata-extraction.md`. |
-| XML parse failure, omitted tables/captions, or reference extraction | `skills/pmc-xml-tools/SKILL.md` |
-| Brief/source disagreement or suspect sibling attribution | `references/brief-vs-fulltext-verification.md` |
-| Author alignment and parent-owned wiring | `references/author-ledger-mutation.md` |
-| Explicit satellite topology or an erratum reassigning results | `skills/paper-ingest-vault-modes/SKILL.md` |
-
-Do not load every retrieval reference for every paper. Keep scripts/tests at
-this skill's `scripts/` path; they are executable helpers, not required prose.
-
-For an explicit existing-paper re-enrichment request, follow the portable
-reference's plan/continuation route. Acquisition still follows Phase 4;
-scientific review, page/identity/graph checks and closeout remain obligations.
-Final package acceptance uses `reenrich.py verify-completion` with trusted
-publication pins, the full restored inventory, and the actual page/companion
-receipt when a page is requested. Preserve full versus selected and archive-only
-versus page-refresh completion. This branch does not replace the new-ingest
-route below, authorize a corpus campaign, or certify an untested model provider.
-
-## Phases
+| Helper command | `references/script-commands.md` |
+| Archive restoration or historical qualifications | `references/archive.md` |
+| PubMed/PMC | `references/pubmed-pmc-retrieval.md` |
+| Preprint/published twin | `references/preprint-conference-retrieval.md` |
+| Publisher access failure | `references/publisher-blocks.md`; Nature-specific cases use `references/nature-metadata-extraction.md` |
+| XML failure or references | `skills/pmc-xml-tools/SKILL.md` |
+| Brief/source disagreement | `references/brief-vs-fulltext-verification.md` |
+| Authors and shared wiring | `references/author-ledger-mutation.md` |
+| Satellite vault or erratum reassignment | `skills/paper-ingest-vault-modes/SKILL.md` |
 
 ### 1. Identity resolution
 
@@ -166,165 +126,50 @@ can defeat heuristics. Confirm title, authors, year, and identifier relations
 before releasing a hold; log the source-backed override. Surface retractions
 and unresolved identities instead of silently dispatching them.
 
-### 4. Full-text retrieval
+### 4. Sources and manuscript reading
 
-**Required source order: PDF → full-body text → abstract.** These are
-failure-gated fallbacks, not interchangeable ingestion modes:
+Resolve identity and deduplicate, then `start` the canonical paper path. On refresh,
+call `sources` without inputs first to reuse verified archived originals and
+qualifications. A changed DOI/version needs source-backed reconciliation; never
+rewrite provenance to make it fit. Old substantive qualifications remain evidence
+and must be reflected where relevant to the refreshed scientific claims.
 
-1. Retrieve and retain the original manuscript PDF (or use the supplied PDF),
-   verify its identity/version, and run the source-package and qualified
-   figure/table workflow below. Complete HTML/XML or PDF-to-text output may
-   assist reading; none replaces PDF processing when a PDF is available.
-2. Text-only ingestion is permitted only after bounded, recorded PDF retrieval
-   attempts through applicable authorized routes have failed to obtain the
-   manuscript PDF. Verify that the alternative contains the complete body.
-3. Abstract-only ingestion is permitted only after both PDF retrieval and
-   alternative full-body retrieval have failed. Record both sets of failures.
+For a new paper use existing acquisition helpers and applicable source references.
+Retain the original manuscript PDF when available; readable publisher XML/HTML
+may assist reading. Use `fetch_fulltext.py --evidence-dir` outside the brain and
+validate retrieved candidates against the article, not a helper success label.
+Record unavailable source/attachment retrieval as a retention gap. Retain obtained
+supplements and alternative/composite PDFs without processing. Choose exactly one
+manuscript; when only a composite is available, supply explicitly verified physical
+manuscript page boundaries. Filenames do not establish identity or boundaries.
+A missing essential manuscript returns needs-input; do not fabricate a full ingest
+from an abstract or silently replace an available source after a parsing failure.
 
-A known PDF link must be attempted, not deferred because text is easier,
-context/time is short, or a helper already returned HTML/XML. An unattempted
-PDF lead leaves acquisition unresolved and completion on hold. A supplied or
-successfully downloaded PDF cannot become a retrieval failure because parsing,
-extraction, enrichment, or archival failed. Missing workflow capabilities or
-budget hold the PDF workflow; they do not authorize a text/abstract substitute.
-A failed extraction element can use the existing attributed partial-evidence
-review within that workflow; it does not authorize skipping the workflow.
+Supply acquired paths, roles and source-backed identity basis to `sources`; safe
+storage keys and hashes are generated. Read the manuscript using the returned
+source ID and physical pages. Follow `next_start` for long pages until complete.
+Scanned/deficient pages need specific inspection or an available faithful text
+source. A short excerpt or prior page is not the full manuscript.
 
-For PDF identity, page-range and keyword checks, use the native PDF inspection
-recipes in `references/script-commands.md`. Prefer direct installed commands
-with literal paths over inline Python wrapped in `cd ... &&`; keep errors visible.
+### 5. Focused scientific review and staging
 
-Use the applicable source reference. `fetch_fulltext.py` provides a useful
-HTTP ladder, not the full retrieval procedure: it lacks browser/paperclip
-routes and abstract-only closure. Validate every returned candidate even
-when provenance is nonempty. Exit 0 or `provenance: none` proves neither
-successful retrieval nor source unavailability. Follow remaining routes when
-the helper misses, selects the wrong version, or returns a preview.
+Distill from the manuscript. Check central findings, consequential numbers,
+contradictions and material omissions against their source locations. Read only
+specific manuscript pages needed to resolve an uncertain claim. Optional unused
+figure descriptions or unreadable peripheral cells do not block a useful page.
+Unknown source associations remain unknown. Truncated observations remain partial;
+correct, qualify or omit unsupported central claims. Do not repair optional output
+by launching another model. Failed/uncertain requests do not automatically retry.
 
-**Independent obligations:** attempt readable body text, the original
-manuscript PDF, and each relevant supplement separately. Use observed source
-links rather than guessed attachment paths. Record which were obtained,
-failed, or unavailable; do not infer one from another. Archive retained-PDF final packages through the verified publication step in
-`references/qualified-enrichment.md` before reporting ingestion complete. Use the
-instance-configured archive destination and existing authorization; absent access
-or authorization is an explicit publication hold. Never claim an R2 pointer
-without verified archival. Retrieval alone does not imply archival.
+Call `stage` with the full Markdown and a short substantive review note naming
+what was checked and changed. Empty issue lists are valid; no coverage matrix or
+boilerplate approval is needed. Use a separate `HOLD: <material issue>` line for
+any unresolved material claim. Remove the hold only after correction, qualification
+or omission. Machine checks validate bindings and structure, not scientific truth.
+Revise by staging again with the same job ID. These revisions never redo inference.
+The returned diff and draft are the reviewable output; the live page is untouched.
 
-**Required PDF production route:** for new ingests with any supplied or
-retrieved PDF, retain it and follow
-`references/source-package-integration.md`. Enable `fetch_fulltext.py
---evidence-dir` and preserve other-route originals and failed attempts in new
-source/attempt directories. Record the inspected attachment listing and each
-retrieval disposition; unavailable raw responses remain explicit limitations.
-Readable body text may be extracted from a retained original PDF, with its
-source recorded; obtaining text does not replace retaining the PDF.
-
-Run `source_package.py prepare` with operator-verified identity, observed
-links, explicit endpoint and application-post budget. New acquisitions use
-`acquired-sources-v2`: select one manuscript source and its verified physical
-page range, including methods, references, figures and tables. Process all
-accepted extraction channels within that range. Retain supplementary PDFs,
-other attachments and alternative composite PDFs without rendering, extraction
-or VLM requests. If only a composite is available, explicitly bind its manuscript
-pages; never infer boundaries from filenames alone. Retain attachments with
-`retained-unprocessed-supplement` or `retained-unprocessed-alternative` dispositions; deferred
-extraction alone is not an automatic completion hold or permission to make
-claims from unread data. Acquisition and PDF-extraction failures remain recorded mechanical holds;
-only the attributed review in Phase 5 can establish page readiness despite them.
-
-Use the registered workflow capability (Hermes: `paper_workflow`) for actual
-phases. Preparation, counting, sealing, separately authored approval and
-execution remain distinct gates. Preserve the accepted method settings and
-use absolute paths and a fresh external attempt directory for every operation.
-Require subprocess status plus matching phase evidence; report success can
-still describe incomplete work. Never automatically retry consumed or uncertain
-requests. A hard-killed launcher may leave a child requiring inspection.
-
-**Acceptance:** verify the retrieved title/identifier/version against Phase 1.
-For PDFs, require PDF bytes, successful parsing, and paper-specific content
-beyond the first page. A browser page-print is not the manuscript. Validate
-non-PDF supplements by their format and content. A supplement may lack an
-article DOI or cite an unrelated standard: retain the observed article-to-
-attachment hyperlink and check its role/content association rather than
-requiring its first DOI to match the paper.
-
-**Completeness:** headings, byte count, paragraph count, and HTTP 200 are
-insufficient. Reject login/challenge HTML, abstracts with reference lists,
-and truncated extracts as full body text. Check the source's actual section
-structure, including thematic headings. Parsers may omit table cells,
-reference lists, floats, equations, or captions; inspect the original XML,
-PDF, HTML tables, or supplements for claims dependent on those elements.
-No fixed paragraph threshold establishes completeness. For source/crop
-inspection on the retained-source route, use the dedicated pinned inspection
-capability (Hermes: `paper_vision_inspect`), not generic vision routing. Supply
-original pages and ordered crop fragments when visual evidence is required.
-
-**Acquisition closure:** make reasonable, recorded attempts through applicable
-authorized retrieval routes: canonical publisher/versioned source, available
-repository copies, and relevant index leads. Attempt known available-copy leads. Record any necessary deferral as a
-remaining obligation; it does not satisfy the failed-retrieval gates. Record actual responses and
-remaining blockers; do not require three providers to agree that access is
-closed. A missing credential, empty result, 403/429/5xx, or provider failure
-means unavailable or unresolved evidence, not proof that the paper is closed.
-Investigate contradictory metadata enough to account for the available leads;
-only the failed-retrieval fallbacks above may complete a source-limited page.
-Do not repeat failed routes indefinitely or bypass access restrictions.
-
-For preprints, check the original versioned source, published twin and
-applicable repository routes in the preprint reference. Record the version
-actually used. A known unattempted source needs a specific deferral reason;
-unattempted manuscript-PDF leads hold completion.
-Absence of a retained PDF is not itself fallback eligibility. Apply the
-failed-retrieval gates above; never manufacture a PDF package to satisfy the
-retained-PDF interface.
-
-For justified text-only or abstract-only fallback, retain `needs-enrichment:
-true` for the missing manuscript PDF and record concise attempted URLs and
-actual retrieval failures in the Ingest log. Abstract-only also sets
-`fulltext_source: abstract-only`; text-only uses the actual accepted provenance.
-A preprint used instead of an existing published article also retains enrichment. A complete preprint
-without a published twin need not be flagged. Attribute preview/caption-only
-claims to those exact sources; do not invent missing methods/results.
-
-### 5. Distillation and page write
-
-For the retained-source PDF route, first verify the source-only v4 handoff;
-then follow `references/qualified-enrichment.md` through the deployed enrichment
-capability (Hermes: `paper_enrichment`) and final v5 handoff. The code-owned
-roster includes all eligible figures/tables; algorithms are deferred by default.
-Retain failed/partial/unavailable outcomes. Page readiness may rely on usable native text after local visual failures; request accounting remains unchanged. Record only evidence-supported substantive limitations, not generic model fallibility or missing exhaustive review coverage. Empty qualifications are valid. Account for pending source work in the attributed assessment. Known acquisition/extraction failures need not block a supported page; integrity holds and fixture evidence still block production completion. Import actual
-review findings without replacing original extraction. An empty finding list
-or model-authored coverage is not certification. Preserve concise substantive qualifications beside affected claims. Keep the
-canonical machine qualification register in the archive and JSON receipt, never
-in the paper Markdown.
-A source-only v4 handoff is intermediate evidence, not completion of this new
-route. Read the final handoff's exact generated summary,
-`facts.json`, acquisition dispositions and source material. Use the handoff's
-package-relative paths to native text, original pages, ordered crop fragments
-and classification/association artifacts; counts and model labels are not
-scientific findings. Text-only operators use saved inspection findings and
-cannot claim personal pixel inspection. Same-model extraction and inspection
-are not independent verification. Mechanical completion does not establish
-exhaustive recall or human acceptance; new outputs do not inherit historical
-acceptance, and the development pilot does not impose human crop approval on
-every production ingest.
-
-Finalize and publish the package through `references/qualified-enrichment.md`.
-Add its `Article archive:` pointer to the existing Ingest
-log; do not add frontmatter fields. Keep source versions, concise claim-relevant
-limitations and scientific review decisions in the paper. Raw qualification
-registers and extraction/audit dumps belong in the external package.
-A supported source-limited page may complete ingestion after ordinary parent
-integration and verification. Set `needs-ingest: false` then, even if acquisition,
-extraction or enrichment has recorded failures. Retain `needs-enrichment: true`
-for a concrete unresolved source or processing gap worth revisiting; text-only
-and abstract-only fallbacks retain it. Missing redundant copies alone do not
-require enrichment; the original manuscript PDF is not redundant with HTML/XML.
-Record material source limitations in the assessment's `source_limitations`
-and beside affected claims; leave that list empty when no substantive inadequacy
-is established. Never infer scientific limitations merely from incomplete
-mechanical counts. A fixture/test-only handoff never qualifies as production
-completion.
+### 6. Scientific page composition
 
 Read a recent sibling page for the vault's style and the paper-kind schema
 for required fields; an existing page is not scientific evidence for this
@@ -384,7 +229,7 @@ dive can reuse the deferred list only after identity validation and dedup.
 
 ### 8. Author ledger
 
-Before page writing, load `references/author-ledger-mutation.md` and align
+Before staging, load `references/author-ledger-mutation.md` and align
 all named individuals against both people pages and ledger entries. The
 helper is a candidate finder; inspect abbreviations, particles, surname
 collisions, ORCIDs, affiliations, and source history before reusing slugs.
@@ -422,80 +267,25 @@ The usual file uses column-zero items and two-space fields. Parse after the
 append and verify the intended item/count and absence of duplicate IDs/keys.
 A paper worker never edits this inbox.
 
-### 10. Verification
+### 10. Publication, integration and closeout
 
-This completed-fill contract is shared by dives and queue drains. Verify:
+Call `publish` for the chosen revision. It uploads immutable original sources,
+retained manuscript text, scientific draft/review and provenance, then verifies
+remote bytes before applying the candidate. The page contains a small durable
+archive receipt pointer; source payloads, images and extraction registers remain
+outside the brain. Archive failure leaves the page unchanged. Retry publication
+with the same job/revision; never start a new extraction to fix storage or prose.
+A concurrent edit holds application; preserve it and reconcile explicitly.
 
-- Source-route eligibility, checked by the parent as well as the worker:
-  a supplied/retrieved PDF requires the PDF workflow and final-product evidence;
-  text-only requires recorded failed PDF retrieval; abstract-only requires
-  recorded failed PDF and full-body retrieval. A provenance label, text dump,
-  or `verify_ingest.py` pass without package arguments cannot establish this.
-  Read the actual outcomes: an available PDF plus no extraction/figure/table
-  artifacts is incomplete, not a successful text-only ingest. Preserve genuine
-  no-figure/no-table results and reviewed element failures from the workflow;
-  do not fabricate artifacts to fill an expected count.
-- YAML, `kind: paper`, slug/filename agreement, nonblank title/venue, positive
-  integer-valued year (integer or decimal string, not boolean), allowed status,
-  explicit verified bare DOI or source-confirmed null, complete distinct
-  `people/<slug>` authors, no stub tag, and accepted-source provenance.
-- Source-backed exceptions only: `authors: []` requires no named individuals;
-  missing metadata or dropped authors is not that exception. If no identifier
-  is usable by the helper, its canonical result remains UNVERIFIED; obtain
-  independent source evidence and report the unresolved machine check.
-- All eight body sections contain source-grounded content or explicit source
-  limitations. Source-limited distillations carry enrichment. Compare findings,
-  authorship, and version to the source; count equality alone is insufficient.
-- Original citation/provenance/attempt fields survive; merges preserve the
-  citation union and resolve at the returned canonical path.
-- Required bibliography decisions, each author's `author_on`/`citations` edge,
-  graph integration, and the propagation event are complete and read back.
+Complete the Phase 7–9 obligations and read back author edges, bibliography
+decisions, graph links and propagation. Keep queue flags until `publish` reports
+complete. Integration-pending is useful staged/applied work, not completed ingestion.
+Run the named page verifier with `--article-package <manifest>` and
+`--publication-receipt <receipt>`; archive metadata is not a scientific truth test.
+Run the instance frontmatter linter. Use `skills/git-ops/SKILL.md` for the coherent
+owned unit; workers return paths and obligations only. Preserve unrelated edits.
 
-Run `verify_ingest.py <bare-slug> --instance <brain> --require-filled`.
-For the retained-source PDF route, first verify the v5 source/enrichment handoff
-and run `final_products.py ingest` as documented in `qualified-enrichment.md`.
-Keep paper pages free of embedded images and local article material; use external working directories and the durable archive receipt described in `qualified-enrichment.md`. Add `--final-products <absolute-final-package/manifest.json>
---require-enriched-source`, using the documented PDF interpreter. These options
-are mandatory for new retained-PDF ingests, including PAGE_READY checks. Parent
-completion also requires `--publication-receipt <durable-publication.json>` and
-the matching `Article archive:` pointer after hash-verified remote publication.
-PAGE_READY may defer publication to its parent; it is not completed ingestion.
-Preserve concise substantive caveats and final-package pointers in the paper. Permanent
-retention is original sources plus final scientific products/provenance; completed
-job payloads and replay history are disposable after final verification. Historical
-handoff options remain available for old records. An earlier completion flag is
-insufficient; final product hashes, source identity and page qualifications are checked.
-For PAGE_READY add `--page-only`: the queue flag remains true and only
-well-shaped unresolved author references are deferred; other errors fail.
-After parent integration set `needs-ingest: false` and rerun without
-`--page-only`. For a declared ledgerless satellite, load vault-modes and use
-its explicit `--ledgerless`; never use it to hide a damaged main-brain ledger.
-Offline mode checks structure only and cannot waive a failed online identity
-check. The helper does not validate external URLs as filesystem links.
-
-Run the platform `lint-frontmatter.py` with the target instance and exact
-changed paths, from the brain root or with absolute `--paths`. Inspect its
-output and exit code; passing the ingest helper is not schema validation.
-Do not mask a failing exit in a pipeline or commit through it. A known wrong
-author/source remains a hold even if mechanical checks pass. The converse
-also occurs: a canonical-identity FAIL where DOI, venue, and authors all
-match and only the title differs in one index is a metadata-variant
-artifact (a publisher landing-page H1 against the proceedings title page);
-record the variant and the authoritative source in the ingest log rather
-than treating it as a wrong paper. Identity merges outside this ingest
-route to entity-resolution with preserved evidence.
-
-**Closeout:** use `skills/git-ops/SKILL.md`. The standalone primary/parent
-closes the verified paper and required shared work as a coherent unit, not
-merely a returned wave. Children return paths/obligations only. PAGE_READY is
-not a completed ingest; no automatic amendment, force-push, or shared-file
-restore is permitted.
-
-## Shared-write discipline
-
-One parent serializes ledger, inbox, people, concept, and merge writes.
-Workers use unique PMID/slug-prefixed scratch names; the shared browser has
-one controller. Re-read on concurrent-modification or patch-match warnings;
-anchor edits on unique identity/context and verify the exact target afterward.
-Never restore the entire ledger from Git to recover one failed edit. The
-canonical ledger reference owns its lock, append/update, and validation rules.
+Return status, canonical page, job ID/revision, changed paths, source limitations,
+remaining obligations and diagnostic. No automatic backlog campaign follows a
+single-paper request. One parent serializes shared ledger/inbox/graph changes;
+never restore a whole shared file to repair one entry.

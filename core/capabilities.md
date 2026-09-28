@@ -76,6 +76,7 @@ name.
 | `gmail-read` | Read your human's research mail. Hermes: Spark IPC bridge. Not provided under Claude Code. |
 | `calendar-read` | Read your human's calendar. Hermes: Spark IPC. Not provided under Claude Code. |
 | `messaging-send` | Send a Telegram/Discord/etc. message. Hermes: messaging gateway. Not provided under Claude Code. |
+| `manuscript-to-page` | Mnemo profile capability: start, retain sources, read manuscript locations, stage focused source review, publish and report status. External archive and request accounting are deployment-owned. No supplementary extraction in ordinary sessions. |
 | `raw-source-archive-upload` | Upload a binary to R2 and return a content-addressed pointer (`conventions/raw-source-archive.md`). Hermes: `rclone copyto` to the configured R2 remote. Claude Code: requires rclone + R2 creds on the host; available via Bash, configured per host. |
 | `voice-transcribe` | Transcribe an audio file. Hermes: native voice pipeline. Not provided under Claude Code. |
 
@@ -109,6 +110,7 @@ prerequisites).
 | `read-conversation-history` | ✓ (native session store) | ✓ (transcript files under `~/.claude/projects/<encoded-cwd>/*.jsonl`) |
 | `gmail-read` / `calendar-read` | ✓ (Spark IPC) | ✗ |
 | `messaging-send` | ✓ | ✗ |
+| `manuscript-to-page` | Mnemo profile capability: start, retain sources, read manuscript locations, stage focused source review, publish and report status. External archive and request accounting are deployment-owned. No supplementary extraction in ordinary sessions. |
 | `raw-source-archive-upload` | ✓ (rclone+R2) | ⚠ (available if host has rclone+R2 configured) |
 | `voice-transcribe` | ✓ | ✗ |
 | `agent-message` | ✓ (Bot Chat) | ✗ |

@@ -308,7 +308,10 @@ campaign purpose, and unique scratch prefix. Workers read and distill
 their sources, return PAGE_READY and source-linked bibliography
 candidates, and do not mutate shared files or perform Git operations.
 Save campaign progress between waves; do not accumulate every worker's
-full extraction transcript in the parent.
+full extraction transcript in the parent. Workers use the manuscript-to-page capability,
+return a staged revision and job ID, and retain supplements without processing.
+The parent publishes and integrates; a review bibliography does not authorize
+additional extraction or a different workflow.
 
 **Briefs are source-grounded inputs, not primary evidence.** Authorship,
 cohorts, and findings in a brief must come from the source metadata or

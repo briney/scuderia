@@ -100,7 +100,7 @@ Filling the knowledge graph, and keeping it healthy.
 |---|---|
 | Generic "ingest this" — auto-routes to a specialist below | `skills/ingest/SKILL.md` |
 | A scientific paper — peer-reviewed or preprint, any format | `skills/paper-ingest/SKILL.md` |
-| Archive/restore a portable article package; fully re-enrich an existing paper or selected figures/tables | `skills/paper-ingest/SKILL.md` → `references/portable-articles.md`; explicit per-article operations, not an automatic corpus campaign |
+| Refresh a paper or restore its archived manuscript | `skills/paper-ingest/SKILL.md` → `references/archive.md`; same manuscript-to-page workflow, no automatic corpus campaign |
 | Satellite/ledgerless-vault ingest or erratum-driven result re-attribution — sidecar loaded *after* base `paper-ingest` when a brief names a non-main vault or an erratum reassigns results inside the paper | `skills/paper-ingest-vault-modes/SKILL.md` |
 | A new grant/application package, or material requiring first creation of its grant page | `skills/grant-ingest/SKILL.md` |
 | Review/outcome material only for an existing grant (summary statement, critiques, score notice) | `skills/grant-review-synthesis/SKILL.md` |

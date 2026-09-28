@@ -34,6 +34,7 @@ each capability resolves to once it's set up.
 
 | Capability | Bound to | Notes |
 |---|---|---|
+| `manuscript-to-page` | Native `paper_ingest` from `profiles/mnemo/tools/manuscript_ingest/hermes` | Deploy with tools_root, external runtime_root and Python 3.11+; register only the six fixed operations. Targeted extraction remains operator-only. |
 | `fetch-url` | Native Hermes HTTP client | Standard; auth handled per-skill where needed |
 | `read-file` / `write-file` / `edit-file` | Native filesystem | Honors the "never blind-overwrite" rule (`SOUL.md` §2) |
 | `spawn-subagent` | `delegate_task` | Subagent inherits the parent's model (see `SOUL.md` §2 carve-out for paper-ingest queue drain) |

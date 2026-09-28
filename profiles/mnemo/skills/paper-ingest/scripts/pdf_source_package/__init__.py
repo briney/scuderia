@@ -1,6 +1,12 @@
-"""Standalone native PDF source packages. Importing never accesses an endpoint."""
-import os
-from .io import offline
-if os.environ.get('PDF_SOURCE_PACKAGE_OFFLINE') == '1':
-    offline()
-__version__ = '0.1.0'
+"""Retired execution entry point. Historical readers live outside the skill tree."""
+import json
+
+def refuse(*args, **kwargs):
+    return dict(status='held',blocking_reason='retired-workflow',next_action='Use paper_ingest.')
+
+def main(argv=None):
+    print(json.dumps(refuse())); return 2
+
+launch = execute = advance = operator = route = refuse
+
+if __name__=='__main__':raise SystemExit(main())

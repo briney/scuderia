@@ -41,7 +41,7 @@ resume page-only results awaiting shared wiring; no new selection gate applies.
 `brain-read` (scan `papers/` for `needs-ingest: true`), `brain-write`
 (via delegated `paper-ingest`), `spawn-subagent` (one per stub — the
 context-isolation lever this whole producer/consumer split exists for).
-Each delegated subagent in turn needs `paper-ingest`'s capabilities. For a new retained-PDF ingest, verify that the parent and worker can invoke the deployed source workflow, qualified enrichment and pinned source inspection capabilities before dispatch (Hermes: `paper_workflow`, `paper_enrichment`, `paper_vision_inspect`). A cron toolset allowlist must include their registered toolsets. Missing native capabilities are a deployment hold, not permission to substitute legacy text-only verification.
+Each delegated subagent needs paper-ingest's manuscript-to-page capability (Hermes: `paper_ingest`). Verify parent and worker discovery before dispatch; cron allowlists must include its toolset. Workers stage drafts and return job IDs/revisions; the parent owns publication and shared integration. Missing deployment is a hold.
 
 ## What this guarantees
 
@@ -158,18 +158,17 @@ Follow the runtime’s configured models and limits without changing pins.
 3. **Delegate one page-only fill per queue item.** Use batch-drain
    and include the existing absolute input path, source citation, validated
    identifiers, input `cited_by` and provenance snapshot, expected canonical
-   target, and unique durable source/attempt directories plus a scratch prefix.
-   For retained PDFs, require paper-ingest's source-package and qualified-enrichment
-   references; return the verified v2 handoff, annotated export and actual operation
-   receipts alongside the page. Preserve failed/partial/skipped dispositions and
-   distinguish them from execution-uncertainty holds. Tell the leaf to load paper-ingest,
+   target, and the runtime-created job ID plus a unique scratch prefix.
+   Require the manuscript-to-page runtime and a staged draft with its job ID, revision,
+   source-review note and remaining integration obligations. Keep supplementary
+   files retained and unprocessed. Tell the leaf to load paper-ingest,
    use `venue` (not `journal`) and `year`, resolve the complete author list,
-   and write only its assigned paper and scratch/source files. No shared
+   and stage only its assigned paper, with source working files outside the brain. No shared
    ledger/person/concept/stub/inbox mutations and no Git operations.
 
    Require paper-ingest's return record: `status`, `input_path`,
    `canonical_path`, `changed_paths`, `remaining_obligations`, `diagnostic`.
-   A written distillation returns PAGE_READY with `needs-ingest: true` and
+   A staged distillation returns PAGE_READY with `needs-ingest: true` and
    the stub tag removed; it is not a SUCCESS until the parent finishes the
    remaining work. A suspected duplicate returns its proposed canonical
    target without deleting or renaming another page.

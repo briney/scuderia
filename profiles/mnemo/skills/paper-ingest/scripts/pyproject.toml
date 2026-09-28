@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pdf-source-package"
-version = "0.1.0"
-description = "Staged native PDF selection, original-source crops and reference-only document association"
+version = "0.2.0"
+description = "Retirement shims for obsolete PDF workflow entry points"
 requires-python = ">=3.11"
-dependencies = ["PyMuPDF==1.28.2", "Pillow==12.3.0", "transformers==5.17.0", "torch==2.14.0", "numpy==2.4.6", "tokenizers==0.23.2"]
+dependencies = ["PyMuPDF>=1.24", "Pillow>=10", "PyYAML>=6"]
 
 [project.scripts]
 pdf-source-package = "pdf_source_package.cli:main"
@@ -15,6 +15,3 @@ pdf-workflow = "pdf_source_package.launcher:main"
 
 [tool.setuptools.packages.find]
 include = ["pdf_source_package*", "pdf_enrichment*", "qualified_enrichment*"]
-
-[tool.setuptools.package-data]
-pdf_source_package = ["assets/*.txt", "assets/*.json"]

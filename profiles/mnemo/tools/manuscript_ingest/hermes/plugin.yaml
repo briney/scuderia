@@ -1,0 +1,18 @@
+name: manuscript-ingest
+version: 1.0.0
+description: Manuscript-to-page ingestion with external archives and durable request reuse
+provides_tools:
+  - paper_ingest
+config_schema:
+  tools_root:
+    type: str
+    required: true
+    description: Absolute profile tools directory containing manuscript_ingest
+  runtime_root:
+    type: str
+    required: true
+    description: External deployment-owned runtime root containing config.json
+  python:
+    type: str
+    required: true
+    description: Python 3.11+ interpreter with PyMuPDF, Pillow and PyYAML
