@@ -133,3 +133,43 @@ def read(job_id,locations,*,runtime_root,question=None):
             job.setdefault('reads',{}).setdefault(token,[]).append([start,end])
         w.store_job(job,runtime_root)
         return w.result(job,runtime_root,locations=output)
+
+
+def inspect(job_id,locations,question,*,runtime_root):
+    from . import requests
+    work=w.job_path(job_id,runtime_root)
+    with w.locked(work):
+        job=w.load_job(job_id,runtime_root); selected=select(job,locations); verify_sources(job,work)
+        w.require(0<len(selected)<=4 and isinstance(question,str) and 0<len(question.strip())<=8000,'bounded-inspection-question-required')
+        settings=w.config(runtime_root).get('vision')
+        if not settings:
+            return w.result(job,runtime_root,inspection=dict(status='unavailable',text=None,warnings=['Inspection transport is not configured.']))
+        selection=[dict(source_sha256=row['sha256'],page=page['page']) for row,page,_ in selected]
+        key=requests.key(sources=sorted({row['sha256'] for row,_,_ in selected}),operation='manuscript-inspection',
+            selection=dict(locations=selection,question=question),model=settings['model'],prompt=settings['prompt'],settings=settings.get('settings',{}))
+        ledger=w.absolute(runtime_root)/'requests.sqlite'
+        reservation=requests.reserve(key,ledger=ledger,job_id=job_id,authorization=job['authorization'])
+        if reservation['dispatch']:
+            images=[]; render=work/'inspections'/reservation['key']; render.mkdir(parents=True,exist_ok=True)
+            try:
+                import pymupdf
+                for number,(row,page,_) in enumerate(selected):
+                    w.require((work/row['key']).suffix=='.pdf','inspection-needs-pdf-page')
+                    image=render/(str(number)+'.png')
+                    with pymupdf.open(work/row['key']) as pdf:pdf[page['page']-1].get_pixmap(matrix=pymupdf.Matrix(1.5,1.5)).save(image)
+                    images.append(dict(path=image,label=row['source_id']+' page '+str(page['page'])))
+                outcome=requests.inspect_once(images=images,question=question,configuration=settings,output=render)
+            except Exception:
+                outcome=dict(status='uncertain',text=None,warnings=['Inspection did not complete; no automatic repeat. Inspect retained request evidence.'])
+            requests.finish(reservation['key'],ledger=ledger,outcome=outcome)
+        else:outcome=reservation['outcome'] or dict(status=reservation['status'],text=None,warnings=['No new request dispatched.'])
+        if outcome['status']=='success':
+            for row,page,_ in selected:
+                token=row['source_id']+':'+str(page['page'])
+                if token not in job.setdefault('inspected',[]):job['inspected'].append(token)
+        if outcome['status']!='success':
+            warning='Optional inspection '+reservation['key'][:12]+': '+outcome['status']
+            if warning not in job['warnings']:job['warnings'].append(warning)
+        job.setdefault('inspection_keys',{})[reservation['key']]=outcome
+        w.store_job(job,runtime_root)
+        return w.result(job,runtime_root,inspection=outcome)

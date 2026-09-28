@@ -55,3 +55,39 @@ def finish(request_key,*,ledger,outcome):
         else: db.execute('UPDATE requests SET status=?,outcome=? WHERE key=?',(outcome['status'],raw,request_key))
         db.commit()
     finally: db.close()
+
+
+def inspect_once(*,images,question,configuration,output):
+    """Reuse the single-POST vision transport, retaining free text and partial output."""
+    import importlib.util
+    import os
+    from pathlib import Path
+    from .workflow import save
+    client_path=Path(__file__).resolve().parents[2]/'skills/paper-ingest/scripts/paper-vision/client.py'
+    spec=importlib.util.spec_from_file_location('_manuscript_vision_transport',client_path)
+    client=importlib.util.module_from_spec(spec); spec.loader.exec_module(client)
+    output.mkdir(parents=True,exist_ok=True)
+    credential=os.environ.get(configuration.get('credential_env','LITELLM_API_KEY'),'')
+    require(credential and credential.isascii() and all(32<ord(c)<127 for c in credential),'inspection-credential-unavailable')
+    require(credential not in question,'credential-in-input')
+    rows=[]; raws=[]
+    for image in images:
+        raw,row=client.read_image(str(image['path'])); row['label']=image['label']; rows.append(row); raws.append(raw)
+    recipe=dict(settings=dict(configuration.get('settings',{}),model=configuration['model']),endpoint=configuration['endpoint'],timeout_seconds=configuration.get('timeout_seconds',120))
+    record=dict(question=question,images=rows,recipe=recipe,prompt=configuration['prompt'])
+    save(output/'input.json',record)
+    status,raw=client.post(client.build_wire(record,raws),credential,recipe)
+    # Never store credential echoes from a provider.
+    raw=raw.replace(credential.encode(),b'[REDACTED]'); (output/'response.txt').write_bytes(raw)
+    result=dict(status='failed',text=None,usage=None,http_status=status,warnings=[])
+    try:
+        envelope=json.loads(raw); choice=envelope['choices'][0]
+        require(status==200 and envelope.get('model')==configuration['model'],'inspection-response-identity')
+        text=choice['message']['content']; require(isinstance(text,str) and text.strip(),'empty-inspection')
+        require(not choice['message'].get('tool_calls'),'unexpected-inspection-tool-call')
+        result.update(status='success' if choice.get('finish_reason')=='stop' else 'partial',text=text,
+            usage=envelope.get('usage'),finish_reason=choice.get('finish_reason'))
+        if result['status']=='partial':result['warnings'].append('Truncated observation; not complete evidence.')
+    except (ValueError,KeyError,TypeError,IndexError):result['warnings'].append('Unusable optional response; raw response retained without invented repair.')
+    save(output/'outcome.json',result)
+    return result
