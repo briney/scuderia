@@ -7,8 +7,8 @@ The six operations are fixed; there is no nested command or processing mode.
 |---|---|---|
 | start | absolute paper page, optional resolved identity | opaque job ID |
 | sources | job ID, optional acquired inputs | retained source index; omitted inputs reuse archive |
-| read | job ID, explicit source/page locations; optional specific inspection question | bounded text or observation with partial/missing status |
-| stage | job ID, Markdown, short source-review note | revision, draft and diff; live page unchanged |
+| read | job ID, explicit source/page locations; optional inspection question or full-page transcription | bounded text or observation with partial/missing status |
+| stage | job ID, Markdown, short source-review note, optional live snapshot token | revision, draft and diff; live page unchanged |
 | publish | job ID and revision | archive read-back, guarded application and integration status |
 | status | job ID | current state and next action; no dispatch |
 
@@ -18,11 +18,23 @@ Optional `pages` limits a composite to verified manuscript physical pages.
 Location rows use `source_id`, one-based `page`, optional `start_char` and
 `max_chars` (up to 32000). At most eight locations per text read, four per inspection.
 An inspection question consumes deployment-owned budget; callers cannot grant it.
+A focused answer never counts as reading the whole page. For one deficient page,
+`read` with `transcribe: true` requests full-page text through the same bounded
+transport (mutually exclusive with `question`). A partial response remains partial;
+readable native pages still require full text delivery. No automatic transcription
+sweep or retry occurs.
 Do not process supplements or recreate work directories after failed requests.
 
 Every result has job_id, status, next_action, artifacts, warnings and blocking_reason.
 States are working, needs-input, ready, publication-pending, integration-pending,
 complete or held. Follow partial-text continuation. A warning alone is not a hold.
+
+On a concurrent page edit, status/publish returns `artifacts.live_snapshot` with
+an external snapshot path and opaque token. Read and reconcile that snapshot;
+stage the revised candidate with the token as `base_revision`. A later edit makes
+the token stale: check status again. Keep the same job and source/request history.
+Supplying replacement source inputs still verifies and retains the prior archive
+history; it does not reset earlier qualifications or correction provenance.
 
 Runtime code is `<profile>/tools/manuscript_ingest/`, outside skill discovery.
 The configured external runtime directory owns `config.json`, jobs and one shared

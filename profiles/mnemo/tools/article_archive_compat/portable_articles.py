@@ -444,15 +444,20 @@ class RcloneTransport:
 
     def download(self, key, target, expected_hash=None, expected_size=None, limit=MAX_OBJECT_BYTES):
         p = absolute(target)
-        with p.open('xb') as stream:
-            self.call(['cat', self._target(key), '--count', str((expected_size if expected_size is not None else limit) + 1)], output=stream)
-            stream.flush()
-            os.fsync(stream.fileno())
-        require(p.stat().st_size <= limit, 'remote-object-size-limit')
-        if expected_size is not None:
-            require(p.stat().st_size == expected_size, 'remote-size-mismatch')
-        if expected_hash is not None:
-            require(sha(p) == expected_hash, 'remote-object-hash-mismatch')
+        require(not p.exists(), 'download-target-exists')
+        # Only verified bytes become a completed object; failed attempts stay temporary.
+        with tempfile.TemporaryDirectory(prefix='.download-', dir=p.parent) as tmp:
+            partial = Path(tmp) / 'object'
+            with partial.open('xb') as stream:
+                self.call(['cat', self._target(key), '--count', str((expected_size if expected_size is not None else limit) + 1)], output=stream)
+                stream.flush()
+                os.fsync(stream.fileno())
+            require(partial.stat().st_size <= limit, 'remote-object-size-limit')
+            if expected_size is not None:
+                require(partial.stat().st_size == expected_size, 'remote-size-mismatch')
+            if expected_hash is not None:
+                require(sha(partial) == expected_hash, 'remote-object-hash-mismatch')
+            os.link(partial, p)  # Atomic, exclusive promotion; never replaces existing evidence.
         return p
 
     def verify(self, key, expected_hash, expected_size):

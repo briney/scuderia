@@ -22,7 +22,7 @@ class LegacyBoundary(unittest.TestCase):
     def test_fixture_and_corruption(self):
         from article_archive_compat import portable_articles as pa, reader
         with tempfile.TemporaryDirectory() as raw:
-            root = Path(raw).resolve(); source = root/'original.pdf'; source.write_bytes(b'synthetic')
+            root = Path(raw).resolve()/'input'; root.mkdir(); source = root/'original.pdf'; source.write_bytes(b'synthetic')
             h = pa.sha(source); article = dict(slug='synthetic', doi=None, pmid=None)
             manifest = dict(schema=pa.SCHEMA, package_id='fixture', article=article,
                 article_key=pa.article_key(article), files=[dict(role='source-original',key='source.pdf',sha256=h,size=9)],total_objects=1,
@@ -31,6 +31,8 @@ class LegacyBoundary(unittest.TestCase):
             pa.save(root/'manifest.json',manifest)
             pa.save(root/'local-map.json',dict(schema='portable-article-local-map-v2',manifest_sha256=pa.sha(root/'manifest.json'),sources={'source.pdf':dict(root=str(root),path='original.pdf')}))
             self.assertEqual(reader.verify(root/'manifest.json')['article'],article)
+            restored=root.parent/'restored'; reader.restore(root/'manifest.json',restored)
+            self.assertEqual(reader.verify(restored/'manifest.json')['article'],article)
             source.write_bytes(b'corrupted')
             with self.assertRaisesRegex(ValueError,'corrupt'):
                 reader.verify(root/'manifest.json')

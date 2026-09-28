@@ -1,6 +1,8 @@
 """Retain originals, expose manuscript text, never enumerate scientific elements."""
 from html.parser import HTMLParser
 import json
+import os
+import tempfile
 from pathlib import Path
 import re
 import shutil
@@ -55,14 +57,15 @@ def prepare(job_id,inputs=None,*,runtime_root):
             verify_sources(job,work)
             return w.result(job,runtime_root,sources=index(job))
         restoring=inputs is None and bool(job.get('prior_receipt'))
-        if restoring:
+        if job.get('prior_receipt'):
             from . import archive
             restored=archive.open_sources(Path(job['prior_receipt']),work/'prior',transport=settings.get('archive'),cache=settings.get('archive_cache'))
             for field in ('doi','pmid','version'):
                 before=restored['identity'].get(field); after=job['identity'].get(field)
                 w.require(not before or not after or before==after,'archive-identity-reconciliation-required:'+field)
             if not job['identity'].get('version'): job['identity']['version']=restored['identity'].get('version')
-            inputs=restored['inputs']; job['history']=restored['history']
+            if restoring:inputs=restored['inputs']
+            job['history']=restored['history']
         if not inputs:
             job.update(status='needs-input',next_action='Acquire the manuscript with the existing full-text acquisition helper, then supply retained inputs.',blocking_reason='essential-source-unavailable')
             w.store_job(job,runtime_root); return w.result(job,runtime_root)
@@ -88,7 +91,11 @@ def prepare(job_id,inputs=None,*,runtime_root):
             seen.add(sid)
             suffix=source.suffix.lower(); suffix=suffix if re.fullmatch(r'\.[a-z0-9]{1,10}',suffix) else '.bin'
             key='sources/'+h+suffix; target=work/key; target.parent.mkdir(exist_ok=True)
-            if not target.exists(): shutil.copyfile(source,target)
+            if not target.exists():
+                with tempfile.TemporaryDirectory(prefix='.retain-',dir=target.parent) as tmp:
+                    partial=Path(tmp)/'source'; shutil.copyfile(source,partial)
+                    w.require(w.sha(partial)==h,'source-changed-during-retention')
+                    os.link(partial,target)
             w.require(w.sha(target)==h,'source-changed-during-retention')
             item=dict(source_id=sid,role=row['role'],filename=row.get('filename',source.name),key=key,sha256=h,size=target.stat().st_size,
                 identity=row.get('identity'),basis=row.get('basis'),source_url=row.get('source_url'))
@@ -126,7 +133,10 @@ def select(job,locations):
     return selected
 
 
-def read(job_id,locations,*,runtime_root,question=None):
+def read(job_id,locations,*,runtime_root,question=None,transcribe=False):
+    w.require(type(transcribe) is bool and not (transcribe and question is not None),'choose-text-question-or-transcription')
+    if transcribe:
+        return inspect(job_id,locations,'Transcribe the entire supplied page, including scientific prose, equations, captions and meaningful labels. Preserve uncertainties and mark unreadable passages. Do not summarize or answer only a selected question.',runtime_root=runtime_root,transcribe=True)
     if question is not None:return inspect(job_id,locations,question,runtime_root=runtime_root)
     work=w.job_path(job_id,runtime_root)
     with w.locked(work):
@@ -142,17 +152,18 @@ def read(job_id,locations,*,runtime_root,question=None):
         return w.result(job,runtime_root,locations=output)
 
 
-def inspect(job_id,locations,question,*,runtime_root):
+def inspect(job_id,locations,question,*,runtime_root,transcribe=False):
     from . import requests
     work=w.job_path(job_id,runtime_root)
     with w.locked(work):
         job=w.load_job(job_id,runtime_root); selected=select(job,locations); verify_sources(job,work)
         w.require(0<len(selected)<=4 and isinstance(question,str) and 0<len(question.strip())<=8000,'bounded-inspection-question-required')
+        if transcribe:w.require(len(selected)==1 and selected[0][1]['page'] in selected[0][0]['deficient_pages'],'transcription-needs-one-deficient-page')
         settings=w.config(runtime_root).get('vision')
         if not settings:
             return w.result(job,runtime_root,inspection=dict(status='unavailable',text=None,warnings=['Inspection transport is not configured.']))
         selection=[dict(source_sha256=row['sha256'],page=page['page']) for row,page,_ in selected]
-        key=requests.key(sources=sorted({row['sha256'] for row,_,_ in selected}),operation='manuscript-inspection',
+        key=requests.key(sources=sorted({row['sha256'] for row,_,_ in selected}),operation='manuscript-transcription' if transcribe else 'manuscript-inspection',
             selection=dict(locations=selection,question=question),model=settings['model'],prompt=settings['prompt'],settings=settings.get('settings',{}))
         ledger=w.absolute(runtime_root)/'requests.sqlite'
         reservation=requests.reserve(key,ledger=ledger,job_id=job_id,authorization=job['authorization'])
@@ -170,10 +181,10 @@ def inspect(job_id,locations,question,*,runtime_root):
                 outcome=dict(status='uncertain',text=None,warnings=['Inspection did not complete; no automatic repeat. Inspect retained request evidence.'])
             requests.finish(reservation['key'],ledger=ledger,outcome=outcome)
         else:outcome=reservation['outcome'] or dict(status=reservation['status'],text=None,warnings=['No new request dispatched.'])
-        if outcome['status']=='success':
+        if transcribe and outcome['status']=='success':
             for row,page,_ in selected:
                 token=row['source_id']+':'+str(page['page'])
-                if token not in job.setdefault('inspected',[]):job['inspected'].append(token)
+                if token not in job.setdefault('transcribed',[]):job['transcribed'].append(token)
         if outcome['status']!='success':
             warning='Optional inspection '+reservation['key'][:12]+': '+outcome['status']
             if warning not in job['warnings']:job['warnings'].append(warning)

@@ -60,14 +60,41 @@ def result(job,runtime_root,**artifacts):
         warnings=job.get('warnings',[]),blocking_reason=job.get('blocking_reason'))
 
 
+def hold_live_edit(job,work):
+    """Capture bytes once; an opaque token binds a subsequent reviewed reconciliation."""
+    import hashlib
+    page=Path(job['page']); raw=page.read_bytes() if page.exists() else None
+    current=hashlib.sha256(raw).hexdigest() if raw is not None else None
+    allowed={job.get('apply_guard_sha256',job['original_sha256'])}
+    for name in ('pending-page.md','page.md'):
+        archived=work/'archives'/str(job['revision'])/name
+        if archived.exists():allowed.add(sha(archived))
+    if current in allowed:return False
+    snapshot=job.get('live_snapshot')
+    if not snapshot or snapshot['sha256']!=current:
+        token=uuid.uuid4().hex; path=work/'live'/ (token+'.md'); path.parent.mkdir(exist_ok=True)
+        path.write_bytes(raw or b'')
+        snapshot=dict(token=token,path=str(path),sha256=current)
+        job['live_snapshot']=snapshot
+    job.update(status='held',blocking_reason='concurrent-page-edit',
+        next_action='Read artifacts.live_snapshot.path, reconcile the candidate with that live page, then stage with its opaque token as base_revision.',
+        artifacts={**job['artifacts'],'live_snapshot':snapshot})
+    return True
+
+
 def status(job_id,*,runtime_root):
-    return result(load_job(job_id,runtime_root),runtime_root)
+    work=job_path(job_id,runtime_root)
+    with locked(work):
+        job=load_job(job_id,runtime_root)
+        if job['status']!='complete' and hold_live_edit(job,work):store_job(job,runtime_root)
+        return result(job,runtime_root)
 
 
 def start(page,*,runtime_root,identity=None):
     settings=config(runtime_root); page=absolute(page); instance=absolute(settings['instance'])
     require(page.parent==instance/'papers' and page.suffix=='.md','paper-path-outside-configured-instance')
-    original=page.read_text() if page.exists() else None
+    original_bytes=page.read_bytes() if page.exists() else None
+    original=original_bytes.decode('utf-8') if original_bytes is not None else None
     fm=page_metadata(original) if original else {}
     bound={k:fm.get(k) for k in ('slug','title','doi','pmid','version')}; bound['slug']=page.stem
     for k,v in (identity or {}).items():
@@ -84,9 +111,9 @@ def start(page,*,runtime_root,identity=None):
                 require(all(prior['identity'].get(k)==v for k,v in bound.items() if v is not None),'active-job-identity-conflict')
                 return result(prior,runtime_root)
         job_id=uuid.uuid4().hex; work=job_path(job_id,runtime_root); work.mkdir(parents=True,mode=0o700)
-        if original is not None: (work/'original.md').write_text(original)
+        if original is not None: (work/'original.md').write_bytes(original_bytes)
         job=dict(job_id=job_id,scope='manuscript-to-page',page=str(page),identity=bound,
-            original_sha256=sha(page) if original is not None else None,status='working',
+            original_sha256=sha(work/'original.md') if original is not None else None,status='working',
             next_action='Retain manuscript and supplementary inputs with sources, or reuse the existing article archive.',
             revision=0,warnings=[],blocking_reason=None,artifacts={},
             authorization={'max_requests':settings.get('inspection_budget',0)})
@@ -105,7 +132,7 @@ def manuscript_read(job):
         if source['role'] not in ('manuscript','body'): continue
         for page in source['text']:
             token=source['source_id']+':'+str(page['page'])
-            if token in job.get('inspected',[]):
+            if page['page'] in source.get('deficient_pages',[]) and token in job.get('transcribed',[]):
                 useful=True
                 continue
             ranges=job.get('reads',{}).get(token,[])
@@ -121,16 +148,29 @@ def manuscript_read(job):
     return useful
 
 
-def stage(job_id,markdown,review_note,*,runtime_root):
+def stage(job_id,markdown,review_note,*,runtime_root,base_revision=None):
     from .sources import verify_sources
     import difflib
     work=job_path(job_id,runtime_root)
     with locked(work):
         job=load_job(job_id,runtime_root)
         require(job['status']!='complete','job-already-complete')
-        if job.get('applied_revision'):
+        base=Path(job.get('base_snapshot',work/'original.md'))
+        if base_revision is not None:
+            snapshot=job.get('live_snapshot',{})
+            require(base_revision==snapshot.get('token') and snapshot,'unknown-live-snapshot')
+            base=Path(snapshot['path'])
+            require((sha(job['page']) if Path(job['page']).exists() else None)==snapshot['sha256'],'stale-live-snapshot; check status again')
+            require(snapshot['sha256'] is None or sha(base)==snapshot['sha256'],'corrupt-live-snapshot')
+            job['apply_guard_sha256']=snapshot['sha256']
+            job['base_snapshot']=str(base)
+            job.pop('applied_revision',None)
+        elif hold_live_edit(job,work):
+            store_job(job,runtime_root); return result(job,runtime_root)
+        elif job.get('applied_revision'):
             pending=work/'archives'/str(job['applied_revision'])/'pending-page.md'
             require(sha(job['page'])==sha(pending),'concurrent-page-edit')
+            base=pending; job['base_snapshot']=str(base)
             job['apply_guard_sha256']=sha(pending)
             job.pop('applied_revision')
         require(isinstance(markdown,str) and 0<len(markdown)<=2_000_000,'invalid-draft')
@@ -141,8 +181,9 @@ def stage(job_id,markdown,review_note,*,runtime_root):
         for field in ('slug','title','doi','pmid'):
             require(fm.get(field)==job['identity'].get(field),'candidate-identity-mismatch:'+field)
         require(fm.get('kind')=='paper','paper-kind-required')
-        if (work/'original.md').exists():
-            original_meta=page_metadata((work/'original.md').read_text())
+        for snapshot in {work/'original.md',base}:
+            if not snapshot.exists() or not snapshot.read_bytes():continue
+            original_meta=page_metadata(snapshot.read_text())
             require(set(original_meta.get('cited_by') or [])<=set(fm.get('cited_by') or []),'original-citing-edges-missing')
             for field in ('stub_source','ingest_attempts'):
                 require(field not in original_meta or fm.get(field)==original_meta[field],'original-provenance-changed:'+field)
@@ -152,19 +193,23 @@ def stage(job_id,markdown,review_note,*,runtime_root):
         for sid,page in re.findall(r'\[source:([^:\]]+):(\d+)\]',markdown+'\n'+review_note):
             require(any(s['source_id']==sid and int(page) in s.get('selected_pages',[]) for s in job['sources']),'unresolved-source-reference')
         holds=[line.strip()[5:].strip() for line in review_note.splitlines() if line.strip().startswith('HOLD:')]
-        revision=job['revision']+1; draft=work/'drafts'/str(revision); draft.mkdir(parents=True)
+        drafts=work/'drafts'; drafts.mkdir(exist_ok=True)
+        revision=max([job['revision']]+[int(p.name) for p in drafts.iterdir() if p.name.isdecimal()])+1
+        draft=Path(tempfile.mkdtemp(prefix='.stage-',dir=drafts))
         receipt_name=Path(job['page']).stem+'.article-'+job_id+'-'+str(revision)+'.json'
         # Keep the queue marker until deterministic integration succeeds.
         if re.search(r'^needs-ingest:',markdown,re.M): markdown=re.sub(r'^needs-ingest:.*$','needs-ingest: true',markdown,count=1,flags=re.M)
         else: markdown=markdown.replace('---\n','---\nneeds-ingest: true\n',1)
         markdown=re.sub(r'^Article archive: .*\n?','',markdown,flags=re.M).rstrip()+'\n\nArticle archive: '+receipt_name+'\n'
         (draft/'page.md').write_text(markdown); (draft/'review.txt').write_text(review_note)
-        original=(work/'original.md').read_text() if (work/'original.md').exists() else ''
+        original=base.read_text() if base.exists() else ''
         diff=''.join(difflib.unified_diff(original.splitlines(True),markdown.splitlines(True),fromfile='original',tofile='candidate'))
         (draft/'page.diff').write_text(diff)
         meta=dict(revision=revision,page_sha256=sha(draft/'page.md'),review_sha256=sha(draft/'review.txt'),
-            receipt_name=receipt_name,material_issues=holds,source_hashes=[s['sha256'] for s in job['sources']])
+            receipt_name=receipt_name,material_issues=holds,source_hashes=[s['sha256'] for s in job['sources']],
+            base_snapshot=str(base),base_sha256=job.get('apply_guard_sha256',job['original_sha256']))
         save(draft/'revision.json',meta)
+        os.rename(draft,drafts/str(revision)); draft=drafts/str(revision)
         job.update(revision=revision,status='held' if holds else 'ready',blocking_reason='material-review-issues' if holds else None,
             next_action='Correct, qualify, or omit held claims and stage a new revision.' if holds else 'Publish this reviewed revision; archive verification precedes guarded page application.',
             artifacts=dict(revision=revision,draft=str(draft/'page.md'),diff=str(draft/'page.diff'),review=str(draft/'review.txt')))
@@ -243,7 +288,7 @@ def publish(job_id,revision,*,runtime_root):
             store_job(job,runtime_root); return result(job,runtime_root)
         current=sha(page) if page.exists() else None
         if current not in (job.get('apply_guard_sha256',job['original_sha256']),sha(pending),sha(final)):
-            job.update(status='held',blocking_reason='concurrent-page-edit',next_action='Preserve the live edit. Reconcile it with this candidate before application.')
+            hold_live_edit(job,work)
             store_job(job,runtime_root); return result(job,runtime_root)
         receipt=page.parent/m['receipt_name']
         if receipt.exists():require(json.loads(receipt.read_text())==pub,'existing-publication-receipt-changed')

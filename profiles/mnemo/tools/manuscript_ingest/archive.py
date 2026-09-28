@@ -18,7 +18,10 @@ def open_sources(receipt,destination,*,transport=None,cache=None):
     if value.get('schema')==SCHEMA or value.get('schema')=='manuscript-publication-v1':
         return restore_sources(receipt,destination,transport=transport)
     if not destination.exists(): reader.restore(receipt,destination,transport=transport)
-    manifest=destination/'manifest.json'; m=reader.verify(manifest); _, paths=pa.verify_local(manifest)
+    manifest=destination/'manifest.json'
+    expected=w.sha(receipt) if value.get('schema','').startswith('portable-article-manifest-') else publication['manifest_sha256']
+    w.require(w.sha(manifest)==expected,'restored-manifest-binding')
+    m=reader.verify(manifest); _, paths=pa.verify_local(manifest)
     selected=m.get('processing',{}).get('manuscript',{})
     documents=m.get('source_documents') or [dict(identity=d['identity'],key=d['raw_key'],role=d.get('source_role'),source_id=d.get('source_id')) for d in m['documents']]
     mains=[s for s in documents if (s.get('source_id') or s['identity'])==selected.get('source_id') or s.get('role')=='manuscript']
@@ -81,8 +84,16 @@ def build(job_id,revision,*,runtime_root):
     (root/'pending-page.md').write_bytes((draft/'page.md').read_bytes())
     (root/'page.md').write_text(re.sub(r'^needs-ingest: true$','needs-ingest: false',(draft/'page.md').read_text(),count=1,flags=re.M))
     (root/'review.txt').write_bytes((draft/'review.txt').read_bytes())
+    if (work/'original.md').exists():
+        w.require(w.sha(work/'original.md')==job['original_sha256'],'original-page-snapshot-changed')
+        (root/'original.md').write_bytes((work/'original.md').read_bytes())
+    base=Path(meta.get('base_snapshot',work/'original.md'))
+    if base.exists():
+        w.require(meta.get('base_sha256') is None or w.sha(base)==meta['base_sha256'],'base-page-snapshot-changed')
+        (root/'base-page.md').write_bytes(base.read_bytes())
     provenance=dict(job_id=job_id,revision=revision,source_hashes=meta['source_hashes'],original_page_sha256=job['original_sha256'],
         policy='Full manuscript reading with focused scientific review; no exhaustive figure/table certification.',
+        base_page_sha256=meta.get('base_sha256',job['original_sha256']),
         warnings=job['warnings'],inspections=job.get('inspection_keys',{}),history=job.get('history'))
     w.save(root/'provenance.json',provenance)
     if (work/'inspections').exists():
@@ -124,7 +135,7 @@ def publish(manifest,*,destination):
     return publication_check(manifest,value)
 
 
-def restore_sources(receipt,destination,*,transport=None):
+def _materialize_sources(receipt,destination,*,transport=None):
     import shutil
     value=pa.load(receipt); destination=w.outside_instance(destination); destination.mkdir(parents=True,exist_ok=True)
     if value.get('schema')==SCHEMA:
@@ -143,7 +154,25 @@ def restore_sources(receipt,destination,*,transport=None):
             target=pa.inside(destination,row['key']); target.parent.mkdir(parents=True,exist_ok=True)
             if not target.exists():client.download(object_key(m,transport['prefix'],row),target,row['sha256'],row['size'])
         publication_check(manifest,value)
+    verify(destination/'manifest.json')
+
+
+def restore_sources(receipt,destination,*,transport=None):
+    import os
+    import tempfile
+    destination=w.outside_instance(destination); value=pa.load(receipt)
+    if value.get('schema')!='manuscript-article-package-v1':
+        w.require(transport and all(value[k]==transport[k] for k in ('remote','bucket','prefix')),'trusted-transport-mismatch')
+    if not destination.exists():
+        destination.parent.mkdir(parents=True,exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix='.restore-',dir=destination.parent) as tmp:
+            staged=Path(tmp)/'package'
+            _materialize_sources(receipt,staged,transport=transport)
+            os.rename(staged,destination)
+    expected=w.sha(receipt) if value.get('schema')==SCHEMA else value['manifest_sha256']
+    w.require(w.sha(destination/'manifest.json')==expected,'restored-manifest-binding')
     m=verify(destination/'manifest.json')
+    if value.get('schema')!=SCHEMA:publication_check(destination/'manifest.json',value)
     inputs=[]
     for row in m['sources']:
         item=dict(path=str(destination/row['key']),role=row['role'],identity={k:v for k,v in m['identity'].items() if k in ('doi','pmid','version') and v},basis='Verified modern archive source binding.',filename=row['filename'],page_count=row.get('pages'),retained_text=[dict(page=p['page'],path=str(destination/p['key']),sha256=p['sha256']) for p in row.get('text',[])])

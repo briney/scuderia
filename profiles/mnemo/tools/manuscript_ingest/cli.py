@@ -8,8 +8,8 @@ from . import workflow as w, sources
 OPERATIONS={
     'start':({'page'},{'identity'}),
     'sources':({'job_id'},{'inputs'}),
-    'read':({'job_id','locations'},{'question'}),
-    'stage':({'job_id','markdown','review_note'},set()),
+    'read':({'job_id','locations'},{'question','transcribe'}),
+    'stage':({'job_id','markdown','review_note'},{'base_revision'}),
     'publish':({'job_id','revision'},set()),
     'status':({'job_id'},set()),
 }

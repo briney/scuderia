@@ -77,17 +77,17 @@ def inspect_once(*,images,question,configuration,output):
     record=dict(question=question,images=rows,recipe=recipe,prompt=configuration['prompt'])
     save(output/'input.json',record)
     status,raw=client.post(client.build_wire(record,raws),credential,recipe)
-    # Never store credential echoes from a provider.
-    raw=raw.replace(credential.encode(),b'[REDACTED]'); (output/'response.txt').write_bytes(raw)
     result=dict(status='failed',text=None,usage=None,http_status=status,warnings=[])
     try:
-        envelope=json.loads(raw); choice=envelope['choices'][0]
+        envelope,error=client.retain_response(output,raw,credential,result)
+        require(error is None,'invalid-inspection-response')
+        envelope=client.scrub(envelope,credential); choice=envelope['choices'][0]
         require(status==200 and envelope.get('model')==configuration['model'],'inspection-response-identity')
         text=choice['message']['content']; require(isinstance(text,str) and text.strip(),'empty-inspection')
         require(not choice['message'].get('tool_calls'),'unexpected-inspection-tool-call')
         result.update(status='success' if choice.get('finish_reason')=='stop' else 'partial',text=text,
             usage=envelope.get('usage'),finish_reason=choice.get('finish_reason'))
         if result['status']=='partial':result['warnings'].append('Truncated observation; not complete evidence.')
-    except (ValueError,KeyError,TypeError,IndexError):result['warnings'].append('Unusable optional response; raw response retained without invented repair.')
+    except (ValueError,KeyError,TypeError,IndexError):result['warnings'].append('Unusable optional response; safely sanitized evidence retained without invented repair.')
     save(output/'outcome.json',result)
     return result
