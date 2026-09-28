@@ -209,7 +209,7 @@ def retry(root,item,reason):
     w.require(reason and reason.strip(),'retry-requires-reason')
     with exclusive(root):
         frozen,state=load(root); entry=state['items'][item]
-        w.require(entry['status'] in ('blocked','interrupted','working','ready','publication-pending','integration-pending'),'item-not-retryable')
+        w.require(entry['status'] in ('blocked','interrupted','working','needs-input','ready','publication-pending','integration-pending'),'item-not-retryable')
         row=next(r for r in frozen['items'] if r['id']==item)
         page=Path(entry['canonical_path']); fm=w.page_metadata(page.read_text())
         w.require(fm.get('title') and (fm.get('doi') or fm.get('pmid')),'resolve-identity-before-retry')
@@ -342,7 +342,7 @@ def run(root:Path,runtime_root:Path,profile_home:Path,limit:int,concurrency:int,
         _reconcile(root,runtime_root); frozen,state=load(root)
         selection=cfg['selection']; w.require(isinstance(selection,list) and len(selection)==len(set(selection)) and set(selection)<=set(state['items']),'invalid-explicit-selection')
         def eligible(i):
-            return state['items'][i].get('admit') and state['items'][i]['status'] in ('pending','working','ready','integration-pending','publication-pending')
+            return state['items'][i].get('admit') and state['items'][i]['status'] in ('pending','working','needs-input','ready','integration-pending','publication-pending')
         chosen=[]; paths=set()
         for i in selection:
             path=state['items'][i]['canonical_path']

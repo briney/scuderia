@@ -204,3 +204,11 @@ class MergeSnapshot(Campaign):
         root=self.root/'campaign';c.initialize(root,self.brain); frozen,state=c.load(root)
         item=next(r['id'] for r in frozen['items'] if r['path']==str(other));other.unlink()
         with self.assertRaisesRegex(ValueError,'original-snapshot-required'):c.map_item(root,item,self.page,'Verified duplicate')
+
+class AccessRetry(Campaign):
+    def test_missing_source_can_be_explicitly_released(self):
+        c=self.module();root=self.root/'campaign';c.initialize(root,self.brain)
+        item=next(iter(c.load(root)[1]['items']));j=w.start(self.page,runtime_root=self.runtime)['job_id']
+        job=w.load_job(j,self.runtime);job.update(status='needs-input',blocking_reason='manuscript-unavailable');w.store_job(job,self.runtime)
+        c.reconcile(root,self.runtime);c.retry(root,item,'Full manuscript now available from verified repository.')
+        self.assertTrue(c.load(root)[1]['items'][item]['admit'])
