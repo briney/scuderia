@@ -10,7 +10,8 @@ version. Try the actual publisher/repository PDF links; historical Cloudflare
 403s are route observations, not a permanent prohibition on direct retrieval.
 EPMC PPR links, authorized browser access, and supplied PDFs are conditional
 alternatives. Inspect actual API fields and content rather than assuming a
-particular response means complete text. A published-version substitution or
-justified abstract-only distillation retains `needs-enrichment: true`.
+particular response means complete text. A published-version substitution retains `needs-enrichment: true`. Missing
+essential full text is an access outcome; an abstract alone does not establish
+completed manuscript ingestion.
 
 A worker brief points to this owner instead of repeating a competing ladder.

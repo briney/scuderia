@@ -1,41 +1,26 @@
-# Running this skill — kickoff and monitoring (for the user)
+# Queue kickoff and monitoring
 
-This reference is for the *user* invoking the drain, not for the
-orchestrator running it. The orchestrator already has its instructions in
-`ingest-pending-papers/SKILL.md`. Load it when you are the human kicking
-off a drain from chat, or watching a running drain's tool stream.
+For an ordinary queue run:
 
-## Kickoff prompt (paste verbatim at session start)
-
-```
-Run ingest-pending-papers. Prefer isolated paper workers and the current
-runtime schema/ceiling. Read back returned artifacts, including failures and
-PAGE_READY results. Complete shared wiring and final checks before clearing
-needs-ingest or counting SUCCESS. Report any work deferred by the run budget.
+```text
+Run ingest-pending-papers for a bounded group of queued papers. Load its current
+instructions and paper-ingest. Use the named YAML scanner, current runtime
+schema and child ceiling. Workers stage; the parent verifies source evidence,
+publishes, completes shared wiring and closes verified units through git-ops.
+Report every input and all remaining work. Do not expand an explicit selection.
 ```
 
-Verify execution in the tool stream; a promise of delegation alone does
-not establish that a worker ran.
+Check the tool stream and durable artifacts:
 
-## Monitoring signals from the tool stream
+- Selected inputs appear in a dispatched wave or a specific hold/defer record.
+  Inline execution is valid when chosen; narration is not proof of delegation.
+- Workers do manuscript reading and stage only their assigned paper. The parent
+  reads returned draft/review/source artifacts, publishes and owns shared writes.
+- PAGE_READY points to an external draft. Do not expect the live page to change
+  before publication. Inspect runtime status even if a child summary is missing.
+- Completion requires runtime complete, required integration, a remote archive
+  pointer and verified Git closeout. An interrupted provider message or push
+  failure calls for artifact reconciliation, not another source/model pass.
 
-Three observable invariants tell you the orchestrator is doing what it
-claims, regardless of what its prose says:
-
-1. **One `delegate_task` call per batch.** The tool-call telemetry is
-   authoritative. Every selected item must appear in a dispatched wave
-   or an explicit hold/defer record; use the runtime ceiling, not a fixed
-   batch-size formula. A drain claiming delegated fills without any
-   delegation calls did not execute its contract.
-2. **Full extraction stays in workers.** The parent receives result paths
-   and reads the evidence needed for verification, rather than duplicating
-   each worker's entire extraction conversation. Parent page/source
-   read-backs are required verification, not evidence of unnecessary repeated
-   extraction; inspect who performed the actual per-paper extraction/write.
-3. **Phase 4 read-backs are visible.** After each batch returns, you
-   should see `read_file` calls against the just-filled stub pages — one
-   per returned item, including PAGE_READY and reported failures. No
-   read-back means no verified outcome.
-
-These three signals are independent of model size, prompt fidelity, and
-the orchestrator's own narration. When they all hold, the drain is honest.
+An explicit corpus-refresh selection is separate from the ordinary stub queue.
+Never run both primaries concurrently against shared author/graph files.

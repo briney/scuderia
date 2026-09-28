@@ -20,287 +20,108 @@ eval_contract:
     - Losing citing edges, provenance, or original queue items from final accounting.
 ---
 
-# ingest-pending-papers — drain the paper-ingest queue
+# Drain queued papers through manuscript-to-page ingestion
 
-> **Git closeout:** Follow `skills/git-ops/SKILL.md`. The drain parent closes each verified group of fills, required wiring, and propagation packets; children never perform Git operations. Incomplete fills remain outside the completed unit. The final accounting identifies any local-only commits or held changes.
+Load `skills/paper-ingest/SKILL.md` and its runtime reference. This skill owns
+selection and accounting, not a second scientific acceptance protocol. Use only
+`paper_ingest` start, sources, read, stage, publish and status. Supplementary
+files are retained without routine processing. Full receipts and machine state
+stay outside the brain; pages retain a compact remote archive locator.
 
-Drain queue entries with the same paper-ingest workers used for direct
-requests and dives. Read `skills/conventions/paper-stubs.md` for provenance
-and lifecycle. The drain can follow a producer in the same session and can
-resume page-only results awaiting shared wiring; no new selection gate applies.
+Read `skills/conventions/paper-stubs.md`, `skills/batch-drain/SKILL.md` and
+`skills/git-ops/SKILL.md`. Use current tool schemas and the configured child
+ceiling; never change model pins or approval settings to rescue a run. Verify
+parent and worker discovery of `paper_ingest` before dispatch. Missing deployment
+is a hold, not a reason to use an older workflow.
 
-> **Conventions:** `skills/conventions/frontmatter.md` (the `needs-ingest`,
-> `cited_by`, `ingest_attempts`, `last_ingest_attempt` fields on `paper`),
-> `skills/conventions/brain-first.md` (the consumer is brain-first by construction
-> — it reads existing pages and updates them),
-> `skills/conventions/preprint-retrieval.md` (bioRxiv/medRxiv full text around the Cloudflare block),
-> `skills/conventions/capabilities.md` (the harness contract).
+## Selection and identity
 
-## Capabilities
+For an ordinary queue run, use the named scanner with the configured PDF Python:
 
-`brain-read` (scan `papers/` for `needs-ingest: true`), `brain-write`
-(via delegated `paper-ingest`), `spawn-subagent` (one per stub — the
-context-isolation lever this whole producer/consumer split exists for).
-Each delegated subagent needs paper-ingest's manuscript-to-page capability (Hermes: `paper_ingest`). Verify parent and worker discovery before dispatch; cron allowlists must include its toolset. Workers stage drafts and return job IDs/revisions; the parent owns publication and shared integration. Missing deployment is a hold.
+```sh
+"<pdf-python>" "<profile>/tools/manuscript_ingest/campaign.py" scan-queue --instance "<brain>" --output "<existing-external-parent>/new-queue.json"
+```
 
-## What this guarantees
+Read the output's `items` and `diagnostics`, paging through all records. Selection
+uses parsed YAML `needs-ingest: true`, not prose matches or a truncated content
+search. Diagnose malformed metadata explicitly. The scanner orders by citing
+edges, then path. Freeze the selected paths for this run and account for every
+one. A campaign or user-supplied explicit selection does not authorize draining
+the rest of the ordinary queue or setting all old pages' queue flags.
 
-- The queued pages created upstream by the supported producers get
-  distilled and wired into complete `paper` pages without
-  accumulating full extraction conversations in the producer’s context.
-- A single failed ingest does **not** halt the queue. The skill continues
-  through the remaining stubs and reports per-paper status at the end.
-- Failures are recorded on the failing page (via `paper-ingest`'s
-  `## Ingest log` mechanism), so the next run of this skill can read the
-  log and skip known-broken DOIs instead of retrying blindly.
-- `cited_by` and provenance survive fills and parent-owned merges under
-  the shared stub contract. Children never perform cross-page merges.
+Inspect prior access/identity failures before dispatch. A persistent blocker is
+skipped with its reason; do not blindly repeat an unsuccessful request. Check
+source identity with the existing `validate_identifiers.py --batch ... --recover`
+helper on the selected group and `dedup_check.py --instance <brain> ... --json`.
+Resolve candidates and heuristic HOLDs against primary records. A matching DOI
+does not excuse a wrong title or PMID. Preserve literal source citations and
+verified no-DOI or collective-only exceptions; do not fabricate identifiers or
+individual authors to fit a helper. Surface retractions and unresolved identity
+for explicit disposition. If the runtime cannot represent a verified identity,
+report that limitation rather than bypassing it.
 
-## Why this is its own skill rather than a flag on `paper-ingest`
+Deduplication and renames belong to the parent under paper-ingest Phase 2.
+Keep every original input mapped to its canonical page; repair inbound links and
+preserve citation/provenance unions before deleting a confirmed duplicate.
 
-A single-paper invocation (`paper-ingest`) and a queue-drain invocation are
-different jobs with different failure semantics and different reporting
-formats. The queue drainer is a thin orchestrator; `paper-ingest` is the
-per-paper worker; the shared producer/consumer contract, including why
-producers queue rather than distill inline, is owned by
-`skills/conventions/paper-stubs.md` — read it rather than restating it here.
+## Worker and parent ownership
 
-## Concurrency and ownership
+Prefer one isolated stage-only worker per paper. Give it the selected path,
+verified identity, original citation/provenance, existing job ID when available,
+and unique external work location. The worker reads the manuscript, drafts a
+fresh source-grounded page, checks central claims and stages it. It does not
+publish, mutate shared author/graph/inbox files, merge pages, or use Git.
+Return job ID, revision and artifact paths plus concise remaining obligations.
+Treat the return as a helpful report, not a required perfect output schema.
 
-Load `skills/batch-drain/SKILL.md`; it owns batch sizing, runtime call shape,
-yield/return discipline, and remainder accounting. Use the current tool schema
-and configured ceiling, never a frozen pool size or a nonexistent `toolsets`
-parameter. Do not dispatch a new wave while one remains in flight.
+Use batch-drain's wave/yield discipline. Do not emit another wave while workers
+are in flight. Inline work is allowed when delegation is unavailable or the
+work is small, with the same ownership and completion requirements. Never load
+historical extraction recipes into a worker to explain the new workflow.
 
-Prefer one isolated page-only worker per queued paper. The parent owns
-bibliography decisions and shared-file writes, including author wiring,
-propagation, and merges. Inline work is also possible when small or when
-delegation is unavailable; keep the same verification and completion checks.
-Follow the runtime’s configured models and limits without changing pins.
+## Read-back, publication and completion
 
-## Phases
+1. Read back every item, including provider errors and missing summaries. Check
+   `status` for the existing job and inspect its returned artifacts before
+   restarting anything. A failed final message does not undo successful work.
+2. A PAGE_READY report means an external staged draft, not a filled live page.
+   Read its draft, review note, source evidence and current runtime state. The
+   existing live page may correctly be unchanged. Preserve valid citing edges,
+   provenance and concurrent additions. No summary or schema establishes truth.
+3. The primary checks identity, complete authors, central findings, consequential
+   numbers and material limitations against the manuscript. Missing optional
+   citations or subjective emphasis differences are not new acceptance gates.
+   Unavailable essential manuscript content is a needs-input/access outcome;
+   do not declare an abstract-only result a completed manuscript ingest.
+4. The parent calls `publish` on the reviewed revision. The runtime verifies the
+   external archive before guarded page application. Complete paper-ingest
+   Phases 7–9: bibliography decisions, author/graph wiring and one deduplicated
+   propagation event. Source-backed identity corrections never rely solely on
+   agreement between worker summaries. Workers do not perform shared writes.
+5. Call `publish` again after integration as needed. Only runtime `complete`
+   establishes completed ingestion; integration-pending is unfinished work.
+   The runtime owns needs-ingest transitions. Use paper-ingest Phase 10's current
+   page verifier with its external article manifest and publication receipt.
+   Run the frontmatter linter before vault publication. Do not copy artifacts
+   or receipts into the brain, and do not use obsolete handoff flags.
+6. On storage or integration failure, retain the same job and completed source
+   work. Resume the named missing step; never restart extraction for a failed
+   push or missing worker summary. Preserve source failures and attempt history
+   without counting a skip or duplicate diagnostic as another attempt.
 
-1. **Find the queue.** The canonical method is an `execute_code` script
-   that reads each `papers/*.md` file, parses the YAML frontmatter with
-   `yaml.safe_load`, and filters on `fm.get('needs-ingest') is True`.
-   This yields the true stub set in one pass — and also extracts
-   `cited_by`, `ingest_attempts`, `last_ingest_attempt`, and `title` for
-   sorting. Order by `len(cited_by)` descending — high-edge stubs first,
-   since they have the most evidence of being worth the time.
+The parent closes coherent verified work through git-ops under repository
+permission. Preserve unrelated edits/staging, verify remote publication, and
+report complete-but-unpublished units separately. A batch boundary alone does
+not establish that its changes form a complete commit.
 
-   Do **not** use `search_files target=content` for `needs-ingest: true`
-   as the primary method. It has two known bugs observed on 2026-08-05:
+## Reporting and monitoring
 
-   - **False positives:** the content search matches `needs-ingest: true`
-     appearing *inside body text* — particularly in `## Ingest log`
-     entries that quote the field name. A 2026-08-05 drain found 121
-     content matches but only 84 YAML-verified stubs.
-   - **Silent truncation:** the default `limit=100` silently truncates
-     queues over 100 stubs. A 2026-08-05 queue of 121 was read as 100,
-     hiding 21 stubs from the orchestrator. Always specify `limit=500`
-     if you do use `search_files` as a secondary check.
+Report the original input count and each item's canonical path/outcome: completed,
+merged, blocked, failed or deferred. Distinct verified output pages are a separate
+count. Preserve all remainder items and outstanding integration or Git obligations.
+A missing original file alone is not proof of a successful merge.
 
-   The `execute_code` approach avoids both bugs because it parses the
-   actual YAML frontmatter (not body text) and has no artificial limit.
-
-2. **Read each stub's `## Ingest log`.** A stub may have failed previous
-   attempts. If the log shows a terminal-looking diagnostic ("DOI
-   unresolvable; suggest manual lookup", "paywalled with no PMC and no
-   OA"), skip the stub in this run and note it in the final report. The
-   user decides whether to manually intervene or to tag the page
-   `unresolvable` and remove from the queue. Do *not* silently retry
-   what previously failed for a documented terminal reason.
-
-2.5. **Validate stub seed identifiers before delegating.** Stub seeds are
-   transcribed by producer skills from citing papers' reference lists and
-   can carry the wrong DOI, PMID, or both (observed: the McCaleb 2024 stub
-   carried a different paper's DOI from the same reference list;
-   literature-dive Tier-1 task contexts were ~70% wrong on 2026-08-05).
-   Run the pre-dispatch validator over the whole queue in one batch:
-
-   ```bash
-   python3 skills/paper-ingest/scripts/validate_identifiers.py \
-       --batch /tmp/queue_citations.json --recover
-   ```
-
-   Build the batch JSON from each stub's `## Citation` entry and
-   frontmatter: `title`, `author` (first-author surname), `year`, plus
-   whatever of `pmid`/`doi`/`pmcid` the stub carries (~2s per citation;
-   this step runs once per drain, not per delegation batch). Then:
-
-   - `validated` — dispatch as normal.
-   - `recovered` — patch the stub's seed identifiers (frontmatter
-     `doi`/`pmid` and the `## Citation` entry) to the corrected values,
-     note the correction in the stub's `## Ingest log`, then dispatch
-     with the corrected identifiers in the task context.
-   - `HOLD` — do not dispatch. Note in the final report for manual
-     resolution (same treatment as a terminal-diagnostic skip).
-   - `retracted: true` — surface in the final report; do not dispatch
-     without asking the user (a retracted paper may still warrant a
-     page, but that is a human call).
-
-   Also run the pre-write dedup gate over the queue before dispatching —
-   a stub whose DOI already has a FULL page on disk is a duplicate-in-
-   waiting, and dispatching it wastes a subagent on a merge that Phase 4
-   verification then has to untangle:
-
-   ```bash
-   python3 skills/paper-ingest/scripts/dedup_check.py \
-       --doi <doi> --pmid <pmid> --title <title> --json
-   ```
-
-   Confirmed matches to full pages are parent-owned merges under
-   paper-ingest Phase 5 and the shared stub contract. Verify the canonical
-   page, union provenance/citing edges, and repair inbound references before
-   deleting a duplicate; include this original input in final accounting.
-   Title-only matches are REVIEW, not identity verdicts.
-
-3. **Delegate one page-only fill per queue item.** Use batch-drain
-   and include the existing absolute input path, source citation, validated
-   identifiers, input `cited_by` and provenance snapshot, expected canonical
-   target, and the runtime-created job ID plus a unique scratch prefix.
-   Require the manuscript-to-page runtime and a staged draft with its job ID, revision,
-   source-review note and remaining integration obligations. Keep supplementary
-   files retained and unprocessed. Tell the leaf to load paper-ingest,
-   use `venue` (not `journal`) and `year`, resolve the complete author list,
-   and stage only its assigned paper, with source working files outside the brain. No shared
-   ledger/person/concept/stub/inbox mutations and no Git operations.
-
-   Require paper-ingest's return record: `status`, `input_path`,
-   `canonical_path`, `changed_paths`, `remaining_obligations`, `diagnostic`.
-   A staged distillation returns PAGE_READY with `needs-ingest: true` and
-   the stub tag removed; it is not a SUCCESS until the parent finishes the
-   remaining work. A suspected duplicate returns its proposed canonical
-   target without deleting or renaming another page.
-
-4. **Read back every returned item, including reported failures.** Wait for
-   the wave's consolidated result before inspecting shared state. Resolve
-   the actual page path from the return record; if a report is absent after
-   a provider error, inspect the assigned path before retrying. Missing files,
-   malformed frontmatter, wrong identities, or partial bodies are failures,
-   not successful summaries. A missing original alone is not proof of merge.
-
-   Apply the canonical completed-page checks in paper-ingest Phase 10, using
-   `verify_ingest.py <bare-slug> --instance <brain> --require-filled
-   --page-only` for the intermediate. For every new retained-PDF item, include
-   `--source-package-handoff <v2/handoff.json> --source-package-method <trusted-method>
-   --require-enriched-source --enrichment-integration <trusted-integration>
-   --enrichment-root <trusted-frozen-enrichment-root>` with the deployed PDF Python.
-   A plain `--require-filled` pass does not validate that route. Require the exact
-   qualification register and annotated pointer in the paper. Verify the page against source evidence:
-   identity, complete individual authors, substantive body sections, and
-   enrichment provenance must agree. Explicit null DOI and collective-only
-   empty authors are evidence-backed exceptions defined there; do not restore
-   the old unconditional nonempty-DOI/nonempty-authors gate.
-
-   Parse `cited_by` from YAML, not a fixed grep context window. Preserve all
-   snapshot entries in order and any valid concurrent additions. For a merge,
-   preserve the union with the canonical page and repair inbound references
-   before deleting the duplicate. Every citing entry is a paper/grant, not a
-   concept/project relevance edge. Never repair source identifiers solely
-   from agreement between two worker summaries; check the canonical records.
-
-   If a provider failed after a complete page write, the same verification
-   can establish PAGE_READY; do not re-run extraction merely because its final
-   summary is missing. If an incomplete page was incorrectly marked false,
-   retain/restore `needs-ingest: true`, record the diagnostic, and continue
-   accounting for the other entries. Inspect existing Ingest-log counters
-   before adding a parent diagnostic so one attempt is not counted twice.
-
-5. **Complete parent-owned wiring and final verification.** For each
-   PAGE_READY item, perform paper-ingest Phases 7–9: verify source-linked
-   bibliography candidates and decide anchor stubs, resolve/write every author citation
-   using `paper-ingest/references/author-ledger-mutation.md`, and finish
-   graph links plus the propagation packet. Parent-owned merges use the
-   canonical path throughout; no shared file is edited by an in-flight leaf.
-
-   Verify fallback eligibility under paper-ingest Phase 4 from actual retrieval
-   outcomes, not merely the worker's chosen provenance: an available PDF requires
-   the PDF workflow; text-only requires failed PDF retrieval; abstract-only
-   requires failed PDF and full-body retrieval. Keep skipped PDF processing queued.
-
-   Set `needs-ingest: false` only after those obligations are satisfied, then
-   run full `verify_ingest.py --require-filled` without `--page-only`, retaining
-   the same mandatory source/enrichment arguments for retained-PDF items, and run
-   scoped schema lint. If completion checks fail, keep the item queued and
-   report the remaining obligation. A valid abstract-only fill can succeed
-   with `needs-enrichment: true`; do not repeatedly requeue it as a failure.
-
-   The propagation packet is owned by paper-ingest Phase 9, not a second
-   independent append recipe here. Dedup its ID and use `event: stub-filled`
-   for a filled queued page. Existing files do not appear in an added-files
-   Git scan, so omitting this packet loses the fill event. Close the verified
-   unit through git-ops; required wiring, not wave size, defines completion.
-
-6. **Final report.** When the queue is drained (or every remaining stub
-   has been deliberately skipped), produce a single summary:
-
-   ```
-   ingest-pending-papers — run summary
-
-   Queue size at start:        N stubs
-   Successfully ingested:      X
-   Failed (logged on page):    Y
-   Skipped (prior terminal):   Z
-   Held (identity/retraction): H
-   Deferred (not attempted):   D
-   Merged input items:         M
-   Distinct verified pages:    P
-
-   Failures:
-     - papers/<slug-1> — phase 1 (resolve identity): CrossRef returned no
-       match; PubMed lookup also failed. Suggest manual DOI.
-     - papers/<slug-2> — parent wiring incomplete; remains queued.
-       State the exact unfinished obligation and canonical output path.
-
-   Skipped:
-     - papers/<slug-3> — last attempt 2026-05-15 logged "DOI 10.x/y
-       unresolvable; no record in CrossRef, PubMed, or bioRxiv. Likely
-       malformed citation in the source grant." Suggest manual
-       intervention.
-   ```
-
-   Account for every original input exactly once across verified fills,
-   verified merges, failures, holds, skips, and deferrals; compute counts
-   programmatically. Distinct output pages are counted separately from
-   processed inputs. Report canonical paths and remaining obligations.
-   Page/ledger/graph changes and propagation are the persistent output;
-   report local-only commits separately from verified publication.
-
-## Anti-patterns
-
-- **Halting the queue on a single failure.** A bad DOI on stub #3 should
-  not block stubs #4 through #N. `paper-ingest` logs the failure on the
-  per-paper page; this skill reports it in the summary and moves on.
-- **Reimplementing the stub-fill logic here.** This skill is an
-  orchestrator. The actual work of filling a stub — DOI resolution,
-  abstract extraction, body distillation, `cited_by` preservation,
-  `needs-ingest` flip, `## Ingest log` append — belongs to `paper-ingest`.
-  This skill calls it; it does not duplicate it.
-- **Retrying a stub that previously failed with a terminal diagnostic.**
-  The `## Ingest log` on the stub records why a prior run gave up. Read
-  it; skip the stub and note the skip in the report; don't burn cycles
-  on a known-broken DOI.
-- **Rewriting citation history during a fill or merge.** The parent may
-  perform the canonical merge procedure, but cannot discard prior citing
-  edges or invent citations from topic relevance.
-- **Changing delegation model settings to rescue a drain.** Model policy is
-  user-owned; provider failures do not justify new pins or cheaper models.
-- **Skipping Phase 4 verification.** Worker reports are self-reports;
-  verify the artifacts and source evidence before counting completion.
-- **Ignoring the current runtime schema or ceiling.** Follow batch-drain
-  and account for rejected dispatches explicitly; no silently lost items.
-
-## Running this skill — kickoff and monitoring
-
-The user-facing kickoff prompt and the tool-stream monitoring signals live
-in `references/kickoff-and-monitoring.md`. Load that reference when the
-human invokes the drain from chat or asks how to verify a running drain;
-the orchestrator itself does not load it.
-
-## Procedure-change verification
-
-Apply change-scoped verification in `skills/conventions/skill-hygiene.md`.
-When parent-completion behavior changes, exercise it in an isolated copy and
-inspect captured output without live delivery. Do not run an unbounded
-production drain as a maintenance test.
+`references/kickoff-and-monitoring.md` contains user-facing kickoff/monitoring
+examples. For procedural changes, follow the profile's skill-hygiene convention:
+read back affected callers and exercise changed deterministic behavior with
+isolated fixtures; never use an unbounded production drain as a maintenance test.
