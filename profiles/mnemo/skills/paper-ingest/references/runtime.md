@@ -53,3 +53,20 @@ HERMES_HOME explicitly for noninteractive trials. Hold existing unfinished jobs 
 their bound runtime; never reinterpret their state with this replacement.
 Archive old runtime/config outside active skill/plugin discovery for offline rollback.
 A failed cutover suspends new ingestion rather than reactivating exhaustive execution.
+
+## Lightweight source locators
+
+Text reads include raw `text`, `numbered_text`, and the retained `text_sha256`.
+Character windows and `next_start` always count raw text characters; a continued
+line retains its original line number. Prefix P/L positions refer to the current
+source; unqualified draft `[P4:L12-L15]` markers name the selected manuscript.
+For body aliases, qualify with the returned source ID:
+`[s-<24-hex-digits>/P1:L2-L5]`. Single-line, grouped and cross-page ranges work.
+
+Stage returns a clean draft plus external `annotated_draft` and `citations` paths.
+The archive keeps `annotated-page.md` and `citations.json`, with code-retrieved
+quotations bound to source text and draft/final page hashes. Invalid locators are
+retained as unresolved evidence and removed from the clean page with warnings.
+Absence of markers is a warning only. Locators do not certify factual support or
+complete coverage, and do not cause new model requests. An optional factual
+review is separate from deterministic publication checks.

@@ -177,6 +177,11 @@ def stage(job_id,markdown,review_note,*,runtime_root,base_revision=None):
         require(isinstance(review_note,str) and 10<=len(review_note.strip())<=32000,'focused-source-review-note-required')
         require(manuscript_read(job),'read-entire-manuscript-before-staging')
         verify_sources(job,work)
+        from . import citations
+        annotated=markdown
+        markdown,evidence=citations.extract(markdown,job,work)
+        for warning in evidence['warnings']:
+            if warning not in job['warnings']:job['warnings'].append(warning)
         fm=page_metadata(markdown)
         for field in ('slug','title','doi','pmid'):
             require(fm.get(field)==job['identity'].get(field),'candidate-identity-mismatch:'+field)
@@ -202,17 +207,21 @@ def stage(job_id,markdown,review_note,*,runtime_root,base_revision=None):
         else: markdown=markdown.replace('---\n','---\nneeds-ingest: true\n',1)
         markdown=re.sub(r'^Article archive: .*\n?','',markdown,flags=re.M).rstrip()+'\n\nArticle archive: '+receipt_name+'\n'
         (draft/'page.md').write_text(markdown); (draft/'review.txt').write_text(review_note)
+        (draft/'annotated-page.md').write_text(annotated)
+        evidence['draft_sha256']=sha(draft/'page.md')
+        save(draft/'citations.json',evidence)
         original=base.read_text() if base.exists() else ''
         diff=''.join(difflib.unified_diff(original.splitlines(True),markdown.splitlines(True),fromfile='original',tofile='candidate'))
         (draft/'page.diff').write_text(diff)
         meta=dict(revision=revision,page_sha256=sha(draft/'page.md'),review_sha256=sha(draft/'review.txt'),
+            citation_products={name:sha(draft/name) for name in ('annotated-page.md','citations.json')},
             receipt_name=receipt_name,material_issues=holds,source_hashes=[s['sha256'] for s in job['sources']],
             base_snapshot=str(base),base_sha256=job.get('apply_guard_sha256',job['original_sha256']))
         save(draft/'revision.json',meta)
         os.rename(draft,drafts/str(revision)); draft=drafts/str(revision)
         job.update(revision=revision,status='held' if holds else 'ready',blocking_reason='material-review-issues' if holds else None,
             next_action='Correct, qualify, or omit held claims and stage a new revision.' if holds else 'Publish this reviewed revision; archive verification precedes guarded page application.',
-            artifacts=dict(revision=revision,draft=str(draft/'page.md'),diff=str(draft/'page.diff'),review=str(draft/'review.txt')))
+            artifacts=dict(revision=revision,draft=str(draft/'page.md'),diff=str(draft/'page.diff'),review=str(draft/'review.txt'),citations=str(draft/'citations.json'),annotated_draft=str(draft/'annotated-page.md')))
         store_job(job,runtime_root); return result(job,runtime_root)
 
 

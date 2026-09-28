@@ -60,6 +60,11 @@ def verify(manifest):
         w.require(('Article archive: '+m['receipt_name']) in text.splitlines(),'archive-page-pointer')
     w.require(w.page_metadata((Path(manifest).parent/'page.md').read_text())['needs-ingest'] is False,'archive-final-queue-state')
     w.require(w.page_metadata((Path(manifest).parent/'pending-page.md').read_text())['needs-ingest'] is True,'archive-pending-queue-state')
+    if 'citations.json' in keys:
+        evidence=pa.load(Path(manifest).parent/'citations.json')
+        w.require('annotated-page.md' in keys and evidence['annotated_sha256']==records['annotated-page.md']['sha256']
+            and evidence['draft_sha256']==records['pending-page.md']['sha256']
+            and evidence['page_sha256']==records['page.md']['sha256'],'citation-product-binding')
     return m
 
 
@@ -72,6 +77,8 @@ def build(job_id,revision,*,runtime_root):
     draft=work/'drafts'/str(revision); meta=pa.load(draft/'revision.json')
     w.require(not meta['material_issues'],'material-review-hold')
     w.require(w.sha(draft/'page.md')==meta['page_sha256'] and w.sha(draft/'review.txt')==meta['review_sha256'],'draft-or-review-changed')
+    for name,h in meta.get('citation_products',{}).items():
+        w.require(name in ('annotated-page.md','citations.json') and w.sha(draft/name)==h,'citation-product-changed')
     verify_sources(job,work)
     root=work/'archives'/str(revision); manifest=root/'manifest.json'
     if manifest.exists(): verify(manifest); return manifest
@@ -84,6 +91,11 @@ def build(job_id,revision,*,runtime_root):
     (root/'pending-page.md').write_bytes((draft/'page.md').read_bytes())
     (root/'page.md').write_text(re.sub(r'^needs-ingest: true$','needs-ingest: false',(draft/'page.md').read_text(),count=1,flags=re.M))
     (root/'review.txt').write_bytes((draft/'review.txt').read_bytes())
+    if meta.get('citation_products'):
+        (root/'annotated-page.md').write_bytes((draft/'annotated-page.md').read_bytes())
+        evidence=pa.load(draft/'citations.json')
+        evidence['page_sha256']=w.sha(root/'page.md')
+        w.save(root/'citations.json',evidence)
     if (work/'original.md').exists():
         w.require(w.sha(work/'original.md')==job['original_sha256'],'original-page-snapshot-changed')
         (root/'original.md').write_bytes((work/'original.md').read_bytes())

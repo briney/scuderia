@@ -153,6 +153,23 @@ source. A short excerpt or prior page is not the full manuscript.
 
 ### 5. Focused scientific review and staging
 
+Draft with compact source locators beside substantive scientific assertions,
+e.g. `The measured effect was 12 percent [P4:L12-L15].` Use the returned
+`numbered_text`; line numbers refer to frozen extracted text, not printed PDF
+lines. An unqualified marker always names the selected manuscript. For an
+additional readable body source use `[<returned-source-id>/P1:L2-L5]`.
+Group supporting ranges as `[P4:L12-L15, P5:L2]`; cross-page ranges such as
+`[P4:L28-P5:L3]` are accepted. Keep each claim's subject and qualifiers explicit.
+Leave the canonical abstract, identifiers, graph links and frontmatter intact.
+
+Write the markers while drafting. Do not generate a separate claim inventory or
+copy quotations. `stage` removes the markers from the readable page and retains
+an annotated draft and code-retrieved quotations in external archive products.
+Missing or malformed locators produce warnings, not review loops or a completeness
+gate. A valid locator proves location only, not support for the attached claim.
+Do not launch a second mapping pass to fill every gap.
+
+
 Distill from the manuscript. Check central findings, consequential numbers,
 contradictions and material omissions against their source locations. Read only
 specific manuscript pages needed to resolve an uncertain claim. Optional unused
@@ -168,6 +185,15 @@ any unresolved material claim. Remove the hold only after correction, qualificat
 or omission. Machine checks validate bindings and structure, not scientific truth.
 Revise by staging again with the same job ID. These revisions never redo inference.
 The returned diff and draft are the reviewable output; the live page is untouched.
+
+An additional factual checker is optional, never a publication requirement. If
+requested, supply the complete manuscript, draft and external citation evidence;
+ask only for objective inaccuracies, exact existing draft spans, source passages
+and minimal corrections. Exclude style, emphasis, missing background and graph
+identifier changes. Verify each proposed fix against its source before applying
+it. Empty/truncated/failed output is an incomplete check, not a clean verdict;
+no automatic retry, debate, or ingestion restart follows.
+
 
 ### 6. Scientific page composition
 

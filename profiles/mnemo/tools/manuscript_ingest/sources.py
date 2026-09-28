@@ -145,7 +145,10 @@ def read(job_id,locations,*,runtime_root,question=None,transcribe=False):
             text=(work/page['key']).read_text(); start=location.get('start_char',0); limit=location.get('max_chars',16000)
             w.require(type(start) is int and 0<=start<=len(text) and type(limit) is int and 1<=limit<=32000,'invalid-text-window')
             end=min(start+limit,len(text)); token=row['source_id']+':'+str(page['page'])
-            output.append(dict(source_id=row['source_id'],page=page['page'],text=text[start:end],start_char=start,
+            from .citations import numbered
+            output.append(dict(source_id=row['source_id'],page=page['page'],text=text[start:end],
+                numbered_text=numbered(text,page['page'],start,end),text_sha256=page['sha256'],
+                citation_source=row['source_id'],start_char=start,
                 partial=end<len(text),next_start=end if end<len(text) else None,characters=len(text),deficient=page['page'] in row['deficient_pages']))
             job.setdefault('reads',{}).setdefault(token,[]).append([start,end])
         w.store_job(job,runtime_root)
