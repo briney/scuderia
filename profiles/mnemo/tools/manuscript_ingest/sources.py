@@ -54,9 +54,10 @@ def prepare(job_id,inputs=None,*,runtime_root):
             w.require(inputs is None,'sources-already-bound; start a separately reconciled job for different source bytes')
             verify_sources(job,work)
             return w.result(job,runtime_root,sources=index(job))
-        if inputs is None and job.get('prior_receipt'):
+        restoring=inputs is None and bool(job.get('prior_receipt'))
+        if restoring:
             from . import archive
-            restored=archive.open_sources(Path(job['prior_receipt']),work/'prior',transport=settings.get('archive'))
+            restored=archive.open_sources(Path(job['prior_receipt']),work/'prior',transport=settings.get('archive'),cache=settings.get('archive_cache'))
             for field in ('doi','pmid','version'):
                 before=restored['identity'].get(field); after=job['identity'].get(field)
                 w.require(not before or not after or before==after,'archive-identity-reconciliation-required:'+field)
@@ -89,10 +90,16 @@ def prepare(job_id,inputs=None,*,runtime_root):
             key='sources/'+h+suffix; target=work/key; target.parent.mkdir(exist_ok=True)
             if not target.exists(): shutil.copyfile(source,target)
             w.require(w.sha(target)==h,'source-changed-during-retention')
-            item=dict(source_id=sid,role=row['role'],filename=source.name,key=key,sha256=h,size=target.stat().st_size,
+            item=dict(source_id=sid,role=row['role'],filename=row.get('filename',source.name),key=key,sha256=h,size=target.stat().st_size,
                 identity=row.get('identity'),basis=row.get('basis'),source_url=row.get('source_url'))
             if row['role'] in ('manuscript','body'):
-                pages=text_pages(target); selected=row.get('pages',list(range(1,len(pages)+1)))
+                if restoring and row.get('retained_text'):
+                    pages=['']*row['page_count']
+                    for cached in row['retained_text']:
+                        w.require(w.sha(cached['path'])==cached['sha256'],'cached-text-changed')
+                        pages[cached['page']-1]=Path(cached['path']).read_text()
+                else: pages=text_pages(target)
+                selected=row.get('pages',list(range(1,len(pages)+1)))
                 w.require(selected and all(type(n) is int and 1<=n<=len(pages) for n in selected) and selected==sorted(set(selected)),'invalid-manuscript-boundaries')
                 item.update(pages=len(pages),selected_pages=selected,text=[],deficient_pages=[])
                 for number in selected:

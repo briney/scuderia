@@ -30,3 +30,15 @@ class Jobs(unittest.TestCase):
         workflow.start(self.page,runtime_root=self.runtime)
         with self.assertRaisesRegex(ValueError,'identity'):
             workflow.start(self.page,runtime_root=self.runtime,identity=dict(doi='10.1234/other'))
+
+def only_local_tests(module_name):
+    """Run each declared case once; inherited fixture helpers are not extra tests."""
+    module=sys.modules[module_name]; suite=unittest.TestSuite()
+    for value in vars(module).values():
+        if isinstance(value,type) and issubclass(value,unittest.TestCase) and value.__module__==module_name:
+            for name in value.__dict__:
+                if name.startswith('test_'):suite.addTest(value(name))
+    return suite
+
+
+def load_tests(loader,tests,pattern):return only_local_tests(__name__)

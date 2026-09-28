@@ -32,3 +32,6 @@ class Discovery(Jobs):
             self.assertFalse((skill/'references'/name).exists())
         self.assertFalse((SCRIPTS/'pdf_source_package/execution.py').exists())
         self.assertFalse((SCRIPTS/'pdf_enrichment/live.py').exists())
+
+from test_jobs import only_local_tests
+def load_tests(loader,tests,pattern):return only_local_tests(__name__)

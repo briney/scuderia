@@ -22,3 +22,6 @@ class Targeted(Publication):
             self.assertEqual(dispatch.call_count,1); self.assertEqual(w.status(j,runtime_root=self.runtime)['status'],'ready')
             revised=targeted.revise(t['job_id'],'Qualified as a synthetic example.',runtime_root=self.runtime)
             self.assertEqual(revised['revision'],1); self.assertEqual(dispatch.call_count,1)
+
+from test_jobs import only_local_tests
+def load_tests(loader,tests,pattern):return only_local_tests(__name__)

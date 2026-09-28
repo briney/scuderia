@@ -45,7 +45,10 @@ import io
 from datetime import datetime, timezone
 from pathlib import Path
 
-from source_package import absolute, new_directory, public_url, put, save
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]/'tools'))
+from article_archive_compat.article_runtime import absolute
+from article_archive_compat.portable_articles import new_directory, put, save
+from article_archive_compat.source_package import public_url
 
 UA = "mnemo-fetch-fulltext/1.0 (mailto:you@example.com)"  # set your contact
 TIMEOUT = 60

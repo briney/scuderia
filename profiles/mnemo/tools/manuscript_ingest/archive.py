@@ -6,8 +6,15 @@ from . import workflow as w
 SCHEMA='manuscript-article-package-v1'
 
 
-def open_sources(receipt,destination,*,transport=None):
+def open_sources(receipt,destination,*,transport=None,cache=None):
     value=pa.load(receipt)
+    publication=value.get('publication',value)
+    cached=(cache or {}).get(publication.get('manifest_sha256'))
+    if cached:
+        cached=Path(cached); w.require(w.sha(cached)==publication['manifest_sha256'],'cached-manifest-binding')
+        restored=open_sources(cached,destination)
+        restored['history']['receipt']=value
+        return restored
     if value.get('schema')==SCHEMA or value.get('schema')=='manuscript-publication-v1':
         return restore_sources(receipt,destination,transport=transport)
     if not destination.exists(): reader.restore(receipt,destination,transport=transport)
@@ -139,7 +146,7 @@ def restore_sources(receipt,destination,*,transport=None):
     m=verify(destination/'manifest.json')
     inputs=[]
     for row in m['sources']:
-        item=dict(path=str(destination/row['key']),role=row['role'],identity={k:v for k,v in m['identity'].items() if k in ('doi','pmid','version') and v},basis='Verified modern archive source binding.')
+        item=dict(path=str(destination/row['key']),role=row['role'],identity={k:v for k,v in m['identity'].items() if k in ('doi','pmid','version') and v},basis='Verified modern archive source binding.',filename=row['filename'],page_count=row.get('pages'),retained_text=[dict(page=p['page'],path=str(destination/p['key']),sha256=p['sha256']) for p in row.get('text',[])])
         if row.get('selected_pages'):item['pages']=row['selected_pages']
         inputs.append(item)
     return dict(identity=m['identity'],inputs=inputs,history=dict(receipt=value,manifest_sha256=w.sha(destination/'manifest.json'),provenance=pa.load(destination/'provenance.json')))

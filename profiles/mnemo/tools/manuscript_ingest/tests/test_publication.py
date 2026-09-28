@@ -51,3 +51,6 @@ class Publication(Review):
         j=self.staged(); (w.job_path(j,self.runtime)/'drafts/1/page.md').write_text('bad edit')
         with self.assertRaisesRegex(ValueError,'changed'):
             archive.build(j,1,runtime_root=self.runtime)
+
+from test_jobs import only_local_tests
+def load_tests(loader,tests,pattern):return only_local_tests(__name__)

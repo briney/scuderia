@@ -36,3 +36,6 @@ class Sources(Jobs):
         sid=r['artifacts']['sources'][0]['source_id']
         a=sources.read(j,[dict(source_id=sid,page=1,max_chars=10)],runtime_root=self.runtime)['artifacts']['locations'][0]
         self.assertTrue(a['partial']); self.assertEqual(a['next_start'],10)
+
+from test_jobs import only_local_tests
+def load_tests(loader,tests,pattern):return only_local_tests(__name__)

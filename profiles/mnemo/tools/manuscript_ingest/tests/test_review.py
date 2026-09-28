@@ -35,3 +35,16 @@ class Review(Sources):
             self.assertEqual(a['artifacts']['inspection'],b['artifacts']['inspection'])
         staged=w.stage(j,self.draft(),'Central finding checked against native page 1. Incomplete optional annotation omitted.',runtime_root=self.runtime)
         self.assertEqual(staged['status'],'ready')
+    def test_optional_blank_page_does_not_require_inspection(self):
+        import pymupdf
+        rows=self.inputs(); path=__import__('pathlib').Path(rows[0]['path'])
+        doc=pymupdf.open(path); doc.new_page(); raw=doc.tobytes(); doc.close(); path.write_bytes(raw)
+        j=w.start(self.page,runtime_root=self.runtime)['job_id']
+        result=sources.prepare(j,rows,runtime_root=self.runtime); sid=result['artifacts']['sources'][0]['source_id']
+        sources.read(j,[dict(source_id=sid,page=1),dict(source_id=sid,page=2)],runtime_root=self.runtime)
+        staged=w.stage(j,self.draft(),'Central finding verified from page 1; empty peripheral page 2 contributes no claim.',runtime_root=self.runtime)
+        self.assertEqual(staged['status'],'ready'); self.assertFalse((self.runtime/'requests.sqlite').exists())
+
+
+from test_jobs import only_local_tests
+def load_tests(loader,tests,pattern):return only_local_tests(__name__)

@@ -81,7 +81,7 @@ def start(page,*,runtime_root,identity=None):
         if str(page) in index:
             prior=load_job(index[str(page)],runtime_root)
             if prior['status']!='complete':
-                require(prior['identity']==bound,'active-job-identity-conflict')
+                require(all(prior['identity'].get(k)==v for k,v in bound.items() if v is not None),'active-job-identity-conflict')
                 return result(prior,runtime_root)
         job_id=uuid.uuid4().hex; work=job_path(job_id,runtime_root); work.mkdir(parents=True,mode=0o700)
         if original is not None: (work/'original.md').write_text(original)
@@ -100,19 +100,25 @@ def start(page,*,runtime_root,identity=None):
 
 def manuscript_read(job):
     """Delivery coverage only, never a certificate of scientific understanding."""
+    useful=False
     for source in job.get('sources',[]):
-        if source['role']!='manuscript': continue
+        if source['role'] not in ('manuscript','body'): continue
         for page in source['text']:
             token=source['source_id']+':'+str(page['page'])
-            if page['page'] in source['deficient_pages']:
-                if token not in job.get('inspected',[]): return False
+            if token in job.get('inspected',[]):
+                useful=True
                 continue
+            ranges=job.get('reads',{}).get(token,[])
+            if not ranges:return False
             end=0
-            for left,right in sorted(job.get('reads',{}).get(token,[])):
+            for left,right in sorted(ranges):
                 if left>end:return False
                 end=max(end,right)
             if end<page['characters']:return False
-    return bool(job.get('sources'))
+            useful=useful or page['characters']>=30
+    # Deficient peripheral pages remain visible warnings, not compulsory model calls.
+    # An entirely unreadable manuscript still needs actual inspection or faithful body text.
+    return useful
 
 
 def stage(job_id,markdown,review_note,*,runtime_root):
@@ -121,7 +127,12 @@ def stage(job_id,markdown,review_note,*,runtime_root):
     work=job_path(job_id,runtime_root)
     with locked(work):
         job=load_job(job_id,runtime_root)
-        require(job['status'] not in ('complete','integration-pending'),'job-already-applied')
+        require(job['status']!='complete','job-already-complete')
+        if job.get('applied_revision'):
+            pending=work/'archives'/str(job['applied_revision'])/'pending-page.md'
+            require(sha(job['page'])==sha(pending),'concurrent-page-edit')
+            job['apply_guard_sha256']=sha(pending)
+            job.pop('applied_revision')
         require(isinstance(markdown,str) and 0<len(markdown)<=2_000_000,'invalid-draft')
         require(isinstance(review_note,str) and 10<=len(review_note.strip())<=32000,'focused-source-review-note-required')
         require(manuscript_read(job),'read-entire-manuscript-before-staging')
@@ -130,10 +141,15 @@ def stage(job_id,markdown,review_note,*,runtime_root):
         for field in ('slug','title','doi','pmid'):
             require(fm.get(field)==job['identity'].get(field),'candidate-identity-mismatch:'+field)
         require(fm.get('kind')=='paper','paper-kind-required')
+        if (work/'original.md').exists():
+            original_meta=page_metadata((work/'original.md').read_text())
+            require(set(original_meta.get('cited_by') or [])<=set(fm.get('cited_by') or []),'original-citing-edges-missing')
+            for field in ('stub_source','ingest_attempts'):
+                require(field not in original_meta or fm.get(field)==original_meta[field],'original-provenance-changed:'+field)
         require(re.search(r'^# '+re.escape(fm['title'])+r'\s*$',markdown,re.M),'paper-title-heading-required')
         require(not re.search(r'!\[|!\[\[|source-packages/|<img\b|portable-article-register|qualification-register',markdown,re.I),'article-payload-or-register-in-page')
         # Optional source locators are accepted only when they identify retained evidence.
-        for sid,page in re.findall(r'\[source:(s-[a-f0-9]+):(\d+)\]',markdown+'\n'+review_note):
+        for sid,page in re.findall(r'\[source:([^:\]]+):(\d+)\]',markdown+'\n'+review_note):
             require(any(s['source_id']==sid and int(page) in s.get('selected_pages',[]) for s in job['sources']),'unresolved-source-reference')
         holds=[line.strip()[5:].strip() for line in review_note.splitlines() if line.strip().startswith('HOLD:')]
         revision=job['revision']+1; draft=work/'drafts'/str(revision); draft.mkdir(parents=True)
@@ -226,13 +242,13 @@ def publish(job_id,revision,*,runtime_root):
             job.update(status='publication-pending',blocking_reason=str(exc),next_action='Retry publish after archive availability/configuration is corrected; no inference will repeat.')
             store_job(job,runtime_root); return result(job,runtime_root)
         current=sha(page) if page.exists() else None
-        if current not in (job['original_sha256'],sha(pending),sha(final)):
+        if current not in (job.get('apply_guard_sha256',job['original_sha256']),sha(pending),sha(final)):
             job.update(status='held',blocking_reason='concurrent-page-edit',next_action='Preserve the live edit. Reconcile it with this candidate before application.')
             store_job(job,runtime_root); return result(job,runtime_root)
         receipt=page.parent/m['receipt_name']
         if receipt.exists():require(json.loads(receipt.read_text())==pub,'existing-publication-receipt-changed')
         else:save(receipt,pub)
-        if current==job['original_sha256']:apply_bytes(page,pending.read_bytes(),current)
+        if current==job.get('apply_guard_sha256',job['original_sha256']):apply_bytes(page,pending.read_bytes(),current)
         job['applied_revision']=revision; job.update(status='integration-pending',next_action='Complete author, graph, bibliography, and propagation obligations, then publish again.',blocking_reason=None)
         store_job(job,runtime_root)
         try: issues=integration_check(job,settings)
