@@ -1,12 +1,75 @@
 """External article packages and historical source reuse."""
 from pathlib import Path
+import re
+from urllib.parse import urlsplit
 from article_archive_compat import reader, portable_articles as pa
 from . import workflow as w
 
 SCHEMA='manuscript-article-package-v1'
 
 
+def receipt_pointer(destination, name):
+    """Assign an immutable receipt location before snapshotting (no hash cycle)."""
+    w.require(re.fullmatch(r'(?:[0-9a-f]{32}-[1-9][0-9]*|[0-9a-f]{64})', name) is not None, 'archive-pointer-name')
+    w.require(re.fullmatch(r'[a-z0-9][a-z0-9.-]*', destination['bucket']) is not None, 'archive-pointer-bucket')
+    return 'r2://' + destination['bucket'] + '/' + pa.relative_key(destination['prefix']) + '/receipts/' + name + '.json'
+
+
+def receipt_key(pointer, destination):
+    w.require(isinstance(pointer, str) and destination, 'archive-pointer-transport-required')
+    parsed = urlsplit(pointer)
+    name = parsed.path.rsplit('/', 1)[-1].removesuffix('.json')
+    w.require(pointer == receipt_pointer(destination, name), 'archive-pointer-destination-mismatch')
+    return pa.relative_key(parsed.path.removeprefix('/'))
+
+
+def retain_receipt(receipt, *, destination, pointer=None):
+    """Keep the full receipt outside the brain and verify its remote bytes."""
+    value = pa.load(receipt); publication = value.get('publication', value)
+    w.require(value.get('schema') == 'manuscript-publication-v1' or value.get('schema', '').startswith('portable-article-completion-'), 'unsupported-publication-receipt')
+    w.require(all(publication[k] == destination[k] for k in ('remote', 'bucket', 'prefix')), 'trusted-transport-mismatch')
+    pointer = pointer or receipt_pointer(destination, w.sha(receipt))
+    key = receipt_key(pointer, destination)
+    if re.fullmatch('[0-9a-f]{64}',Path(key).stem):
+        w.require(Path(key).stem==w.sha(receipt),'receipt-hash-mismatch')
+    pa.RcloneTransport(destination['remote'], destination['bucket']).upload(Path(receipt), key, w.sha(receipt), Path(receipt).stat().st_size)
+    return pointer
+
+
+def resolve_receipt(pointer, cache, *, transport):
+    """Restore receipt metadata to external work storage, never beside the page."""
+    key = receipt_key(pointer, transport); cache = w.outside_instance(cache)
+    cache.mkdir(parents=True, exist_ok=True)
+    path = cache / (w.digest(pointer) + '.json')
+    name = key.rsplit('/', 1)[-1].removesuffix('.json')
+    expected = name if re.fullmatch('[0-9a-f]{64}', name) else None
+    if not path.exists():
+        pa.RcloneTransport(transport['remote'], transport['bucket']).download(key, path, expected_hash=expected, limit=pa.MAX_MANIFEST_BYTES)
+    w.require(expected is None or w.sha(path) == expected, 'receipt-hash-mismatch')
+    value = pa.load(path); publication = value.get('publication', value)
+    w.require(all(publication[k] == transport[k] for k in ('remote', 'bucket', 'prefix')), 'trusted-transport-mismatch')
+    return path
+
+
+def page_matches(snapshot, page, receipt=None):
+    """Only an exact, hash-pinned receipt relocation may differ from the snapshot."""
+    old=Path(snapshot).read_bytes(); current=Path(page).read_bytes()
+    if old==current:return True
+    if receipt is None:return False
+    value=pa.load(receipt); publication=value.get('publication',value)
+    pointer=receipt_pointer(publication,w.sha(receipt))
+    lines=re.findall(rb'^Article archive: .+$',old,re.M)
+    if len(lines)!=1:return False
+    return re.sub(rb'^Article archive: .+$',('Article archive: '+pointer).encode(),old,count=1,flags=re.M)==current
+
+
 def open_sources(receipt,destination,*,transport=None,cache=None):
+    if isinstance(receipt,str) and receipt.startswith('r2://'):
+        local=resolve_receipt(receipt,Path(destination).parent/'receipts',transport=transport)
+        restored=open_sources(local,destination,transport=transport,cache=cache)
+        if not re.search(r'/[0-9a-f]{64}\.json$',receipt):
+            w.require(pa.load(Path(destination)/'manifest.json').get('receipt_name')==receipt,'restored-receipt-pointer-binding')
+        return restored
     value=pa.load(receipt)
     publication=value.get('publication',value)
     cached=(cache or {}).get(publication.get('manifest_sha256'))
@@ -129,6 +192,8 @@ def publication_check(manifest,receipt):
     expected={(object_key(m,receipt['prefix'],r),r['sha256'],r['size']) for r in m['files']}
     mk=pa.relative_key(receipt['prefix'])+'/articles/'+m['article_key']+'/manifests/'+h+'.json'
     w.require(receipt['manifest_key']==mk,'publication-manifest-key')
+    if m['receipt_name'].startswith('r2://'):
+        w.require(m['receipt_name']==receipt_pointer(receipt,m['job_id']+'-'+str(m['revision'])),'publication-pointer-binding')
     expected.add((mk,h,Path(manifest).stat().st_size))
     actual={(r['key'],r['sha256'],r['size']) for r in receipt['receipts']}
     w.require(actual==expected and all(r['method']=='read_back_sha256' for r in receipt['receipts']),'publication-readback-inventory')

@@ -13,7 +13,7 @@ class Jobs(unittest.TestCase):
         (self.brain/'instance.yaml').write_text('name: fixture\n')
         self.page=self.brain/'papers/paper.md'; self.page.write_text('---\nkind: paper\nslug: paper\ntitle: Synthetic experiment\ndoi: 10.1234/synthetic\nneeds-ingest: true\n---\n# Synthetic experiment\n')
         self.runtime=self.root/'runtime'; self.runtime.mkdir()
-        (self.runtime/'config.json').write_text(json.dumps(dict(instance=str(self.brain))))
+        (self.runtime/'config.json').write_text(json.dumps(dict(instance=str(self.brain),archive=dict(remote='fixture',bucket='fixture',prefix='article-packages'))))
     def tearDown(self): self.temp.cleanup()
     def test_reuse_and_scope(self):
         a=workflow.start(self.page,runtime_root=self.runtime)

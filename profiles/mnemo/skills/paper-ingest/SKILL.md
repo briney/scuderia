@@ -308,8 +308,10 @@ A paper worker never edits this inbox.
 Call `publish` for the chosen revision. It uploads immutable original sources,
 retained manuscript text, scientific draft/review and provenance, then verifies
 remote bytes before applying the candidate. The page contains a small durable
-archive receipt pointer; source payloads, images and extraction registers remain
-outside the brain. Archive failure leaves the page unchanged. Retry publication
+remote archive receipt pointer; full receipts, hashes, verification records,
+source payloads, images and extraction registers remain outside the brain.
+Never copy the returned external `receipt` artifact into `papers/` or commit it.
+Archive failure leaves the page unchanged. Retry publication
 with the same job/revision; never start a new extraction to fix storage or prose.
 A concurrent edit holds application; preserve it and reconcile explicitly.
 

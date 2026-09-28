@@ -70,3 +70,14 @@ retained as unresolved evidence and removed from the clean page with warnings.
 Absence of markers is a warning only. Locators do not certify factual support or
 complete coverage, and do not cause new model requests. An optional factual
 review is separate from deterministic publication checks.
+
+## Archive receipt storage
+
+`stage` assigns a compact remote `Article archive: r2://...` locator. `publish`
+archives the full receipt in R2 and checks readback before applying the page.
+Its returned `receipt` path is external working metadata; do not copy it into
+the brain. Ordinary refresh resolves the locator through deployment-owned
+archive settings and restores metadata and sources outside the instance.
+Historical local receipts remain readable. Old unpublished drafts containing
+local receipt filenames must be staged again within their existing job before
+publication; retain existing sources and completed inspections.

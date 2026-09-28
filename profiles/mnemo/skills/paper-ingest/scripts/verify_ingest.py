@@ -967,7 +967,7 @@ def main():
             if any(fm.get(k) != package['identity'].get(k) for k in ('slug','title','doi','pmid')):
                 raise ValueError('article-page-identity-mismatch')
             snapshot = Path(args.article_package).parent/('pending-page.md' if args.page_only else 'page.md')
-            if archive.w.sha(Path(paper_path)) != archive.w.sha(snapshot):
+            if not archive.page_matches(snapshot,Path(paper_path),args.publication_receipt):
                 raise ValueError('article-page-snapshot-mismatch')
             if not args.page_only:
                 if not args.publication_receipt:

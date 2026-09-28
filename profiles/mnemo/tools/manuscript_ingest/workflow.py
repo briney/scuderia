@@ -119,8 +119,13 @@ def start(page,*,runtime_root,identity=None):
             authorization={'max_requests':settings.get('inspection_budget',0)})
         pointer=re.search(r'^Article archive: (.+)$',original or '',re.M)
         if pointer:
-            receipt=absolute(page.parent/pointer[1]); require(receipt.is_relative_to(instance),'archive-pointer-outside-instance')
-            job['prior_receipt']=str(receipt)
+            if pointer[1].startswith('r2://'):
+                from .archive import receipt_key
+                receipt_key(pointer[1],settings.get('archive'))
+                job['prior_receipt']=pointer[1]
+            else:
+                receipt=absolute(page.parent/pointer[1]); require(receipt.is_relative_to(instance),'archive-pointer-outside-instance')
+                job['prior_receipt']=str(receipt)
         store_job(job,runtime_root); index[str(page)]=job_id; save(index_path,index)
         return result(job,runtime_root)
 
@@ -201,7 +206,8 @@ def stage(job_id,markdown,review_note,*,runtime_root,base_revision=None):
         drafts=work/'drafts'; drafts.mkdir(exist_ok=True)
         revision=max([job['revision']]+[int(p.name) for p in drafts.iterdir() if p.name.isdecimal()])+1
         draft=Path(tempfile.mkdtemp(prefix='.stage-',dir=drafts))
-        receipt_name=Path(job['page']).stem+'.article-'+job_id+'-'+str(revision)+'.json'
+        from .archive import receipt_pointer
+        receipt_name=receipt_pointer(config(runtime_root)['archive'],job_id+'-'+str(revision))
         # Keep the queue marker until deterministic integration succeeds.
         if re.search(r'^needs-ingest:',markdown,re.M): markdown=re.sub(r'^needs-ingest:.*$','needs-ingest: true',markdown,count=1,flags=re.M)
         else: markdown=markdown.replace('---\n','---\nneeds-ingest: true\n',1)
@@ -285,13 +291,16 @@ def publish(job_id,revision,*,runtime_root):
         manifest=archive.build(job_id,revision,runtime_root=runtime_root); m=archive.verify(manifest)
         page=absolute(job['page']); root=manifest.parent; pending=root/'pending-page.md'; final=root/'page.md'
         if job['status']=='complete':
-            require(sha(page)==sha(final),'completed-page-changed')
+            archive.publication_check(manifest,json.loads((root/'publication.json').read_text()))
+            require(archive.page_matches(final,page,root/'publication.json'),'completed-page-changed')
             return result(job,runtime_root)
+        require(m['receipt_name'].startswith('r2://'),'restage-legacy-draft-for-external-receipt; retain the same job and sources')
         publication_path=root/'publication.json'
         try:
             if publication_path.exists():pub=archive.publication_check(manifest,json.loads(publication_path.read_text()))
             else:
                 pub=archive.publish(manifest,destination=settings['archive']); save(publication_path,pub)
+            archive.retain_receipt(publication_path,destination=settings['archive'],pointer=m['receipt_name'])
         except (ValueError,OSError,KeyError) as exc:
             job.update(status='publication-pending',blocking_reason=str(exc),next_action='Retry publish after archive availability/configuration is corrected; no inference will repeat.')
             store_job(job,runtime_root); return result(job,runtime_root)
@@ -299,9 +308,7 @@ def publish(job_id,revision,*,runtime_root):
         if current not in (job.get('apply_guard_sha256',job['original_sha256']),sha(pending),sha(final)):
             hold_live_edit(job,work)
             store_job(job,runtime_root); return result(job,runtime_root)
-        receipt=page.parent/m['receipt_name']
-        if receipt.exists():require(json.loads(receipt.read_text())==pub,'existing-publication-receipt-changed')
-        else:save(receipt,pub)
+        receipt=publication_path
         if current==job.get('apply_guard_sha256',job['original_sha256']):apply_bytes(page,pending.read_bytes(),current)
         job['applied_revision']=revision; job.update(status='integration-pending',next_action='Complete author, graph, bibliography, and propagation obligations, then publish again.',blocking_reason=None)
         store_job(job,runtime_root)
@@ -313,6 +320,6 @@ def publish(job_id,revision,*,runtime_root):
             current=sha(page)
             require(current in (sha(pending),sha(final)),'concurrent-page-edit')
             if current!=sha(final):apply_bytes(page,final.read_bytes(),current)
-            job.update(status='complete',blocking_reason=None,next_action='Ingestion is complete; commit the reviewed owned page, receipt, and integration edits using git-ops.',
+            job.update(status='complete',blocking_reason=None,next_action='Ingestion is complete; commit the reviewed owned page and integration edits using git-ops; receipt metadata stays external.',
                 artifacts={**job['artifacts'],'manifest':str(manifest),'receipt':str(receipt),'integration_obligations':[]})
         store_job(job,runtime_root); return result(job,runtime_root)

@@ -35,6 +35,11 @@ checkout. The profile's `skills/RESOLVER.md` routes a request to a skill.
 
 ## Norms
 
+- Paper pages retain only a compact remote `Article archive:` locator. Keep
+  article source material and all publication/completion receipts, object hashes
+  and verification records in the external article archive, never JSON sidecars
+  in the brain. Working and restored copies stay outside the instance.
+
 - Skill maintenance follows the bound profile's `conventions/skill-hygiene.md`.
   Scope verification to changed behavior: procedural prose uses read-back;
   external authoring/execution recipes do not automatically require pressure

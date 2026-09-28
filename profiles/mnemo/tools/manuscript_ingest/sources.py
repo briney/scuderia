@@ -59,7 +59,7 @@ def prepare(job_id,inputs=None,*,runtime_root):
         restoring=inputs is None and bool(job.get('prior_receipt'))
         if job.get('prior_receipt'):
             from . import archive
-            restored=archive.open_sources(Path(job['prior_receipt']),work/'prior',transport=settings.get('archive'),cache=settings.get('archive_cache'))
+            restored=archive.open_sources(job['prior_receipt'],work/'prior',transport=settings.get('archive'),cache=settings.get('archive_cache'))
             for field in ('doi','pmid','version'):
                 before=restored['identity'].get(field); after=job['identity'].get(field)
                 w.require(not before or not after or before==after,'archive-identity-reconciliation-required:'+field)
