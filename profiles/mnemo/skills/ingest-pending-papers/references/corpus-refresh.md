@@ -41,6 +41,7 @@ Use the configured PDF Python and `<profile>/tools/manuscript_ingest/campaign.py
 ```sh
 <pdf-python> <campaign.py> init --root <new-external-campaign> --instance <brain>
 <pdf-python> <campaign.py> report --root <campaign>
+<pdf-python> <campaign.py> report --root <campaign> --selected
 <pdf-python> <campaign.py> reconcile --root <campaign> --runtime-root <runtime>
 ```
 
@@ -50,6 +51,17 @@ malformed or unresolved identities are explicit exceptions. Do not edit inventor
 or mass-toggle page flags. An archive pointer is only a candidate until matching
 current runtime/archive/page evidence establishes completion. Legacy archives are
 reusable originals, not proof of the current minimum standard.
+
+`report --selected` scopes `consumer_follow_up` to the explicit `run-config.json`
+selection; missing or invalid selection is an error. Existing inventory totals
+and publication rates retain their whole-campaign scope. Consumer records group
+canonical outputs, require the exact current ingest event, and include earlier
+revisions for the same job. Closure requires stored publication and pushed Git
+evidence plus gated retro/reinforce acknowledgments for every included packet.
+Missing events stay pending; malformed or conflicting inbox data is an error.
+A later event invalidates a stale closure view. This read-only accounting never
+acknowledges packets and is not fresh scientific or archive certification:
+reconcile and verify sources, associations and archive/live equality before closeout.
 
 Prepare an external `run-config.json` with:
 
@@ -79,6 +91,21 @@ slot, with no catch-up. Do not start interactive work during the window. Script
 jobs remain under the operator's quiet-window check. A crash leaves a recovery
 marker; another run restores scheduling and stops for inspection before admitting
 new work. An orphaned coordinator retains the inherited process locks.
+
+For a tranche with deferred consumers, the primary owns an outer window through
+publication, serial shared maintenance, Git closeout and remote verification.
+Create a distinct external directory with native-control configuration and call
+`window_control(..., 'pause')` there before the launcher. Its pause reason and
+snapshot are separate from the launcher's. The inner launcher sees already-paused
+agent jobs and restores only its own pause set; it cannot release the outer pause.
+Separately snapshot and pause an enabled script drop watcher using native job
+controls, checking both its scheduled claim and ingestion PID. Preserve jobs
+already disabled or paused. A partial pause failure restores only owned changes
+and stops admission; interrupted writes retain snapshots for inspected recovery.
+After shared writes and remote verification, restore only pauses whose ownership
+reason still matches, preserving intervening operator changes and skipping overdue
+catch-up. Read back native state and verify owned markers and child processes are
+gone. Do not edit cron storage or dispatch a model campaign to test scheduling.
 
 Each bounded wave launches per-paper noninteractive workers directly, with actual
 process concurrency limited by the configured ceiling. The coordinator then
@@ -123,3 +150,9 @@ published papers/hour are measured; do not invent per-stage durations when the
 underlying runtime did not record them. Review a five-paper pilot before its Git
 closeout, then seek authorization for the measured 25-paper tranche. Later bulk
 bounds follow measured full-pipeline throughput, not drafting-only timing.
+`published_per_hour` retains its launcher-time denominator and excludes consumer
+maintenance and Git closeout. Measure closed papers per elapsed hour separately,
+from outer preflight through restoration and remote verification. Increase worker
+concurrency only from measured full-pipeline results, within the installed ceiling;
+actual subprocess overlap must match the requested setting. Reinforce remains
+limited to five distinct papers per pass.

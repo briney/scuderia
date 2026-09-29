@@ -140,6 +140,29 @@ class Runner(Campaign):
             launch.assert_not_called();self.assertEqual(control.call_args.args[2],'restore')
 
 class Cron(Campaign):
+    def test_inner_restore_preserves_outer_pause_and_operator_changes(self):
+        c=self.module();profile=self.root/'profile';profile.mkdir()
+        outer=self.root/'outer';inner=self.root/'inner'
+        for root in (outer,inner):root.mkdir();w.save(root/'run-config.json',{})
+        rows={key:dict(id=key,enabled=True,state='scheduled',schedule={'kind':'cron','expr':'0 7 * * *'}) for key in ('a','c')}
+        rows['b']=dict(id='b',enabled=False,state='paused',paused_reason='human')
+        class FakeJobs:
+            def list_jobs(self,**kw):return list(rows.values())
+            def get_job(self,id):return rows[id]
+            def pause_job(self,id,reason):rows[id]={**rows[id],'enabled':False,'state':'paused','paused_reason':reason};return rows[id]
+            def update_job(self,id,updates):rows[id].update(updates)
+        jobs=FakeJobs()
+        c.window_control(outer,profile,'pause',jobs=jobs,gateway={'active_agents':0})
+        c.window_control(inner,profile,'pause',jobs=jobs,gateway={'active_agents':0})
+        self.assertEqual(json.loads((inner/'window.json').read_text())['jobs'],[])
+        c.window_control(inner,profile,'restore',jobs=jobs)
+        self.assertFalse(rows['a']['enabled']);self.assertFalse(rows['c']['enabled'])
+        self.assertEqual(rows['a']['paused_reason'],'paper-refresh:'+str(outer))
+        rows['c']['paused_reason']='human'
+        c.window_control(outer,profile,'restore',jobs=jobs)
+        self.assertTrue(rows['a']['enabled']);self.assertFalse(rows['b']['enabled']);self.assertFalse(rows['c']['enabled'])
+        self.assertEqual(rows['c']['paused_reason'],'human')
+
     def test_restore_keeps_paused_jobs_and_skips_overdue_catchup(self):
         c=self.module(); root=self.root/'campaign';root.mkdir();w.save(root/'run-config.json',{})
         profile=self.root/'profile'; profile.mkdir()
@@ -247,6 +270,141 @@ class ReadyDispatch(Publication,Runner):
             result=c.run(root,self.runtime,profile,1,2,300)
         launch.assert_not_called();self.assertEqual(result['counts'],{'complete':1})
         self.assertEqual(w.load_job(j,self.runtime)['revision'],1)
+
+class FollowUp(Campaign):
+    def _published_inputs(self,pushed=True):
+        c=self.module();self.campaign_root=self.root/'campaign';c.initialize(self.campaign_root,self.brain)
+        frozen,state=c.load(self.campaign_root);item=next(iter(state['items']))
+        self.job_id='a'*32
+        state['items'][item].update(status='complete',job_id=self.job_id,revision=2,git=dict(committed=True,pushed=pushed))
+        return frozen,state,item
+
+    def _inbox(self):
+        return dict(items=[dict(id=f'ingest-{self.job_id}-{revision}',page='papers/paper',event='ingest',consumed_by=['retro','reinforce']) for revision in (1,2)])
+
+    def test_all_revisions_gate_closure_and_helper_does_not_write(self):
+        c=self.module();frozen,state,item=self._published_inputs();inbox=self._inbox()
+        current=inbox['items'][-1];current['consumed_by']=['retro']
+        before=json.dumps([frozen,state,inbox],sort_keys=True)
+        result=c.consumer_follow_up(frozen,state,inbox,[item]);paper=result['papers'][str(self.page)]
+        self.assertEqual(paper['pending_retro'],[])
+        self.assertEqual(paper['pending_reinforce'],[current['id']])
+        self.assertFalse(paper['closed']);self.assertEqual(result['distinct_closed'],0)
+        self.assertEqual(json.dumps([frozen,state,inbox],sort_keys=True),before)
+        current['consumed_by'].append('reinforce')
+        self.assertEqual(c.consumer_follow_up(frozen,state,inbox,[item])['distinct_closed'],1)
+        inbox['items'][0]['consumed_by']=[]
+        self.assertEqual(c.consumer_follow_up(frozen,state,inbox,[item])['distinct_closed'],0)
+
+    def test_current_event_is_required_and_newer_revision_invalidates_closure(self):
+        c=self.module();frozen,state,item=self._published_inputs();inbox=self._inbox()
+        missing=c.consumer_follow_up(frozen,state,dict(items=inbox['items'][:1]))['papers'][str(self.page)]
+        self.assertFalse(missing['current_event_present']);self.assertFalse(missing['closed'])
+        inbox['items'].append(dict(inbox['items'][-1],id=f'ingest-{self.job_id}-3'))
+        self.assertEqual(c.consumer_follow_up(frozen,state,inbox)['distinct_closed'],0)
+
+    def test_unpushed_or_unpublished_content_is_not_closed(self):
+        c=self.module();frozen,state,item=self._published_inputs(False);inbox=self._inbox()
+        self.assertEqual(c.consumer_follow_up(frozen,state,inbox)['distinct_closed'],0)
+        state['items'][item].update(status='ready',git=dict(committed=True,pushed=True))
+        self.assertFalse(c.consumer_follow_up(frozen,state,inbox)['papers'][str(self.page)]['published'])
+
+    def test_missing_job_binding_cannot_be_closed_by_a_malformed_event(self):
+        c=self.module();frozen,state,item=self._published_inputs()
+        state['items'][item].update(job_id=None,revision=None)
+        inbox=dict(items=[dict(id='ingest-None-None',page='papers/paper',event='ingest',consumed_by=['retro','reinforce'])])
+        self.assertEqual(c.consumer_follow_up(frozen,state,inbox)['distinct_closed'],0)
+
+    def test_merged_inputs_count_one_output_and_other_jobs_are_ignored(self):
+        import copy
+        c=self.module();frozen,state,item=self._published_inputs();inbox=self._inbox()
+        alias=dict(frozen['items'][0],id='alias');frozen['items'].append(alias)
+        state['items']['alias']=copy.deepcopy(state['items'][item])
+        inbox['items'].append(dict(inbox['items'][0],id='ingest-'+('b'*32)+'-1',consumed_by=[]))
+        result=c.consumer_follow_up(frozen,state,inbox,[item,'alias'])
+        self.assertEqual(len(result['papers']),1);self.assertEqual(result['distinct_closed'],1)
+        self.assertEqual(len(result['papers'][str(self.page)]['packet_ids']),2)
+
+    def test_invalid_inbox_selection_and_publication_binding_are_rejected(self):
+        import copy
+        c=self.module();frozen,state,item=self._published_inputs();inbox=self._inbox()
+        for invalid in (None,{},dict(items={}),dict(items=[None])):
+            with self.subTest(invalid=invalid),self.assertRaises(ValueError):c.consumer_follow_up(frozen,state,invalid)
+        for changes in (dict(consumed_by='retro'),dict(consumed_by=[1]),dict(page='papers/another'),dict(event='stub-filled')):
+            bad=copy.deepcopy(inbox);bad['items'][0].update(changes)
+            with self.subTest(changes=changes),self.assertRaises(ValueError):c.consumer_follow_up(frozen,state,bad)
+        bad=copy.deepcopy(inbox);bad['items'].append(copy.deepcopy(bad['items'][0]))
+        with self.assertRaises(ValueError):c.consumer_follow_up(frozen,state,bad)
+        for selection in (['unknown'],[item,item],'all'):
+            with self.subTest(selection=selection),self.assertRaises(ValueError):c.consumer_follow_up(frozen,state,inbox,selection)
+
+    def test_selected_cli_rejects_non_object_run_config(self):
+        import contextlib,io
+        c=self.module();self._published_inputs()
+        for cfg in (None,[],"invalid"):
+            w.save(self.campaign_root/'run-config.json',cfg);output=io.StringIO()
+            with self.subTest(cfg=cfg),contextlib.redirect_stdout(output):
+                self.assertEqual(c.main(['report','--root',str(self.campaign_root),'--selected']),2)
+            self.assertIn('error',json.loads(output.getvalue()))
+
+    def test_selected_report_and_cli_are_scoped_and_read_only(self):
+        import contextlib,io,yaml
+        c=self.module();frozen,state,item=self._published_inputs()
+        state['items']['other']=dict(state['items'][item],canonical_path=str(self.page.parent/'other.md'),job_id='b'*32)
+        frozen['items'].append(dict(frozen['items'][0],id='other',path=str(self.page.parent/'other.md')))
+        w.save(self.campaign_root/'inventory.json',frozen)
+        state['inventory_sha256']=w.sha(self.campaign_root/'inventory.json');w.save(self.campaign_root/'state.json',state)
+        w.save(self.campaign_root/'run-config.json',dict(selection=[item]))
+        path=self.brain/'docs/rem-cycle/inbox.yaml';path.parent.mkdir(parents=True);path.write_text(yaml.safe_dump(self._inbox()))
+        before={str(p):p.read_bytes() for p in self.root.rglob('*') if p.is_file()}
+        report=c.report(self.campaign_root,selected=True)
+        self.assertEqual(report['total'],2)
+        self.assertEqual(set(report['consumer_follow_up']['papers']),{str(self.page)})
+        output=io.StringIO()
+        with contextlib.redirect_stdout(output):self.assertEqual(c.main(['report','--root',str(self.campaign_root),'--selected']),0)
+        self.assertEqual(json.loads(output.getvalue())['consumer_follow_up']['distinct_closed'],1)
+        self.assertEqual(before,{str(p):p.read_bytes() for p in self.root.rglob('*') if p.is_file()})
+        path.unlink();self.assertEqual(c.report(self.campaign_root,selected=True)['consumer_follow_up']['distinct_closed'],0)
+        path.write_text('items: [unterminated\n')
+        with self.assertRaises(yaml.YAMLError):c.report(self.campaign_root,selected=True)
+        (self.campaign_root/'run-config.json').unlink()
+        with self.assertRaises(OSError):c.report(self.campaign_root,selected=True)
+        path.write_text(yaml.safe_dump(self._inbox()))
+        for selection in (None,[],['unknown']):
+            w.save(self.campaign_root/'run-config.json',dict(selection=selection))
+            with self.subTest(selection=selection),self.assertRaises(ValueError):c.report(self.campaign_root,selected=True)
+
+class ScaleConcurrency(ActualConcurrency):
+    def _check_overlap(self,concurrency):
+        import sys
+        c,root,profile=self.setup_run(concurrency+1)
+        (profile/'config.yaml').write_text('delegation:\n  max_concurrent_children: 10\n')
+        script=self.root/'scale-worker.py'
+        script.write_text('''import sys,time,pathlib
+p=pathlib.Path(sys.argv[sys.argv.index("--query-file")+1])
+wave=p.parent.parent
+(p.parent/"started").write_text(str(time.time()))
+expected=int(sys.argv[1]) if wave.name=="0" else 1
+deadline=time.monotonic()+5
+while len(list(wave.glob("*/started")))<expected:
+    if time.monotonic()>deadline:raise RuntimeError("workers did not overlap")
+    time.sleep(.01)
+time.sleep(.1)
+(p.parent/"ended").write_text(str(time.time()))
+''')
+        cfg=json.loads((root/'run-config.json').read_text());cfg['hermes_command']=[sys.executable,str(script),str(concurrency)];w.save(root/'run-config.json',cfg)
+        with patch.object(c,'cron_window'):result=c.run(root,self.runtime,profile,concurrency+1,concurrency,300)
+        run=result['runs'][0]
+        self.assertEqual(run['actual_worker_concurrency'],concurrency)
+        self.assertEqual(len(run['items']),concurrency+1)
+        spans=sorted((float(p.read_text()),float((p.parent/'ended').read_text())) for p in (root/'runs').rglob('started'))
+        self.assertLess(max(s[0] for s in spans[:concurrency]),min(s[1] for s in spans[:concurrency]))
+        self.assertGreaterEqual(spans[-1][0],max(s[1] for s in spans[:concurrency]))
+        self.assertFalse(list((profile/'paper-refresh').glob('child*.json')))
+
+    def test_four_workers_overlap(self):self._check_overlap(4)
+    def test_six_workers_overlap(self):self._check_overlap(6)
+    def test_eight_workers_overlap(self):self._check_overlap(8)
 
 
 class DirectPublication(Publication,Runner):
