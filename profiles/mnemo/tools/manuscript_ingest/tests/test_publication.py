@@ -24,7 +24,7 @@ class Publication(Review):
         j,sid=self.ready(); w.stage(j,self.draft(),'Reviewed central finding against native manuscript page 1; no unresolved material issues.',runtime_root=self.runtime); return j
     def test_failure_retry_integration_and_refresh(self):
         j=self.staged(); original=self.page.read_bytes()
-        with patch.object(archive.pa,'RcloneTransport',MemoryTransport),patch.object(w,'integration_check',return_value=['author-edge-missing']):
+        with patch.object(archive.pa,'RcloneTransport',MemoryTransport),patch.object(w,'integration_check',side_effect=lambda *a,**k: ['author-edge-missing'] if k.get('canonical',True) else []):
             MemoryTransport.fail=True
             r=w.publish(j,1,runtime_root=self.runtime); self.assertEqual(r['status'],'publication-pending'); self.assertEqual(self.page.read_bytes(),original)
             MemoryTransport.fail=False
@@ -97,7 +97,7 @@ class Timings(Publication):
         j=self.staged(); job=w.load_job(j,self.runtime)
         self.assertIn('timings',job)
         before=dict(job['timings'])
-        with patch.object(archive.pa,'RcloneTransport',MemoryTransport),patch.object(w,'integration_check',return_value=['temporarily-unavailable']):
+        with patch.object(archive.pa,'RcloneTransport',MemoryTransport),patch.object(w,'integration_check',side_effect=lambda *a,**k: ['temporarily-unavailable'] if k.get('canonical',True) else []):
             out=w.publish(j,1,runtime_root=self.runtime)
             self.assertEqual(out['blocking_reason'],'metadata-temporarily-unavailable')
             with patch.object(w,'integration_check',return_value=[]):w.publish(j,1,runtime_root=self.runtime)

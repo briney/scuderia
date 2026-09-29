@@ -16,7 +16,9 @@ Leave the old page intact until a valid replacement is archived and ready.
 Keep the filename, valid citing edges, citation/producer provenance, useful
 research links and identifiable human annotations. Old scientific prose is not
 evidence. Read the original page and external runtime snapshot before drafting;
-preserve manual notes as notes, not as findings attributed to the paper. If note
+preserve manual notes as notes, not as findings attributed to the paper. Preserve
+valid attributed external context (for example, released-code observations) in
+its useful scientific context; manuscript-only extraction does not invalidate it. If note
 ownership is ambiguous, hold that item with the exact passage needing review.
 The scanner's note-heading warning is only a prompt for this human/model check,
 not a detector of every possible annotation. Concurrent edits use the runtime's
@@ -30,8 +32,14 @@ new slug. A campaign `map` records a reviewed migration after it is finished; it
 does not perform one. Before any merge/delete, retain the original bytes as
 `<campaign>/originals/<item-id>.md`; map requires its frozen hash to match. A blocked correction does not stop other papers.
 
-Workers read and stage only. The parent checks central factual claims, publishes,
-completes author/graph/bibliography/propagation integration and publishes again.
+Workers read, draft, perform the focused factual check and stage. The primary
+reads the preservation diff and review note, examines only specific uncertainties
+or noticed contradictions, and resolves reported shared-file obligations. It
+uses the provided exact publication command once in the common case. The runtime
+checks prerequisites before upload and records propagation after application.
+Do not create bibliography papers, manually append events, rediscover tool paths,
+or repeat satisfied verification. Keep task history and deferred candidates in
+external observations, not paper prose.
 Read runtime evidence after missing/malformed model messages. Reuse existing jobs;
 do not restart sources, inference or publication to obtain a prettier summary.
 
@@ -90,7 +98,8 @@ output cap is introduced. A provider/coordinator failure or archive outage stops
 new admissions; item-specific access holds leave the remainder eligible.
 
 Workers own acquisition and the full manuscript read; the primary checks drafts
-and selected evidence without repeating complete reads. Shared institutional
+for preservation and resolves specific uncertainties without repeating the
+worker’s factual check or complete read. Shared institutional
 browser access belongs to the primary: a worker returns its retained needs-input
 job and observed route for serial acquisition if needed. Already staged jobs skip
 worker generation entirely. Ordinary metadata outages defer publication of the

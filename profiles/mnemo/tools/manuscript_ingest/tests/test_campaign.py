@@ -57,7 +57,7 @@ class Recovery(Publication):
         c,root,item=self.campaign(); j=self.staged()
         c.reconcile(root,self.runtime)
         self.assertEqual(c.load(root)[1]['items'][item]['status'],'ready')
-        with patch.object(archive.pa,'RcloneTransport',MemoryTransport),patch.object(w,'integration_check',return_value=['missing-author']):
+        with patch.object(archive.pa,'RcloneTransport',MemoryTransport),patch.object(w,'integration_check',side_effect=lambda *a,**k: ['missing-author'] if k.get('canonical',True) else []):
             w.publish(j,1,runtime_root=self.runtime)
         c.reconcile(root,self.runtime)
         self.assertEqual(c.load(root)[1]['items'][item]['status'],'integration-pending')
@@ -249,3 +249,15 @@ class ReadyDispatch(Publication,Runner):
         with patch.object(c,'cron_window'),patch.object(c,'launch',side_effect=launch):result=c.run(root,self.runtime,profile,1,2,300)
         self.assertEqual(len(queries),1);self.assertEqual(result['counts'],{'ready':1})
         self.assertEqual(w.load_job(j,self.runtime)['revision'],1)
+
+
+class IntegrationHandoff(Publication):
+    def test_handoff_contains_durable_artifacts_and_exact_publish_command(self):
+        from manuscript_ingest import campaign as c
+        j=self.staged(); root=self.root/'campaign';c.initialize(root,self.brain);c.reconcile(root,self.runtime)
+        frozen,state=c.load(root);item=next(iter(state['items']));folder=self.root/'primary';folder.mkdir()
+        prompt=c.wave_prompt(frozen,state,[item],folder,'later',{'git_closeout':'hold-for-review','runtime_root':str(self.runtime)})
+        self.assertIn(str(w.job_path(j,self.runtime)/'drafts/1/page.diff'),prompt)
+        self.assertIn('--input',prompt)
+        payloads=list(folder.glob('publish-*.json'));self.assertEqual(len(payloads),1)
+        self.assertEqual(__import__('json').loads(payloads[0].read_text()),{'operation':'publish','job_id':j,'revision':1})

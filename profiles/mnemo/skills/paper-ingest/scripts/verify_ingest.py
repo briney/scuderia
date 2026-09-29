@@ -959,9 +959,9 @@ def main():
         try:
             from pathlib import Path
             sys.path.insert(0, str(Path(__file__).resolve().parents[3]/'tools'))
-            from manuscript_ingest import archive
+            from manuscript_ingest import archive, workflow
             package = archive.verify(Path(args.article_package))
-            if any(fm.get(k) != package['identity'].get(k) for k in ('slug','title','doi','pmid')):
+            if any(not workflow.same_identity(k,fm.get(k),package['identity'].get(k)) for k in ('slug','title','doi','pmid')):
                 raise ValueError('article-page-identity-mismatch')
             snapshot = Path(args.article_package).parent/('pending-page.md' if args.page_only else 'page.md')
             if not archive.page_matches(snapshot,Path(paper_path),args.publication_receipt):

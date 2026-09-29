@@ -27,7 +27,7 @@ class ReviewFixes(Publication):
                 if applied:
                     self.tearDown(); self.setUp()
                 j=self.staged()
-                with patch.object(archive.pa,'RcloneTransport',MemoryTransport),patch.object(w,'integration_check',return_value=['missing edge']):
+                with patch.object(archive.pa,'RcloneTransport',MemoryTransport),patch.object(w,'integration_check',side_effect=lambda *a,**k: ['missing edge'] if k.get('canonical',True) else []):
                     if applied:w.publish(j,1,runtime_root=self.runtime)
                     self.page.write_text(self.page.read_text()+'Human note to preserve.\n')
                     held=w.publish(j,1,runtime_root=self.runtime)
@@ -146,7 +146,7 @@ class ReviewFixes(Publication):
         self.assertEqual(provenance['history']['manifest_sha256'],w.sha(prior_manifest))
         self.assertEqual((manifest.parent/'original.md').read_text(),(w.job_path(refresh,self.runtime)/'original.md').read_text())
 
-    def test_real_integration_checker_requires_edges_and_event(self):
+    def test_real_integration_checker_requires_edges_not_page_bookkeeping(self):
         import subprocess
         self.page.write_text(self.page.read_text().replace('needs-ingest: true','needs-ingest: true\nvenue: Synthetic journal\nyear: 2026\nstatus: published\nauthors: [people/synthetic-author]\nfulltext_source: native-pdf')+
             ''.join('\n## '+name+'\nSource-backed fixture.\n' for name in ('Abstract','Context','Approach','Findings','Limitations','Analysis','Citation','Ingest log'))+'\nBibliography: no new references.\n')
@@ -162,7 +162,8 @@ class ReviewFixes(Publication):
             ledger.write_text('entries: []\n'); inbox.write_text('items: []\n')
             issues=w.integration_check(job,w.config(self.runtime))
             self.assertIn('author-edge-missing:people/synthetic-author',issues)
-            self.assertIn('propagation-event-missing',issues)
+            self.assertNotIn('propagation-event-missing',issues)
+            self.assertFalse(any('bibliograph' in issue for issue in issues))
 
     def test_encoded_credentials_are_not_retained(self):
         client_path=Path(requests.__file__).resolve().parents[2]/'skills/paper-ingest/scripts/paper-vision/client.py'

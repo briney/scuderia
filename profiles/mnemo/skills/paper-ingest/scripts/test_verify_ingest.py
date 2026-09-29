@@ -826,6 +826,17 @@ class TestCanonicalChecks(unittest.TestCase):
 
 
 class TestSourcePackageOption(CliCase):
+    def test_article_package_accepts_numeric_pmid_but_rejects_other_identity(self):
+        sys.path.insert(0,str(SCRIPT.parents[3]/'tools'))
+        from manuscript_ingest import archive
+        identity=dict(slug='fixture-paper',title=PAGE_TITLE,doi='10.9999/synthetic.0001',pmid=str(PMID))
+        with patch.object(archive,'verify',return_value={'identity':identity}),patch.object(archive,'page_matches',return_value=True):
+            rc,out,err=self.verify('--article-package',str(Path(self.brain)/'manifest.json'),'--page-only')
+            self.assertIn('Article package: OK',out,out+err)
+            identity['pmid']='12345'
+            rc,out,err=self.verify('--article-package',str(Path(self.brain)/'manifest.json'),'--page-only')
+            self.assertIn('article-page-identity-mismatch',out,out+err)
+
     def test_final_archive_only_page_needs_no_local_package_pointer(self):
         metadata={'initial_ingest':{'page_storage':'archive-only-v1'}}
         with patch('final_products.verify',return_value=metadata),patch('final_products.verify_ingest',return_value=metadata):

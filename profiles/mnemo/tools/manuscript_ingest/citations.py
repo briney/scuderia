@@ -4,7 +4,7 @@ import re
 
 # Unqualified P/L markers always refer to the selected manuscript, not a body alias.
 TOKEN=re.compile(r'(?:(s-[0-9a-f]{24})/)?P(\d{1,9}):L(\d{1,9})(?:-(?:P(\d{1,9}):)?L?(\d{1,9}))?')
-MARKER=re.compile(r'(?<![\[\\])\[(?:(?:s-[^/\]\s]+/)?P\d+:[^\]\n]*)\](?![ \t]*[\](\[])')
+MARKER=re.compile(r'(?<![\[\\])\[(?:(?:s-[^/\]\s]+/)?P\d+:[^\]]*)\](?![ \t]*[\](\[])')
 PROTECTED=re.compile(r'(?ms)^##[ \t]+Abstract[ \t]*\n.*?(?=^##[ \t]|\Z)|(`+|~{3,}).*?\1')
 
 
@@ -32,7 +32,11 @@ def extract(markdown,job,work):
         if any(a<=group.start()<b for a,b in protected):continue
         context=markdown[last:group.start()]
         # A comma separating adjacent locators belongs to the citation list.
-        pieces.append('' if rows and re.fullmatch(r'[ \t]*,[ \t]*',context) else context.rstrip(' \t'))
+        trimmed=context.rstrip(' \t')
+        # A marker on the next physical line must not strand sentence punctuation.
+        if markdown[group.end():group.end()+1] in ('.', ',', ';', ':', '!', '?'):
+            trimmed=re.sub(r'(?<!\n)\n[ \t]*$', '', trimmed)
+        pieces.append('' if rows and re.fullmatch(r'[ \t]*,[ \t]*',context) else trimmed)
         for token in group.group()[1:-1].split(','):
             row=dict(marker=token.strip(),draft_start=group.start(),draft_end=group.end(),context=context.strip(),status='unresolved',segments=[])
             match=TOKEN.fullmatch(token.strip())
