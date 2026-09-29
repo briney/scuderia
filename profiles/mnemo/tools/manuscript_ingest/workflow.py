@@ -268,7 +268,8 @@ def integration_check(job,settings):
     verifier=importlib.util.module_from_spec(spec); spec.loader.exec_module(verifier)
     page=Path(job['page']); text=page.read_text(); fm=page_metadata(text); final=dict(fm,**{'needs-ingest':False})
     issues=verifier.filled_contract_checks(final,text,page.stem)
-    argv=[sys.executable,'-B',str(helper),page.stem,'--instance',settings['instance']]
+    cache=Path(job['artifacts']['draft']).parent.parent.parent/'identity-cache'
+    argv=[sys.executable,'-B',str(helper),page.stem,'--instance',settings['instance'],'--identity-cache',str(cache)]
     # This subprocess checks canonical identity and forward graph links. No inference.
     checked=subprocess.run(argv,capture_output=True,text=True,timeout=180)
     if checked.returncode:issues.append(checked.stdout[-12000:] or 'page-identity-or-graph-check-failed')
@@ -343,6 +344,8 @@ def publish(job_id,revision,*,runtime_root):
         except Exception as exc:issues=['integration-check-unavailable:'+type(exc).__name__]
         if issues:
             job.update(blocking_reason='integration-obligations',artifacts={**job['artifacts'],'integration_obligations':issues,'manifest':str(manifest),'receipt':str(receipt)})
+            if any('temporarily-unavailable' in issue for issue in issues):
+                job.update(blocking_reason='metadata-temporarily-unavailable',next_action='Retain this job and revision; defer the canonical lookup and retry publish in a later authorized run. Do not redraft or sleep-loop.')
         else:
             current=sha(page)
             require(current in (sha(pending),sha(final)),'concurrent-page-edit')

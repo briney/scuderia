@@ -122,3 +122,17 @@ upload leaves the old page intact; retry the new revision without regeneration.
 An independent live edit requires a fresh snapshot and explicit reconciliation.
 Complete metadata/link decisions before publication where possible. Never repair
 archive equality by silently overwriting a human edit or mutating an archive.
+
+Canonical identity checks use a per-job external `identity-cache` of successful
+raw source responses, bound to their request URL and checksum, with a one-day
+reuse window. When using `validate_identifiers.py` during acquisition, pass
+`--identity-cache <job-work>/identity-cache` to share that evidence with final
+publication. Cache reuse reruns comparisons against the current page; it never
+turns a contradictory record into a pass. PubMed transient failures can use a
+matching Europe PMC MED record with its complete author list.
+
+A transient metadata outage leaves the same revision integration-pending with
+`metadata-temporarily-unavailable`. End the attempt and return its job/revision;
+retry publication during a later authorized run. Do not redraft, change identity,
+start another job or wait through repeated model-authored sleep loops. A missing
+record and a contradictory record remain different from service unavailability.

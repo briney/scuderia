@@ -892,3 +892,22 @@ class TestEnrichedSourceOption(CliCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+class MetadataRecovery(unittest.TestCase):
+    def setUp(self):self.mod=load_module()
+    def test_rate_limit_is_unavailable_not_not_found(self):
+        import urllib.error
+        error=urllib.error.HTTPError('https://example.org',429,'rate limited',{},None)
+        with patch.object(self.mod,'pubmed_esummary',side_effect=error),patch.object(self.mod,'epmc_record',side_effect=TimeoutError('temporary'),create=True):
+            findings,_=self.mod.canonical_checks(paper_fm(doi=None))
+        message=' '.join(m for _,m in findings)
+        self.assertNotIn('not found',message)
+        self.assertIn('temporarily-unavailable',message)
+    def test_epmc_fallback_must_match_pmid_doi_title_and_author_count(self):
+        import urllib.error
+        def fetch(url,*args,**kwargs):
+            if 'eutils' in url:raise urllib.error.HTTPError(url,429,'rate limited',{},None)
+            if 'europepmc' in url:return {'resultList':{'result':[{'id':'12345678','source':'MED','title':PAGE_TITLE,'pubYear':'2026','authorList':{'author':[{'fullName':'One A'},{'fullName':'Two B'}]}}]}}
+            raise AssertionError(url)
+        with patch.object(self.mod,'fetch_json',side_effect=fetch):findings,_=self.mod.canonical_checks(paper_fm(doi=None,pmid='12345678'))
+        self.assertFalse([m for level,m in findings if level=='FAIL'],findings)

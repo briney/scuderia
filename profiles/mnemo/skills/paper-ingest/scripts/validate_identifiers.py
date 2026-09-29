@@ -74,28 +74,13 @@ PASS_SCORE = 90.0
 REVIEW_SCORE = 75.0
 
 
-def fetch_json(url, retries=2, backoff=4.0):
-    last = None
-    for attempt in range(retries + 1):
-        try:
-            req = urllib.request.Request(url, headers={"User-Agent": UA})
-            with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
-                return json.loads(r.read().decode("utf-8", "replace"))
-        except urllib.error.HTTPError as e:
-            last = e
-            if e.code in (429, 500, 502, 503) and attempt < retries:
-                time.sleep(backoff * (attempt + 1))
-                continue
-            raise
-        except (urllib.error.URLError, TimeoutError) as e:
-            last = e
-            if attempt < retries:
-                time.sleep(backoff * (attempt + 1))
-                continue
-            raise
-    if last is not None:
-        raise last
-    raise RuntimeError("fetch failed without exception: %s" % url)
+IDENTITY_CACHE = None
+
+
+def fetch_json(url, retries=1, backoff=2.0):
+    from metadata_http import fetch_json as fetch
+    return fetch(url,retries,backoff,cache=IDENTITY_CACHE,ua=UA,timeout=min(TIMEOUT,10))
+
 
 
 # ------------------------------------------------------------------ matching
@@ -173,7 +158,16 @@ def pubmed_esummary_batch(pmids):
         return {}
     u = ("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
          f"?db=pubmed&id={','.join(pmids)}&retmode=json")
-    d = fetch_json(u)
+    try:d = fetch_json(u)
+    except (urllib.error.URLError,TimeoutError) as exc:
+        from metadata_http import transient,epmc_record
+        if not transient(exc):raise
+        out={}
+        for pid in pmids:
+            try:record=epmc_record(pid,fetch_json)
+            except Exception:record=None
+            out[str(pid)]=record or {'error':'temporarily-unavailable; retain job and defer canonical check'}
+        return out
     out = {}
     for pid in pmids:
         rec = d.get("result", {}).get(str(pid), {})
@@ -441,7 +435,10 @@ def main():
     ap.add_argument("--batch", help="JSON file: list of citation dicts")
     ap.add_argument("--recover", action="store_true",
                     help="attempt title-based recovery for non-PASS citations")
+    ap.add_argument("--identity-cache",help="External per-job canonical response cache; shared with acquisition/publication")
     args = ap.parse_args()
+    global IDENTITY_CACHE
+    IDENTITY_CACHE=args.identity_cache
 
     if args.batch:
         with open(args.batch) as f:

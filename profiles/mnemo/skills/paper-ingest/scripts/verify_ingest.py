@@ -170,31 +170,13 @@ def token_set_ratio(a, b):
 
 # ------------------------------------------------------------------ fetching
 
-def fetch_json(url, retries=2, backoff=4.0):
-    """GET a JSON document with retry/backoff on 429/5xx/transient errors."""
-    last = None
-    for attempt in range(retries + 1):
-        try:
-            req = urllib.request.Request(url, headers={"User-Agent": UA})
-            with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
-                import json
+IDENTITY_CACHE = None
 
-                return json.loads(r.read().decode("utf-8", "replace"))
-        except urllib.error.HTTPError as e:
-            last = e
-            if e.code in (429, 500, 502, 503) and attempt < retries:
-                time.sleep(backoff * (attempt + 1))
-                continue
-            raise
-        except (urllib.error.URLError, TimeoutError) as e:
-            last = e
-            if attempt < retries:
-                time.sleep(backoff * (attempt + 1))
-                continue
-            raise
-    if last is not None:
-        raise last
-    raise RuntimeError("fetch failed without exception: %s" % url)
+
+def fetch_json(url, retries=1, backoff=2.0):
+    from metadata_http import fetch_json as fetch
+    return fetch(url,retries,backoff,cache=IDENTITY_CACHE,ua=UA,timeout=min(TIMEOUT,10))
+
 
 
 def openalex_work(doi):
@@ -303,6 +285,11 @@ def _clean_identifier(value):
     return s
 
 
+def epmc_record(pmid):
+    from metadata_http import epmc_record as lookup
+    return lookup(pmid,fetch_json)
+
+
 def canonical_checks(fm):
     """Verify frontmatter identifiers against canonical sources.
 
@@ -342,7 +329,7 @@ def canonical_checks(fm):
             except Exception as e:  # HTTPError 404 etc. — try next source
                 errors.append(f"{getattr(fn, '__name__', '?')}: {e}")
         if doi_rec is None:
-            findings.append(("FAIL", f"doi {doi} did not resolve to a record "
+            findings.append(("FAIL", f"doi {doi} canonical lookup failed "
                                      f"({'; '.join(errors)[:180]})"))
         else:
             score = token_set_ratio(fm.get("title") or "", doi_rec["title"])
@@ -373,13 +360,20 @@ def canonical_checks(fm):
     # ---- PMID resolution + DOI agreement + author count ------------------
     pm_rec = None
     if pmid is not None:
+        lookup_failed=False
         try:
             pm_rec = pubmed_esummary(pmid)
         except Exception as e:
-            findings.append(("FAIL", f"pmid {pmid} lookup failed: {str(e)[:120]}"))
-        if pm_rec is None:
+            from metadata_http import transient
+            lookup_failed=True
+            if transient(e):
+                try:pm_rec=epmc_record(pmid)
+                except Exception:pass
+                if pm_rec is None:findings.append(('FAIL',f'pmid {pmid} temporarily-unavailable; retain job and defer canonical check'))
+            else:findings.append(("FAIL", f"pmid {pmid} lookup failed: {str(e)[:120]}"))
+        if pm_rec is None and not lookup_failed:
             findings.append(("FAIL", f"pmid {pmid} not found in PubMed"))
-        else:
+        if pm_rec is not None:
             # Validate the PMID's identity independently even when the DOI
             # resolves: an unrelated older record may carry no DOI to compare.
             score = token_set_ratio(fm.get("title") or "",
@@ -769,7 +763,10 @@ def main():
     ap.add_argument('--require-enriched-source', action='store_true', help='new production route: require enriched handoff evidence and preserved qualifications')
     ap.add_argument('--enrichment-integration', help='absolute trusted qualified enrichment integration directory')
     ap.add_argument('--enrichment-root', help='absolute trusted frozen enrichment package directory')
+    ap.add_argument("--identity-cache",help="External per-job canonical response cache; shared with acquisition/publication")
     args = ap.parse_args()
+    global IDENTITY_CACHE
+    IDENTITY_CACHE=args.identity_cache
     if args.require_enriched_source and args.require_filled and not args.page_only and not args.final_products:
         ap.error('production completion requires --final-products and verified archive publication; handoffs are intermediate')
     if args.article_package and (args.final_products or args.source_package_handoff or args.require_enriched_source):
