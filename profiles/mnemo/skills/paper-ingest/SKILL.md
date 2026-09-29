@@ -41,8 +41,10 @@ report the requested source/item/objective to the operator and keep this job int
 ## Ownership
 
 One paper worker owns acquisition, the complete manuscript read, drafting and a
-focused source check. The primary reviews the draft, material changed claims and
-selected supporting evidence, and owns shared author/bibliography/graph writes.
+focused source check. The primary reviews the preservation diff and worker note,
+resolves specific flagged uncertainties or noticed contradictions, and owns needed
+shared author/bibliography/graph writes. Do not repeat the worker’s factual check
+or already-satisfied deterministic checks merely because ownership changed.
 Do not read the entire manuscript before dispatch and again after the worker.
 Standalone ingestion combines these roles in one context.
 A delegated worker stages only its assigned paper and returns the job ID, revision,
@@ -183,6 +185,8 @@ additional readable body source use `[<returned-source-id>/P1:L2-L5]`.
 Group supporting ranges as `[P4:L12-L15, P5:L2]`; cross-page ranges such as
 `[P4:L28-P5:L3]` are accepted. Keep each claim's subject and qualifiers explicit.
 Leave the canonical abstract, identifiers, graph links and frontmatter intact.
+Do not put locator annotations inside the verbatim Abstract block; place source
+notes outside it. Keep punctuation with its sentence, not on a marker-only line.
 
 Write the markers while drafting. Do not generate a separate claim inventory or
 copy quotations. `stage` removes the markers from the readable page and retains
@@ -192,8 +196,14 @@ gate. A valid locator proves location only, not support for the attached claim.
 Do not launch a second mapping pass to fill every gap.
 
 
-Distill from the manuscript. Check central findings, consequential numbers,
-contradictions and material omissions against their source locations. Read only
+Distill new manuscript findings from the manuscript. Preserve valid separately
+attributed external context already on the page, including released-code details;
+absence from the manuscript is not evidence against that context. Preserve its
+useful explanation and attribution rather than replacing it with a historical note.
+Check central findings, consequential numbers,
+contradictions and material omissions against their source locations. Check
+consequential ratios against the stated numerator/denominator. If the source itself
+is inconsistent, qualify the reported claim rather than silently endorsing it. Read only
 specific manuscript pages needed to resolve an uncertain claim. Optional unused
 figure descriptions or unreadable peripheral cells do not block a useful page.
 Unknown source associations remain unknown. Truncated observations remain partial;
@@ -208,6 +218,9 @@ any unresolved material claim. Remove the hold only after correction, qualificat
 or omission. Machine checks validate bindings and structure, not scientific truth.
 Revise by staging again with the same job ID. These revisions never redo inference.
 The returned diff and draft are the reviewable output; the live page is untouched.
+Staging returns local `artifacts.integration_obligations` without network calls.
+Fix missing page fields before handing off; return unresolved shared-file changes
+to the primary. Optional locator warnings do not require restaging.
 
 An additional factual checker is optional, never a publication requirement. If
 requested, supply the complete manuscript, draft and external citation evidence;
@@ -256,7 +269,11 @@ Frontmatter uses `status: published|preprint|unknown`, complete aligned
 `authors`, and truthful `fulltext_source` provenance under `frontmatter.md`.
 The helper's label describes a candidate route, not evidence that its body
 was accepted. Never label a retrieved PDF as user-provided or HTML to satisfy
-a supposed enum. Keep exact source URL, version, and limitations in the log.
+a supposed enum. Keep source/version attribution and concise limitations readable. Store exact
+URLs, hashes, tool history and transient stage/completion notes in external job
+artifacts. Do not carry obsolete exhaustive-workflow logs into the fresh page;
+preserve their evidence in the archived original, and retain useful scientific
+context with its attribution.
 
 On fills, preserve original `stub_source`, valid citing edges and their order,
 and previous failure counts. Initialize absent `ingest_attempts` to zero;
@@ -265,6 +282,10 @@ date/diagnostic. Holds/skips are not failures. Page-only results retain the
 queue flag until parent completion; source-limited success retains enrichment.
 
 ### 7. Bibliography walk
+
+For an assigned corpus refresh, preserve existing citation relationships and
+defer new bibliography candidates externally; do not create other papers. This
+bounded scope takes precedence over the general new-ingestion rule below.
 
 Create/update stubs for load-bearing references: methods, datasets, and
 frameworks without which the paper's argument would fail. Background citations
@@ -279,7 +300,7 @@ tiering and may defer that review's automatic stub creation to its Phase 3;
 this does not mean the skipped walk created stubs.
 
 For a direct single-paper ingest opening a thread the brain may not pursue,
-record source-backed anchors as `### Deferred stubs` in the Ingest log instead
+record source-backed anchors in external job observations instead
 of minting isolated stubs. Include identifiers and one-line roles. Dive
 work does not use this shortcut for required Tier 2 stubs. A later anchor-set
 dive can reuse the deferred list only after identity validation and dedup.
@@ -314,24 +335,14 @@ When no relevant target exists, leave `links: []` and record the search
 outcome in the ingest log; never link an unrelated page to avoid an empty
 list.
 
-Append a deduplicated propagation event under `items:` in
-`docs/rem-cycle/inbox.yaml`, preserving the existing list's indentation:
-
-```yaml
-- consumed_by: []
-  date: YYYY-MM-DD
-  event: ingest            # or stub-filled
-  id: <YYYY-MM-DD>-<slug>
-  page: papers/<slug>
-```
-
-The usual file uses column-zero items and two-space fields. Parse after the
-append and verify the intended item/count and absence of duplicate IDs/keys.
-A paper worker never edits this inbox.
+The runtime records the deduplicated propagation event after verified page
+application. Neither worker nor primary appends an event manually. Retries reuse
+the same job/revision event; a failed archive cannot emit a completion event.
 
 ### 10. Publication, integration and closeout
 
-Call `publish` for the chosen revision. It uploads immutable original sources,
+Resolve reported local integration obligations before `publish`. Call it once
+for the chosen revision in the common case. It uploads immutable original sources,
 retained manuscript text, scientific draft/review and provenance, then verifies
 remote bytes before applying the candidate. The page contains a small durable
 remote archive receipt pointer; full receipts, hashes, verification records,
@@ -341,11 +352,12 @@ Archive failure leaves the page unchanged. Retry publication
 with the same job/revision; never start a new extraction to fix storage or prose.
 A concurrent edit holds application; preserve it and reconcile explicitly.
 
-Complete the Phase 7–9 obligations and read back author edges, bibliography
-decisions, graph links and propagation. Keep queue flags until `publish` reports
+Complete actual Phase 7–9 obligations within the assigned scope. Runtime checks
+read back the author edges, links and publication; it records propagation. Keep queue flags until `publish` reports
 complete. Integration-pending is useful staged/applied work, not completed ingestion.
-Run the named page verifier with `--article-package <manifest>` and
-`--publication-receipt <receipt>`; archive metadata is not a scientific truth test.
+Native completion includes archive and integration checks; do not repeat the
+same verifier afterward. The named page verifier remains available for independent
+audits or a specific diagnostic. Archive metadata is not a scientific truth test.
 Run the instance frontmatter linter. Use `skills/git-ops/SKILL.md` for the coherent
 owned unit; workers return paths and obligations only. Preserve unrelated edits.
 

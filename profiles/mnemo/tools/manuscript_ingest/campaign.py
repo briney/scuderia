@@ -12,6 +12,7 @@ import time
 import json
 from pathlib import Path
 import sys
+import shlex
 import yaml
 
 if not __package__:
@@ -273,9 +274,10 @@ def worker_prompt(frozen,state,item,folder,deadline):
     entry=state['items'][item]
     return f'''Stage only this existing paper: {entry['canonical_path']}
 Existing job: {entry.get('job_id')}. Brain: {frozen['instance']}. External work: {folder}.
-Load the bound paper-ingest skill and runtime reference. Do not load the exhaustive historical workflow.
+Load {Path(__file__).resolve().parents[2]/'skills/paper-ingest/SKILL.md'} and its references/runtime.md. Do not load the exhaustive historical workflow.
 You own identity/acquisition, one complete manuscript read, fresh drafting, and a focused check of central claims.
-Read the old page for valid provenance, links and human annotations, not as scientific evidence.
+Read the old page for valid provenance, links, human annotations and separately attributed external context (including released-code observations). Preserve that useful context with its attribution; manuscript-first extraction does not make it invalid. Do not use the old manuscript summary as evidence.
+Keep transient execution notes, deferred bibliography candidates and diagnostics in external observations, not in page prose. Check consequential ratios; if source arithmetic disagrees with its numbers, attribute the discrepancy.
 Reuse the same job and retained sources/draft. Existing archive: sources without inputs first.
 Use markdown_path for staging. If already staged, return durable job/revision evidence without another full read or generation.
 Retain available original supplements only, with the shared 120-second attachment budget; do not process them.
@@ -347,17 +349,29 @@ def window_control(root,profile_home,action,*,jobs=None,gateway=None):
 
 
 def wave_prompt(frozen,state,selected,folder,deadline,cfg):
-    items=[dict(id=i,path=state['items'][i]['canonical_path'],job_id=state['items'][i]['job_id']) for i in selected]
+    profile=Path(__file__).resolve().parents[2]
+    items=[]
+    for i in selected:
+        entry=state['items'][i]; item=dict(id=i,path=entry['canonical_path'],job_id=entry['job_id'])
+        if cfg.get('runtime_root') and entry['job_id']:
+            job=w.load_job(entry['job_id'],Path(cfg['runtime_root']))
+            item.update(status=job['status'],revision=job['revision'],artifacts=job.get('artifacts',{}),next_action=job['next_action'])
+            payload=folder/('publish-'+i+'.json')
+            w.save(payload,dict(operation='publish',job_id=job['job_id'],revision=job['revision']))
+            item['publish_command']='PYTHONPATH='+shlex.quote(str(profile/'tools'))+' '+shlex.join([sys.executable,'-B','-m','manuscript_ingest.cli','--runtime-root',str(cfg['runtime_root']),'--input',str(payload)])
+        items.append(item)
     return f'''Refresh only these existing paper inputs in {frozen['instance']}:
 {json.dumps(items,indent=2)}
-Load ingest-pending-papers/references/corpus-refresh.md, paper-ingest and batch-drain from the bound profile.
+Read {profile/'skills/ingest-pending-papers/references/corpus-refresh.md'} and {profile/'skills/paper-ingest/references/runtime.md'}. The bounded integration instructions below govern this refresh. Load other skill sections only for an actual unresolved obligation.
 Use the six manuscript-to-page operations only. Reuse staged manuscript drafts and retained originals; supplements remain unprocessed.
-Inspect the old page for valid links, provenance and human annotations; do not paraphrase it as evidence.
-Resolve identity and dedup before start. A rename/merge or ambiguous human annotation is a hold for this wave; propose it externally.
+Inspect the draft diff for preservation of valid links, provenance, human annotations and attributed external context. Do not delete useful code-derived or other attributed observations solely because they are absent from the manuscript.
+Identity and dedup for staged jobs are already resolved. A newly found conflict, rename/merge or ambiguous human annotation is a hold; propose it externally.
 Reuse named jobs and their sources/drafts; inspect durable artifacts even after a missing worker summary.
 Workers have already attempted these inputs. For staged jobs, do not delegate, acquire again, reread full manuscripts or regenerate drafts.
 For a needs-input job with a documented authorized-browser route, the primary alone may finish that acquisition and its first manuscript read/draft serially; reuse prior attempts and respect the admission deadline. Otherwise preserve the access hold.
-Inspect the retained annotated drafts and selected evidence for material issues; integrate shared files, amend only when needed, and publish the same jobs. No other queued or bibliography paper is in scope.
+Read the worker review note and draft diff once. The worker owns the focused factual check; inspect source passages only for a flagged uncertainty or a specific contradiction you notice. Resolve only outstanding integration obligations and necessary shared edits; do not re-check already-satisfied author edges or explore bibliography/sibling pages without a concrete missing target. No other queued or bibliography paper is in scope.
+Use the provided publication command after resolving obligations. If amended, update only its revision in the JSON input. Never edit a live paper directly. Publication handles archive verification, guarded application, the deduplicated propagation event and completion in one call. Do not manually append events or run a second equivalent verifier after native completion. Run the required frontmatter lint once for closeout. A genuine failed obligation may require retrying the same revision.
+Use the exact provided paths and command; no interpreter search, dependency installation, or runtime implementation reading during ordinary integration. Keep diagnostics and execution notes in external observations. The page contains scientific content and concise source caveats, not pending-task logs.
 Check current job status and pending obligations first. A transient metadata lookup means defer this item's publication without sleeping or restarting. Missing full manuscript remains an access hold.
 Stop new admissions after {deadline}; finish safe in-flight work. On provider/authentication/archive outage, stop admissions and write its reason to {folder/'STOP'}.
 Record per-input access/identity/annotation issues and remaining obligations in {folder/'observations.md'}; no rigid final output schema is required.
@@ -372,7 +386,7 @@ def run(root:Path,runtime_root:Path,profile_home:Path,limit:int,concurrency:int,
     root=w.outside_instance(root); profile_home=w.outside_instance(profile_home)
     w.require(all(type(n) is int and n>0 for n in (limit,concurrency,max_seconds)),'positive-run-limits-required')
     with exclusive(root) as root_fd,exclusive(profile_home/'paper-refresh') as profile_fd:
-        cfg=json.loads((root/'run-config.json').read_text())
+        cfg=json.loads((root/'run-config.json').read_text()); cfg['runtime_root']=str(runtime_root)
         for marker in (profile_home/'paper-refresh').glob('child*.json'):
             previous=json.loads(marker.read_text())
             ps=subprocess.run(['ps','-p',str(previous['pid']),'-o','command='],capture_output=True,text=True)

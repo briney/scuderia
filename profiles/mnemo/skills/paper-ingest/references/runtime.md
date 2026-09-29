@@ -8,8 +8,8 @@ The six operations are fixed; there is no nested command or processing mode.
 | start | absolute paper page, optional resolved identity | opaque job ID |
 | sources | job ID, optional acquired inputs | retained source index; omitted inputs reuse archive |
 | read | job ID, explicit source/page locations; optional inspection question or full-page transcription | bounded text or observation with partial/missing status |
-| stage | job ID, Markdown, short source-review note, optional live snapshot token | revision, draft and diff; live page unchanged |
-| publish | job ID and revision | archive read-back, guarded application and integration status |
+| stage | job ID, Markdown, short source-review note, optional live snapshot token | revision, draft, diff and local integration obligations; live page unchanged |
+| publish | job ID and revision | preflight, archive read-back, guarded application, propagation and integration status |
 | status | job ID | current state and next action; no dispatch |
 
 Acquired input rows use `path`, `role` (manuscript/body/supplement), and for manuscript
@@ -136,3 +136,20 @@ A transient metadata outage leaves the same revision integration-pending with
 retry publication during a later authorized run. Do not redraft, change identity,
 start another job or wait through repeated model-authored sleep loops. A missing
 record and a contradictory record remain different from service unavailability.
+
+## Integration handoff
+
+`stage` reports local structural, author-edge and link obligations without network
+requests. Correct page-owned omissions before handoff; only the primary edits
+shared files. `publish` rechecks those obligations before upload, verifies canonical
+identity, and records a per-job/revision propagation event after guarded application.
+Retrying after interruption does not duplicate the event or repeat manuscript work.
+Existing artifacts and the returned next action are the handoff; no new review
+schema is required. Campaign primaries receive exact paths and CLI input files.
+Use those commands, updating the revision if amended. Native completion replaces
+a redundant second verifier run; frontmatter lint and scoped Git closeout remain.
+
+Wrapped locator groups are accepted. Keep Abstract quotations unchanged and put
+annotations outside that protected section. Optional locator warnings remain
+nonblocking. Store procedural history externally; paper prose keeps scientific
+content, useful attributed context, concise caveats and the archive pointer.

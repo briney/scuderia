@@ -92,3 +92,12 @@ class AdjacentLocators(Publication):
         clean,evidence=citations.extract(text,job,w.job_path(j,self.runtime))
         self.assertIn('Models. Values, however, differ.',clean)
         self.assertEqual(len(evidence['citations']),3)
+
+class WrappedLocators(Publication):
+    def test_wrapped_groups_and_marker_only_lines_preserve_prose(self):
+        from manuscript_ingest import citations
+        j,_=self.ready(); job=w.load_job(j,self.runtime)
+        clean,ev=citations.extract('Result [P1:L1,\n  P1:L1].\nAnother result\n[P1:L1]. Next sentence.\n\nParagraph [P1:L1].\n',job,w.job_path(j,self.runtime))
+        self.assertEqual(clean,'Result.\nAnother result. Next sentence.\n\nParagraph.\n')
+        self.assertEqual(len(ev['citations']),4)
+        self.assertTrue(all(c['status']=='located' for c in ev['citations']))
