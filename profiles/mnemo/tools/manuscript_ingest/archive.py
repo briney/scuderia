@@ -244,6 +244,10 @@ def build(job_id,revision,*,runtime_root):
         for path in (work/'inspections').rglob('*'):
             if path.is_file():
                 w.absolute(path); target=root/path.relative_to(work); target.parent.mkdir(parents=True,exist_ok=True); shutil.copyfile(path,target)
+    if (work/'factual-check').exists():
+        for path in (work/'factual-check').iterdir():
+            if path.is_file() and path.suffix in ('.json','.txt'):
+                target=root/'factual-check'/path.name;target.parent.mkdir(exist_ok=True);shutil.copyfile(path,target)
     files=[dict(key=str(p.relative_to(root)),sha256=w.sha(p),size=p.stat().st_size) for p in sorted(root.rglob('*')) if p.is_file()]
     m=dict(schema=SCHEMA,scope=job['scope'],identity=job['identity'],article_key=w.digest({k:job['identity'].get(k) for k in ('slug','doi','pmid')}),
         job_id=job_id,revision=revision,receipt_name=meta['receipt_name'],sources=job['sources'],files=files)

@@ -22,11 +22,11 @@ inputs; migrate them only after upload/readback, replace their page pointers wit
 content-addressed remote receipt locators, and preserve all scientific prose.
 Refresh downloads receipts and sources into external storage using the configured
 trusted archive destination. Old packages and their snapshots remain unchanged.
-A failed upload can resume independently of drafting or inference. Publication and
-required graph/author/bibliography integration have separate pending states.
+A failed upload can resume independently of drafting or inference. Scientific publication and deferred graph/attachment follow-up are separate outcomes.
 
-Ordinary refresh restores verified originals through `sources`, preserving previous
-scientific products, corrections and receipt references. Historical archive formats
+Ordinary refresh restores verified originals through `sources`, keeping previous
+scientific products, corrections and receipt references archived without loading
+them into the fresh drafting context. Historical archive formats
 have separate read-only validators outside the bound skill; their execution
 procedures are not instructions for a new job. A source/version mismatch holds
 for explicit reconciliation. Never silently substitute a preprint/published twin.

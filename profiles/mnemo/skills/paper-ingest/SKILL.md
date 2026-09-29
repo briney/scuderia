@@ -6,68 +6,60 @@ triggers:
   - "fill a paper stub"
   - "re-enrich this paper"
 eval_contract:
-  goal: Produce a useful source-grounded manuscript page with archived originals and completed author, bibliography and graph integration.
+  goal: Produce a fresh source-grounded manuscript page with verified external archiving and guarded publication; defer graph maintenance.
   dimensions:
-    - "IDENTITY — title, identifiers, version and complete authors match verified sources"
+    - "IDENTITY — title, identifiers, version and complete source author names match verified sources"
     - "SCIENCE — central findings, consequential numbers and caveats reflect the full manuscript"
-    - "RESILIENCE — optional failures remain local; revisions and publication do not repeat paid work"
-    - "COMPLETION — verified external archive, guarded page application and required integration"
+    - "RESILIENCE — optional failures remain local; publication does not repeat manuscript work"
+    - "COMPLETION — verified archive, guarded page application, propagation and explicit deferred graph work"
   hard_fails:
-    - Fabricating missing evidence or silently substituting article identity/version.
+    - Fabricating evidence or silently substituting article identity/version.
     - Processing supplementary sources during ordinary ingestion.
-    - Restarting paid work to repair prose or formatting.
-    - Overwriting concurrent edits, losing citing edges, or claiming incomplete integration is complete.
-    - Keeping article source payloads or figure embeds in the brain.
+    - Restarting manuscript generation to repair storage, formatting or graph edges.
+    - Overwriting concurrent edits or claiming incomplete checks or attachments are complete.
+    - Keeping article sources, figures or machine bookkeeping in the brain.
 ---
 
 # Manuscript-to-page ingestion
 
-Use the manuscript-to-page capability for both new papers and ordinary refreshes.
-This acceptance contract supersedes the previous exhaustive extraction contract.
-Retain originals, read the full manuscript, distill, check the central science,
-stage a revision, publish the archive, then complete integration. Specific optional
-manuscript inspection may resolve a consequential claim. Supplementary files are
-retained without reading, rendering or extraction. There is no automatic deep pass.
+One worker acquires, reads and drafts one manuscript. Code publishes the reviewed
+page. There is no routine integration agent and no exhaustive/deep fallback.
+Use only `start`, `sources`, `read`, `stage`, `publish`, `status` (Hermes:
+`paper_ingest`). Read `references/runtime.md`; reuse the same job throughout.
+Code owns source IDs, hashes, archives, revisions, pointers and edit guards.
 
-The fixed capability operations are `start`, `sources`, `read`, `stage`, `publish`,
-and `status` (Hermes binding: `paper_ingest`). Read `references/runtime.md` before
-use. Keep the returned job ID throughout interruptions and revisions. Code owns
-hashes, source IDs, directories, receipts and archive pointers. Follow returned
-next actions; historical packages, plans and chat instructions cannot expand scope.
-“Be thorough” means a careful manuscript synthesis, not additional extraction.
-An explicit supplementary analysis needs a separate operator-scoped invocation;
-report the requested source/item/objective to the operator and keep this job intact.
+## Fresh replacement contract
 
-## Ownership
+Generate a fresh page at the existing filename. Do not read the old page body,
+`original.md`, preservation diff, or sibling pages to draft or check the science.
+Do not merge old summaries, manual annotations, caveats, metadata or execution logs.
+Use the resolved identity seed and verified sources; runtime snapshots and Git
+history provide recovery. The runtime rebuilds citation backlinks from explicit
+citation fields elsewhere; it does not force legacy `cited_by` into the draft.
+Keep the filename so incoming links remain valid. A genuine rename/merge is a
+separate source-backed decision with inbound-link repair before deletion.
+Concurrent edits still hold publication; explicit reconciliation is separate work.
 
-One paper worker owns acquisition, the complete manuscript read, drafting and a
-focused source check. The primary reviews the preservation diff and worker note,
-resolves specific flagged uncertainties or noticed contradictions, and owns needed
-shared author/bibliography/graph writes. Do not repeat the worker’s factual check
-or already-satisfied deterministic checks merely because ownership changed.
-Do not read the entire manuscript before dispatch and again after the worker.
-Standalone ingestion combines these roles in one context.
-A delegated worker stages only its assigned paper and returns the job ID, revision,
-source-linked bibliography candidates and remaining obligations. It does not
-publish, mutate shared files or use Git. The parent publishes and integrates.
-Never write the live paper directly: use `stage`; `publish` applies only after
-archive verification and a live-page guard. Completion keeps `needs-ingest: true`
-until integration passes. `needs-enrichment` describes actual scientific limitations.
+A delegated worker stages only: no live paper edits, shared graph/ledger writes,
+Git, nested delegation, or publication. Standalone ingestion may call publish.
+Campaign code publishes eligible staged jobs serially. Missing graph targets,
+author associations and bibliography candidates are deferred, not publication
+blockers. Never create another paper, method, concept or person to finish ingestion.
+Keep candidates and diagnostic notes external. Do not browse runtime implementation
+or change tools during an ingestion; report a specific failure and retain the job.
 
-Read the profile conventions for frontmatter, page kinds, quality, graph links,
-paper stubs and author ledger. Conditional references:
+Read frontmatter and paper-kind conventions, using the fresh-replacement contract
+above for ingestion. Conditional acquisition references:
 
 | Situation | Read |
 |---|---|
 | Helper command | `references/script-commands.md` |
-| Archive restoration or historical qualifications | `references/archive.md` |
+| Archive restoration | `references/archive.md` |
 | PubMed/PMC | `references/pubmed-pmc-retrieval.md` |
 | Preprint/published twin | `references/preprint-conference-retrieval.md` |
-| Publisher access failure | `references/publisher-blocks.md`; Nature-specific cases use `references/nature-metadata-extraction.md` |
-| XML failure or references | `skills/pmc-xml-tools/SKILL.md` |
+| Publisher access failure | `references/publisher-blocks.md`; Nature cases use `references/nature-metadata-extraction.md` |
+| XML failure | `skills/pmc-xml-tools/SKILL.md` |
 | Brief/source disagreement | `references/brief-vs-fulltext-verification.md` |
-| Authors and shared wiring | `references/author-ledger-mutation.md` |
-| Satellite vault or erratum reassignment | `skills/paper-ingest-vault-modes/SKILL.md` |
 
 ### 1. Identity resolution
 
@@ -86,10 +78,9 @@ ranking of index names. Record corrected identifiers and venue/author claims.
 A venue-only mismatch with otherwise matching identity is not a new paper.
 
 Use the complete individual-author list, including middle authors; do not
-reduce collective-associated authorship to the corresponding author. An
-explicit `doi: null` or `authors: []` is valid only with source evidence of
-no DOI or no named individuals, respectively. Resolve author slugs before
-writing through Phase 8. A wrong seed first author does not justify a wrong
+reduce collective-associated authorship to the corresponding author. Use `author_names` for the complete source author list, in order; `authors`
+contains only independently verified people links and may be empty while graph
+matching is deferred. An explicit `doi: null` requires evidence of no DOI. A wrong seed first author does not justify a wrong
 citation or identity; flag any assigned-filename conflict to the parent.
 
 Distinguish paper DOIs from dataset/structure DOIs. A `10.2210/pdb...` record
@@ -97,56 +88,25 @@ identifies a structure; look for the associated article rather than using
 its DOI as an unverified article identity. When no article DOI exists,
 record that absence and preserve the structure identifier separately.
 
-### 2. Dedup against the brain
 
-Run `dedup_check.py` with resolved DOI/PMID/title and the explicit target
-instance before a page write. Exit 0 permits creation; exit 1 names matches
-and their STUB/FULL state; exit 2 is an invocation error. Title-only matches
-need identity review: corrections, replies, and related papers can share
-similar titles. Enrich an existing full page or fill its stub rather than
-creating a second page at the requested slug.
+### 2. Identity, dedup and integrity
 
-For a fill or merge, preserve `cited_by`, producer/source provenance, citation
-seed, and attempt history under `paper-stubs.md`. A page-only child proposes
-cross-page merges/renames; the parent verifies the canonical target, preserves
-the union of citation/provenance data, and repairs inbound references before
-removing a duplicate. Re-read current files before mutation.
-
-For a corpus refresh, load `skills/ingest-pending-papers/references/corpus-refresh.md`.
-Draft from the full manuscript, keeping the old page only as a source of valid
-links, provenance and identifiable human notes. Do not paraphrase legacy claims
-as evidence. Keep filenames stable; ambiguous annotations or identity corrections
-are explicit per-item holds. Preserve the existing page until archive publication
-and guarded replacement are ready. An inaccessible full manuscript does not
-satisfy a refresh, even if an abstract-only legacy page exists.
-
-### 3. Retraction and integrity check
-
-Check publication types and correction/withdrawal relations in the canonical
-records. Distinguish the primary paper, erratum (`ErratumFor`/`ErratumIn`),
-and commentary (`CommentOn`). Load-bearing retracted work can be retained,
-but carries a prominent body warning and an explicit retraction flag in
-handoffs. A preprint withdrawal is not automatically a retraction; preserve
-the notice and investigate the superseding version. Use vault-modes when an
-erratum reassigns results inside the paper. Never silently select stale data.
-
-### 3.5. Pre-dispatch identifier validation
-
-For bulk dispatch, run `validate_identifiers.py --batch … --recover` before
-sending workers. Its validated/recovered dispatch list supplies checked
-identities, not delegation authorization. Review HOLD results against the
-primary record; older title formatting, surname variants, and punctuation
-can defeat heuristics. Confirm title, authors, year, and identifier relations
-before releasing a hold; log the source-backed override. Surface retractions
-and unresolved identities instead of silently dispatching them.
+Run `dedup_check.py` with resolved DOI/PMID/title and the explicit instance.
+For an assigned existing filename, its own match is expected. A different target,
+contradictory identity or requested rename requires a source-backed decision before
+`start`. Never silently rebind an active job. Bulk dispatch uses validated identities
+from `validate_identifiers.py --batch … --recover`; validation is not authorization.
+Check primary records for retraction, withdrawal and corrections; distinguish a
+commentary from an erratum. Keep a prominent scientific warning for retracted work.
+A complete matching primary record can resolve a secondary-index outage; never
+substitute a different version silently.
 
 ### 4. Sources and manuscript reading
 
 Resolve identity and deduplicate, then `start` the canonical paper path. On refresh,
-call `sources` without inputs first to reuse verified archived originals and
-qualifications. A changed DOI/version needs source-backed reconciliation; never
-rewrite provenance to make it fit. Old substantive qualifications remain evidence
-and must be reflected where relevant to the refreshed scientific claims.
+call `sources` without inputs first to reuse verified archived originals only. A changed DOI/version needs source-backed reconciliation; never
+rewrite source identity to make it fit. Historical products remain archived and are
+not drafting or review context.
 
 For a new paper use existing acquisition helpers and applicable source references.
 For an observed metadata, PDF, XML or HTML URL, use `fetch_source.py` from
@@ -162,7 +122,10 @@ Retain the original manuscript PDF when available; readable publisher XML/HTML
 may assist reading. When using `fetch_fulltext.py`, supply `--evidence-dir`
 outside the brain. Validate retrieved candidates against the article, not a
 helper success label; do not redownload sources already retained and verified.
-Record unavailable source/attachment retrieval as a retention gap. Retain obtained
+Record unavailable source/attachment retrieval as an external retention gap. Use
+the shared 120-second attachment budget and at most two observed URLs per item;
+prefer publisher-advertised links to guessed paths. Challenge HTML is not a PDF.
+Once the budget ends, continue the manuscript page and report outstanding originals. Retain obtained
 supplements and alternative/composite PDFs without processing. Choose exactly one
 manuscript; when only a composite is available, supply explicitly verified physical
 manuscript page boundaries. Filenames do not establish identity or boundaries.
@@ -175,193 +138,92 @@ source ID and physical pages. Follow `next_start` for long pages until complete.
 Scanned/deficient pages need specific inspection or an available faithful text
 source. A short excerpt or prior page is not the full manuscript.
 
-### 5. Focused scientific review and staging
 
-Draft with compact source locators beside substantive scientific assertions,
-e.g. `The measured effect was 12 percent [P4:L12-L15].` Use the returned
-`numbered_text`; line numbers refer to frozen extracted text, not printed PDF
-lines. An unqualified marker always names the selected manuscript. For an
-additional readable body source use `[<returned-source-id>/P1:L2-L5]`.
-Group supporting ranges as `[P4:L12-L15, P5:L2]`; cross-page ranges such as
-`[P4:L28-P5:L3]` are accepted. Keep each claim's subject and qualifiers explicit.
-Leave the canonical abstract, identifiers, graph links and frontmatter intact.
-Do not put locator annotations inside the verbatim Abstract block; place source
-notes outside it. Keep punctuation with its sentence, not on a marker-only line.
+### 5. Draft and factual check
 
-Write the markers while drafting. Do not generate a separate claim inventory or
-copy quotations. `stage` removes the markers from the readable page and retains
-an annotated draft and code-retrieved quotations in external archive products.
-Missing or malformed locators produce warnings, not review loops or a completeness
-gate. A valid locator proves location only, not support for the attached claim.
-Do not launch a second mapping pass to fill every gap.
+Write a complete fresh manuscript synthesis, then check central claims against
+retained evidence: entities/classes, key numbers, denominators, units/exponents,
+table columns, experimental conditions and causal claims versus hypotheses.
+Do not introduce findings from other papers or later studies from memory; keep
+Analysis grounded in this manuscript and clearly distinguish interpretation.
+Publisher navigation, recommended/citing articles and page footers are not part of
+the manuscript evidence even when retained in its HTML text.
+Correct, qualify or omit unsupported claims. Preserve internal source discrepancies
+explicitly when consequential. Ambiguous printed glyphs or implausible doses may
+need a bounded visual inspection; another text model cannot verify a printed unit.
 
+Use lightweight `[P4:L12-L15]` locators on consequential claims. They refer to the
+numbered manuscript text, not truth certificates. For a body alias use the returned
+source ID: `[s-<24-hex-digits>/P1:L2-L5]`. Put locators outside the Abstract section;
+quote the abstract verbatim. Missing/unresolved locators warn, never trigger retries
+or extra staging rounds. Once science is ready, leave optional locator warnings in
+the external evidence; do not spend a revision making the warning count zero.
 
-Distill new manuscript findings from the manuscript. Preserve valid separately
-attributed external context already on the page, including released-code details;
-absence from the manuscript is not evidence against that context. Preserve its
-useful explanation and attribution rather than replacing it with a historical note.
-Check central findings, consequential numbers,
-contradictions and material omissions against their source locations. Check
-consequential ratios against the stated numerator/denominator. If the source itself
-is inconsistent, qualify the reported claim rather than silently endorsing it. Read only
-specific manuscript pages needed to resolve an uncertain claim. Optional unused
-figure descriptions or unreadable peripheral cells do not block a useful page.
-Unknown source associations remain unknown. Truncated observations remain partial;
-correct, qualify or omit unsupported central claims. Do not repair optional output
-by launching another model. Failed/uncertain requests do not automatically retry.
+Write annotated Markdown externally and call `stage` with `markdown_path` and a
+short substantive `review_note`. Use `HOLD: <material issue>` only for unresolved
+material science. No coverage matrix or rigid scientific review schema.
 
-Write the annotated Markdown externally and call `stage` with `markdown_path`
-(inline `markdown` remains supported) and a short substantive review note naming
-what was checked and changed. Empty issue lists are valid; no coverage matrix or
-boilerplate approval is needed. Use a separate `HOLD: <material issue>` line for
-any unresolved material claim. Remove the hold only after correction, qualification
-or omission. Machine checks validate bindings and structure, not scientific truth.
-Revise by staging again with the same job ID. These revisions never redo inference.
-The returned diff and draft are the reviewable output; the live page is untouched.
-Staging returns local `artifacts.integration_obligations` without network calls.
-Fix missing page fields before handing off; return unresolved shared-file changes
-to the primary. Optional locator warnings do not require restaging.
-
-An additional factual checker is optional, never a publication requirement. If
-requested, supply the complete manuscript, draft and external citation evidence;
-ask only for objective inaccuracies, exact existing draft spans, source passages
-and minimal corrections. Exclude style, emphasis, missing background and graph
-identifier changes. Verify each proposed fix against its source before applying
-it. Empty/truncated/failed output is an incomplete check, not a clean verdict;
-no automatic retry, debate, or ingestion restart follows.
-
-Check attribution of feature sets to the correct antibody/class or experimental
-group, percentages and their denominators, units/exponents, manuscript version,
-and causal claims versus proposed mechanisms. If a consequential dose or unit is
-implausible or a glyph is ambiguous, inspect that original page visually using a
-bounded question. Two text extractors can share the same glyph error; a second
-text-only model is not an independent check of the printed unit. Inspect only the
-needed evidence, not every page or unrelated image-only reporting form.
-
+A configured independent fast checker receives the manuscript and fresh draft,
+without old pages or graph context. The runtime dispatches it once per job, retaining
+free-text findings externally. On `factual-review-pending`, read those findings,
+verify each proposed fix against the source, and stage once more with minimal
+corrections or a reasoned disposition in the review note. No second checker call,
+style debate, or regeneration. Remaining material uncertainty is qualified, omitted,
+or held for that paper. A failed/empty/truncated check is explicitly incomplete,
+not a clean verdict; useful partial findings can still be assessed. Do not retry it.
 
 ### 6. Scientific page composition
 
-Read a recent sibling page for the vault's style and the paper-kind schema
-for required fields; an existing page is not scientific evidence for this
-paper. Write Abstract / Context / Approach / Findings / Limitations /
-Analysis / Citation / Ingest log. Preserve the canonical abstract verbatim;
-for an editorial with none, say so and use its body rather than inventing one.
+Use this structure, not a sibling or legacy page:
 
-Verify the brief's findings and terminology against the retrieved source.
-Use the paper's claims when they disagree, flag the discrepancy, and leave
-cross-page/working-document correction to its owner. The conditional brief
-reference covers synonyms, conflation, absent terms, and sibling citations.
-A failed term search does not prove the term never exists in the field.
+    # Exact verified paper title
+    ## Abstract
+    Verbatim canonical abstract, or an explicit statement that none is provided.
+    ## Context
+    Scientific question and motivation.
+    ## Approach
+    Study design and methods needed to understand the findings.
+    ## Findings
+    Specific manuscript-supported results; distinguish observation and interpretation.
+    ## Limitations
+    Scientific limitations and concise claim-relevant uncertainties.
+    ## Analysis
+    What the results establish and what they leave open.
+    ## Citation
+    Complete bibliographic citation with source author names and identifiers.
 
-Findings include specific results and their source locations, separating
-observations from interpretation and future work. For abstract-only input,
-read every sentence: capture stated structural resolution/composition,
-discovery method, epitope, animal model/survival/time window, cross-reactivity,
-and affinity/potency where present. Do not assume unstated details from the
-lab's reputation. Note unresolved internal numerical inconsistencies rather
-than averaging or silently correcting them.
+Regenerate frontmatter from the verified source and
+`../../conventions/frontmatter.md` (not another page): stable `slug`,
+`kind: paper`, title, DOI (explicit null only when verified absent), other verified
+identifiers, year, venue, status, tags, `fulltext_source`, and complete
+ordered `author_names`. Optional `importance` is a number from 0 to 1; omit it
+when program relevance is uncalibrated, never use labels such as "minor". Start `authors: []` and `links: []` unless a relationship
+is independently established from current evidence; name-only matches are unsafe.
+Do not read the author ledger as a routine drafting step. Runtime owns `cited_by`
+and `needs-ingest` transitions. Do not copy old provenance counters or stub metadata.
 
-For a dive, look up the paper's identifiers in the campaign working document.
-Carry its verified role/open question into Context; no match is not an error.
-Keep review-derived context attributed to the review, not to an unread primary.
+There is no Ingest log. No hashes, job IDs, request history, pending-task lists,
+figures, source files, source-packages directory or JSON sidecars belong in the page.
+Code appends one compact `Article archive:` locator. Sources, review notes, exact
+URLs and machine records remain external. The Abstract and science should be useful
+without reading execution history. No abstract-only success for this workflow.
 
-Frontmatter uses `status: published|preprint|unknown`, complete aligned
-`authors`, and truthful `fulltext_source` provenance under `frontmatter.md`.
-The helper's label describes a candidate route, not evidence that its body
-was accepted. Never label a retrieved PDF as user-provided or HTML to satisfy
-a supposed enum. Keep source/version attribution and concise limitations readable. Store exact
-URLs, hashes, tool history and transient stage/completion notes in external job
-artifacts. Do not carry obsolete exhaustive-workflow logs into the fresh page;
-preserve their evidence in the archived original, and retain useful scientific
-context with its attribution.
+### 7. Publication and follow-up
 
-On fills, preserve original `stub_source`, valid citing edges and their order,
-and previous failure counts. Initialize absent `ingest_attempts` to zero;
-success does not reset it. Increment only actual failed attempts, recording
-date/diagnostic. Holds/skips are not failures. Page-only results retain the
-queue flag until parent completion; source-limited success retains enrichment.
+Fix page-owned structural omissions reported by stage. `graph_follow_up` is deferred;
+do not repair the graph before publication. Call `publish` once for the chosen ready
+revision. It verifies archive readback before guarded application, verifies canonical
+identity, records one propagation event, and completes the page. Missing associations
+and targets travel with the existing propagation event for later maintenance.
 
-### 7. Bibliography walk
+Archive or metadata outages retain the same revision for a later retry. Do not
+sleep-loop, restart drafting, or manually append events. Concurrent edits hold the
+item for explicit reconciliation. Complete means the scientific page and retained
+archive bytes are published; it does not certify all advertised attachments were
+acquired. Report `source_retention` and known gaps separately.
 
-For an assigned corpus refresh, preserve existing citation relationships and
-defer new bibliography candidates externally; do not create other papers. This
-bounded scope takes precedence over the general new-ingestion rule below.
-
-Create/update stubs for load-bearing references: methods, datasets, and
-frameworks without which the paper's argument would fail. Background citations
-are not stubs. Use source citation text/identifiers, not recollection, and the
-shared `paper-stubs.md` shape and five-distinct-citing-source queue rule.
-Never reset an already queued stub or recursively ingest the reference tree.
-Only actual paper/grant citations belong in `cited_by`, not topic relevance.
-
-Page-only workers return source-linked candidates; the parent verifies them
-and writes shared stubs. A literature dive explicitly owns review-bibliography
-tiering and may defer that review's automatic stub creation to its Phase 3;
-this does not mean the skipped walk created stubs.
-
-For a direct single-paper ingest opening a thread the brain may not pursue,
-record source-backed anchors in external job observations instead
-of minting isolated stubs. Include identifiers and one-line roles. Dive
-work does not use this shortcut for required Tier 2 stubs. A later anchor-set
-dive can reuse the deferred list only after identity validation and dedup.
-
-### 8. Author ledger
-
-Before staging, load `references/author-ledger-mutation.md` and align
-all named individuals against both people pages and ledger entries. The
-helper is a candidate finder; inspect abbreviations, particles, surname
-collisions, ORCIDs, affiliations, and source history before reusing slugs.
-Matching names or inherited author links alone do not establish identity. Do not
-append a citation to make an ambiguous association pass the reverse-edge check.
-Keep the source author name in the bibliographic citation and hold the particular
-association for resolution. If that prevents complete author integration, retain
-the staged page/job as integration-pending; continue unrelated papers. Do not
-invent a new person or assert two people differ solely from changed affiliations.
-
-The primary/parent performs the canonical mutation branches: existing person
-gets `author_on`, existing ledger entry gets `citations`, new author gets an
-entry, and threshold/manual promotion follows `enrich` and the convention.
-The append-new helper is not an existing-entry updater. Preserve source names,
-verified identifiers, and previous citations. Verify every paper-author edge,
-not merely that each slug resolves. Do not reconstruct missing source values
-from a truncated child summary or a count-only Ingest log.
-
-### 9. Graph wiring and propagation
-
-The primary/parent searches existing concept/project pages and adds relevant
-forward typed edges according to the graph convention. Use targeted patches
-on shared lists, not whole-page rewrites. Do not create backlinks sections.
-When no relevant target exists, leave `links: []` and record the search
-outcome in the ingest log; never link an unrelated page to avoid an empty
-list.
-
-The runtime records the deduplicated propagation event after verified page
-application. Neither worker nor primary appends an event manually. Retries reuse
-the same job/revision event; a failed archive cannot emit a completion event.
-
-### 10. Publication, integration and closeout
-
-Resolve reported local integration obligations before `publish`. Call it once
-for the chosen revision in the common case. It uploads immutable original sources,
-retained manuscript text, scientific draft/review and provenance, then verifies
-remote bytes before applying the candidate. The page contains a small durable
-remote archive receipt pointer; full receipts, hashes, verification records,
-source payloads, images and extraction registers remain outside the brain.
-Never copy the returned external `receipt` artifact into `papers/` or commit it.
-Archive failure leaves the page unchanged. Retry publication
-with the same job/revision; never start a new extraction to fix storage or prose.
-A concurrent edit holds application; preserve it and reconcile explicitly.
-
-Complete actual Phase 7–9 obligations within the assigned scope. Runtime checks
-read back the author edges, links and publication; it records propagation. Keep queue flags until `publish` reports
-complete. Integration-pending is useful staged/applied work, not completed ingestion.
-Native completion includes archive and integration checks; do not repeat the
-same verifier afterward. The named page verifier remains available for independent
-audits or a specific diagnostic. Archive metadata is not a scientific truth test.
-Run the instance frontmatter linter. Use `skills/git-ops/SKILL.md` for the coherent
-owned unit; workers return paths and obligations only. Preserve unrelated edits.
-
-Return status, canonical page, job ID/revision, changed paths, source limitations,
-remaining obligations and diagnostic. No automatic backlog campaign follows a
-single-paper request. One parent serializes shared ledger/inbox/graph changes;
-never restore a whole shared file to repair one entry.
+Run the frontmatter linter once for closeout and follow `skills/git-ops/SKILL.md`
+for owned changes under repository authorization. Campaign publication does not
+perform Git closeout itself. Preserve unrelated edits. Return page/job/revision,
+changed paths, scientific/access limitations, factual-check status, attachment gaps,
+and deferred graph/Git work. No automatic backlog drain follows a single request.

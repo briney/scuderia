@@ -34,7 +34,8 @@ title: "Scaling paired antibody language models"
 status: published        # published | preprint
 doi: 10.1234/example.5678
 pmid: 39876543
-authors: [people/alice-example, people/a-collaborator]
+author_names: [Alice Example, A Collaborator]
+authors: []             # only independently verified person associations
 venue: Nature Immunology
 year: 2026
 importance: 0.82
@@ -52,17 +53,23 @@ key when assigned (some papers have no DOI; use explicit null after
 source verification); `pmid`, `pmcid`,
 `arxiv`, and `biorxiv` are carried where available.
 
+A fresh manuscript page carries `author_names`: the complete ordered list of source
+author names, independent of graph identity. `authors` remains a list of verified
+`people/<slug>` associations, possibly empty or partial while matching is deferred.
+Do not fabricate a person identity to make author counts or reverse edges pass.
+Legacy pages without `author_names` remain readable using `authors`.
+
 A `paper` may also carry queue and provenance fields:
 
 | Field | Meaning |
 |---|---|
-| `needs-ingest` | `true` for queued ingestion work, including a page-only distillation awaiting parent wiring; `false` after complete verified ingestion. Below-threshold stubs may also be false, distinguished by their stub tag/body. See `paper-stubs.md` for producer exceptions and the completion transition. |
-| `cited_by` | List of `grants/<slug>` and `papers/<slug>` references that cite this paper. Append-only across ingests; preserve order and valid concurrent additions on fills, and the union on merges. The paper-side threshold counts distinct citing source pages. |
+| `needs-ingest` | `true` for queued ingestion work, including a staged manuscript awaiting verified publication; `false` after complete verified ingestion. Below-threshold stubs may also be false, distinguished by their stub tag/body. See `paper-stubs.md` for producer exceptions and the completion transition. |
+| `cited_by` | List of `grants/<slug>` and `papers/<slug>` references that cite this paper. Accumulated by citation producers on stubs. Fresh ingestion rebuilds this derived field from explicit `cites` edges elsewhere; it does not trust malformed legacy entries. Preserve citation relationships and repair inbound links on merges. The paper-side threshold counts distinct citing source pages. |
 | `ingest_attempts` | Integer counter, bumped on each `paper-ingest` failure. |
 | `last_ingest_attempt` | Date of the most recent attempt. |
 | `needs-enrichment` | `true` if the distillation is partial: abstract-only, or from a preprint substituted for an existing published version. A complete preprint with no published twin need not be flagged. Clear only after the required version is fully distilled. The embargo re-check sweep (`skills/paper-ingest/scripts/embargo_recheck.py`) re-tests these pages for newly available full text. |
-| `fulltext_source` | Source-backed provenance label, not a closed enum. Existing common labels include `pmc-xml`, `epmc-pdf`, `biorxiv-jina`, `biorxiv-browser`, `publisher-jina`, `nature-browser`, `wayback`, `paperclip-biorxiv`, `paperclip-arxiv`, `paperclip`, `arxiv-html`, `arxiv-pdf`, `biorxiv-pdf`, `publisher-pdf`, `browser-publisher-html`, `provided-pdf`, and `abstract-only`. Preserve truthful historical labels; record exact source URL/version/representation and retrieval method in the Ingest log. The helper emits candidate provenance, which must be verified before use; `none` or `unknown` is not an accepted-source label for a completed ingest. `provided-pdf` means user-supplied, not downloaded. |
-| `stub_source` | Free-text original producer. New canonical labels: `paper-ingest`, `grant-ingest`, `literature-sweep`, `literature-dive`; preserve existing legacy/custom labels. Optional on legacy pages; preserve origin through fills and merges. Selection by a later producer adds provenance rather than overwriting origin. |
+| `fulltext_source` | Source-backed provenance label, not a closed enum. Existing common labels include `pmc-xml`, `epmc-pdf`, `biorxiv-jina`, `biorxiv-browser`, `publisher-jina`, `nature-browser`, `wayback`, `paperclip-biorxiv`, `paperclip-arxiv`, `paperclip`, `arxiv-html`, `arxiv-pdf`, `biorxiv-pdf`, `publisher-pdf`, `browser-publisher-html`, `provided-pdf`, and `abstract-only`. Preserve truthful historical labels; record exact source URL/version/representation and retrieval method in the external article package. The helper emits candidate provenance, which must be verified before use; `none` or `unknown` is not an accepted-source label for a completed ingest. `provided-pdf` means user-supplied, not downloaded. |
+| `stub_source` | Free-text original producer. New canonical labels: `paper-ingest`, `grant-ingest`, `literature-sweep`, `literature-dive`; preserve existing legacy/custom labels. Optional on legacy pages; retained on stubs and through merges; fresh ingestion retains old provenance in its external original-page snapshot. Selection by a later producer adds provenance rather than overwriting origin. |
 | `tags: [stub]` | Marks a page that has only frontmatter + a placeholder body. Removed once filled. |
 
 Read `paper-stubs.md` for the shared minimal shape, producer queue decisions,
@@ -70,9 +77,9 @@ provenance, failure accounting, and completion state.
 
 Stubs are valid `paper` pages — they resolve to a real-world object via their
 citation entry even before DOI resolution — and they accumulate citation
-edges in `cited_by` from any skill that touches them. The `## Ingest log`
-section of a stub records per-attempt failure detail so successive runs of
-`ingest-pending-papers` don't blindly retry the same broken DOI lookup.
+edges in `cited_by` from any skill that touches them. New ingestion attempt history lives in the external runtime. Fresh pages replace
+legacy summaries and metadata wholesale at the same filename; they have no Ingest
+log. Original snapshots and Git history retain prior annotations and provenance.
 
 Other kinds carry the fields their job needs — a `hypothesis` carries its
 evidence edges, a `task` carries a due date. When adding a field, prefer an
@@ -130,11 +137,11 @@ paper specifically carries the citation graph. The split keeps each
 typed graph queryable on its own without scanning `links:` for which
 edges happen to be authorship.
 
-`paper-ingest` writes `author_on:` when a paper is ingested with this
-person as an author and the page already exists (Branch 1 of Phase 8).
-For authors **without** a page, the same Phase 8 instead writes to
-`people/_ledger.yaml` — see `author-ledger.md` for the contract that
-governs which authors get a page vs. a ledger entry.
+Deferred author maintenance writes `author_on:` after independently resolving
+person identity. Ordinary ingestion records complete source `author_names` and
+leaves unverified person associations empty. Authors without a person page may
+later receive a `people/_ledger.yaml` entry — see `author-ledger.md` for that
+contract. These graph edits do not gate fresh manuscript publication.
 
 ## The `grant` kind
 

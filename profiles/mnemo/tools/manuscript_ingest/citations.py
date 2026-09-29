@@ -4,7 +4,7 @@ import re
 
 # Unqualified P/L markers always refer to the selected manuscript, not a body alias.
 TOKEN=re.compile(r'(?:(s-[0-9a-f]{24})/)?P(\d{1,9}):L(\d{1,9})(?:-(?:P(\d{1,9}):)?L?(\d{1,9}))?')
-MARKER=re.compile(r'(?<![\[\\])\[(?:(?:s-[^/\]\s]+/)?P\d+:[^\]]*)\](?![ \t]*[\](\[])')
+MARKER=re.compile(r'(?<![\[\\])\[(?:(?:s-[^/\]\s]+/)?P\d+:[^\]]*)\](?![ \t]*(?:[\](]|\[(?!(?:s-[^/\]\s]+/)?P\d+:)))')
 PROTECTED=re.compile(r'(?ms)^##[ \t]+Abstract[ \t]*\n.*?(?=^##[ \t]|\Z)|(`+|~{3,}).*?\1')
 
 

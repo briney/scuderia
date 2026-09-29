@@ -23,8 +23,9 @@ class Boundaries(Publication):
         self.page.write_text(self.page.read_text().replace('needs-ingest: true','needs-ingest: true\ncited_by: [papers/citing]\nstub_source: source-seed\ningest_attempts: 2'))
         j,sid=self.ready()
         bad=self.draft().replace('cited_by: [papers/citing]','cited_by: []')
-        with self.assertRaisesRegex(ValueError,'citing'):
-            w.stage(j,bad,'Reviewed the central finding against page 1.',runtime_root=self.runtime)
+        out=w.stage(j,bad,'Reviewed the central finding against page 1.',runtime_root=self.runtime)
+        self.assertEqual(out['status'],'ready')
+        self.assertIn('cited_by: [papers/citing]',(w.job_path(j,self.runtime)/'original.md').read_text())
     def test_unresolved_source_alias_is_not_guessed(self):
         j,sid=self.ready()
         with self.assertRaisesRegex(ValueError,'unresolved-source'):

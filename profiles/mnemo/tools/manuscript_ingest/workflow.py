@@ -72,6 +72,12 @@ def mark_time(job,event):
 
 
 def result(job,runtime_root,**artifacts):
+    if job.get('sources'):
+        artifacts['source_retention']=dict(
+            manuscript_formats=sorted({Path(s['key']).suffix for s in job['sources'] if s['role'] in ('manuscript','body')}),
+            supplementary_files=sum(s['role']=='supplement' for s in job['sources']),
+            attachment_completeness='not-certified',
+            gaps=[warning for warning in job.get('warnings',[]) if 'retention gap' in warning.lower()])
     return dict(job_id=job['job_id'],status=job['status'],next_action=job['next_action'],
         artifacts=dict(work=str(job_path(job['job_id'],runtime_root)),**job.get('artifacts',{}),**artifacts),
         warnings=job.get('warnings',[]),blocking_reason=job.get('blocking_reason'))
@@ -122,7 +128,7 @@ def start(page,*,runtime_root,identity=None):
     if bound.get('pmid') is not None:bound['pmid']=identity_value('pmid',bound['pmid'])
     for k,v in (identity or {}).items():
         require(k in bound,'unknown-identity-field')
-        require(not bound.get(k) or same_identity(k,bound[k],v),'article-identity-conflict:'+k)
+        require(k!='slug' or v==page.stem,'article-identity-conflict:slug')
         bound[k]=identity_value(k,v) if k=='pmid' else v
     require(bound.get('title') and (bound.get('doi') or bound.get('pmid')),'resolved-article-identity-required')
     with locked(runtime_root):
@@ -217,18 +223,23 @@ def stage(job_id,markdown,review_note,*,runtime_root,base_revision=None,amend_re
         from . import citations
         annotated=markdown
         markdown,evidence=citations.extract(markdown,job,work)
+        job['warnings']=[v for v in job['warnings'] if not v.startswith(('Citation locator unresolved:', 'No optional citation locators supplied;'))]
         for warning in evidence['warnings']:
             if warning not in job['warnings']:job['warnings'].append(warning)
         fm=page_metadata(markdown)
         for field in ('slug','title','doi','pmid'):
             require(same_identity(field,fm.get(field),job['identity'].get(field)),'candidate-identity-mismatch:'+field)
         require(fm.get('kind')=='paper','paper-kind-required')
-        for snapshot in {work/'original.md',base}:
-            if not snapshot.exists() or not snapshot.read_bytes():continue
-            original_meta=page_metadata(snapshot.read_text())
-            require(set(original_meta.get('cited_by') or [])<=set(fm.get('cited_by') or []),'original-citing-edges-missing')
-            for field in ('stub_source','ingest_attempts'):
-                require(field not in original_meta or fm.get(field)==original_meta[field],'original-provenance-changed:'+field)
+        # Legacy content is recovery evidence, never a requirement on fresh synthesis.
+        for field in ('authors','links'):fm.setdefault(field,[])
+        if 'importance' in fm and not (type(fm['importance']) in (int,float) and 0<=fm['importance']<=1):
+            fm.pop('importance')
+            warning='Invalid optional importance omitted; scoring deferred.'
+            if warning not in job['warnings']:job['warnings'].append(warning)
+        fm['cited_by']=citation_backlinks(Path(config(runtime_root)['instance']),job['identity']['slug'])
+        import yaml
+        header=re.match(r'\A---\s*\n(.*?)\n---\s*\n',markdown,re.S)
+        markdown='---\n'+yaml.safe_dump(fm,sort_keys=False,allow_unicode=True)+'---\n'+markdown[header.end():]
         require(re.search(r'^# '+re.escape(fm['title'])+r'\s*$',markdown,re.M),'paper-title-heading-required')
         require(not re.search(r'!\[|!\[\[|source-packages/|<img\b|portable-article-register|qualification-register',markdown,re.I),'article-payload-or-register-in-page')
         # Optional source locators are accepted only when they identify retained evidence.
@@ -251,6 +262,13 @@ def stage(job_id,markdown,review_note,*,runtime_root,base_revision=None,amend_re
         original=base.read_text() if base.exists() else ''
         diff=''.join(difflib.unified_diff(original.splitlines(True),markdown.splitlines(True),fromfile='original',tofile='candidate'))
         (draft/'page.diff').write_text(diff)
+        from . import review
+        check=review.once(dict(job,revision=revision),annotated,work,config(runtime_root).get('factual_check'))
+        assess=check.get('revision')==revision and bool(check.get('text'))
+        if assess:holds.append('Assess the independent factual findings against the source and stage once more with corrections or a reasoned disposition.')
+        if check['status']!='success':
+            warning='Independent factual check incomplete: '+check['status']+'; manuscript self-check remains the available review.'
+            if warning not in job['warnings']:job['warnings'].append(warning)
         meta=dict(revision=revision,page_sha256=sha(draft/'page.md'),review_sha256=sha(draft/'review.txt'),
             citation_products={name:sha(draft/name) for name in ('annotated-page.md','citations.json')},
             receipt_name=receipt_name,material_issues=holds,source_hashes=[s['sha256'] for s in job['sources']],
@@ -261,49 +279,81 @@ def stage(job_id,markdown,review_note,*,runtime_root,base_revision=None,amend_re
             next_action='Correct, qualify, or omit held claims and stage a new revision.' if holds else 'Publish this reviewed revision; archive verification precedes guarded page application.',
             artifacts=dict(revision=revision,draft=str(draft/'page.md'),diff=str(draft/'page.diff'),review=str(draft/'review.txt'),citations=str(draft/'citations.json'),annotated_draft=str(draft/'annotated-page.md')))
         job['artifacts']['integration_obligations']=integration_check(job,config(runtime_root),candidate=draft/'page.md',canonical=False)
-        job['next_action']='Resolve only artifacts.integration_obligations, inspect preservation changes, then publish this revision.' if not holds else job['next_action']
+        job['artifacts']['graph_follow_up']=graph_follow_up(job,config(runtime_root),candidate=draft/'page.md')
+        job['artifacts']['factual_check']=check
+        if assess and not any(line.strip().startswith('HOLD:') for line in review_note.splitlines()):
+            job.update(blocking_reason='factual-review-pending',next_action=holds[-1])
         mark_time(job,'staged_at')
         store_job(job,runtime_root); return result(job,runtime_root)
 
 
-def integration_check(job,settings,*,candidate=None,canonical=True):
-    """Shared local preflight; canonical identity is checked only at publication."""
+def verifier_module():
     import importlib.util
-    import subprocess
-    import sys
-    import yaml
     helper=Path(__file__).resolve().parents[2]/'skills/paper-ingest/scripts/verify_ingest.py'
     spec=importlib.util.spec_from_file_location('_manuscript_verify_ingest',helper)
     verifier=importlib.util.module_from_spec(spec); spec.loader.exec_module(verifier)
-    page=Path(job['page']); text=Path(candidate or page).read_text(); fm=page_metadata(text); final=dict(fm,**{'needs-ingest':False})
-    issues=verifier.filled_contract_checks(final,text,page.stem)
+    return verifier
+
+
+def citation_backlinks(instance,slug):
+    """Rebuild only explicit citation edges; topic links are not citations."""
+    import yaml
+    target='papers/'+slug; found=[]
+    for kind in ('papers','grants'):
+        for path in sorted((instance/kind).glob('*.md')):
+            if path==instance/(target+'.md'):continue
+            try: fm=page_metadata(path.read_text())
+            except (ValueError,yaml.YAMLError,UnicodeError):continue
+            if isinstance(fm.get('cites'),list) and target in fm['cites']:
+                found.append(kind+'/'+path.stem)
+    return found
+
+
+def integration_check(job,settings,*,candidate=None,canonical=True):
+    """Publication blockers only; missing graph relationships are follow-up work."""
+    import subprocess
+    import sys
+    verifier=verifier_module()
+    page=Path(job['page']); text=Path(candidate or page).read_text(); fm=page_metadata(text)
+    issues=verifier.filled_contract_checks(dict(fm,**{'needs-ingest':False}),text,page.stem)
     if canonical:
-        argv=[sys.executable,'-B',str(helper),page.stem,'--instance',settings['instance']]
+        argv=[sys.executable,'-B',verifier.__file__,page.stem,'--instance',settings['instance'],'--identity-only']
+        if candidate:argv.extend(['--candidate',str(candidate)])
         if job.get('artifacts',{}).get('draft'):
             cache=Path(job['artifacts']['draft']).parent.parent.parent/'identity-cache'
             argv.extend(['--identity-cache',str(cache)])
-        # This subprocess checks canonical identity and forward graph links. No inference.
         checked=subprocess.run(argv,capture_output=True,text=True,timeout=180)
-        if checked.returncode:issues.append(checked.stdout[-12000:] or 'page-identity-or-graph-check-failed')
-    instance=Path(settings['instance']); ledger_path=instance/'people/_ledger.yaml'
-    ledger=yaml.safe_load(ledger_path.read_text()) if ledger_path.exists() else {}
-    entries=ledger.get('authors',[]) if isinstance(ledger,dict) else ledger if isinstance(ledger,list) else []
-    # The convention uses entries; handle older authors-shaped ledgers read-only.
-    if isinstance(ledger,dict):entries=ledger.get('entries',entries)
-    target='papers/'+page.stem
-    for author in (fm.get('authors') if isinstance(fm.get('authors'),list) else []):
+        if checked.returncode:issues.append(checked.stdout[-12000:] or 'page-identity-check-failed')
+    return issues
+
+
+def graph_follow_up(job,settings,*,candidate=None):
+    """Read-only observations; the existing propagation inbox owns later graph work."""
+    import yaml
+    verifier=verifier_module(); instance=Path(settings['instance'])
+    fm=page_metadata(Path(candidate or job['page']).read_text()); issues=[]
+    ledger_path=instance/'people/_ledger.yaml'
+    try: ledger=yaml.safe_load(ledger_path.read_text()) if ledger_path.exists() else {}
+    except (OSError,yaml.YAMLError):ledger={}; issues.append('author-ledger-unavailable')
+    entries=ledger.get('entries',ledger.get('authors',[])) if isinstance(ledger,dict) else ledger or []
+    if not isinstance(entries,list):entries=[]
+    target='papers/'+Path(job['page']).stem
+    authors=fm.get('authors') if isinstance(fm.get('authors'),list) else []
+    if isinstance(fm.get('author_names'),list) and len(authors)<len(fm['author_names']):
+        issues.append('author-associations-deferred')
+    for author in authors:
         if not isinstance(author,str) or not verifier.AUTHOR_REF_RE.fullmatch(author):continue
-        person=instance/(author+'.md')
+        person=instance/(author+'.md'); edges=[]
         if person.exists():
-            meta=page_metadata(person.read_text()); edges=meta.get('author_on',[])
+            try:edges=page_metadata(person.read_text()).get('author_on',[])
+            except (OSError,ValueError,yaml.YAMLError):pass
         else:
             entry=next((e for e in entries if isinstance(e,dict) and e.get('slug')==author.removeprefix('people/')),None)
             edges=entry.get('citations',[]) if entry else []
-        if target not in edges:issues.append('author-edge-missing:'+author)
+        if not isinstance(edges,list) or target not in edges:issues.append('author-edge-missing:'+author)
     for field in ('links','cited_by'):
         values=fm.get(field) or []
-        if not isinstance(values,list):
-            issues.append(field+'-must-be-list'); continue
+        if not isinstance(values,list):continue # invalid shape is a page blocker, not graph work
         for target in values:
             if field=='links' and verifier._is_external_url(target):continue
             if not isinstance(target,str) or not verifier.target_exists(str(instance),target):
@@ -330,6 +380,7 @@ def record_event(job,settings,runtime_root):
             require(existing.get('page')==target and existing.get('event')=='ingest','propagation-event-conflict')
             return
         event=dict(id=event_id,page=target,event='ingest',date=datetime.now(timezone.utc).date().isoformat(),consumed_by=[])
+        if job.get('artifacts',{}).get('graph_follow_up'):event['graph_follow_up']=job['artifacts']['graph_follow_up']
         node=next(v for k,v in yaml.compose(text).value if k.value=='items')
         addition=yaml.safe_dump([event],sort_keys=False,allow_unicode=True)
         if node.flow_style:
@@ -365,6 +416,7 @@ def publish(job_id,revision,*,runtime_root):
     with locked(work):
         job=load_job(job_id,runtime_root)
         require(type(revision) is int and revision==job['revision'],'publish-current-reviewed-revision')
+        require(job.get('blocking_reason')!='factual-review-pending','factual-review-pending')
         require(job.get('blocking_reason')!='sources-added-restage-required','sources-added-restage-required')
         if job.get('applied_revision'):require(job['applied_revision']==revision,'different-revision-already-applied')
         manifest=archive.build(job_id,revision,runtime_root=runtime_root); m=archive.verify(manifest)
@@ -379,9 +431,10 @@ def publish(job_id,revision,*,runtime_root):
         issues=integration_check(job,settings,candidate=work/'drafts'/str(revision)/'page.md',canonical=False)
         if issues:
             job.update(status='integration-pending' if job.get('applied_revision') else 'ready',blocking_reason='integration-obligations',
-                next_action='Resolve artifacts.integration_obligations before upload; amend page content through stage, then publish the same job.',
+                next_action='Correct the reported page fields through stage, then publish the same job; graph maintenance is deferred.',
                 artifacts={**job['artifacts'],'integration_obligations':issues})
             store_job(job,runtime_root); return result(job,runtime_root)
+        job['artifacts']['graph_follow_up']=graph_follow_up(job,settings,candidate=work/'drafts'/str(revision)/'page.md')
         publication_path=root/'publication.json'
         try:
             if publication_path.exists():pub=archive.publication_check(manifest,json.loads(publication_path.read_text()))
@@ -397,17 +450,22 @@ def publish(job_id,revision,*,runtime_root):
             store_job(job,runtime_root); return result(job,runtime_root)
         receipt=publication_path
         mark_time(job,'archive_verified_at')
-        if current==job.get('apply_guard_sha256',job['original_sha256']):apply_bytes(page,pending.read_bytes(),current)
-        job['applied_revision']=revision; job.update(status='integration-pending',next_action='Resolve only the reported integration obligations, then retry publish without redrafting.',blocking_reason=None)
-        store_job(job,runtime_root)
+        job.update(status='integration-pending',next_action='Resolve only the reported integration obligations, then retry publish without redrafting.',blocking_reason=None)
         mark_time(job,'integration_started_at')
-        try: issues=integration_check(job,settings)
+        try: issues=integration_check(job,settings,candidate=work/'drafts'/str(revision)/'page.md')
         except Exception as exc:issues=['integration-check-unavailable:'+type(exc).__name__]
         if issues:
             job.update(blocking_reason='integration-obligations',artifacts={**job['artifacts'],'integration_obligations':issues,'manifest':str(manifest),'receipt':str(receipt)})
             if any('temporarily-unavailable' in issue for issue in issues):
                 job.update(blocking_reason='metadata-temporarily-unavailable',next_action='Retain this job and revision; defer the canonical lookup and retry publish in a later authorized run. Do not redraft or sleep-loop.')
         else:
+            current=sha(page) if page.exists() else None
+            if current not in (job.get('apply_guard_sha256',job['original_sha256']),sha(pending),sha(final)):
+                hold_live_edit(job,work)
+                store_job(job,runtime_root); return result(job,runtime_root)
+            if current==job.get('apply_guard_sha256',job['original_sha256']):apply_bytes(page,pending.read_bytes(),current)
+            job['applied_revision']=revision
+            store_job(job,runtime_root)
             current=sha(page)
             require(current in (sha(pending),sha(final)),'concurrent-page-edit')
             try:record_event(job,settings,runtime_root)

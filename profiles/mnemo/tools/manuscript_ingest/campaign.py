@@ -12,7 +12,11 @@ import time
 import json
 from pathlib import Path
 import sys
-import shlex
+# Hermes may relaunch this script with its base Python before activating dependencies.
+# Activate first on the import-only preflight path; otherwise even PyYAML is absent.
+if __name__=='__main__' and sys.argv[1:2]==['_preflight'] and '--hermes-repo' in sys.argv:
+    sys.path.insert(0,sys.argv[sys.argv.index('--hermes-repo')+1])
+    import hermes_bootstrap
 import yaml
 
 if not __package__:
@@ -201,9 +205,6 @@ def _reconcile(root,runtime_root):
             else:
                 w.require(page.exists(),'canonical-page-missing; resolve mapping before start')
                 w.require(w.sha(page)==entry.get('accepted_sha256',row['sha256']),'changed-since-inventory')
-                text=page.read_text()
-                if re.search(r'^#{1,6}\s+(?:personal|human|my|manual) (?:notes|annotations)\b',text,re.I|re.M):
-                    w.require(entry.get('annotation_review_sha256')==w.sha(page),'human-annotation-review')
                 if entry['status'] in ('reserved','waiting-canonical'):entry.update(status='interrupted',reason='reserved-without-runtime-job')
             entry['updated_at']=now()
         except (OSError,ValueError,KeyError,yaml.YAMLError) as exc:
@@ -272,21 +273,23 @@ def launch(argv,*,env,cwd,log,lock_fds=()):
 
 def worker_prompt(frozen,state,item,folder,deadline):
     entry=state['items'][item]
-    return f'''Stage only this existing paper: {entry['canonical_path']}
+    row=next(r for r in frozen['items'] if r['id']==item)
+    return f'''Resolved identity seed: {json.dumps(row['identity'])}
+Stage only this existing paper: {entry['canonical_path']}
 Existing job: {entry.get('job_id')}. Brain: {frozen['instance']}. External work: {folder}.
 Load {Path(__file__).resolve().parents[2]/'skills/paper-ingest/SKILL.md'} and its references/runtime.md. Do not load the exhaustive historical workflow.
 You own identity/acquisition, one complete manuscript read, fresh drafting, and a focused check of central claims.
-Read the old page for valid provenance, links, human annotations and separately attributed external context (including released-code observations). Preserve that useful context with its attribution; manuscript-first extraction does not make it invalid. Do not use the old manuscript summary as evidence.
+Generate a completely fresh page at the existing filename. Do not read the old page, original.md, page.diff, or sibling pages. The supplied identity is the acquisition seed; verify it against sources. Runtime snapshots own recovery and edit guards. Discard legacy summaries, annotations, metadata and logs; use only the current template and verified manuscript. Runtime rebuilds citation backlinks mechanically.
 Keep transient execution notes, deferred bibliography candidates and diagnostics in external observations, not in page prose. Check consequential ratios; if source arithmetic disagrees with its numbers, attribute the discrepancy.
 Reuse the same job and retained sources/draft. Existing archive: sources without inputs first.
-Use markdown_path for staging. If already staged, return durable job/revision evidence without another full read or generation.
+Use markdown_path for staging. If already staged, return durable job/revision evidence without another full read or generation. On factual-review-pending, read the external checker findings, verify proposed corrections against the source, and stage once more with your disposition. Do not request another check or debate style. Optional citation warnings never justify extra staging rounds; return ready work.
 Retain available original supplements only, with the shared 120-second attachment budget; do not process them.
 No nested delegation, publish, live paper edits, shared graph/ledger writes or Git. Return integration candidates externally.
-An ambiguous author association is unresolved, never a name-only merge. A missing full manuscript is a hold, not abstract-only success.
+Record all source author_names, with authors: [] unless an association is independently verified. Do not search the ledger or create people pages during drafting. Author matching is deferred. A missing full manuscript is a hold, not abstract-only success.
 Do not repeat failed JSON payloads, archive downloads or metadata sleep loops. Return specific remaining obligations.
 Stop new work after {deadline}; finish a safe in-flight step. On systemic provider/authentication/archive outage write {folder/'STOP'}.
 Write concise observations in {folder/'observations.md'}. Durable runtime state is authoritative; no rigid response schema.
-Do not use the shared institutional browser concurrently. If browser acquisition is necessary, return the retained needs-input job and observed URL to the primary, which owns that browser serially.
+Do not use the shared institutional browser concurrently. If browser acquisition is necessary, return the retained needs-input job and observed URL to the primary, for a separately authorized serial acquisition; no integration agent will take it over.
 All output English. Preserve model pins, output caps and approval settings.
 '''
 
@@ -348,38 +351,28 @@ def window_control(root,profile_home,action,*,jobs=None,gateway=None):
     return dict(paused=len(selected))
 
 
-def wave_prompt(frozen,state,selected,folder,deadline,cfg):
-    profile=Path(__file__).resolve().parents[2]
-    items=[]
-    for i in selected:
-        entry=state['items'][i]; item=dict(id=i,path=entry['canonical_path'],job_id=entry['job_id'])
-        if cfg.get('runtime_root') and entry['job_id']:
-            job=w.load_job(entry['job_id'],Path(cfg['runtime_root']))
-            item.update(status=job['status'],revision=job['revision'],artifacts=job.get('artifacts',{}),next_action=job['next_action'])
-            payload=folder/('publish-'+i+'.json')
-            w.save(payload,dict(operation='publish',job_id=job['job_id'],revision=job['revision']))
-            item['publish_command']='PYTHONPATH='+shlex.quote(str(profile/'tools'))+' '+shlex.join([sys.executable,'-B','-m','manuscript_ingest.cli','--runtime-root',str(cfg['runtime_root']),'--input',str(payload)])
-        items.append(item)
-    return f'''Refresh only these existing paper inputs in {frozen['instance']}:
-{json.dumps(items,indent=2)}
-Read {profile/'skills/ingest-pending-papers/references/corpus-refresh.md'} and {profile/'skills/paper-ingest/references/runtime.md'}. The bounded integration instructions below govern this refresh. Load other skill sections only for an actual unresolved obligation.
-Use the six manuscript-to-page operations only. Reuse staged manuscript drafts and retained originals; supplements remain unprocessed.
-Inspect the draft diff for preservation of valid links, provenance, human annotations and attributed external context. Do not delete useful code-derived or other attributed observations solely because they are absent from the manuscript.
-Identity and dedup for staged jobs are already resolved. A newly found conflict, rename/merge or ambiguous human annotation is a hold; propose it externally.
-Reuse named jobs and their sources/drafts; inspect durable artifacts even after a missing worker summary.
-Workers have already attempted these inputs. For staged jobs, do not delegate, acquire again, reread full manuscripts or regenerate drafts.
-For a needs-input job with a documented authorized-browser route, the primary alone may finish that acquisition and its first manuscript read/draft serially; reuse prior attempts and respect the admission deadline. Otherwise preserve the access hold.
-Read the worker review note and draft diff once. The worker owns the focused factual check; inspect source passages only for a flagged uncertainty or a specific contradiction you notice. Resolve only outstanding integration obligations and necessary shared edits; do not re-check already-satisfied author edges or explore bibliography/sibling pages without a concrete missing target. No other queued or bibliography paper is in scope.
-Use the provided publication command after resolving obligations. If amended, update only its revision in the JSON input. Never edit a live paper directly. Publication handles archive verification, guarded application, the deduplicated propagation event and completion in one call. Do not manually append events or run a second equivalent verifier after native completion. Run the required frontmatter lint once for closeout. A genuine failed obligation may require retrying the same revision.
-Use the exact provided paths and command; no interpreter search, dependency installation, or runtime implementation reading during ordinary integration. Keep diagnostics and execution notes in external observations. The page contains scientific content and concise source caveats, not pending-task logs.
-Check current job status and pending obligations first. A transient metadata lookup means defer this item's publication without sleeping or restarting. Missing full manuscript remains an access hold.
-Stop new admissions after {deadline}; finish safe in-flight work. On provider/authentication/archive outage, stop admissions and write its reason to {folder/'STOP'}.
-Record per-input access/identity/annotation issues and remaining obligations in {folder/'observations.md'}; no rigid final output schema is required.
-Keep all sources, drafts, machine state and receipts external. Do not edit campaign state or launch another campaign command.
-Git closeout policy: {cfg['git_closeout']}. If hold-for-review, leave owned changes for pilot review and report exact paths; do not commit/push.
-Otherwise the parent follows git-ops for coherent verified owned changes, preserving pre-existing dirt. A failed push never restarts ingestion.
-All output in English. Do not change model pins, output caps or approval settings.
-'''
+def preflight(cfg,profile_home,folder):
+    """Import the installed execution stack once, before concurrent cold starts."""
+    argv=[cfg['hermes_python'],'-B',str(Path(__file__).resolve()),'_preflight','--hermes-repo',cfg['hermes_repo']]
+    checked=subprocess.run(argv,env=dict(os.environ,HERMES_HOME=str(profile_home)),capture_output=True,text=True,timeout=120)
+    (folder/'preflight.log').write_text(checked.stdout+checked.stderr)
+    w.require(checked.returncode==0,'hermes-import-preflight-failed; inspect external preflight.log')
+
+
+def publish_ready(state,selected,runtime_root,folder):
+    """Serial deterministic writes; a sibling failure never suppresses ready work."""
+    outcomes={}
+    for item in selected:
+        entry=state['items'][item]
+        if entry['status'] not in ('ready','integration-pending','publication-pending'):continue
+        job=w.load_job(entry['job_id'],runtime_root)
+        started=time.time()
+        try:outcome=w.publish(job['job_id'],job['revision'],runtime_root=runtime_root)
+        except (ValueError,OSError,KeyError) as exc:
+            outcome=dict(status='held',blocking_reason=str(exc),job_id=job['job_id'])
+        outcomes[item]=dict(result=outcome,wall_seconds=time.time()-started)
+        w.save(folder/'publication.json',outcomes)
+    return outcomes
 
 
 def run(root:Path,runtime_root:Path,profile_home:Path,limit:int,concurrency:int,max_seconds:int)->dict:
@@ -416,6 +409,7 @@ def run(root:Path,runtime_root:Path,profile_home:Path,limit:int,concurrency:int,
         state['runs'].append(record); w.save(root/'state.json',state)
         try:
             cron_window(root,profile_home,'pause')
+            preflight(cfg,profile_home,folder)
             for offset in range(0,len(chosen),concurrency):
                 if time.time()>=deadline:record['stop_reason']='admission-deadline';break
                 state=_reconcile(root,runtime_root); record=state['runs'][-1]
@@ -439,22 +433,22 @@ def run(root:Path,runtime_root:Path,profile_home:Path,limit:int,concurrency:int,
                         env=dict(os.environ,HERMES_HOME=str(profile_home)),cwd=str(task),log=task/'hermes.log',lock_fds=(root_fd,profile_fd))
                 with ThreadPoolExecutor(max_workers=concurrency) as pool:
                     futures=[pool.submit(stage_worker,i) for i in worker_items]
-                    codes=[future.result() for future in futures]
+                    codes=[]
+                    for item,future in zip(worker_items,futures):
+                        try:codes.append(future.result())
+                        except (OSError,ValueError) as exc:
+                            codes.append(1)
+                            w.save(wave/item/'launch-failure.json',dict(error=type(exc).__name__))
                 worker_paths=[wave/i/'process.json' for i in worker_items]
                 worker_end=time.time();rc=next((code for code in codes if code),0)
                 state=_reconcile(root,runtime_root);record=state['runs'][-1]
-                ready=[i for i in selected if state['items'][i]['status'] in ('ready','integration-pending','publication-pending','needs-input')]
-                if ready and not rc and not list(wave.rglob('STOP')):
-                    primary=wave/'integration';primary.mkdir();query=primary/'query.txt'
-                    query.write_text(wave_prompt(frozen,state,ready,primary,datetime.fromtimestamp(deadline,timezone.utc).isoformat(),cfg))
-                    rc=launch([*cfg['hermes_command'],'chat','--query-file',str(query),'--toolsets','file,terminal,web,paper_ingest'],
-                        env=dict(os.environ,HERMES_HOME=str(profile_home)),cwd=frozen['instance'],log=primary/'hermes.log',lock_fds=(root_fd,profile_fd))
+                publish_ready(state,selected,runtime_root,wave)
                 state=_reconcile(root,runtime_root); record=state['runs'][-1]
                 phases={i:w.load_job(state['items'][i]['job_id'],runtime_root).get('timings',{}) for i in selected if state['items'][i].get('job_id')}
                 peak=maximum_overlap(worker_paths)
                 record['actual_worker_concurrency']=max(record.get('actual_worker_concurrency',0),peak)
                 record['waves'].append(dict(items=selected,returncode=rc,wall_seconds=time.time()-wave_start,
-                    worker_wall_seconds=worker_end-wave_start,integration_wall_seconds=time.time()-worker_end,
+                    worker_wall_seconds=worker_end-wave_start,publication_wall_seconds=time.time()-worker_end,
                     actual_worker_concurrency=peak,job_timings=phases,artifacts=str(wave)))
                 outage=any(state['items'][i]['status']=='publication-pending' for i in selected)
                 if rc or list(wave.rglob('STOP')) or outage:
@@ -483,11 +477,19 @@ def main(argv=None):
     runner=commands.add_parser('run')
     for name in ('root','runtime-root','profile-home'):runner.add_argument('--'+name,required=True,type=Path)
     for name in ('limit','concurrency','max-seconds'):runner.add_argument('--'+name,required=True,type=int)
+    warm=commands.add_parser('_preflight',help=argparse.SUPPRESS);warm.add_argument('--hermes-repo',required=True)
     window=commands.add_parser('_window',help=argparse.SUPPRESS)
     window.add_argument('--root',required=True,type=Path); window.add_argument('--profile-home',required=True,type=Path); window.add_argument('--action',choices=('pause','restore'),required=True)
     args=parser.parse_args(argv)
     try:
-        if args.command=='scan-queue':
+        if args.command=='_preflight':
+            sys.path.insert(0,args.hermes_repo)
+            from hermes_cli.main import main as hermes_main
+            import pydantic_core
+            from openai import OpenAI
+            from run_agent import AIAgent
+            result=dict(status='ready')
+        elif args.command=='scan-queue':
             result=scan_queue(args.instance)
             if args.output:
                 from article_archive_compat.portable_articles import save

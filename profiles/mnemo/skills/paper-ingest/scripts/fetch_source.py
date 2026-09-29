@@ -62,6 +62,12 @@ def main(argv=None):
             content_type=response.headers.get('Content-Type')
         if not raw:
             raise ValueError('empty response')
+        suffix=Path(args.filename).suffix.lower()
+        if suffix=='.pdf' and not raw.lstrip().startswith(b'%PDF-'):
+            raise ValueError('response-is-not-pdf')
+        if suffix in ('.zip','.docx','.xlsx','.pptx'):
+            import io,zipfile
+            if not zipfile.is_zipfile(io.BytesIO(raw)):raise ValueError('response-is-not-zip')
         path = evidence.root / 'derived' / args.filename
         put(path, raw)
         print(json.dumps(dict(file=str(path), bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest(),

@@ -40,6 +40,7 @@ class Citations(Publication):
         self.assertEqual(len(archive.pa.load(draft/'citations.json')['citations']),3)
         r=w.stage(j,self.draft(),'Checked manuscript findings without optional citation markers.',runtime_root=self.runtime)
         self.assertEqual(r['status'],'ready')
+        self.assertFalse(any(v.startswith('Citation locator unresolved:') for v in r['warnings']))
         self.assertFalse((self.runtime/'requests.sqlite').exists())
 
     def test_citation_product_tamper_blocks_archive_without_rerun(self):
@@ -101,3 +102,12 @@ class WrappedLocators(Publication):
         self.assertEqual(clean,'Result.\nAnother result. Next sentence.\n\nParagraph.\n')
         self.assertEqual(len(ev['citations']),4)
         self.assertTrue(all(c['status']=='located' for c in ev['citations']))
+
+class StackedLocators(Publication):
+    def test_adjacent_locator_groups_are_all_removed_but_real_reference_links_survive(self):
+        from manuscript_ingest import citations
+        j,_=self.ready();job=w.load_job(j,self.runtime)
+        text='Claim [P1:L1][P1:L1] and [P1:L1] [P1:L1]. Reference [P1:L1][ref].\n'
+        clean,evidence=citations.extract(text,job,w.job_path(j,self.runtime))
+        self.assertEqual(clean,'Claim and. Reference [P1:L1][ref].\n')
+        self.assertEqual(len(evidence['citations']),4)

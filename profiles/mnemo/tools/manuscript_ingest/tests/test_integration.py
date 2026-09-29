@@ -15,7 +15,8 @@ class Integration(Publication):
             out=w.stage(j,draft,'Central facts checked against manuscript.',runtime_root=self.runtime)
         issues=out['artifacts'].get('integration_obligations',[])
         self.assertTrue(any('fulltext_source' in i for i in issues))
-        self.assertTrue(any('people/missing' in i for i in issues))
+        self.assertTrue(any('people/missing' in i for i in out['artifacts']['graph_follow_up']))
+        self.assertFalse(any('people/missing' in i for i in issues))
         self.assertTrue(all('bibliograph' not in i for i in issues))
 
     def test_one_publish_records_event_and_retry_does_not_duplicate(self):
@@ -68,7 +69,7 @@ class Integration(Publication):
             if k.get('canonical',True):self.page.write_text(self.page.read_text()+'Human edit\n')
             return []
         with patch.object(archive.pa,'RcloneTransport',MemoryTransport),patch.object(w,'integration_check',side_effect=check):
-            with self.assertRaisesRegex(ValueError,'concurrent-page-edit'):w.publish(j,1,runtime_root=self.runtime)
+            self.assertEqual(w.publish(j,1,runtime_root=self.runtime)['status'],'held')
         self.assertIn('Human edit',self.page.read_text());self.assertFalse((self.brain/'docs/rem-cycle/inbox.yaml').exists())
 
 

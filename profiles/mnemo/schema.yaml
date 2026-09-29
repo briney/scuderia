@@ -33,7 +33,7 @@ kinds:
     # The linter permits extra page fields; optional documents presence, not
     # a closed vocabulary/type check. Lifecycle: conventions/paper-stubs.md.
     # Source-backed provenance remains free text; no closed enum or migration.
-    optional: [stub_source, fulltext_source]
+    optional: [stub_source, fulltext_source, author_names]
   method:
     dir: methods
   concept:

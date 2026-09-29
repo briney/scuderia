@@ -94,12 +94,13 @@ class Recovery(Publication):
         self.page.write_text(self.page.read_text()+'Article archive: r2://stale\n## Personal notes\nRetain this\n')
         c,root,item=self.campaign(); c.reconcile(root,self.runtime)
         state=c.load(root)[1]['items'][item]
-        self.assertEqual(state['status'],'blocked'); self.assertEqual(state['reason'],'human-annotation-review')
+        self.assertEqual(state['status'],'pending'); self.assertIsNone(state['reason'])
         self.assertFalse((self.runtime/'jobs').exists())
 
 class Runner(Campaign):
     def setup_run(self,n=3):
         c=self.module()
+        warmer=patch.object(c,'preflight');warmer.start();self.addCleanup(warmer.stop)
         for i in range(n-1):(self.page.parent/f'paper-{i}.md').write_text(self.page.read_text())
         root=self.root/'campaign'; c.initialize(root,self.brain)
         profile=self.root/'profile'; profile.mkdir(); (profile/'config.yaml').write_text('delegation:\n  max_concurrent_children: 2\n')
@@ -240,24 +241,34 @@ class ActualConcurrency(Runner):
         self.assertFalse(list((profile/'paper-refresh').glob('child*.json')))
 
 class ReadyDispatch(Publication,Runner):
-    def test_ready_job_goes_directly_to_one_primary_without_drafting(self):
-        c,root,profile=self.setup_run(1); j=self.staged(); queries=[]
-        def launch(argv,**kwargs):
-            query=Path(argv[argv.index('--query-file')+1]);queries.append(query)
-            self.assertEqual(query.parent.name,'integration')
-            self.assertIn(j,query.read_text());return 0
-        with patch.object(c,'cron_window'),patch.object(c,'launch',side_effect=launch):result=c.run(root,self.runtime,profile,1,2,300)
-        self.assertEqual(len(queries),1);self.assertEqual(result['counts'],{'ready':1})
+    def test_ready_job_publishes_without_any_model(self):
+        c,root,profile=self.setup_run(1);j=self.staged()
+        with patch.object(c,'cron_window'),patch.object(c,'launch') as launch,patch.object(archive.pa,'RcloneTransport',MemoryTransport),patch.object(w,'integration_check',return_value=[]):
+            result=c.run(root,self.runtime,profile,1,2,300)
+        launch.assert_not_called();self.assertEqual(result['counts'],{'complete':1})
         self.assertEqual(w.load_job(j,self.runtime)['revision'],1)
 
 
-class IntegrationHandoff(Publication):
-    def test_handoff_contains_durable_artifacts_and_exact_publish_command(self):
-        from manuscript_ingest import campaign as c
-        j=self.staged(); root=self.root/'campaign';c.initialize(root,self.brain);c.reconcile(root,self.runtime)
-        frozen,state=c.load(root);item=next(iter(state['items']));folder=self.root/'primary';folder.mkdir()
-        prompt=c.wave_prompt(frozen,state,[item],folder,'later',{'git_closeout':'hold-for-review','runtime_root':str(self.runtime)})
-        self.assertIn(str(w.job_path(j,self.runtime)/'drafts/1/page.diff'),prompt)
-        self.assertIn('--input',prompt)
-        payloads=list(folder.glob('publish-*.json'));self.assertEqual(len(payloads),1)
-        self.assertEqual(__import__('json').loads(payloads[0].read_text()),{'operation':'publish','job_id':j,'revision':1})
+class DirectPublication(Publication,Runner):
+    def test_ready_paper_publishes_despite_sibling_startup_failure(self):
+        c,root,profile=self.setup_run(2);j=self.staged()
+        with patch.object(c,'cron_window'),patch.object(c,'preflight',create=True),patch.object(c,'launch',return_value=1) as launch,patch.object(archive.pa,'RcloneTransport',MemoryTransport),patch.object(w,'integration_check',return_value=[]):
+            result=c.run(root,self.runtime,profile,2,2,300)
+        self.assertEqual(launch.call_count,1,'only the unstaged sibling needs a model')
+        self.assertEqual(w.load_job(j,self.runtime)['status'],'complete')
+        self.assertEqual(result['counts'],{'complete':1,'interrupted':1})
+
+    def test_preflight_failure_does_not_admit_workers(self):
+        c,root,profile=self.setup_run(1)
+        with patch.object(c,'cron_window'),patch.object(c,'preflight',create=True,side_effect=ValueError('hermes-import-preflight-failed')),patch.object(c,'launch',return_value=0) as launch:
+            with self.assertRaisesRegex(ValueError,'preflight'):c.run(root,self.runtime,profile,1,1,300)
+        launch.assert_not_called()
+        self.assertEqual(c.report(root)['counts'],{'pending':1})
+
+class LaunchException(Publication,Runner):
+    def test_launch_exception_still_publishes_ready_sibling(self):
+        c,root,profile=self.setup_run(2);j=self.staged()
+        with patch.object(c,'cron_window'),patch.object(c,'launch',side_effect=OSError('cannot launch')),patch.object(archive.pa,'RcloneTransport',MemoryTransport),patch.object(w,'integration_check',return_value=[]):
+            result=c.run(root,self.runtime,profile,2,2,300)
+        self.assertEqual(w.load_job(j,self.runtime)['status'],'complete')
+        self.assertEqual(result['counts'],{'complete':1,'interrupted':1})

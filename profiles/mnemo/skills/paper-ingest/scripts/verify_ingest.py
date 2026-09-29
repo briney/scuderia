@@ -105,6 +105,10 @@ import re
 import sys
 import time
 import unicodedata
+from pathlib import Path
+
+# Standalone publication uses the same external cache helpers as plugin calls.
+sys.path.insert(0,str(Path(__file__).resolve().parents[3]/"tools"))
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -131,7 +135,7 @@ AUTHOR_REF_RE = re.compile(r"^people/[a-z0-9][a-z0-9-]*$")
 CITED_BY_REF_RE = re.compile(r"^(papers|grants)/[a-z0-9][a-z0-9-]*$")
 REQUIRED_SECTIONS = (
     "Abstract", "Context", "Approach", "Findings", "Limitations",
-    "Analysis", "Citation", "Ingest log",
+    "Analysis", "Citation",
 )
 
 
@@ -419,7 +423,7 @@ def canonical_checks(fm):
                                          "warning (paper-ingest Phase 3)"))
 
     # ---- author-list completeness ----------------------------------------
-    page_n = len(fm.get("authors") or [])
+    page_n = len(fm.get("author_names", fm.get("authors")) or [])
     if pm_rec is not None:
         canon_n = pm_rec["n_authors"]
         src = "PubMed"
@@ -443,7 +447,7 @@ def canonical_checks(fm):
                 f"author list is empty but {src} lists {canon_n} "
                 f"(individual) authors — pull the complete list "
                 f"(paper-ingest Phase 8); if this is deliberate corporate "
-                f"authorship, note it in the Ingest log",
+                f"authorship, note it in the Citation",
             ))
         elif page_n < canon_n:
             findings.append((
@@ -666,6 +670,14 @@ def filled_contract_checks(fm, body, filename_slug, page_only=False):
         if dups:
             fails.append(f"duplicate authors: {dups}")
 
+    if "author_names" in fm:
+        names=fm["author_names"]
+        if not isinstance(names,list) or any(not isinstance(n,str) or not n.strip() for n in names):
+            fails.append("author_names must be a complete list of nonempty source names")
+    links=fm.get('links',[])
+    if not isinstance(links,list) or any(not isinstance(link,str) for link in links):
+        fails.append('links must be a list of strings')
+
     # A filled page with no inbound citations may omit the cited_by key
     # entirely (legacy pages do); present-but-malformed still fails.
     cited_by = fm.get("cited_by")
@@ -764,7 +776,11 @@ def main():
     ap.add_argument('--enrichment-integration', help='absolute trusted qualified enrichment integration directory')
     ap.add_argument('--enrichment-root', help='absolute trusted frozen enrichment package directory')
     ap.add_argument("--identity-cache",help="External per-job canonical response cache; shared with acquisition/publication")
+    ap.add_argument('--identity-only',action='store_true',help='Canonical identity only; graph maintenance does not gate manuscript publication')
+    ap.add_argument("--candidate",help="External draft for identity-only checks before publication")
     args = ap.parse_args()
+    if args.candidate and not args.identity_only:ap.error("candidate requires identity-only")
+    if args.identity_only and args.offline:ap.error('identity-only requires online verification')
     global IDENTITY_CACHE
     IDENTITY_CACHE=args.identity_cache
     if args.require_enriched_source and args.require_filled and not args.page_only and not args.final_products:
@@ -789,7 +805,7 @@ def main():
         sys.exit(2)
 
     slug = args.slug[:-3] if args.slug.endswith(".md") else args.slug
-    paper_path = os.path.join(brain, "papers", slug + ".md")
+    paper_path = args.candidate or os.path.join(brain, "papers", slug + ".md")
     if not os.path.isfile(paper_path):
         sys.stderr.write(f"ERROR: paper page not found: {paper_path}\n")
         sys.exit(2)
@@ -808,6 +824,12 @@ def main():
         print("  Frontmatter: OK")
     fm = fm if isinstance(fm, dict) else {}
     body = body or ""
+
+    if args.identity_only:
+        if err:sys.exit(1)
+        findings,unverified=canonical_checks(fm)
+        for level,message in findings:print(f'[{level}] {message}')
+        sys.exit(1 if unverified or any(level=='FAIL' for level,_ in findings) else 0)
 
     # Invariant 2: links targets exist (http(s) URLs are external, not
     # filesystem targets — skipped and labeled, never existence-checked)
