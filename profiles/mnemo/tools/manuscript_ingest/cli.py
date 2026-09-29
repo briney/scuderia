@@ -9,7 +9,7 @@ OPERATIONS={
     'start':({'page'},{'identity'}),
     'sources':({'job_id'},{'inputs'}),
     'read':({'job_id','locations'},{'question','transcribe'}),
-    'stage':({'job_id','markdown','review_note'},{'base_revision'}),
+    'stage':({'job_id','review_note'},{'markdown','markdown_path','base_revision'}),
     'publish':({'job_id','revision'},set()),
     'status':({'job_id'},set()),
 }
@@ -21,6 +21,14 @@ def dispatch(arguments,*,runtime_root):
     required,optional=OPERATIONS[operation]; keys=set(arguments)-{'operation'}
     w.require(required<=keys and keys<=required|optional,'operation-arguments-mismatch')
     args={k:v for k,v in arguments.items() if k!='operation'}
+    if operation=='stage':
+        w.require(('markdown' in args)!=('markdown_path' in args),'supply-exactly-one-draft-input')
+        if 'markdown_path' in args:
+            path=w.outside_instance(args.pop('markdown_path'))
+            w.require(not path.is_relative_to(Path(w.config(runtime_root)['instance'])),'draft-must-be-outside-instance')
+            w.require(path.is_file() and path.stat().st_size<=8_000_000,'invalid-draft-file')
+            with path.open(encoding='utf-8') as stream:args['markdown']=stream.read(2_000_001)
+            w.require(len(args['markdown'])<=2_000_000,'invalid-draft')
     function={'sources':sources.prepare,'read':sources.read}.get(operation) or getattr(w,operation)
     return function(**args,runtime_root=runtime_root)
 

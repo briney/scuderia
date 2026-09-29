@@ -119,3 +119,17 @@ Historical arXiv API timeouts/host restrictions and Jina domain-level 403s
 (2026-09-05) did not imply arXiv source closure: direct abs/HTML/PDF routes
 remained alternatives. Inspect the current response; do not preserve a
 permanent host-wide ban or assume a proxy's failure belongs to the source.
+
+## Stage an existing annotated draft
+
+Use the file-writing capability to create `<external-work>/draft.md`, then a
+small `<external-work>/stage.json` containing:
+
+```json
+{"operation":"stage","job_id":"<existing-job-id>","markdown_path":"<external-work>/draft.md","review_note":"Central findings checked against the retained manuscript; no unresolved material issue."}
+```
+
+Run the configured runtime Python with `-m manuscript_ingest.cli --runtime-root
+<runtime-root> --input <external-work>/stage.json`. Use the deployment's existing
+PYTHONPATH. No inline interpreter or document embedded in a shell command is
+needed. Keep citation locators in the draft file.

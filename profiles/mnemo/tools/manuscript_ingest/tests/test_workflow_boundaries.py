@@ -40,3 +40,25 @@ class Boundaries(Publication):
 
 from test_jobs import only_local_tests
 def load_tests(loader,tests,pattern):return only_local_tests(__name__)
+
+class FileStage(Publication):
+    def test_long_markdown_file_stages_exact_annotated_bytes(self):
+        from manuscript_ingest.cli import dispatch
+        j,sid=self.ready()
+        raw=self.draft()+('\nQuoted "value", backslash \\, unicode µL.\n'*2000)
+        path=self.root/'draft.md'; path.write_text(raw)
+        out=dispatch(dict(operation='stage',job_id=j,markdown_path=str(path),review_note='Checked central findings against page 1.'),runtime_root=self.runtime)
+        self.assertEqual(__import__('pathlib').Path(out['artifacts']['annotated_draft']).read_text(),raw)
+        self.assertEqual(out['artifacts']['revision'],1)
+
+    def test_file_stage_rejects_ambiguous_and_unsafe_inputs(self):
+        from manuscript_ingest.cli import dispatch
+        j,sid=self.ready(); path=self.root/'draft.md'; path.write_text(self.draft())
+        base=dict(operation='stage',job_id=j,review_note='Checked central findings against page 1.')
+        link=self.root/'link.md'; link.symlink_to(path)
+        big=self.root/'big.md'; big.write_text('a'*2_000_001)
+        for args in ({},dict(markdown=self.draft(),markdown_path=str(path)),dict(markdown_path=str(self.page)),
+                     dict(markdown_path=str(link)),dict(markdown_path=str(self.root)),dict(markdown_path=str(big)),dict(markdown_path=str(self.root/'missing'))):
+            with self.subTest(args=list(args)):
+                with self.assertRaises((ValueError,OSError)):dispatch(dict(base,**args),runtime_root=self.runtime)
+        self.assertEqual(w.load_job(j,self.runtime)['revision'],0)

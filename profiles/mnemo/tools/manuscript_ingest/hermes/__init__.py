@@ -16,6 +16,7 @@ SCHEMA=dict(name='paper_ingest',description='Ingest or refresh a paper from its 
         'transcribe':dict(type='boolean',description='Read only: full-page transcription of one deficient manuscript page. Mutually exclusive with question; consumes configured inspection budget.'),
         'question':dict(type='string',description='Optional specific manuscript inspection question, up to four explicit pages; consumes configured inspection budget.'),
         'markdown':dict(type='string',description='Full candidate page; use compact [P4:L12-L15] manuscript locators while drafting. Stage archives the annotated page and quoted evidence, removes locators from the readable page, and never changes the live page.'),
+        'markdown_path':dict(type='string',description='Preferred stage input: absolute external UTF-8 Markdown file, instead of inline markdown. Write the annotated draft once, then pass its path; do not serialize a long draft inside nested JSON.'),
         'review_note':dict(type='string',description='Short source check of central findings, consequential numbers, contradictions and material omissions. Use HOLD: on a line for each unresolved material issue; omit HOLD lines when none remain. Optional missing output alone does not block.'),
         'base_revision':dict(type='string',description='Stage only: opaque live_snapshot token after reading and reconciling a concurrent page edit; never invent this token.'),
         'revision':dict(type='integer',minimum=1),

@@ -91,3 +91,17 @@ Campaign completion additionally requires manuscript reading and matching final
 page/archive evidence. Git publication is tracked separately. Resolve canonical
 path corrections before `start`; never silently change a job's bound slug.
 See `skills/ingest-pending-papers/references/corpus-refresh.md` for bounded runs.
+
+### File-based staging
+
+For substantial drafts, write the annotated Markdown to an external UTF-8 file
+using the file-writing capability, then call `stage` with `markdown_path`, the
+same `job_id`, and a short `review_note`. Supply exactly one of `markdown_path`
+and inline `markdown`. The runtime reads the file and preserves its annotated
+bytes; the live page remains untouched. Paths inside the brain, symlinks and
+nonregular files are refused. The existing 2,000,000-character draft limit
+applies; this is a transport boundary, not a model output token cap.
+
+If a nested tool wrapper rejects JSON, use the file-path argument or the CLI
+operation file immediately. Do not regenerate or shorten scientific content to
+repair a serialization error.
