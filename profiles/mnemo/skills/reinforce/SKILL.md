@@ -70,11 +70,14 @@ it never fetches.
 
 1. **Select.** The recent-paper window — the union of (a) pages under `papers/`
    **added to git since the cursor date** (`git log --since=<cursor>
-   --diff-filter=A -- papers/`) and (b) **`stub-filled` packets** in
-   `docs/rem-cycle/inbox.yaml` not yet consumed by reinforce — a filled stub
-   never appears in the git-added log (the file already existed), so the
-   packet is the only way it enters the pipeline. After processing, append
-   `reinforce` to each packet's `consumed_by`.
+   --diff-filter=A -- papers/`) and (b) **`ingest` and `stub-filled` packets** in
+   `docs/rem-cycle/inbox.yaml` not yet consumed by reinforce. Refreshes and filled
+   stubs modify existing files, so their packets are the way they enter the
+   pipeline. Deduplicate the work list by paper path while retaining all packet
+   IDs. After routing and checking the complete Shifts logs, append `reinforce`
+   to every processed packet's `consumed_by`, including verified no-ops. Metadata
+   and graph amendments can emit another `ingest` packet; dedup on
+   `(concept, source)` prevents repeated facts across those revisions.
    Use `--diff-filter=A` (added files only) — **not** plain `--since`, which picks
    up retroactive-linking edits to old papers and floods the subagent with 40
    files when only 3 are new. The cursor (`cursors.reinforce` in

@@ -95,10 +95,30 @@ What gets re-linked in one invocation:
 - **As a rem-cycle phase:** **inbox first** — drain every packet in
   `docs/rem-cycle/inbox.yaml` not yet in your `consumed_by` (these are pages
   ingested or stub-filled since the last run; process them before anything
-  else, budget permitting, and append `retro` to each item's `consumed_by`),
+  else, budget permitting, and append `retro` only after its owned obligations
+  are verified),
   then a **rotating slice** — a fixed-size window advanced from the cursor in
   `_state.yaml`, so every old page is periodically reconsidered without any
   single run exploding in cost. Save the new cursor in the phase result.
+
+## Deferred author associations
+
+An inbox packet whose `graph_follow_up` contains
+`author-associations-deferred` owns an additional obligation beyond prose linking.
+Read the complete `author_names`
+and canonical retained author metadata, then use
+`skills/paper-ingest/references/author-ledger-mutation.md` for identity resolution
+and the existing person/ledger branches. Names or inherited slugs alone are
+not identity evidence. Preserve exact confirmed slugs; retain unresolved source
+names and report their associations as pending, without guessing or merging.
+
+The primary writes shared person/ledger updates serially and verifies every
+resolved paper-author pair against `author_on` or ledger `citations`. Store
+available verified ORCIDs and apply the existing promotion rule when new
+citations cross its threshold. Existing migration debt is reported separately.
+Do not acknowledge `retro` until the packet's author and linking obligations
+are verified; an unresolved author remains pending rather than being dropped
+by the ordinary mention-link gate. Other packets can still finish.
 
 ## Phases
 
@@ -122,6 +142,16 @@ What gets re-linked in one invocation:
    edge left in place is a demand signal, not damage. Where an entity has both
    an absent `methods/` (or other) stub and a real page, link the real page and
    emit a `notable:` entry for the pair.
+
+   For a runtime-managed archived paper, apply paper-side `authors`, typed edges
+   and wikilinks through the guarded amendment flow in
+   `skills/paper-ingest/references/runtime.md`: reconcile the live snapshot and
+   retained annotated draft, stage with `amend_revision` and `base_revision`,
+   then publish. Preserve locators and archive equality; unchanged manuscripts
+   need no new full read or checker call. Verify publication before acknowledging
+   the packet. Publication emits a new packet: process its already-satisfied
+   obligations as verified no-ops, without creating another amendment. Group
+   packets by paper and acknowledge each processed revision explicitly.
 5. **Emit the result.** Report per `rem-cycle-contract.md` when run as a phase;
    otherwise report conversationally — what was linked, what was dropped.
 

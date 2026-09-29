@@ -1,7 +1,8 @@
 # Author identity and ledger mutation
 
-Load for `paper-ingest` Phase 8, including parent-owned wiring after a page-only
-fill. `skills/conventions/author-ledger.md` owns ledger schema and promotion;
+Load for deferred author maintenance in `retroactive-linking`, including
+parent-owned wiring after scientific publication.
+`skills/conventions/author-ledger.md` owns ledger schema and promotion;
 this reference owns the shared mutation procedure. It also serves queue drains
 and dives; do not copy its algorithms into those callers.
 
@@ -34,14 +35,16 @@ and dives; do not copy its algorithms into those callers.
    unresolved, retain the source display name in the citation and record the
    candidate association externally for resolution; do not add its reverse edge
    or manufacture an institution-suffixed person to bypass uncertainty. Keep
-   that paper's integration pending if necessary and continue unrelated papers.
+   that author follow-up pending and continue unrelated papers; uncertainty does
+   not block the already-published scientific page.
 5. Capture ORCIDs from PubMed XML, Europe PMC core author records, and Crossref
    when available. Handle string/object forms of author IDs; union agreeing
    records, hold conflicts, and use null when no verified ORCID is available.
    A junior author's ORCID may appear only in Crossref. Do not infer an ID.
 
 Build parent wiring data from the saved canonical metadata or a re-fetch plus
-the page's `authors:` list. Child summaries may be truncated; a log saying
+the page's complete `author_names` plus the confirmed identity mapping.
+Child summaries may be truncated; a log saying
 'ORCIDs captured: N' does not contain the IDs. The page and source record are
 required inputs, not the summary alone.
 
@@ -153,4 +156,8 @@ string types, prefix shape, and identity consistency. Review potential
 same-person duplicates under spelling/initial variants before merging.
 Run scoped `lint-frontmatter.py` on the paper, ledger, and touched person pages;
 read its output and respect the exit status. A command pipeline that hides the
-linter failure is not validation. Full paper verification follows Phase 10.
+linter failure is not validation.
+For a runtime-managed archived paper, apply paper-side `authors:` changes
+through the guarded amendment flow in `skills/paper-ingest/references/runtime.md`;
+preserve the retained annotated draft, source locators and archive equality.
+Verify the new publication before acknowledging its author follow-up.
