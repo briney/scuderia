@@ -72,7 +72,7 @@ class AcquisitionEvidence:
     def source_inventory(self):
         """Expose fetched originals and advertised attachments, without processing SI."""
         from urllib.parse import urljoin
-        candidates=[]; attachments=[]
+        candidates=[]; attachments=[]; manuscript_links=[]
         for body in sorted(self.root.glob('attempt-*/response-*/body.bin')):
             record=json.loads((body.parent/'response.json').read_text())
             if record['status']!=200:continue
@@ -91,14 +91,21 @@ class AcquisitionEvidence:
                 pmc=next((e.text for e in root.findall('.//article-id') if e.get('pub-id-type') in ('pmc','pmcid') and e.text),None)
                 base='https://pmc.ncbi.nlm.nih.gov/articles/'+(pmc if pmc.startswith('PMC') else 'PMC'+pmc)+'/bin/' if pmc else record['url']
                 for node in root.iter():
-                    if node.tag.split('}')[-1] not in ('supplementary-material','supplementary-material-link','media'):continue
-                    href=node.get('{http://www.w3.org/1999/xlink}href') or node.get('href')
-                    if href:
+                    tag=node.tag.split('}')[-1]
+                    if tag=='self-uri' and node.get('content-type')=='pdf':
+                        group=manuscript_links; nodes=[node]
+                    elif tag in ('supplementary-material','supplementary-material-link','media'):
+                        group=attachments; nodes=list(node.iter())
+                    else:continue
+                    for link in nodes:
+                        href=link.get('{http://www.w3.org/1999/xlink}href') or link.get('href')
+                        if not href:continue
                         url=urljoin(base,href)
                         try:public_url(url)
                         except ValueError:continue
-                        if not any(a['url']==url for a in attachments):attachments.append(dict(url=url,label=' '.join(node.itertext()).strip(),status='advertised',source_path=str(target)))
-        return dict(source_candidates=candidates,attachments=attachments)
+                        if not any(a['url']==url for a in group):
+                            group.append(dict(url=url,label=' '.join(node.itertext()).strip(),status='advertised',source_path=str(target)))
+        return dict(source_candidates=candidates,attachments=attachments,manuscript_links=manuscript_links)
 
     def open(self, req):
         try:

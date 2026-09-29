@@ -11,10 +11,10 @@ candidates; verify sources and retain originals outside the brain.
 | `dedup_check.py` | `--doi`, `--pmid`, `--title` (at least one), `--instance <brain>`, optional `--json`. Exit 0=no match; 1=matches with STUB/FULL state; 2=invocation error. Similar-title matches require review. |
 | `validate_identifiers.py` | `--batch <json-file> --recover`; single input uses `--title`, `--author`, `--year`, optional `--pmid`, `--doi`, `--pmcid`. Batch entries use those same field names. Read validated/recovered/HOLD results and the `dispatch` list; surface retraction flags. |
 | `slugify_name.py` | `--pubmed-xml <file>` for a batch; `--family`/`--given` for one author; `--filter-surname` with `--ledger-file` for token-match queries; `--crossref-family`/`--crossref-given` supply a name cross-check. Handles diacritics and documented compound-name misparses; confirmed existing identity takes precedence over a proposed slug. |
-| `check_authors.py` | `--ledger <brain>/people/_ledger.yaml`, optional `--people-dir`, names as arguments or stdin. Prints EXISTING/NEW and surname candidates; always exits 0. It compares ledger name tokens, not person-page identities, and displays only eight near candidates. Phase 8's reference owns the additional identity checks. |
+| `check_authors.py` | `--ledger <brain>/people/_ledger.yaml`, optional `--people-dir`, names as arguments or stdin. Prints EXISTING/NEW and surname candidates; always exits 0. It compares ledger name tokens, not person-page identities, and displays only eight near candidates. Use only during deferred author maintenance, not routine ingestion; matching names alone does not establish person identity. |
 | `ledger-append.py` | Template, not a CLI updater. Copy to unique scratch FIRST, then set `LEDGER`, `PAPER`, and `NEW_BLOCKS` in that copy. Never edit the canonical helper for an ingest. New entries only; existing-entry updates and promotion follow `author-ledger-mutation.md`. |
 | `pmc_xml_body_parser.py` | `<xml_file>`, optional `--range START END` or `--full`; default is only the first 15,000 characters. There is no `--refs`. Imports `fetch_fulltext.pmc_xml_to_text`; parse failure/no body prints a message, not a failing exit. No XML repair, reference-list or table-cell extraction; load `pmc-xml-tools` for those needs. |
-| `verify_ingest.py` | `<slug> --instance <brain> --require-filled --article-package <manifest> --publication-receipt <receipt>`. For an intermediate queued page add `--page-only`; it is not completion. Canonical identity uses network metadata. `--offline` skips identity and cannot establish production completion. |
+| `verify_ingest.py` | Deferred graph/legacy audit only; ordinary completion is runtime `publish`, which calls identity checks itself. `<slug> --instance <brain> --require-filled --article-package <manifest> --publication-receipt <receipt>`. For an intermediate queued page add `--page-only`; it is not completion. Canonical identity uses network metadata. `--offline` skips identity and cannot establish production completion. |
 | `embargo_recheck.py` | Scheduled enrichment-candidate reporter, not a normal ingest step. It has no argument parser and derives `VAULT` from its resolved script path; `--help` is not a safe probe. Verify the actual wrapper/target before running, and do not treat silence as proof that the intended vault was checked. Do not copy a deployment's schedule/model/delivery into the procedure. |
 
 The fetch helper implements EPMC→PMC XML→EPMC PDF→bioRxiv/Jina→publisher
@@ -32,7 +32,8 @@ Confirm a bare-number PMCID candidate against the article record first.
 The final verifier checks local graph/ledger structure and DOI/PMID identity;
 arXiv resolution tries DataCite before other indexes. Its author-count match
 is not proof of correct individual identities or every required author edge.
-The primary still checks source evidence, bibliography, wiring, and propagation.
+This full audit is not an additional ingestion gate. Runtime publication checks source
+identity and emits propagation; bibliography and graph wiring remain deferred.
 
 ## Direct metadata and document retrieval
 
@@ -152,3 +153,9 @@ Record remaining files as unavailable/deferred with the observed reason. Do not
 restart the budget or continue speculative URL variations during ordinary ingest.
 Manuscript acquisition uses its separate campaign deadline. Available composites
 are archived only; they do not become a second processed manuscript.
+
+The acquisition evidence summary exposes observed `manuscript_links` and nested
+supplement links as candidates. Prefer these advertised publisher routes before
+constructed fallback paths. Direct PDF/ZIP downloads validate file signatures;
+HTTP 200 challenge HTML remains failed evidence, never a retained PDF. Attachment
+attempt/time limits still apply and gaps remain explicit outside the brain.

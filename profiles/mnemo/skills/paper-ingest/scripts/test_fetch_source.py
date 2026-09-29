@@ -100,3 +100,26 @@ class SupplementBudget(unittest.TestCase):
                 fetch_source.reserve_attachment(state,'S1','https://example.org/3')
             with patch('time.time',return_value=221),self.assertRaisesRegex(ValueError,'budget'):
                 fetch_source.reserve_attachment(state,'S2','https://example.org/4')
+
+class DocumentValidation(unittest.TestCase):
+    def test_challenge_html_is_not_saved_as_pdf(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory=Path(tmp).resolve()/'challenge'
+            response=urllib.response.addinfourl(io.BytesIO(b'<html>Verify you are human</html>'),Message(),'http://example.org/paper.pdf',200);response.msg='OK'
+            with patch('urllib.request.HTTPHandler.http_open',return_value=response),redirect_stdout(io.StringIO()):
+                code=fetch_source.main(['--url','http://example.org/paper.pdf','--evidence-dir',str(directory),'--filename','paper.pdf'])
+            self.assertEqual(code,2)
+            self.assertFalse((directory/'derived/paper.pdf').exists())
+            self.assertTrue(list(directory.glob('attempt-*/response-*/body.bin')))
+
+class AdvertisedRoutes(unittest.TestCase):
+    def test_nested_direct_attachment_and_manuscript_links_are_exposed(self):
+        from fetch_fulltext import AcquisitionEvidence
+        with tempfile.TemporaryDirectory() as tmp:
+            evidence=AcquisitionEvidence(Path(tmp).resolve()/'evidence')
+            raw=b'<article xmlns:xlink="http://www.w3.org/1999/xlink"><front><self-uri content-type="pdf" xlink:href="https://publisher.example/paper.pdf"/></front><body><p>Manuscript</p><supplementary-material><ext-link xlink:href="https://publisher.example/supp.zip">Data</ext-link></supplementary-material></body></article>'
+            response=urllib.response.addinfourl(io.BytesIO(raw),Message(),'http://example.org/paper.xml',200);response.msg='OK'
+            with patch('urllib.request.HTTPHandler.http_open',return_value=response):evidence.open(urllib.request.Request('http://example.org/paper.xml')).close()
+            inventory=evidence.source_inventory()
+            self.assertEqual(inventory['attachments'][0]['url'],'https://publisher.example/supp.zip')
+            self.assertEqual(inventory['manuscript_links'][0]['url'],'https://publisher.example/paper.pdf')

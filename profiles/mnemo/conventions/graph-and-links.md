@@ -30,16 +30,16 @@ carry the hypothesis evidence graph; `authors:` on a paper and `author_on:` on a
 person carry the authorship graph. Use a typed edge when the *relationship*
 needs to be queryable — not just the fact that two pages are related.
 
-## Authorship is a co-written typed edge
+## Authorship is a verified typed relationship
 
-The authorship graph is split across two pages: a `paper` page lists every
-author under `authors:` (`people/<slug>` entries — every author, always —
-see `paper-ingest`); the corresponding `person` page lists every paper
-under `author_on:`. Both halves are forward edges; both halves are written
-by `paper-ingest` at ingest time. The person-side half is **co-written by
-the skill that authors the paper page**, not derived after the fact — this
-keeps the forward-only discipline intact (a forward edge is owned by the
-page it sits on, even when the same skill writes both pages in one run).
+A paper's complete ordered `author_names` comes from the source. Its `authors`
+contains independently verified `people/<slug>` associations, possibly empty or
+partial while matching is deferred. A person's `author_on` and the author ledger's
+citations represent the reverse relationship. Ordinary manuscript ingestion queues
+missing associations/edges through its propagation event; graph maintenance resolves
+identity and updates both sides later. No name-only merge or person creation is
+required to publish the scientific page. Existing valid relationships elsewhere
+remain intact when an old summary is replaced.
 
 For authors without a `people/` page, the `author_on:` edge is not written
 — there is nothing to write it to. The authorship signal is instead
@@ -84,3 +84,8 @@ pane. Do not maintain a backlinks section in markdown.
 Link targets are `kind/slug` references (e.g. `methods/preferential-masking`) —
 the same identity used everywhere. A link to a page that does not exist yet is
 acceptable: it marks an edge worth filling, not an error.
+
+Deferred paper-side author/link corrections use the manuscript runtime’s guarded
+`stage` amendment and `publish` operations so the page remains equal to its archived
+revision. Reuse the retained draft and sources; no new manuscript synthesis or factual
+checker call is needed for graph metadata alone.

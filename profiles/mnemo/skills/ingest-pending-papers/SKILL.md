@@ -8,124 +8,61 @@ triggers:
   - "drain the paper-ingest queue"
   - a scheduled queue-drain run
 eval_contract:
-  goal: Drain queued papers with verified per-item outcomes and complete parent-owned wiring.
+  goal: Drain queued papers with verified per-item outcomes and deterministic publication and deferred graph maintenance.
   dimensions:
     - "ACCOUNTING — every original input has a verified outcome and canonical path"
-    - "ISOLATION — workers fill assigned pages; parent owns all shared writes"
+    - "ISOLATION — workers fill assigned pages; runtime serializes publication and propagation"
     - "VERIFICATION — source-backed exceptions and completed-page checks agree with paper-ingest"
     - "RECOVERY — incomplete work stays queued and provider errors do not erase completed writes"
   hard_fails:
-    - Counting a child report or PAGE_READY result as a completed ingest without read-back and wiring.
+    - Counting a child report or PAGE_READY result as a completed ingest without durable runtime publication evidence.
     - Requeueing a valid fill solely because a verified DOI is absent or authorship is collective-only.
-    - Losing citing edges, provenance, or original queue items from final accounting.
+    - Losing original queue items, overwriting concurrent edits, or misreporting source gaps.
 ---
 
 # Drain queued papers through manuscript-to-page ingestion
 
-Load `skills/paper-ingest/SKILL.md` and its runtime reference. This skill owns
-selection and accounting, not a second scientific acceptance protocol. Use only
-`paper_ingest` start, sources, read, stage, publish and status. Supplementary
-files are retained without routine processing. Full receipts and machine state
-stay outside the brain; pages retain a compact remote archive locator.
+Load current `paper-ingest` and its runtime reference. This skill owns selection
+and accounting, not another scientific acceptance protocol. Use only start,
+sources, read, stage, publish and status. Never load historical exhaustive recipes.
 
-Read `skills/conventions/paper-stubs.md`, `skills/batch-drain/SKILL.md` and
-`skills/git-ops/SKILL.md`. Use current tool schemas and the configured child
-ceiling; never change model pins or approval settings to rescue a run. Verify
-parent and worker discovery of `paper_ingest` before dispatch. Missing deployment
-is a hold, not a reason to use an older workflow.
+For ordinary queues, run the configured PDF Python with
+`<profile>/tools/manuscript_ingest/campaign.py scan-queue --instance <brain>`.
+For an explicitly authorized corpus refresh, use `references/corpus-refresh.md`.
+Freeze the selected inputs and validate identity/dedup before dispatch; a selected
+existing target is not a duplicate to delete. Stubs outside the selection and new
+bibliography candidates remain outside the run. Source-backed renames/merges require
+inbound-link repair and retained original snapshots before removing a page.
 
-## Selection and identity
+Use one isolated worker per paper, within the configured native concurrency ceiling.
+Each worker reads only its verified sources, current template and identity seed.
+It must not read legacy/sibling pages or reconcile old metadata and manual notes.
+It acquires the complete manuscript, retains supplements without processing, drafts,
+checks central facts and assesses the one independent factual report if configured.
+It stages only; no shared graph edits, nested delegation, Git or publication.
+Return job/revision and concise observations, not a rigid output schema.
 
-For an ordinary queue run, use the named scanner with the configured PDF Python:
+Read durable job status after every worker, including missing final summaries or
+provider errors. Already-staged work is retained. The campaign publishes ready
+revisions serially through runtime code, even if another worker failed. There is
+no integration agent, second broad review, bibliography walk or graph repair on
+the critical path. Standalone queue orchestration likewise calls publish directly.
+An unassessed factual report or material HOLD stays with that paper.
 
-```sh
-"<pdf-python>" "<profile>/tools/manuscript_ingest/campaign.py" scan-queue --instance "<brain>" --output "<existing-external-parent>/new-queue.json"
-```
+Publication verifies retained archive bytes, protects against concurrent edits,
+checks canonical identity, records propagation once and clears the queue flag.
+Author associations and missing graph targets remain explicit follow-up; they are
+not proof of an incomplete scientific page. A metadata/archive outage defers the
+same revision without redrafting or sleep loops. A missing full manuscript is an
+access hold, never abstract-only success. Complete source author names are required;
+uncertain person identities must not be guessed to make a graph check pass.
 
-Read the output's `items` and `diagnostics`, paging through all records. Selection
-uses parsed YAML `needs-ingest: true`, not prose matches or a truncated content
-search. Diagnose malformed metadata explicitly. The scanner orders by citing
-edges, then path. Freeze the selected paths for this run and account for every
-one. A campaign or user-supplied explicit selection does not authorize draining
-the rest of the ordinary queue or setting all old pages' queue flags.
+Keep sources, review artifacts, receipts, hashes and transient diagnostics outside
+the brain. Pages carry science and one remote archive locator, no Ingest log or
+sidecars. Report manuscript formats and attachment gaps separately from page status.
 
-Inspect prior access/identity failures before dispatch. A persistent blocker is
-skipped with its reason; do not blindly repeat an unsuccessful request. Check
-source identity with the existing `validate_identifiers.py --batch ... --recover`
-helper on the selected group and `dedup_check.py --instance <brain> ... --json`.
-Resolve candidates and heuristic HOLDs against primary records. A matching DOI
-does not excuse a wrong title or PMID. Preserve literal source citations and
-verified no-DOI or collective-only exceptions; do not fabricate identifiers or
-individual authors to fit a helper. Surface retractions and unresolved identity
-for explicit disposition. If the runtime cannot represent a verified identity,
-report that limitation rather than bypassing it.
-
-Deduplication and renames belong to the parent under paper-ingest Phase 2.
-Keep every original input mapped to its canonical page; repair inbound links and
-preserve citation/provenance unions before deleting a confirmed duplicate.
-
-For a frozen legacy-paper refresh, load `references/corpus-refresh.md`. Its
-explicit selection replaces ordinary queue scanning for that invocation.
-
-## Worker and parent ownership
-
-Prefer one isolated stage-only worker per paper. Give it the selected path,
-verified identity, original citation/provenance, existing job ID when available,
-and unique external work location. The worker acquires and reads the manuscript, drafts a
-fresh source-grounded page, checks central claims and stages it. It does not
-publish, mutate shared author/graph/inbox files, merge pages, or use Git.
-Return job ID, revision and artifact paths plus concise remaining obligations.
-Treat the return as a helpful report, not a required perfect output schema.
-
-Use batch-drain's wave/yield discipline. Do not emit another wave while workers
-are in flight. Inline work is allowed when delegation is unavailable or the
-work is small, with the same ownership and completion requirements. Never load
-historical extraction recipes into a worker to explain the new workflow.
-
-## Read-back, publication and completion
-
-1. Read back every item, including provider errors and missing summaries. Check
-   `status` for the existing job and inspect its returned artifacts before
-   restarting anything. A failed final message does not undo successful work.
-2. A PAGE_READY report means an external staged draft, not a filled live page.
-   Read its draft, review note, source evidence and current runtime state. The
-   existing live page may correctly be unchanged. Preserve valid citing edges,
-   provenance and concurrent additions. No summary or schema establishes truth.
-3. The primary checks identity, complete authors, central findings, consequential
-   numbers and material limitations against selected manuscript evidence. Do not
-   duplicate the worker's full read or restart drafting for integration fixes. Missing optional
-   citations or subjective emphasis differences are not new acceptance gates.
-   Unavailable essential manuscript content is a needs-input/access outcome;
-   do not declare an abstract-only result a completed manuscript ingest.
-4. The parent calls `publish` on the reviewed revision. The runtime verifies the
-   external archive before guarded page application. Complete paper-ingest
-   Phases 7–9: bibliography decisions, author/graph wiring and one deduplicated
-   propagation event. Source-backed identity corrections never rely solely on
-   agreement between worker summaries. Workers do not perform shared writes.
-5. Call `publish` again after integration as needed. Only runtime `complete`
-   establishes completed ingestion; integration-pending is unfinished work.
-   The runtime owns needs-ingest transitions. Use paper-ingest Phase 10's current
-   page verifier with its external article manifest and publication receipt.
-   Run the frontmatter linter before vault publication. Do not copy artifacts
-   or receipts into the brain, and do not use obsolete handoff flags.
-6. On storage or integration failure, retain the same job and completed source
-   work. Resume the named missing step; never restart extraction for a failed
-   push or missing worker summary. Preserve source failures and attempt history
-   without counting a skip or duplicate diagnostic as another attempt.
-
-The parent closes coherent verified work through git-ops under repository
-permission. Preserve unrelated edits/staging, verify remote publication, and
-report complete-but-unpublished units separately. A batch boundary alone does
-not establish that its changes form a complete commit.
-
-## Reporting and monitoring
-
-Report the original input count and each item's canonical path/outcome: completed,
-merged, blocked, failed or deferred. Distinct verified output pages are a separate
-count. Preserve all remainder items and outstanding integration or Git obligations.
-A missing original file alone is not proof of a successful merge.
-
-`references/kickoff-and-monitoring.md` contains user-facing kickoff/monitoring
-examples. For procedural changes, follow the profile's skill-hygiene convention:
-read back affected callers and exercise changed deterministic behavior with
-isolated fixtures; never use an unbounded production drain as a maintenance test.
+The parent runs frontmatter lint once and closes owned changes with git-ops under
+repository authorization, preserving unrelated edits. Campaign publication does not
+commit or push. Report every original input, distinct completed pages, failed/held
+items, deferred graph/attachment work and complete-but-unpublished changes. A failed
+Git push does not restart ingestion. Do not expand a bounded pilot into a bulk drain.

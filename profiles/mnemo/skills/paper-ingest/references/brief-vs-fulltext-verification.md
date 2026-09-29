@@ -19,11 +19,11 @@ reference supplies the disagreement procedure, not a second approval gate.
 4. Write the actual paper's findings and explicitly flag the brief discrepancy
    for the parent/human. Do not silently edit the parent's working document
    or turn the brief's narrative into a source claim.
-5. When a brief names sibling pages, search them for the current paper's
-   identifiers. A different author/title attached to the same DOI/PMCID is
-   an attribution problem to investigate. Record the exact source and sibling
-   location for citation-fixer/entity-resolution; page-only workers do not
-   repair other pages themselves.
+5. Ordinary manuscript workers do not read sibling pages to investigate a brief.
+   Report source-backed attribution conflicts externally for deferred graph work.
+   For a title-only typo caught before staging, use the `start` recovery documented
+   in `runtime.md`; do not patch job state. Identifier/version conflicts or already
+   staged identity changes remain holds for the parent.
 
 A prior source check (2026-09-04) found correct paper identifiers paired with
 a wrong journal name, imported epitope terminology, and an inconsistent

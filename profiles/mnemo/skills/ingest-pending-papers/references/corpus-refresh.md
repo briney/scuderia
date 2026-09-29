@@ -13,16 +13,12 @@ without inputs first; acquire verified missing originals only as needed. An
 abstract-only result or unavailable essential manuscript is an access hold.
 Leave the old page intact until a valid replacement is archived and ready.
 
-Keep the filename, valid citing edges, citation/producer provenance, useful
-research links and identifiable human annotations. Old scientific prose is not
-evidence. Read the original page and external runtime snapshot before drafting;
-preserve manual notes as notes, not as findings attributed to the paper. Preserve
-valid attributed external context (for example, released-code observations) in
-its useful scientific context; manuscript-only extraction does not invalidate it. If note
-ownership is ambiguous, hold that item with the exact passage needing review.
-The scanner's note-heading warning is only a prompt for this human/model check,
-not a detector of every possible annotation. Concurrent edits use the runtime's
-existing snapshot/token reconciliation; never overwrite a changed live page.
+Keep the filename. Replace legacy prose and metadata wholesale, including manual
+annotations; Git history and external original snapshots provide recovery. Workers
+and factual checkers never read the legacy page, diff or sibling pages. Runtime
+rebuilds citing edges from explicit citation fields elsewhere. Concurrent edits
+still hold publication for explicit reconciliation; this policy does not authorize
+overwriting edits made after the job starts.
 
 Resolve identity and dedup before `start`, which binds the existing filename and
 identity. A worker proposes a correction/merge; only the parent verifies it and
@@ -32,16 +28,11 @@ new slug. A campaign `map` records a reviewed migration after it is finished; it
 does not perform one. Before any merge/delete, retain the original bytes as
 `<campaign>/originals/<item-id>.md`; map requires its frozen hash to match. A blocked correction does not stop other papers.
 
-Workers read, draft, perform the focused factual check and stage. The primary
-reads the preservation diff and review note, examines only specific uncertainties
-or noticed contradictions, and resolves reported shared-file obligations. It
-uses the provided exact publication command once in the common case. The runtime
-checks prerequisites before upload and records propagation after application.
-Do not create bibliography papers, manually append events, rediscover tool paths,
-or repeat satisfied verification. Keep task history and deferred candidates in
-external observations, not paper prose.
-Read runtime evidence after missing/malformed model messages. Reuse existing jobs;
-do not restart sources, inference or publication to obtain a prettier summary.
+Workers read, draft, check central claims and assess the one configured independent
+factual report, then stage. The campaign invokes deterministic publication directly.
+No integration model, preservation review or shared graph repair is dispatched.
+Deferred graph work travels with the existing propagation event. Missing summaries
+are recovered from durable jobs; do not regenerate sources or drafts.
 
 ## External inventory and execution
 
@@ -90,26 +81,24 @@ marker; another run restores scheduling and stops for inspection before admittin
 new work. An orphaned coordinator retains the inherited process locks.
 
 Each bounded wave launches per-paper noninteractive workers directly, with actual
-process concurrency limited by the configured ceiling. A single primary then
-integrates and publishes staged jobs. Every process has an external query/log. A
+process concurrency limited by the configured ceiling. The coordinator then
+publishes ready jobs serially through runtime code, even after a sibling failure. Every worker has an external query/log; publication outcomes are recorded separately.
+Before admission, the configured Hermes interpreter imports its actual model/client
+stack once; a broken installation holds the run before workers start. A
 wall-time deadline stops new waves, not an in-flight write. Native request/turn
 limits and model pins remain unchanged. No monetary token optimization or new
 output cap is introduced. A provider/coordinator failure or archive outage stops
 new admissions; item-specific access holds leave the remainder eligible.
 
-Workers own acquisition and the full manuscript read; the primary checks drafts
-for preservation and resolves specific uncertainties without repeating the
-worker’s factual check or complete read. Shared institutional
-browser access belongs to the primary: a worker returns its retained needs-input
-job and observed route for serial acquisition if needed. Already staged jobs skip
-worker generation entirely. Ordinary metadata outages defer publication of the
-same revision; do not sleep-loop or restart ingestion.
+Workers own acquisition and manuscript generation. Shared institutional browser
+acquisition remains a separate serial access task; a worker records the route and
+needs-input hold rather than handing it to an integration agent. Ready jobs skip
+worker generation entirely. Metadata outages defer the same publication revision.
 
-Report measured worker overlap from process timestamps, worker and integration
-wall times, and per-job acquisition/read/stage/archive/completion timestamps.
-Independent observer review is timed separately. Milestones are first occurrences,
-not an additive accounting of overlapping work or a claim that every gap is model
-generation. Accepted throughput also requires the review/Git closeout disposition.
+Report worker overlap, worker/publication wall time and per-job timestamps. The
+factual check is part of staging; its external evidence records its own duration.
+Observer review and Git closeout are separate. Do not infer phase durations from
+overlapping milestones. Report attachment gaps independently of scientific status.
 
 After a run, reconcile and inspect `runs/*/observations.md`, logs and runtime
 artifacts. Use these named commands only after reviewing the specific issue:
@@ -119,11 +108,11 @@ artifacts. Use these named commands only after reviewing the specific issue:
 <pdf-python> <campaign.py> map --root <campaign> --item <id> --canonical <existing-page> --reason '<source-backed correction and link repair>'
 ```
 
-Retry accepts the current page hash and acknowledges annotation review; it never
+Retry accepts the current page hash; it never
 clears runtime concurrency holds by itself. Reconcile a live edit through stage
 with its snapshot token first. No recursive retries. A missing job after a
 reservation is interrupted work, not a disappeared input. Resume unpublished
-content through integration/Git, not another ingestion. Complete content and
+content through publication/Git, not another ingestion. Complete content and
 page commit/push evidence are separate in reports; git-ops still verifies the
 whole coherent unit, including shared edits. Remote queries use the configured
 upstream without changing Git history.

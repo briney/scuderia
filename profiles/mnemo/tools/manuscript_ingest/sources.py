@@ -30,7 +30,16 @@ def text_pages(path):
             return [page.get_text(sort=True) for page in pdf]
     raw=path.read_text()
     if path.suffix in ('.xml','.nxml'):
-        root=ET.fromstring(raw); return ['\n'.join(root.itertext())]
+        root=ET.fromstring(raw)
+        # Preserve inline prose and table row/column order without a table model.
+        for node in root.iter():
+            tag=node.tag.split('}')[-1]
+            if tag in ('td','th'):
+                span='; '.join(k+'='+node.get(k) for k in ('rowspan','colspan') if node.get(k))
+                node.tail=(' ['+span+']' if span else '')+' | '+(node.tail or '')
+            elif tag in ('p','title','label','tr','table','table-wrap','sec','abstract','ref'):
+                node.tail='\n'+(node.tail or '')
+        return [''.join(root.itertext())]
     if path.suffix in ('.html','.htm'):
         parser=TextHTML(); parser.feed(raw); return [''.join(parser.parts)]
     w.require(path.suffix in ('.txt','.md'),'unsupported-manuscript-format')
@@ -55,8 +64,8 @@ def prepare(job_id,inputs=None,*,runtime_root,supplement_inputs=None):
         adding=supplement_inputs is not None
         if adding:
             w.require(inputs is None and job.get('sources'),'supplement-append-requires-bound-manuscript')
-            w.require(isinstance(supplement_inputs,list) and all(r.get('role')=='supplement' for r in supplement_inputs),'supplement-inputs-only')
-            inputs=supplement_inputs
+            w.require(isinstance(supplement_inputs,list) and all(isinstance(r,dict) and r.get('role','supplement')=='supplement' for r in supplement_inputs),'supplement-inputs-only')
+            inputs=[dict(r,role='supplement') for r in supplement_inputs]
             verify_sources(job,work)
         if job.get('sources'):
             if not adding:
@@ -203,6 +212,8 @@ def inspect(job_id,locations,question,*,runtime_root,transcribe=False):
             for row,page,_ in selected:
                 token=row['source_id']+':'+str(page['page'])
                 if token not in job.setdefault('transcribed',[]):job['transcribed'].append(token)
+                job.setdefault('transcriptions',{})[token]=dict(source_sha256=row['sha256'],
+                    request_key=reservation['key'],text=outcome['text'])
         if outcome['status']!='success':
             warning='Optional inspection '+reservation['key'][:12]+': '+outcome['status']
             if warning not in job['warnings']:job['warnings'].append(warning)

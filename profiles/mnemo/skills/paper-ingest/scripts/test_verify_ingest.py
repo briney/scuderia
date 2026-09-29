@@ -287,6 +287,16 @@ class CliCase(unittest.TestCase):
                                   "--offline", *flags])
 
 
+class TestIdentityCandidate(CliCase):
+    def test_identity_checks_external_candidate_without_reading_old_page(self):
+        draft=Path(self._tmp.name)/'candidate.md'
+        draft.write_text('---\nkind: paper\ntitle: Fresh source title\n---\n# Fresh source title\n')
+        with patch.object(self.mod,'canonical_checks',return_value=([],False)) as check:
+            code,out,err=run_cli(self.mod,['fixture-paper','--instance',self.brain,'--identity-only','--candidate',str(draft)])
+        self.assertEqual(code,0,out+err)
+        self.assertEqual(check.call_args.args[0]['title'],'Fresh source title')
+
+
 class TestRequireFilled(CliCase):
     """--require-filled: the filled-page contract."""
 
@@ -729,6 +739,15 @@ class TestCanonicalChecks(unittest.TestCase):
     @staticmethod
     def fails(findings):
         return [m for lvl, m in findings if lvl == "FAIL"]
+
+    def test_complete_source_names_do_not_require_graph_associations(self):
+        fm=paper_fm(pmid=None);fm['author_names']=['Alice Example','Bob Example'];fm['authors']=[]
+        findings,unverified=self.canonical(fm,openalex=openalex_json(PAGE_TITLE))
+        self.assertEqual(self.fails(findings),[])
+        self.assertFalse(unverified)
+        fm['author_names']=['Alice Example']
+        findings,_=self.canonical(fm,openalex=openalex_json(PAGE_TITLE))
+        self.assertTrue(any('truncated' in message for message in self.fails(findings)))
 
     def test_doi_resolves_ok(self):
         findings, unverified = self.canonical(

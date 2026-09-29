@@ -1,3 +1,11 @@
+<!-- Fresh manuscript replacement -->
+Ordinary `paper-ingest` replaces a stub or old page wholesale after external
+archiving, keeping the filename and concurrent-edit guard. Its current skill owns
+that transition: source author names are separate from deferred graph associations;
+old metadata and prose remain in external recovery snapshots. Preservation rules
+below govern stub producers and merges, not model-driven reconciliation during a
+fresh manuscript ingest. Completed pages do not require an Ingest log.
+
 # Convention: paper stubs and the ingestion queue
 
 Read when creating, promoting, filling, or merging a paper stub. This is the

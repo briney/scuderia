@@ -5,12 +5,20 @@ The six operations are fixed; there is no nested command or processing mode.
 
 | Operation | Inputs | Result |
 |---|---|---|
-| start | absolute paper page, optional resolved identity | opaque job ID |
+| start | absolute paper page, optional resolved identity | opaque job ID; explicit title correction before staging reuses that job |
 | sources | job ID, optional acquired inputs | retained source index; omitted inputs reuse archive |
 | read | job ID, explicit source/page locations; optional inspection question or full-page transcription | bounded text or observation with partial/missing status |
-| stage | job ID, Markdown, short source-review note, optional live snapshot token | revision, draft, diff and local integration obligations; live page unchanged |
-| publish | job ID and revision | preflight, archive read-back, guarded application, propagation and integration status |
+| stage | job ID, Markdown, short source-review note, optional live snapshot token | revision, draft, factual-check findings, page blockers and deferred graph work; live page unchanged |
+| publish | job ID and revision | preflight, archive read-back, guarded application, propagation and completion status |
 | status | job ID | current state and next action; no dispatch |
+
+
+A verified title-only correction before staging uses `start` again with the same
+page and `identity: {"title": "Verified publication title"}`. The runtime retains
+sources/reads, records old and new titles in external history, and still checks
+canonical identity before publication. Identifiers/version cannot change, and a
+title correction after staging begins is a hold. Never edit job JSON or its index;
+never inspect or modify implementation files to bypass a rejected operation.
 
 Acquired input rows use `path`, `role` (manuscript/body/supplement), and for manuscript
 or body, `identity` (matching DOI/PMID/version) and a source-backed `basis`.
@@ -49,8 +57,9 @@ The equivalent fixed CLI reads the same operation JSON from stdin:
 Deploy only the `manuscript-ingest` native plugin, with operator settings tools_root,
 runtime_root and python. Remove obsolete plugin registrations and console executors
 at cutover; refresh actual loaded discovery at an idle boundary. Always set
-HERMES_HOME explicitly for noninteractive trials. Hold existing unfinished jobs on
-their bound runtime; never reinterpret their state with this replacement.
+HERMES_HOME explicitly for noninteractive trials. Retain existing unfinished jobs and immutable sources on their bound runtime.
+Restage retained annotated drafts when adopting the fresh-page policy; do not
+regenerate manuscripts merely to update the completion path.
 Archive old runtime/config outside active skill/plugin discovery for offline rollback.
 A failed cutover suspends new ingestion rather than reactivating exhaustive execution.
 
@@ -68,7 +77,7 @@ The archive keeps `annotated-page.md` and `citations.json`, with code-retrieved
 quotations bound to source text and draft/final page hashes. Invalid locators are
 retained as unresolved evidence and removed from the clean page with warnings.
 Absence of markers is a warning only. Locators do not certify factual support or
-complete coverage, and do not cause new model requests. An optional factual
+complete coverage, and do not cause new model requests. The independent factual
 review is separate from deterministic publication checks.
 
 ## Archive receipt storage
@@ -137,19 +146,38 @@ retry publication during a later authorized run. Do not redraft, change identity
 start another job or wait through repeated model-authored sleep loops. A missing
 record and a contradictory record remain different from service unavailability.
 
-## Integration handoff
+## Deterministic publication and factual checking
 
-`stage` reports local structural, author-edge and link obligations without network
-requests. Correct page-owned omissions before handoff; only the primary edits
-shared files. `publish` rechecks those obligations before upload, verifies canonical
-identity, and records a per-job/revision propagation event after guarded application.
-Retrying after interruption does not duplicate the event or repeat manuscript work.
-Existing artifacts and the returned next action are the handoff; no new review
-schema is required. Campaign primaries receive exact paths and CLI input files.
-Use those commands, updating the revision if amended. Native completion replaces
-a redundant second verifier run; frontmatter lint and scoped Git closeout remain.
+`integration_obligations` contains page/identity blockers only. `graph_follow_up`
+contains deferred author associations/reverse edges and missing targets. Publication
+does not require those repairs; the existing propagation event carries them forward.
+No integration model is dispatched. The page retains complete source `author_names`
+independently of verified `authors` graph links. `cited_by` is reconstructed from
+explicit `cites` fields on other paper/grant pages, never from the old summary.
 
-Wrapped locator groups are accepted. Keep Abstract quotations unchanged and put
-annotations outside that protected section. Optional locator warnings remain
-nonblocking. Store procedural history externally; paper prose keeps scientific
-content, useful attributed context, concise caveats and the archive pointer.
+Configure `factual_check` in the operator-owned external runtime config with `model`,
+`endpoint`, `credential_env`, `timeout_seconds` and `settings` (including the chosen
+output cap). Use an independent fast model. No tool call can override these settings.
+Stage sends one complete manuscript plus fresh annotated draft to the existing
+single-POST text transport, with no images or tools. Its fixed prompt requests only
+objective errors, exact claims/source passages and minimal corrections. The external
+`factual-check/` artifacts retain the input binding, sanitized response and outcome.
+Publication archives them. Missing configuration or a failed/partial request is
+reported as an incomplete check; no automatic retry or clean verdict.
+
+A returned finding report makes the first revision `factual-review-pending`.
+The worker assesses the report against the manuscript, then stages once more with
+corrections or a reasoned disposition in `review_note`; the checker does not run
+again. Unresolved consequential claims use normal HOLD lines. Publication cannot
+bypass the unassessed first revision. Amendments remain possible without re-reading
+or rechecking the whole paper, with their own focused source review.
+
+`source_retention` reports manuscript formats, supplementary file count and known
+gaps. Attachment completeness is not certified by scientific-page completion.
+All attempted-source notes remain external; successful XML reading is not evidence
+that a manuscript PDF or every advertised supplement was archived.
+
+Wrapped locator groups are accepted. Keep abstract quotations unchanged and place
+locators outside that protected section. Optional locator warnings remain nonblocking.
+Fresh pages have no Ingest log. Normal drafting never reads original.md, page.diff,
+or sibling pages; snapshots and diffs remain available for recovery/operator audit.
