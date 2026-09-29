@@ -9,7 +9,7 @@ OPERATIONS={
     'start':({'page'},{'identity'}),
     'sources':({'job_id'},{'inputs'}),
     'read':({'job_id','locations'},{'question','transcribe'}),
-    'stage':({'job_id','review_note'},{'markdown','markdown_path','base_revision'}),
+    'stage':({'job_id','review_note'},{'markdown','markdown_path','base_revision','amend_revision'}),
     'publish':({'job_id','revision'},set()),
     'status':({'job_id'},set()),
 }

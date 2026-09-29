@@ -19,6 +19,7 @@ SCHEMA=dict(name='paper_ingest',description='Ingest or refresh a paper from its 
         'markdown_path':dict(type='string',description='Preferred stage input: absolute external UTF-8 Markdown file, instead of inline markdown. Write the annotated draft once, then pass its path; do not serialize a long draft inside nested JSON.'),
         'review_note':dict(type='string',description='Short source check of central findings, consequential numbers, contradictions and material omissions. Use HOLD: on a line for each unresolved material issue; omit HOLD lines when none remain. Optional missing output alone does not block.'),
         'base_revision':dict(type='string',description='Stage only: opaque live_snapshot token after reading and reconciling a concurrent page edit; never invent this token.'),
+        'amend_revision':dict(type='integer',minimum=1,description='Stage only: amend this exact published revision using the same job and retained annotated draft. Requires the current status live_snapshot token as base_revision.'),
         'revision':dict(type='integer',minimum=1),
     }))
 

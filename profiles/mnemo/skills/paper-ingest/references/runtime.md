@@ -105,3 +105,20 @@ applies; this is a transport boundary, not a model output token cap.
 If a nested tool wrapper rejects JSON, use the file-path argument or the CLI
 operation file immediately. Do not regenerate or shorten scientific content to
 repair a serialization error.
+
+### Amend a published page
+
+For a small correction, keep the existing job and sources. Call `status`, read
+its `live_snapshot.path` and the retained `annotated_draft`, and reconcile the
+change there. Stage with `amend_revision` equal to the current published revision
+and `base_revision` equal to that snapshot's opaque token. Publish the returned
+new revision. An unchanged manuscript does not need another full read.
+
+Edit the annotated draft, not the clean live page: preserve unchanged locators
+and update or remove locators on changed claims. If an earlier restage lost
+locators, recover the previous annotated revision; do not attach old citations
+to new prose by positional guesswork. Prior archives remain immutable. A failed
+upload leaves the old page intact; retry the new revision without regeneration.
+An independent live edit requires a fresh snapshot and explicit reconciliation.
+Complete metadata/link decisions before publication where possible. Never repair
+archive equality by silently overwriting a human edit or mutating an archive.

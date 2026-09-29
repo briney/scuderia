@@ -54,3 +54,40 @@ class Publication(Review):
 
 from test_jobs import only_local_tests
 def load_tests(loader,tests,pattern):return only_local_tests(__name__)
+
+class Amendments(Publication):
+    def test_completed_amendment_preserves_citations_and_old_archive(self):
+        j,sid=self.ready(); annotated=self.draft()+'\nEvidence [P1:L1].\n'
+        w.stage(j,annotated,'Checked the central result against page 1.',runtime_root=self.runtime)
+        with patch.object(archive.pa,'RcloneTransport',MemoryTransport),patch.object(w,'integration_check',return_value=[]):
+            w.publish(j,1,runtime_root=self.runtime)
+            old=self.page.read_bytes(); manifest=w.job_path(j,self.runtime)/'archives/1/manifest.json'; before=w.sha(manifest)
+            out=w.status(j,runtime_root=self.runtime)
+            self.assertIn('live_snapshot',out['artifacts'])
+            token=out['artifacts']['live_snapshot']['token']
+            out=w.stage(j,annotated+'\nA qualified limitation.\n','Checked the amendment against page 1.',runtime_root=self.runtime,amend_revision=1,base_revision=token)
+            self.assertEqual(out['status'],'ready'); self.assertEqual(self.page.read_bytes(),old)
+            MemoryTransport.fail=True
+            self.assertEqual(w.publish(j,2,runtime_root=self.runtime)['status'],'publication-pending')
+            self.assertEqual(self.page.read_bytes(),old)
+            MemoryTransport.fail=False
+            self.assertEqual(w.publish(j,2,runtime_root=self.runtime)['status'],'complete')
+            self.assertEqual(w.sha(manifest),before)
+            evidence=__import__('json').loads(__import__('pathlib').Path(out['artifacts']['citations']).read_text())
+            self.assertEqual(len(evidence['citations']),1)
+            self.assertEqual(w.load_job(j,self.runtime)['published_revision'],2)
+
+    def test_amendment_rejects_stale_snapshot_and_unacknowledged_publication(self):
+        j=self.staged()
+        with patch.object(archive.pa,'RcloneTransport',MemoryTransport),patch.object(w,'integration_check',return_value=[]):w.publish(j,1,runtime_root=self.runtime)
+        out=w.status(j,runtime_root=self.runtime)
+        self.assertIn('live_snapshot',out['artifacts']); token=out['artifacts']['live_snapshot']['token']
+        with self.assertRaisesRegex(ValueError,'amend'):
+            w.stage(j,self.draft(),'Checked against page 1.',runtime_root=self.runtime,base_revision=token)
+        self.page.write_text(self.page.read_text()+'Human annotation\n')
+        with self.assertRaisesRegex(ValueError,'stale'):
+            w.stage(j,self.draft(),'Checked against page 1.',runtime_root=self.runtime,amend_revision=1,base_revision=token)
+        out=w.status(j,runtime_root=self.runtime)
+        self.assertEqual(out['status'],'held')
+        with self.assertRaisesRegex(ValueError,'amend'):
+            w.stage(j,self.draft(),'Checked against page 1.',runtime_root=self.runtime,amend_revision=2,base_revision=out['artifacts']['live_snapshot']['token'])

@@ -83,3 +83,12 @@ class Citations(Publication):
 
 from test_jobs import only_local_tests
 def load_tests(loader,tests,pattern):return only_local_tests(__name__)
+
+class AdjacentLocators(Publication):
+    def test_comma_between_locators_does_not_become_prose_punctuation(self):
+        from manuscript_ingest import citations
+        j,sid=self.ready(); job=w.load_job(j,self.runtime)
+        text=self.draft()+'\nModels [P1:L1], [P1:L1], [P1:L1]. Values, however, differ.\n'
+        clean,evidence=citations.extract(text,job,w.job_path(j,self.runtime))
+        self.assertIn('Models. Values, however, differ.',clean)
+        self.assertEqual(len(evidence['citations']),3)

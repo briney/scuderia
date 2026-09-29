@@ -60,7 +60,7 @@ def result(job,runtime_root,**artifacts):
         warnings=job.get('warnings',[]),blocking_reason=job.get('blocking_reason'))
 
 
-def hold_live_edit(job,work):
+def hold_live_edit(job,work,*,capture=False):
     """Capture bytes once; an opaque token binds a subsequent reviewed reconciliation."""
     import hashlib
     page=Path(job['page']); raw=page.read_bytes() if page.exists() else None
@@ -69,13 +69,16 @@ def hold_live_edit(job,work):
     for name in ('pending-page.md','page.md'):
         archived=work/'archives'/str(job['revision'])/name
         if archived.exists():allowed.add(sha(archived))
-    if current in allowed:return False
+    changed=current not in allowed
+    if not changed and not capture:return False
     snapshot=job.get('live_snapshot')
     if not snapshot or snapshot['sha256']!=current:
         token=uuid.uuid4().hex; path=work/'live'/ (token+'.md'); path.parent.mkdir(exist_ok=True)
         path.write_bytes(raw or b'')
         snapshot=dict(token=token,path=str(path),sha256=current)
         job['live_snapshot']=snapshot
+    job['artifacts']={**job['artifacts'],'live_snapshot':snapshot}
+    if not changed:return False
     job.update(status='held',blocking_reason='concurrent-page-edit',
         next_action='Read artifacts.live_snapshot.path, reconcile the candidate with that live page, then stage with its opaque token as base_revision.',
         artifacts={**job['artifacts'],'live_snapshot':snapshot})
@@ -86,7 +89,9 @@ def status(job_id,*,runtime_root):
     work=job_path(job_id,runtime_root)
     with locked(work):
         job=load_job(job_id,runtime_root)
-        if job['status']!='complete' and hold_live_edit(job,work):store_job(job,runtime_root)
+        if job['status']=='complete':job.setdefault('published_revision',job['revision'])
+        hold_live_edit(job,work,capture=bool(job.get('published_revision')))
+        store_job(job,runtime_root)
         return result(job,runtime_root)
 
 
@@ -153,13 +158,19 @@ def manuscript_read(job):
     return useful
 
 
-def stage(job_id,markdown,review_note,*,runtime_root,base_revision=None):
+def stage(job_id,markdown,review_note,*,runtime_root,base_revision=None,amend_revision=None):
     from .sources import verify_sources
     import difflib
     work=job_path(job_id,runtime_root)
     with locked(work):
         job=load_job(job_id,runtime_root)
-        require(job['status']!='complete','job-already-complete')
+        if job['status']=='complete':job.setdefault('published_revision',job['revision'])
+        published=job.get('published_revision')
+        if amend_revision is not None:
+            require(type(amend_revision) is int and amend_revision==published==job['revision'],'amend-current-published-revision')
+            require(base_revision is not None,'amend-live-snapshot-required; check status and reconcile first')
+        else:
+            require(not published or job['revision']>published,'amend-revision-required')
         base=Path(job.get('base_snapshot',work/'original.md'))
         if base_revision is not None:
             snapshot=job.get('live_snapshot',{})
@@ -321,5 +332,6 @@ def publish(job_id,revision,*,runtime_root):
             require(current in (sha(pending),sha(final)),'concurrent-page-edit')
             if current!=sha(final):apply_bytes(page,final.read_bytes(),current)
             job.update(status='complete',blocking_reason=None,next_action='Ingestion is complete; commit the reviewed owned page and integration edits using git-ops; receipt metadata stays external.',
+                published_revision=revision,
                 artifacts={**job['artifacts'],'manifest':str(manifest),'receipt':str(receipt),'integration_obligations':[]})
         store_job(job,runtime_root); return result(job,runtime_root)

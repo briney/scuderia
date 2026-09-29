@@ -30,7 +30,9 @@ def extract(markdown,job,work):
     last=start;pieces=[markdown[:start]]
     for group in MARKER.finditer(markdown,start):
         if any(a<=group.start()<b for a,b in protected):continue
-        context=markdown[last:group.start()];pieces.append(context.rstrip(' \t'))
+        context=markdown[last:group.start()]
+        # A comma separating adjacent locators belongs to the citation list.
+        pieces.append('' if rows and re.fullmatch(r'[ \t]*,[ \t]*',context) else context.rstrip(' \t'))
         for token in group.group()[1:-1].split(','):
             row=dict(marker=token.strip(),draft_start=group.start(),draft_end=group.end(),context=context.strip(),status='unresolved',segments=[])
             match=TOKEN.fullmatch(token.strip())
