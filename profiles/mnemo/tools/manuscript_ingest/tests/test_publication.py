@@ -91,3 +91,17 @@ class Amendments(Publication):
         self.assertEqual(out['status'],'held')
         with self.assertRaisesRegex(ValueError,'amend'):
             w.stage(j,self.draft(),'Checked against page 1.',runtime_root=self.runtime,amend_revision=2,base_revision=out['artifacts']['live_snapshot']['token'])
+
+class Timings(Publication):
+    def test_phase_timestamps_survive_publication_retry(self):
+        j=self.staged(); job=w.load_job(j,self.runtime)
+        self.assertIn('timings',job)
+        before=dict(job['timings'])
+        with patch.object(archive.pa,'RcloneTransport',MemoryTransport),patch.object(w,'integration_check',return_value=['temporarily-unavailable']):
+            out=w.publish(j,1,runtime_root=self.runtime)
+            self.assertEqual(out['blocking_reason'],'metadata-temporarily-unavailable')
+            with patch.object(w,'integration_check',return_value=[]):w.publish(j,1,runtime_root=self.runtime)
+        after=w.load_job(j,self.runtime)['timings']
+        self.assertEqual(after['started_at'],before['started_at'])
+        self.assertLessEqual(after['sources_retained_at'],after['staged_at'])
+        self.assertLessEqual(after['staged_at'],after['completed_at'])

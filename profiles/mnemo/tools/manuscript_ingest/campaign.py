@@ -243,12 +243,49 @@ def map_item(root,item,canonical,reason):
 
 
 def launch(argv,*,env,cwd,log,lock_fds=()):
-    # No timeout: the admission deadline must never kill an in-flight publication.
+    # Admission deadlines never kill an in-flight publication.
+    started=time.time(); query=argv[argv.index('--query-file')+1]
+    marker=Path(env['HERMES_HOME'])/'paper-refresh'/('child-'+w.digest(query)[:24]+'.json')
     with Path(log).open('xb') as output:
         child=subprocess.Popen(argv,env=env,cwd=cwd,stdin=subprocess.DEVNULL,stdout=output,stderr=subprocess.STDOUT,pass_fds=lock_fds)
-        marker=Path(env['HERMES_HOME'])/'paper-refresh/child.json'
-        w.save(marker,dict(pid=child.pid,query=argv[argv.index('--query-file')+1]))
-        rc=child.wait(); marker.unlink(); return rc
+        w.save(marker,dict(pid=child.pid,query=query))
+        try:
+            rc=child.wait()
+        finally:
+            # A surviving process keeps its marker and inherited profile lock.
+            if child.poll() is not None:marker.unlink(missing_ok=True)
+        w.save(Path(log).parent/'process.json',dict(started_at=started,finished_at=time.time(),pid=child.pid,returncode=rc))
+        return rc
+
+
+def worker_prompt(frozen,state,item,folder,deadline):
+    entry=state['items'][item]
+    return f'''Stage only this existing paper: {entry['canonical_path']}
+Existing job: {entry.get('job_id')}. Brain: {frozen['instance']}. External work: {folder}.
+Load the bound paper-ingest skill and runtime reference. Do not load the exhaustive historical workflow.
+You own identity/acquisition, one complete manuscript read, fresh drafting, and a focused check of central claims.
+Read the old page for valid provenance, links and human annotations, not as scientific evidence.
+Reuse the same job and retained sources/draft. Existing archive: sources without inputs first.
+Use markdown_path for staging. If already staged, return durable job/revision evidence without another full read or generation.
+Retain available original supplements only, with the shared 120-second attachment budget; do not process them.
+No nested delegation, publish, live paper edits, shared graph/ledger writes or Git. Return integration candidates externally.
+An ambiguous author association is unresolved, never a name-only merge. A missing full manuscript is a hold, not abstract-only success.
+Do not repeat failed JSON payloads, archive downloads or metadata sleep loops. Return specific remaining obligations.
+Stop new work after {deadline}; finish a safe in-flight step. On systemic provider/authentication/archive outage write {folder/'STOP'}.
+Write concise observations in {folder/'observations.md'}. Durable runtime state is authoritative; no rigid response schema.
+Do not use the shared institutional browser concurrently. If browser acquisition is necessary, return the retained needs-input job and observed URL to the primary, which owns that browser serially.
+All output English. Preserve model pins, output caps and approval settings.
+'''
+
+
+def maximum_overlap(paths):
+    events=[]
+    for path in paths:
+        if path.exists():
+            row=json.loads(path.read_text()); events.extend([(row['started_at'],1),(row['finished_at'],-1)])
+    active=peak=0
+    for _,delta in sorted(events):active+=delta;peak=max(peak,active)
+    return peak
 
 
 def cron_window(root,profile_home,action):
@@ -303,13 +340,14 @@ def wave_prompt(frozen,state,selected,folder,deadline,cfg):
     return f'''Refresh only these existing paper inputs in {frozen['instance']}:
 {json.dumps(items,indent=2)}
 Load ingest-pending-papers/references/corpus-refresh.md, paper-ingest and batch-drain from the bound profile.
-Use the six manuscript-to-page operations only. Draft fresh from the full manuscript. Retain supplements without processing.
+Use the six manuscript-to-page operations only. Reuse staged manuscript drafts and retained originals; supplements remain unprocessed.
 Inspect the old page for valid links, provenance and human annotations; do not paraphrase it as evidence.
 Resolve identity and dedup before start. A rename/merge or ambiguous human annotation is a hold for this wave; propose it externally.
 Reuse named jobs and their sources/drafts; inspect durable artifacts even after a missing worker summary.
-One isolated stage-only worker per input, at most {len(selected)} workers, no nested delegation. Workers never publish, share-write or use Git.
-Only this parent reviews central factual claims, publishes and integrates through paper-ingest. No other queued or bibliography paper is in scope.
-Existing archive: try sources without inputs first. Missing full manuscript is an access hold, never abstract-only success.
+Workers have already attempted these inputs. For staged jobs, do not delegate, acquire again, reread full manuscripts or regenerate drafts.
+For a needs-input job with a documented authorized-browser route, the primary alone may finish that acquisition and its first manuscript read/draft serially; reuse prior attempts and respect the admission deadline. Otherwise preserve the access hold.
+Inspect the retained annotated drafts and selected evidence for material issues; integrate shared files, amend only when needed, and publish the same jobs. No other queued or bibliography paper is in scope.
+Check current job status and pending obligations first. A transient metadata lookup means defer this item's publication without sleeping or restarting. Missing full manuscript remains an access hold.
 Stop new admissions after {deadline}; finish safe in-flight work. On provider/authentication/archive outage, stop admissions and write its reason to {folder/'STOP'}.
 Record per-input access/identity/annotation issues and remaining obligations in {folder/'observations.md'}; no rigid final output schema is required.
 Keep all sources, drafts, machine state and receipts external. Do not edit campaign state or launch another campaign command.
@@ -324,8 +362,7 @@ def run(root:Path,runtime_root:Path,profile_home:Path,limit:int,concurrency:int,
     w.require(all(type(n) is int and n>0 for n in (limit,concurrency,max_seconds)),'positive-run-limits-required')
     with exclusive(root) as root_fd,exclusive(profile_home/'paper-refresh') as profile_fd:
         cfg=json.loads((root/'run-config.json').read_text())
-        marker=profile_home/'paper-refresh/child.json'
-        if marker.exists():
+        for marker in (profile_home/'paper-refresh').glob('child*.json'):
             previous=json.loads(marker.read_text())
             ps=subprocess.run(['ps','-p',str(previous['pid']),'-o','command='],capture_output=True,text=True)
             w.require(previous['query'] not in ps.stdout,'previous-coordinator-still-running')
@@ -365,15 +402,37 @@ def run(root:Path,runtime_root:Path,profile_home:Path,limit:int,concurrency:int,
                     if entry['canonical_path'] in targets and entry['status'] not in ('blocked','excluded-stub'):
                         entry.update(status='reserved' if item in selected else 'waiting-canonical',admit=False,run_id=run_id,updated_at=now())
                 w.save(root/'state.json',state) # durable reservation before any subprocess
-                wave=folder/str(offset); wave.mkdir(); query=wave/'query.txt'
-                query.write_text(wave_prompt(frozen,state,selected,wave,datetime.fromtimestamp(deadline,timezone.utc).isoformat(),cfg))
-                wave_start=time.time()
-                rc=launch([*cfg['hermes_command'],'chat','--query-file',str(query),'--toolsets','file,terminal,web,delegation,paper_ingest'],
-                    env=dict(os.environ,HERMES_HOME=str(profile_home)),cwd=frozen['instance'],log=wave/'hermes.log',lock_fds=(root_fd,profile_fd))
+                wave=folder/str(offset); wave.mkdir(); wave_start=time.time()
+                worker_items=[i for i in selected if not state['items'][i].get('job_id') or
+                    w.load_job(state['items'][i]['job_id'],runtime_root)['status'] not in ('ready','integration-pending','publication-pending','complete')]
+                from concurrent.futures import ThreadPoolExecutor
+                worker_paths=[]
+                def stage_worker(item):
+                    task=wave/item;task.mkdir();query=task/'query.txt'
+                    query.write_text(worker_prompt(frozen,state,item,task,datetime.fromtimestamp(deadline,timezone.utc).isoformat()))
+                    return launch([*cfg['hermes_command'],'chat','--query-file',str(query),'--toolsets','file,terminal,web,paper_ingest'],
+                        env=dict(os.environ,HERMES_HOME=str(profile_home)),cwd=str(task),log=task/'hermes.log',lock_fds=(root_fd,profile_fd))
+                with ThreadPoolExecutor(max_workers=concurrency) as pool:
+                    futures=[pool.submit(stage_worker,i) for i in worker_items]
+                    codes=[future.result() for future in futures]
+                worker_paths=[wave/i/'process.json' for i in worker_items]
+                worker_end=time.time();rc=next((code for code in codes if code),0)
+                state=_reconcile(root,runtime_root);record=state['runs'][-1]
+                ready=[i for i in selected if state['items'][i]['status'] in ('ready','integration-pending','publication-pending','needs-input')]
+                if ready and not rc and not list(wave.rglob('STOP')):
+                    primary=wave/'integration';primary.mkdir();query=primary/'query.txt'
+                    query.write_text(wave_prompt(frozen,state,ready,primary,datetime.fromtimestamp(deadline,timezone.utc).isoformat(),cfg))
+                    rc=launch([*cfg['hermes_command'],'chat','--query-file',str(query),'--toolsets','file,terminal,web,paper_ingest'],
+                        env=dict(os.environ,HERMES_HOME=str(profile_home)),cwd=frozen['instance'],log=primary/'hermes.log',lock_fds=(root_fd,profile_fd))
                 state=_reconcile(root,runtime_root); record=state['runs'][-1]
-                record['waves'].append(dict(items=selected,returncode=rc,wall_seconds=time.time()-wave_start,artifacts=str(wave)))
+                phases={i:w.load_job(state['items'][i]['job_id'],runtime_root).get('timings',{}) for i in selected if state['items'][i].get('job_id')}
+                peak=maximum_overlap(worker_paths)
+                record['actual_worker_concurrency']=max(record.get('actual_worker_concurrency',0),peak)
+                record['waves'].append(dict(items=selected,returncode=rc,wall_seconds=time.time()-wave_start,
+                    worker_wall_seconds=worker_end-wave_start,integration_wall_seconds=time.time()-worker_end,
+                    actual_worker_concurrency=peak,job_timings=phases,artifacts=str(wave)))
                 outage=any(state['items'][i]['status']=='publication-pending' for i in selected)
-                if rc or (wave/'STOP').exists() or outage:
+                if rc or list(wave.rglob('STOP')) or outage:
                     record['stop_reason']='coordinator-failed' if rc else 'systemic-outage'
                     break
                 w.save(root/'state.json',state)
@@ -382,7 +441,7 @@ def run(root:Path,runtime_root:Path,profile_home:Path,limit:int,concurrency:int,
             latest=_reconcile(root,runtime_root); current=latest['runs'][-1]
             current.update(record,wall_seconds=time.time()-started,finished_at=now(),overrun_seconds=max(0,time.time()-deadline))
             w.save(root/'state.json',latest)
-            if (root/'window.json').exists() and not marker.exists():cron_window(root,profile_home,'restore')
+            if (root/'window.json').exists() and not list((profile_home/'paper-refresh').glob('child*.json')):cron_window(root,profile_home,'restore')
     return report(root)
 
 

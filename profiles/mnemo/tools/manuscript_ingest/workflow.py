@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import tempfile
 import uuid
+import time
 from article_archive_compat.article_runtime import absolute, outside_instance, require, sha, digest, locked
 
 
@@ -64,6 +65,10 @@ def load_job(job_id,runtime_root):
 
 def store_job(job,runtime_root):
     save(job_path(job['job_id'],runtime_root)/'job.json',job)
+
+
+def mark_time(job,event):
+    job.setdefault('timings',{}).setdefault(event,time.time())
 
 
 def result(job,runtime_root,**artifacts):
@@ -135,6 +140,7 @@ def start(page,*,runtime_root,identity=None):
             next_action='Retain manuscript and supplementary inputs with sources, or reuse the existing article archive.',
             revision=0,warnings=[],blocking_reason=None,artifacts={},
             authorization={'max_requests':settings.get('inspection_budget',0)})
+        mark_time(job,'started_at')
         pointer=re.search(r'^Article archive: (.+)$',original or '',re.M)
         if pointer:
             if pointer[1].startswith('r2://'):
@@ -254,6 +260,7 @@ def stage(job_id,markdown,review_note,*,runtime_root,base_revision=None,amend_re
         job.update(revision=revision,status='held' if holds else 'ready',blocking_reason='material-review-issues' if holds else None,
             next_action='Correct, qualify, or omit held claims and stage a new revision.' if holds else 'Publish this reviewed revision; archive verification precedes guarded page application.',
             artifacts=dict(revision=revision,draft=str(draft/'page.md'),diff=str(draft/'page.diff'),review=str(draft/'review.txt'),citations=str(draft/'citations.json'),annotated_draft=str(draft/'annotated-page.md')))
+        mark_time(job,'staged_at')
         store_job(job,runtime_root); return result(job,runtime_root)
 
 
@@ -268,8 +275,10 @@ def integration_check(job,settings):
     verifier=importlib.util.module_from_spec(spec); spec.loader.exec_module(verifier)
     page=Path(job['page']); text=page.read_text(); fm=page_metadata(text); final=dict(fm,**{'needs-ingest':False})
     issues=verifier.filled_contract_checks(final,text,page.stem)
-    cache=Path(job['artifacts']['draft']).parent.parent.parent/'identity-cache'
-    argv=[sys.executable,'-B',str(helper),page.stem,'--instance',settings['instance'],'--identity-cache',str(cache)]
+    argv=[sys.executable,'-B',str(helper),page.stem,'--instance',settings['instance']]
+    if job.get('artifacts',{}).get('draft'):
+        cache=Path(job['artifacts']['draft']).parent.parent.parent/'identity-cache'
+        argv.extend(['--identity-cache',str(cache)])
     # This subprocess checks canonical identity and forward graph links. No inference.
     checked=subprocess.run(argv,capture_output=True,text=True,timeout=180)
     if checked.returncode:issues.append(checked.stdout[-12000:] or 'page-identity-or-graph-check-failed')
@@ -337,9 +346,11 @@ def publish(job_id,revision,*,runtime_root):
             hold_live_edit(job,work)
             store_job(job,runtime_root); return result(job,runtime_root)
         receipt=publication_path
+        mark_time(job,'archive_verified_at')
         if current==job.get('apply_guard_sha256',job['original_sha256']):apply_bytes(page,pending.read_bytes(),current)
         job['applied_revision']=revision; job.update(status='integration-pending',next_action='Complete author, graph, bibliography, and propagation obligations, then publish again.',blocking_reason=None)
         store_job(job,runtime_root)
+        mark_time(job,'integration_started_at')
         try: issues=integration_check(job,settings)
         except Exception as exc:issues=['integration-check-unavailable:'+type(exc).__name__]
         if issues:
@@ -353,4 +364,5 @@ def publish(job_id,revision,*,runtime_root):
             job.update(status='complete',blocking_reason=None,next_action='Ingestion is complete; commit the reviewed owned page and integration edits using git-ops; receipt metadata stays external.',
                 published_revision=revision,
                 artifacts={**job['artifacts'],'manifest':str(manifest),'receipt':str(receipt),'integration_obligations':[]})
+            mark_time(job,'completed_at')
         store_job(job,runtime_root); return result(job,runtime_root)

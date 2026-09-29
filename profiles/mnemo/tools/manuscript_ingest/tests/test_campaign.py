@@ -106,7 +106,7 @@ class Runner(Campaign):
             return 0
         with patch.object(c,'cron_window'),patch.object(c,'launch',side_effect=launch):
             result=c.run(root,self.runtime,profile,3,99,300)
-        self.assertEqual(calls,[2,1]); self.assertEqual(result['counts'],{'interrupted':3})
+        self.assertEqual(calls,[2,2,1]); self.assertEqual(result['counts'],{'interrupted':3})
         self.assertEqual(len(result['runs'][0]['items']),3)
         self.assertEqual(result['runs'][0]['concurrency'],2)
         with patch.object(c,'cron_window'),patch.object(c,'launch') as again:
@@ -212,3 +212,30 @@ class AccessRetry(Campaign):
         job=w.load_job(j,self.runtime);job.update(status='needs-input',blocking_reason='manuscript-unavailable');w.store_job(job,self.runtime)
         c.reconcile(root,self.runtime);c.retry(root,item,'Full manuscript now available from verified repository.')
         self.assertTrue(c.load(root)[1]['items'][item]['admit'])
+
+class ActualConcurrency(Runner):
+    def test_launcher_runs_two_workers_concurrently_and_tracks_processes(self):
+        import sys
+        c,root,profile=self.setup_run(3)
+        script=self.root/'worker.py'
+        script.write_text('import sys,time,pathlib\np=pathlib.Path(sys.argv[sys.argv.index("--query-file")+1])\n(p.parent/"started").write_text(str(time.time()))\ntime.sleep(.2)\n(p.parent/"ended").write_text(str(time.time()))\n')
+        cfg=json.loads((root/'run-config.json').read_text());cfg['hermes_command']=[sys.executable,str(script)];w.save(root/'run-config.json',cfg)
+        with patch.object(c,'cron_window'):result=c.run(root,self.runtime,profile,3,2,300)
+        starts=list((root/'runs').rglob('started'))
+        self.assertEqual(len(starts),3)
+        spans=sorted((float(p.read_text()),float((p.parent/'ended').read_text())) for p in starts)
+        self.assertLess(spans[1][0],spans[0][1],'second worker did not overlap first')
+        self.assertGreaterEqual(spans[2][0],max(spans[0][1],spans[1][1]))
+        self.assertEqual(result['runs'][0]['actual_worker_concurrency'],2)
+        self.assertFalse(list((profile/'paper-refresh').glob('child*.json')))
+
+class ReadyDispatch(Publication,Runner):
+    def test_ready_job_goes_directly_to_one_primary_without_drafting(self):
+        c,root,profile=self.setup_run(1); j=self.staged(); queries=[]
+        def launch(argv,**kwargs):
+            query=Path(argv[argv.index('--query-file')+1]);queries.append(query)
+            self.assertEqual(query.parent.name,'integration')
+            self.assertIn(j,query.read_text());return 0
+        with patch.object(c,'cron_window'),patch.object(c,'launch',side_effect=launch):result=c.run(root,self.runtime,profile,1,2,300)
+        self.assertEqual(len(queries),1);self.assertEqual(result['counts'],{'ready':1})
+        self.assertEqual(w.load_job(j,self.runtime)['revision'],1)

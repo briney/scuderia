@@ -71,7 +71,7 @@ explicit selection replaces ordinary queue scanning for that invocation.
 
 Prefer one isolated stage-only worker per paper. Give it the selected path,
 verified identity, original citation/provenance, existing job ID when available,
-and unique external work location. The worker reads the manuscript, drafts a
+and unique external work location. The worker acquires and reads the manuscript, drafts a
 fresh source-grounded page, checks central claims and stages it. It does not
 publish, mutate shared author/graph/inbox files, merge pages, or use Git.
 Return job ID, revision and artifact paths plus concise remaining obligations.
@@ -92,7 +92,8 @@ historical extraction recipes into a worker to explain the new workflow.
    existing live page may correctly be unchanged. Preserve valid citing edges,
    provenance and concurrent additions. No summary or schema establishes truth.
 3. The primary checks identity, complete authors, central findings, consequential
-   numbers and material limitations against the manuscript. Missing optional
+   numbers and material limitations against selected manuscript evidence. Do not
+   duplicate the worker's full read or restart drafting for integration fixes. Missing optional
    citations or subjective emphasis differences are not new acceptance gates.
    Unavailable essential manuscript content is a needs-input/access outcome;
    do not declare an abstract-only result a completed manuscript ingest.

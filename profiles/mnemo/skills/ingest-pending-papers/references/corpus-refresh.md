@@ -81,12 +81,26 @@ jobs remain under the operator's quiet-window check. A crash leaves a recovery
 marker; another run restores scheduling and stops for inspection before admitting
 new work. An orphaned coordinator retains the inherited process locks.
 
-Each bounded wave has one fresh noninteractive parent, at most the configured
-native child ceiling, and an explicit query file and log outside the brain. A
+Each bounded wave launches per-paper noninteractive workers directly, with actual
+process concurrency limited by the configured ceiling. A single primary then
+integrates and publishes staged jobs. Every process has an external query/log. A
 wall-time deadline stops new waves, not an in-flight write. Native request/turn
 limits and model pins remain unchanged. No monetary token optimization or new
 output cap is introduced. A provider/coordinator failure or archive outage stops
 new admissions; item-specific access holds leave the remainder eligible.
+
+Workers own acquisition and the full manuscript read; the primary checks drafts
+and selected evidence without repeating complete reads. Shared institutional
+browser access belongs to the primary: a worker returns its retained needs-input
+job and observed route for serial acquisition if needed. Already staged jobs skip
+worker generation entirely. Ordinary metadata outages defer publication of the
+same revision; do not sleep-loop or restart ingestion.
+
+Report measured worker overlap from process timestamps, worker and integration
+wall times, and per-job acquisition/read/stage/archive/completion timestamps.
+Independent observer review is timed separately. Milestones are first occurrences,
+not an additive accounting of overlapping work or a claim that every gap is model
+generation. Accepted throughput also requires the review/Git closeout disposition.
 
 After a run, reconcile and inspect `runs/*/observations.md`, logs and runtime
 artifacts. Use these named commands only after reviewing the specific issue:

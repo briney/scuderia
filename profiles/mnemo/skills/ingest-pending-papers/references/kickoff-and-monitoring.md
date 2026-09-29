@@ -15,7 +15,11 @@ Check the tool stream and durable artifacts:
 - Selected inputs appear in a dispatched wave or a specific hold/defer record.
   Inline execution is valid when chosen; narration is not proof of delegation.
 - Workers do manuscript reading and stage only their assigned paper. The parent
-  reads returned draft/review/source artifacts, publishes and owns shared writes.
+  reads returned draft/review and selected source evidence, publishes and owns
+  shared writes. It does not repeat every full manuscript read.
+- Corpus campaigns enforce process concurrency in the launcher; inspect recorded
+  overlap rather than assuming a prompt's concurrency number was honored. A
+  metadata outage retains the same job for later publication, without sleep loops.
 - PAGE_READY points to an external draft. Do not expect the live page to change
   before publication. Inspect runtime status even if a child summary is missing.
 - Completion requires runtime complete, required integration, a remote archive

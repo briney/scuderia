@@ -130,6 +130,7 @@ def prepare(job_id,inputs=None,*,runtime_root,supplement_inputs=None):
                 if job['status']=='complete':job.setdefault('published_revision',job['revision'])
                 job.update(sources=retained,status='working',blocking_reason='sources-added-restage-required',next_action='Restage the retained annotated draft to include new supplements; preserve manuscript reading and use amendment fields if published.')
         else:job.update(sources=retained,status='working',blocking_reason=None,next_action='Read every manuscript location; use bounded inspection only where essential evidence is deficient.')
+        w.mark_time(job,'sources_retained_at')
         w.store_job(job,runtime_root)
         return w.result(job,runtime_root,sources=index(job))
 
@@ -154,6 +155,7 @@ def read(job_id,locations,*,runtime_root,question=None,transcribe=False):
     work=w.job_path(job_id,runtime_root)
     with w.locked(work):
         job=w.load_job(job_id,runtime_root); selected=select(job,locations); verify_sources(job,work); output=[]
+        w.mark_time(job,'first_read_at')
         for row,page,location in selected:
             text=(work/page['key']).read_text(); start=location.get('start_char',0); limit=location.get('max_chars',16000)
             w.require(type(start) is int and 0<=start<=len(text) and type(limit) is int and 1<=limit<=32000,'invalid-text-window')
