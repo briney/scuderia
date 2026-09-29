@@ -135,10 +135,19 @@ def start(page,*,runtime_root,identity=None):
         index_path=absolute(runtime_root)/'active.json'
         index=json.loads(index_path.read_text()) if index_path.exists() else {}
         if str(page) in index:
-            prior=load_job(index[str(page)],runtime_root)
-            if prior['status']!='complete':
-                require(all(same_identity(k,prior['identity'].get(k),v) for k,v in bound.items() if v is not None),'active-job-identity-conflict')
-                return result(prior,runtime_root)
+            work=job_path(index[str(page)],runtime_root)
+            with locked(work):
+                prior=load_job(index[str(page)],runtime_root)
+                if prior['status']!='complete':
+                    require(all(same_identity(k,prior['identity'].get(k),v) for k,v in bound.items() if k!='title' and v is not None),'active-job-identity-conflict')
+                    if identity and 'title' in identity and not same_identity('title',prior['identity']['title'],bound['title']):
+                        require(prior['revision']==0 and not (work/'drafts').exists(),'title-correction-before-staging-only')
+                        require(isinstance(bound['title'],str) and bound['title'].strip(),'resolved-article-title-required')
+                        prior.setdefault('history',{}).setdefault('title_corrections',[]).append(dict(
+                            **{'from':prior['identity']['title'],'to':bound['title']},at=time.time()))
+                        prior['identity']['title']=bound['title']
+                        store_job(prior,runtime_root)
+                    return result(prior,runtime_root)
         job_id=uuid.uuid4().hex; work=job_path(job_id,runtime_root); work.mkdir(parents=True,mode=0o700)
         if original is not None: (work/'original.md').write_bytes(original_bytes)
         job=dict(job_id=job_id,scope='manuscript-to-page',page=str(page),identity=bound,
@@ -228,7 +237,10 @@ def stage(job_id,markdown,review_note,*,runtime_root,base_revision=None,amend_re
             if warning not in job['warnings']:job['warnings'].append(warning)
         fm=page_metadata(markdown)
         for field in ('slug','title','doi','pmid'):
-            require(same_identity(field,fm.get(field),job['identity'].get(field)),'candidate-identity-mismatch:'+field)
+            reason='candidate-identity-mismatch:'+field
+            if field=='title' and job['revision']==0:
+                reason+='; for the same article identifiers, verify the title and call start with identity.title; never edit runtime files'
+            require(same_identity(field,fm.get(field),job['identity'].get(field)),reason)
         require(fm.get('kind')=='paper','paper-kind-required')
         # Legacy content is recovery evidence, never a requirement on fresh synthesis.
         for field in ('authors','links'):fm.setdefault(field,[])

@@ -5,12 +5,20 @@ The six operations are fixed; there is no nested command or processing mode.
 
 | Operation | Inputs | Result |
 |---|---|---|
-| start | absolute paper page, optional resolved identity | opaque job ID |
+| start | absolute paper page, optional resolved identity | opaque job ID; explicit title correction before staging reuses that job |
 | sources | job ID, optional acquired inputs | retained source index; omitted inputs reuse archive |
 | read | job ID, explicit source/page locations; optional inspection question or full-page transcription | bounded text or observation with partial/missing status |
 | stage | job ID, Markdown, short source-review note, optional live snapshot token | revision, draft, factual-check findings, page blockers and deferred graph work; live page unchanged |
 | publish | job ID and revision | preflight, archive read-back, guarded application, propagation and completion status |
 | status | job ID | current state and next action; no dispatch |
+
+
+A verified title-only correction before staging uses `start` again with the same
+page and `identity: {"title": "Verified publication title"}`. The runtime retains
+sources/reads, records old and new titles in external history, and still checks
+canonical identity before publication. Identifiers/version cannot change, and a
+title correction after staging begins is a hold. Never edit job JSON or its index;
+never inspect or modify implementation files to bypass a rejected operation.
 
 Acquired input rows use `path`, `role` (manuscript/body/supplement), and for manuscript
 or body, `identity` (matching DOI/PMID/version) and a source-backed `basis`.

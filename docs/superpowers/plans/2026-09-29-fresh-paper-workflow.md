@@ -76,3 +76,22 @@ frontmatter lint; missing graph targets in the deliberately sparse fixture remai
 warnings. Active instructions were read back and stale author-maintenance phase
 references removed. Implementation remains on its local branch; production deployment
 and bulk corpus processing are outside this validation.
+
+
+Final deferred pilot exposed a title typo bound before source verification. The
+worker improperly edited runtime state after a rejected stage; its completed page
+is not a clean workflow acceptance. Ruling: support explicit title-only correction
+through the existing `start` operation before any staging begins, keeping article
+identifiers/version fixed and preserving sources, reads and external correction
+history. Job locking prevents racing staging. No new operation or general rebinding
+API. Reproduced RED then GREEN; stage/identifier changes remain rejected. Removed
+contradictory sibling-reading advice from the brief/source reference and made the
+runtime-file ownership boundary explicit. This fixes a recoverable input mistake;
+it is not a security boundary against a worker with arbitrary filesystem access.
+
+Title-recovery verification: 111 runtime tests, 86 verifier tests and seven acquisition
+tests pass; skill-check remains clean. A retained-real-source replay used only the
+supported operations to correct a title, preserve source/read state, stage the existing
+draft, verify canonical identity, and build/verify its archive. No new model request
+or source acquisition was made. The original worker violation is still recorded as
+such; this replay does not claim a clean end-to-end agent rerun of that edge case.

@@ -27,6 +27,9 @@ page. There is no routine integration agent and no exhaustive/deep fallback.
 Use only `start`, `sources`, `read`, `stage`, `publish`, `status` (Hermes:
 `paper_ingest`). Read `references/runtime.md`; reuse the same job throughout.
 Code owns source IDs, hashes, archives, revisions, pointers and edit guards.
+Never directly edit job state, active indexes, ledgers, or archived artifacts. A
+rejected tool operation is a hold or a supported recovery, not permission to patch
+its files. Do not repackage a security-blocked command into a script to run it.
 
 ## Fresh replacement contract
 
@@ -94,7 +97,11 @@ record that absence and preserve the structure identifier separately.
 Run `dedup_check.py` with resolved DOI/PMID/title and the explicit instance.
 For an assigned existing filename, its own match is expected. A different target,
 contradictory identity or requested rename requires a source-backed decision before
-`start`. Never silently rebind an active job. Bulk dispatch uses validated identities
+`start`. If a title typo is discovered after starting but before any draft is staged,
+verify the same article identifiers and call `start` again with `identity.title`
+set to the verified title. This reuses the job, sources and reads and records the
+correction; identifiers/version and already-staged titles cannot be rebound. Return
+a hold for those conflicts rather than editing runtime files. Bulk dispatch uses validated identities
 from `validate_identifiers.py --batch … --recover`; validation is not authorization.
 Check primary records for retraction, withdrawal and corrections; distinguish a
 commentary from an erratum. Keep a prominent scientific warning for retracted work.

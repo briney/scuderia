@@ -104,3 +104,33 @@ class SupplementDefaults(Integration):
         self.assertNotIn('pages',row)
         with self.assertRaisesRegex(ValueError,'supplement-inputs-only'):
             sources.prepare(j,supplement_inputs=[dict(path=str(path),role='manuscript')],runtime_root=self.runtime)
+
+class TitleCorrection(Integration):
+    def test_explicit_title_correction_before_staging_reuses_sources_and_reads(self):
+        j,_=self.ready();before=w.load_job(j,self.runtime)
+        draft=self.complete_draft().replace('Synthetic experiment','Corrected experiment title')
+        with self.assertRaisesRegex(ValueError,'call start with identity.title'):
+            w.stage(j,draft,'Corrected title verified against source.',runtime_root=self.runtime)
+        out=w.start(self.page,runtime_root=self.runtime,identity={'title':'Corrected experiment title'})
+        self.assertEqual(out['job_id'],j)
+        after=w.load_job(j,self.runtime)
+        self.assertEqual(after['identity']['title'],'Corrected experiment title')
+        self.assertEqual(after['sources'],before['sources'])
+        self.assertEqual(after['reads'],before['reads'])
+        self.assertEqual(after['history']['title_corrections'][0]['from'],'Synthetic experiment')
+        self.assertEqual(w.start(self.page,runtime_root=self.runtime)['job_id'],j)
+        draft=self.complete_draft().replace('Synthetic experiment','Corrected experiment title')
+        staged=w.stage(j,draft,'Corrected title verified against the same source identifiers.',runtime_root=self.runtime)
+        self.assertEqual(staged['status'],'ready')
+        self.assertIn('Synthetic experiment',(w.job_path(j,self.runtime)/'original.md').read_text())
+        manifest=archive.build(j,staged['artifacts']['revision'],runtime_root=self.runtime)
+        self.assertEqual(archive.pa.load(manifest.parent/'provenance.json')['history']['title_corrections'][0]['to'],'Corrected experiment title')
+
+    def test_title_recovery_cannot_change_identifiers_or_staged_identity(self):
+        j,_=self.ready()
+        for field,value in [('doi','10.1234/other'),('pmid','99999'),('version','other')]:
+            with self.subTest(field=field),self.assertRaisesRegex(ValueError,'identity-conflict'):
+                w.start(self.page,runtime_root=self.runtime,identity={'title':'Corrected experiment title',field:value})
+        w.stage(j,self.complete_draft(),'Checked the central manuscript claims.',runtime_root=self.runtime)
+        with self.assertRaisesRegex(ValueError,'title-correction-before-staging-only'):
+            w.start(self.page,runtime_root=self.runtime,identity={'title':'Corrected experiment title'})
