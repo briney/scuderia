@@ -35,3 +35,10 @@ experiment's value with the conflicting restatement and locations. Never
 average them or silently correct the paper. Erratum-driven reassignment and
 satellite-vault identity handling remain in `paper-ingest-vault-modes`;
 XML/caption/resource-table extraction mechanics belong to `pmc-xml-tools`.
+
+For a suspicious numerical claim, check the experimental group, denominator,
+unit and exponent at the cited location. If native text says a biologically
+implausible dose or the glyph could be µ/m, inspect the printed original page.
+Do not use agreement between two text-only readers as evidence that extraction
+preserved the unit. A targeted visual question is enough; no full-document VLM
+pass or supplementary extraction follows from this check.

@@ -40,7 +40,11 @@ report the requested source/item/objective to the operator and keep this job int
 
 ## Ownership
 
-The primary owns source-grounded review and shared author/bibliography/graph writes.
+One paper worker owns acquisition, the complete manuscript read, drafting and a
+focused source check. The primary reviews the draft, material changed claims and
+selected supporting evidence, and owns shared author/bibliography/graph writes.
+Do not read the entire manuscript before dispatch and again after the worker.
+Standalone ingestion combines these roles in one context.
 A delegated worker stages only its assigned paper and returns the job ID, revision,
 source-linked bibliography candidates and remaining obligations. It does not
 publish, mutate shared files or use Git. The parent publishes and integrates.
@@ -196,7 +200,8 @@ Unknown source associations remain unknown. Truncated observations remain partia
 correct, qualify or omit unsupported central claims. Do not repair optional output
 by launching another model. Failed/uncertain requests do not automatically retry.
 
-Call `stage` with the full Markdown and a short substantive review note naming
+Write the annotated Markdown externally and call `stage` with `markdown_path`
+(inline `markdown` remains supported) and a short substantive review note naming
 what was checked and changed. Empty issue lists are valid; no coverage matrix or
 boilerplate approval is needed. Use a separate `HOLD: <material issue>` line for
 any unresolved material claim. Remove the hold only after correction, qualification
@@ -211,6 +216,14 @@ and minimal corrections. Exclude style, emphasis, missing background and graph
 identifier changes. Verify each proposed fix against its source before applying
 it. Empty/truncated/failed output is an incomplete check, not a clean verdict;
 no automatic retry, debate, or ingestion restart follows.
+
+Check attribution of feature sets to the correct antibody/class or experimental
+group, percentages and their denominators, units/exponents, manuscript version,
+and causal claims versus proposed mechanisms. If a consequential dose or unit is
+implausible or a glyph is ambiguous, inspect that original page visually using a
+bounded question. Two text extractors can share the same glyph error; a second
+text-only model is not an independent check of the printed unit. Inspect only the
+needed evidence, not every page or unrelated image-only reporting form.
 
 
 ### 6. Scientific page composition
@@ -277,7 +290,12 @@ Before staging, load `references/author-ledger-mutation.md` and align
 all named individuals against both people pages and ledger entries. The
 helper is a candidate finder; inspect abbreviations, particles, surname
 collisions, ORCIDs, affiliations, and source history before reusing slugs.
-An unresolved identity conflict holds completion.
+Matching names or inherited author links alone do not establish identity. Do not
+append a citation to make an ambiguous association pass the reverse-edge check.
+Keep the source author name in the bibliographic citation and hold the particular
+association for resolution. If that prevents complete author integration, retain
+the staged page/job as integration-pending; continue unrelated papers. Do not
+invent a new person or assert two people differ solely from changed affiliations.
 
 The primary/parent performs the canonical mutation branches: existing person
 gets `author_on`, existing ledger entry gets `citations`, new author gets an

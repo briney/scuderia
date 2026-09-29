@@ -30,6 +30,11 @@ and dives; do not copy its algorithms into those callers.
    is occupied, follow the convention's disambiguation rule; do not rename the
    incumbent during ingestion. Flag unresolved collisions for entity-resolution.
    Build `authors:` and the wiring table from the same resolved slug list.
+   An inherited link is a candidate, not identity evidence. If equivalence is
+   unresolved, retain the source display name in the citation and record the
+   candidate association externally for resolution; do not add its reverse edge
+   or manufacture an institution-suffixed person to bypass uncertainty. Keep
+   that paper's integration pending if necessary and continue unrelated papers.
 5. Capture ORCIDs from PubMed XML, Europe PMC core author records, and Crossref
    when available. Handle string/object forms of author IDs; union agreeing
    records, hold conflicts, and use null when no verified ORCID is available.
