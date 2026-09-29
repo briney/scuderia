@@ -121,8 +121,57 @@ def load(root):
     return frozen,state
 
 
-def report(root):
+def consumer_follow_up(frozen:dict,state:dict,inbox:dict,selection:list[str]|None=None)->dict:
+    """Derive closure from reconciled publication/Git state and gated inbox acknowledgments."""
+    w.require(isinstance(inbox,dict) and isinstance(inbox.get('items'),list),'invalid-propagation-inbox')
+    selection=list(state['items']) if selection is None else selection
+    w.require(isinstance(selection,list) and all(isinstance(i,str) for i in selection)
+        and len(selection)==len(set(selection)) and set(selection)<=set(state['items']),'invalid-explicit-selection')
+    events={};by_job={}
+    for packet in inbox['items']:
+        w.require(isinstance(packet,dict) and isinstance(packet.get('id'),str)
+            and isinstance(packet.get('consumed_by'),list)
+            and all(isinstance(c,str) for c in packet['consumed_by']),'invalid-propagation-packet')
+        w.require(packet['id'] not in events,'duplicate-propagation-event')
+        events[packet['id']]=packet
+        match=re.fullmatch(r'ingest-([0-9a-f]{32})-([1-9][0-9]*)',packet['id'])
+        if match:by_job.setdefault(match[1],[]).append((int(match[2]),packet))
+    papers={};instance=Path(frozen['instance'])
+    for item in selection:
+        entry=state['items'][item];path=Path(entry['canonical_path'])
+        w.require(path.parent==instance/'papers' and path.suffix=='.md','invalid-canonical-page')
+        paper=papers.setdefault(str(path),dict(packet_ids=[],pending_retro=[],pending_reinforce=[],
+            current_event_present=True,revision_current=True,published=True,git_pushed=True))
+        paper['published'] &= entry['status'] in ('complete','already-current')
+        paper['git_pushed'] &= entry.get('git',{}).get('pushed') is True
+        job=entry.get('job_id');revision=entry.get('revision')
+        current=f'ingest-{job}-{revision}'
+        valid=isinstance(job,str) and re.fullmatch(r'[0-9a-f]{32}',job) and type(revision) is int and revision>0
+        paper['current_event_present'] &= bool(valid) and current in events
+        for number,packet in by_job.get(job,[]) if isinstance(job,str) else []:
+            w.require(packet.get('event')=='ingest' and packet.get('page')=='papers/'+path.stem,'propagation-event-conflict')
+            paper['revision_current'] &= type(revision) is int and number<=revision
+            if packet['id'] in paper['packet_ids']:continue
+            paper['packet_ids'].append(packet['id'])
+            for consumer in ('retro','reinforce'):
+                if consumer not in packet['consumed_by']:paper['pending_'+consumer].append(packet['id'])
+    for paper in papers.values():
+        paper['closed']=all(paper[k] for k in ('published','git_pushed','current_event_present','revision_current')) \
+            and not paper['pending_retro'] and not paper['pending_reinforce']
+    return dict(papers=papers,distinct_closed=sum(p['closed'] for p in papers.values()))
+
+
+def report(root:Path,*,selected:bool=False)->dict:
     frozen,state=load(root); counts=dict(Counter(r['status'] for r in state['items'].values()))
+    selection=None
+    if selected:
+        cfg=json.loads((Path(root)/'run-config.json').read_text())
+        w.require(isinstance(cfg,dict),'invalid-run-config')
+        selection=cfg.get('selection')
+        w.require(isinstance(selection,list) and bool(selection),'explicit-selection-required')
+    path=Path(frozen['instance'])/'docs/rem-cycle/inbox.yaml'
+    inbox=yaml.safe_load(path.read_text()) if path.exists() else dict(items=[])
+    follow_up=consumer_follow_up(frozen,state,inbox,selection)
     distinct={r['canonical_path'] for r in state['items'].values() if r['status'] in ('complete','already-current')}
     published={r['canonical_path'] for r in state['items'].values() if r['status']=='complete' and r['git']['pushed']}
     seconds=sum(r.get('wall_seconds',0) for r in state['runs'])
@@ -130,7 +179,7 @@ def report(root):
         wall_seconds=seconds,published_per_hour=len(published)*3600/seconds if seconds else None,
         merged_inputs=sum(bool(r.get('mapping_reason')) for r in state['items'].values()),
         outstanding=[dict(id=k,**v) for k,v in state['items'].items() if v['status'] not in ('excluded-stub','complete','already-current')],
-        runs=state['runs'])
+        runs=state['runs'],consumer_follow_up=follow_up)
 
 
 def git_state(instance,page):
@@ -471,6 +520,7 @@ def main(argv=None):
     scan.add_argument('--output',type=Path,help='New external JSON file; stdout otherwise')
     init=commands.add_parser('init'); init.add_argument('--instance',required=True,type=Path); init.add_argument('--root',required=True,type=Path)
     rep=commands.add_parser('report'); rep.add_argument('--root',required=True,type=Path)
+    rep.add_argument('--selected',action='store_true',help='Consumer follow-up for the run-config selection only')
     rec=commands.add_parser('reconcile'); rec.add_argument('--root',required=True,type=Path); rec.add_argument('--runtime-root',required=True,type=Path)
     ret=commands.add_parser('retry'); ret.add_argument('--root',required=True,type=Path); ret.add_argument('--item',required=True); ret.add_argument('--reason',required=True)
     mapping=commands.add_parser('map'); mapping.add_argument('--root',required=True,type=Path); mapping.add_argument('--item',required=True); mapping.add_argument('--canonical',required=True,type=Path); mapping.add_argument('--reason',required=True)
@@ -501,7 +551,7 @@ def main(argv=None):
         elif args.command=='map':result=map_item(args.root,args.item,args.canonical,args.reason)
         elif args.command=='run':result=run(args.root,args.runtime_root,args.profile_home,args.limit,args.concurrency,args.max_seconds)
         elif args.command=='_window':result=window_control(args.root,args.profile_home,args.action)
-        else:result=report(args.root)
+        else:result=report(args.root,selected=args.selected)
         print(json.dumps(result,ensure_ascii=False,default=str));return 0
     except (OSError,ValueError,yaml.YAMLError) as exc:
         print(json.dumps(dict(error=str(exc))));return 2
