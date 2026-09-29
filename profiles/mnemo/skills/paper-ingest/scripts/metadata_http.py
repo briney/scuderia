@@ -71,4 +71,3 @@ def epmc_record(pmid,fetch_json):
         n_authors=sum(not a.get('collectiveName') for a in authors),source='Europe PMC',
         first_author=next((a.get('fullName','') for a in authors if not a.get('collectiveName')),''),name_format='surname_first',
         retracted=any('retract' in p.lower() for p in row.get('pubTypeList',{}).get('pubType',[])))
-

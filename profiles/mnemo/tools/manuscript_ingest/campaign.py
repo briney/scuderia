@@ -171,6 +171,17 @@ def _reconcile(root,runtime_root):
             if entry['status']=='blocked':continue # explicit retry releases a reviewed hold
             candidate=entry['job_id'] or active.get(str(page))
             job=w.load_job(candidate,runtime_root) if candidate else None
+            replacement=active.get(str(page))
+            if job and replacement and replacement!=candidate:
+                from . import archive
+                newer=w.load_job(replacement,runtime_root)
+                prior=w.job_path(candidate,runtime_root)/'archives'/str(job['revision'])
+                original=w.job_path(replacement,runtime_root)/'original.md'
+                w.require(job['status']=='complete' and newer['page']==str(page)
+                    and original.is_file() and w.sha(original)==newer['original_sha256']
+                    and archive.page_matches(prior/'page.md',original,prior/'publication.json'),
+                    'replacement-job-reconciliation-required')
+                candidate=replacement; job=newer
             if job:
                 w.require(job['page']==str(page),'job-canonical-path-mismatch')
                 # Old completed jobs can establish currentness only through their actual evidence.

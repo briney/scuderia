@@ -63,6 +63,16 @@ def page_matches(snapshot, page, receipt=None):
     return re.sub(rb'^Article archive: .+$',('Article archive: '+pointer).encode(),old,count=1,flags=re.M)==current
 
 
+def copy_verified(source,target,expected,size):
+    import shutil
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix='.copy-',dir=target.parent) as tmp:
+        partial=Path(tmp)/'object'
+        shutil.copyfile(source,partial)
+        w.require(partial.stat().st_size==size and w.sha(partial)==expected,'corrupt-cached-copy')
+        partial.replace(target)
+
+
 def open_sources(receipt,destination,*,transport=None,cache=None,identity=None):
     """Restore verified originals/text only; old scientific products stay archived."""
     import shutil
@@ -81,7 +91,7 @@ def open_sources(receipt,destination,*,transport=None,cache=None,identity=None):
         key=pa.relative_key(publication['manifest_key'])
         w.require(key.startswith(pa.relative_key(transport['prefix'])+'/articles/'+publication['article_key']+'/') and key.endswith('/manifests/'+expected+'.json'),'trusted-manifest-key-binding')
     if not manifest.exists():
-        if cached:shutil.copyfile(cached,manifest)
+        if cached:copy_verified(cached,manifest,expected,cached.stat().st_size)
         else:
             import tempfile
             with tempfile.TemporaryDirectory(prefix='.manifest-',dir=destination) as tmp:
@@ -133,7 +143,7 @@ def open_sources(receipt,destination,*,transport=None,cache=None,identity=None):
             if cached:
                 source=local_paths[key]
                 w.require(source.stat().st_size==row['size'] and w.sha(source)==row['sha256'],'corrupt-cached-source:'+key)
-                shutil.copyfile(source,target)
+                copy_verified(source,target,row['sha256'],row['size'])
             else:
                 if client is None:client=pa.RcloneTransport(transport['remote'],transport['bucket'])
                 client.download(object_key(m,transport['prefix'],row) if modern else pa.object_key(m,transport['prefix'],row),target,row['sha256'],row['size'])

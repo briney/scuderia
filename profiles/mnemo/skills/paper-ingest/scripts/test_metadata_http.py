@@ -30,3 +30,14 @@ class CachedMetadata(unittest.TestCase):
             return {'resultList':{'result':[{'id':'123','source':'MED','title':'Example','pubYear':'2026','authorList':{'author':[{'fullName':'Author A'}]}}]}}
         with patch.object(v,'fetch_json',side_effect=fetch):record=v.pubmed_esummary_batch(['123'])['123']
         self.assertEqual(record['title'],'Example'); self.assertEqual(record['n_authors'],1)
+
+    def test_doi_outage_uses_crossref_and_exhausted_pmid_is_deferred(self):
+        import validate_identifiers as v
+        import metadata_http as m
+        citation=dict(title='Example study',author='Author',year='2026',doi='10.1234/example')
+        def fetch(url,*args,**kwargs):
+            if 'openalex' in url:raise m.MetadataUnavailable('temporarily-unavailable')
+            return {'message':{'title':['Example study'],'author':[{'family':'Author'}],'issued':{'date-parts':[[2026]]}}}
+        with patch.object(v,'fetch_json',side_effect=fetch):self.assertEqual(v.validate_citation(citation,{})['verdict'],'PASS')
+        out=v.validate_citation(dict(title='Example study',author='Author',year='2026',pmid='123'),{'123':{'error':'temporarily-unavailable; retain job','unavailable':True}})
+        self.assertEqual(out['verdict'],'DEFERRED')

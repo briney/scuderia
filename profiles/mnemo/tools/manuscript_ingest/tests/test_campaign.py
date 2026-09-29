@@ -71,6 +71,16 @@ class Recovery(Publication):
         c.reconcile(root,self.runtime)
         self.assertEqual(c.load(root)[1]['items'][item]['status'],'blocked')
 
+    def test_reconciled_replacement_follows_verified_previous_publication(self):
+        c,root,item=self.campaign(); j=self.staged()
+        with patch.object(archive.pa,'RcloneTransport',MemoryTransport),patch.object(w,'integration_check',return_value=[]):
+            w.publish(j,1,runtime_root=self.runtime)
+        c.reconcile(root,self.runtime)
+        replacement=w.start(self.page,runtime_root=self.runtime)['job_id']
+        c.reconcile(root,self.runtime)
+        self.assertEqual(c.load(root)[1]['items'][item]['job_id'],replacement)
+        self.assertEqual(c.load(root)[1]['items'][item]['status'],'working')
+
     def test_source_recovery_and_inventory_edit_hold(self):
         c,root,item=self.campaign(); j,sid=self.ready()
         c.reconcile(root,self.runtime)

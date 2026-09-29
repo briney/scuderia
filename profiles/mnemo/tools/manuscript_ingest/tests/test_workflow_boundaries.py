@@ -77,3 +77,28 @@ class SourceReuse(Publication):
             first=__import__('pathlib').Path(restored['inputs'][0]['path']); first.write_bytes(b'corrupt')
             with self.assertRaisesRegex(ValueError,'corrupt'):
                 archive.open_sources(receipt,self.root/'selected',transport=w.config(self.runtime)['archive'])
+
+class CachedRecovery(Publication):
+    def test_interrupted_cached_copy_retries_without_completed_corruption(self):
+        import shutil
+        j=self.staged(); manifest=archive.build(j,1,runtime_root=self.runtime); target=self.root/'cached'
+        real=shutil.copyfile
+        def fail(source,destination,*args,**kwargs):
+            __import__('pathlib').Path(destination).write_bytes(b'partial');raise OSError('interrupted copy')
+        with patch.object(shutil,'copyfile',side_effect=fail):
+            with self.assertRaises(OSError):archive.open_sources(manifest,target)
+        self.assertEqual(len(archive.open_sources(manifest,target)['inputs']),2)
+        other=self.root/'cached-source'
+        def fail_object(source,destination,*args,**kwargs):
+            if __import__('pathlib').Path(source).name!='manifest.json':return fail(source,destination)
+            return real(source,destination,*args,**kwargs)
+        with patch.object(shutil,'copyfile',side_effect=fail_object):
+            with self.assertRaises(OSError):archive.open_sources(manifest,other)
+        self.assertEqual(len(archive.open_sources(manifest,other)['inputs']),2)
+
+class ExactFileBytes(Publication):
+    def test_crlf_annotated_file_bytes_are_preserved(self):
+        from manuscript_ingest.cli import dispatch
+        j,sid=self.ready();raw=self.draft().replace('\n','\r\n').encode();path=self.root/'windows.md';path.write_bytes(raw)
+        out=dispatch(dict(operation='stage',job_id=j,markdown_path=str(path),review_note='Checked central findings against page 1.'),runtime_root=self.runtime)
+        self.assertEqual(__import__('pathlib').Path(out['artifacts']['annotated_draft']).read_bytes(),raw)

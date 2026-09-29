@@ -166,7 +166,7 @@ def pubmed_esummary_batch(pmids):
         for pid in pmids:
             try:record=epmc_record(pid,fetch_json)
             except Exception:record=None
-            out[str(pid)]=record or {'error':'temporarily-unavailable; retain job and defer canonical check'}
+            out[str(pid)]=record or {'error':'temporarily-unavailable; retain job and defer canonical check','unavailable':True}
         return out
     out = {}
     for pid in pmids:
@@ -195,8 +195,9 @@ def openalex_work(doi):
          f"?mailto={MAILTO}")
     try:
         m = fetch_json(u)
-    except urllib.error.HTTPError as e:
-        return {"error": f"HTTP {e.code}"}
+    except (urllib.error.URLError,TimeoutError) as e:
+        from metadata_http import transient
+        return {'error':'temporarily-unavailable' if transient(e) else f'HTTP {getattr(e,"code","unknown")}','unavailable':transient(e)}
     auths = m.get("authorships") or []
     ids = m.get("ids") or {}
     pmid = (ids.get("pmid") or "").rstrip("/").split("/")[-1] or None
@@ -216,8 +217,9 @@ def crossref_work(doi):
     u = f"https://api.crossref.org/works/{urllib.parse.quote(doi)}"
     try:
         m = fetch_json(u)["message"]
-    except urllib.error.HTTPError as e:
-        return {"error": f"HTTP {e.code}"}
+    except (urllib.error.URLError,TimeoutError) as e:
+        from metadata_http import transient
+        return {'error':'temporarily-unavailable' if transient(e) else f'HTTP {getattr(e,"code","unknown")}','unavailable':transient(e)}
     auths = m.get("author") or []
     return {
         "title": (m.get("title") or [""])[0],
@@ -253,7 +255,7 @@ def validate_citation(cit, pmid_cache):
     if pmid:
         rec = pmid_cache.get(pmid, {})
         if rec.get("error"):
-            rep["checks"].append({"source": "pubmed:PMID", "grade": "FAIL",
+            rep["checks"].append({"source": "pubmed:PMID", "grade": "UNAVAILABLE" if rec.get('unavailable') else "FAIL",
                                   "error": rec["error"]})
         else:
             grade, det = match_grade(rec, expected_title, expected_surname,
@@ -271,7 +273,7 @@ def validate_citation(cit, pmid_cache):
             rec = crossref_work(doi)
             source = "crossref:DOI"
         if rec.get("error"):
-            rep["checks"].append({"source": source, "grade": "FAIL",
+            rep["checks"].append({"source": source, "grade": "UNAVAILABLE" if rec.get('unavailable') else "FAIL",
                                   "error": rec["error"]})
         else:
             grade, det = match_grade(rec, expected_title, expected_surname,
@@ -326,7 +328,9 @@ def validate_citation(cit, pmid_cache):
         rep["verdict"] = "NOIDS"
     else:
         grades = [c["grade"] for c in id_checks]
-        if all(g == "PASS" for g in grades):
+        if 'UNAVAILABLE' in grades:
+            rep['verdict']='DEFERRED'
+        elif all(g == "PASS" for g in grades):
             rep["verdict"] = "PASS"
         elif all(g == "FAIL" for g in grades):
             rep["verdict"] = "FAIL"
@@ -491,6 +495,7 @@ def main():
         "mixed": sum(1 for r in reports if r["verdict"] == "MIXED"),
         "recovered": sum(1 for r in reports if r["verdict"] == "RECOVERED"),
         "noids": sum(1 for r in reports if r["verdict"] == "NOIDS"),
+        "deferred": sum(r['verdict']=='DEFERRED' for r in reports),
     }
     # Dispatch-ready block: for each citation, the identifiers to actually
     # send to the subagent (validated, or recovered if validation failed).
@@ -510,6 +515,8 @@ def main():
                     "status": "recovered",
                     "note": f"input identifiers wrong; corrected via {rec['source']} "
                             f"(score {rec['score']})"}
+        elif r['verdict']=='DEFERRED':
+            item=dict(cit,status='DEFERRED',note='Canonical service temporarily unavailable; retain identity and job, retry the outstanding check later.')
         else:
             item = {"title": cit.get("title"), "author": cit.get("author"),
                     "year": cit.get("year"), "status": "HOLD",
@@ -524,7 +531,7 @@ def main():
 
     out = {"summary": summary, "dispatch": dispatch, "reports": reports}
     print(json.dumps(out, indent=2))
-    sys.exit(0 if summary["fail"] == 0 and summary["mixed"] == 0 else 1)
+    sys.exit(0 if summary["fail"] == 0 and summary["mixed"] == 0 and summary['deferred']==0 else 1)
 
 
 if __name__ == "__main__":
