@@ -1,22 +1,25 @@
 # Convention: the author ledger
 
-A `people/` page is a curated profile, not a graph artifact. Every author on
-an ingested paper goes into the paper's `authors:` list as `people/<slug>` —
-that contract is set by `paper-ingest` and unchanged here — but a *page*
-under `people/` is reserved for authors who are load-bearing for the
-research program. The **author ledger** is what tracks every other author:
+A `people/` page is a curated profile, not a graph artifact. Paper ingestion
+records every source author in `author_names`; independently verified identities
+go into `authors:` as `people/<slug>`. Deferred author maintenance completes
+those graph associations after scientific publication. A *page* under `people/`
+is reserved for authors who are load-bearing for the research program.
+The **author ledger** is what tracks every other author:
 the `people/<slug>` wikilinks pointing at no page, with the citations that
 back them, so promotion to a real page is a counted decision rather than a
 fuzzy one.
 
-Authoritative source: `DESIGN.md` §2.4 (the graph layer) and `paper-ingest`
-Phase 8 (the producer). Mutation and identity-resolution mechanics live in
+Authoritative source: `DESIGN.md` §2.4 (the graph layer), `graph-and-links.md`,
+and `retroactive-linking`'s deferred-author consumer.
+Mutation and identity-resolution mechanics live in
 `skills/paper-ingest/references/author-ledger-mutation.md`; load that reference
 when performing author wiring, rather than copying a local update recipe.
 
 ## Why the ledger exists
 
-Paper ingest produces two distinct things for each author. The first is a
+Verified author maintenance produces two distinct things for each author.
+The first is a
 graph edge — `papers/<paper-slug>` lists `people/<surname-firstname>` in its
 `authors:` field — which forward-only linking
 (`graph-and-links.md`) allows even when the target page does not exist. The
@@ -34,7 +37,8 @@ papers each name appears on) without paying the page-creation cost.
 
 Decoupling these two concerns also makes promotion deterministic: when an
 author's citation count crosses a threshold, the ledger entry is promoted to
-a page. No per-author judgment call sitting on the hot ingest path.
+a page. No per-author judgment call sitting on the hot ingest path;
+maintenance owns promotion.
 
 ## File location
 
@@ -84,14 +88,16 @@ reason (citation density is a usable proxy for "this thing matters
 enough to page").
 
 Promotion is one-way. Once a page exists for the slug, the slug is owned
-by the page; subsequent paper ingests update the page's `author_on:`
-field directly (Branch 1 in `paper-ingest` Phase 8) and never touch the
+by the page; subsequent author-maintenance passes update the page's `author_on:`
+field directly (the existing-person branch in the shared mutation reference)
+and never touch the
 ledger again for that slug.
 
 ### Inline promotion, no queue
 
-When the threshold fires during a paper ingest, **create the page in the
-same run**. People pages have no expensive resolution step — no DOI to
+When a new verified citation crosses the threshold during author maintenance,
+**create the page in the same maintenance run**.
+People pages have no expensive resolution step — no DOI to
 look up, no PDF to fetch, no R2 archive to write — so the cost is just
 calling `enrich` with the slug and the seed data from the ledger entry.
 There is no `ingest-pending-people` skill mirroring
@@ -105,10 +111,10 @@ trigger** for promotion — it fires when the system has no other signal —
 but it is not the only path to a page. Two manual override paths:
 
 - **Promote early.** your human writes a `people/<slug>.md` by hand (or asks
-  the mind to). The next paper-ingest pass sees the page exist, takes
+  the mind to). The next author-maintenance pass sees the page exist, takes
   Branch 1, and the ledger entry (if any) is removed at that point
   rather than at threshold.
-- **Demote.** your human deletes a `people/<slug>.md`. The next paper-ingest
+- **Demote.** your human deletes a `people/<slug>.md`. The next author-maintenance
   pass sees no page and no ledger entry (since the slug was a paged
   author when the citation was first written), and Branch 3 fires: a
   fresh ledger entry is created with the paper as the seed citation.
@@ -157,9 +163,9 @@ unless the identities are first confirmed equivalent.
 
 A ledger entry passes through three states:
 
-1. **Created** by `paper-ingest` Phase 8 Branch 3 — a new author appears
+1. **Created** by the author-maintenance new-entry branch — a new author appears
    on an ingested paper, no existing page or entry.
-2. **Updated** by `paper-ingest` Phase 8 Branch 2 — subsequent papers
+2. **Updated** by the author-maintenance existing-entry branch — subsequent papers
    cite the same author; the citation list grows, deduped.
 3. **Promoted** (and removed) when `len(citations) >= 5` — the entry is
    converted to a `people/<slug>.md` page via `enrich`.
@@ -223,16 +229,16 @@ against.
 
 ## See also
 
-- `skills/paper-ingest/SKILL.md` Phase 8 — the producer side of the
-  ledger; the three-branch logic that decides between page update,
-  ledger append, and ledger create.
+- `skills/retroactive-linking/SKILL.md` — the deferred-author consumer.
+- `skills/paper-ingest/references/author-ledger-mutation.md` — the shared
+  identity and three-branch mutation procedure.
 - `skills/enrich/SKILL.md` — the promotion consumer; called when a
   ledger entry crosses the threshold.
 - `skills/conventions/frontmatter.md` — the `author_on:` field on the
-  `person` kind, written by paper-ingest on existing pages (Branch 1).
+  `person` kind, written by verified author maintenance on existing pages.
 - `skills/conventions/graph-and-links.md` — `author_on:` as a typed
-  forward edge, owned by the person page but written by the paper-
-  ingest skill that authors the paper page.
+  forward edge, owned by the person page and written by verified
+  author maintenance.
 - `skills/conventions/page-kinds.md` — slug conventions for `people/`,
   including the existing surname-first form and the institutional
   disambiguator.
