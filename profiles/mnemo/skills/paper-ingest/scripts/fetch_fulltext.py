@@ -61,8 +61,44 @@ class EvidenceError(RuntimeError):
 
 class AcquisitionEvidence:
     def __init__(self, directory):
-        self.root = new_directory(directory)
+        from article_archive_compat.article_runtime import outside_instance, require
+        directory=outside_instance(directory)
+        if directory.exists():
+            require(directory.is_dir() and not any(directory.iterdir()),'evidence-directory-must-be-empty')
+            self.root=directory
+        else:self.root = new_directory(directory)
         self.sequence = 0
+
+    def source_inventory(self):
+        """Expose fetched originals and advertised attachments, without processing SI."""
+        from urllib.parse import urljoin
+        candidates=[]; attachments=[]
+        for body in sorted(self.root.glob('attempt-*/response-*/body.bin')):
+            record=json.loads((body.parent/'response.json').read_text())
+            if record['status']!=200:continue
+            raw=body.read_bytes(); suffix=None; root=None
+            if raw.startswith(b'%PDF-'):suffix='.pdf'
+            else:
+                try:root=ET.fromstring(raw)
+                except ET.ParseError:pass
+                if root is not None and root.find('.//body') is not None:suffix='.xml'
+                elif re.search(br'<html\b',raw[:2048],re.I):suffix='.html'
+            if suffix is None:continue
+            target=self.root/'originals'/(hashlib.sha256(raw).hexdigest()+suffix)
+            if not target.exists():put(target,raw)
+            candidates.append(dict(path=str(target),source_url=record['url'],sha256=hashlib.sha256(raw).hexdigest(),identity_verified=False))
+            if suffix=='.xml':
+                pmc=next((e.text for e in root.findall('.//article-id') if e.get('pub-id-type') in ('pmc','pmcid') and e.text),None)
+                base='https://pmc.ncbi.nlm.nih.gov/articles/'+(pmc if pmc.startswith('PMC') else 'PMC'+pmc)+'/bin/' if pmc else record['url']
+                for node in root.iter():
+                    if node.tag.split('}')[-1] not in ('supplementary-material','supplementary-material-link','media'):continue
+                    href=node.get('{http://www.w3.org/1999/xlink}href') or node.get('href')
+                    if href:
+                        url=urljoin(base,href)
+                        try:public_url(url)
+                        except ValueError:continue
+                        if not any(a['url']==url for a in attachments):attachments.append(dict(url=url,label=' '.join(node.itertext()).strip(),status='advertised',source_path=str(target)))
+        return dict(source_candidates=candidates,attachments=attachments)
 
     def open(self, req):
         try:
@@ -84,7 +120,7 @@ class AcquisitionEvidence:
                     public_url(request.full_url)
                     directory = new_directory(attempt/f'response-{counter:04d}')
                     status = response.code
-                    record = dict(url=request.full_url, status=status,
+                    record = dict(url=request.full_url, status=status,content_type=response.headers.get('Content-Type'),
                                   observed_at=datetime.now(timezone.utc).isoformat(), headers_retained=False)
                     # Save status even if reading the response body later fails.
                     save(directory/'response.json', record)
@@ -423,7 +459,7 @@ def main():
                     help="Also fetch PMC OA figure bundle (needs pmcid)")
     ap.add_argument("--skip-publisher", action="store_true",
                     help="Stop before branch 2 (never touch the publisher page)")
-    ap.add_argument('--evidence-dir', help='NEW absolute acquisition evidence directory; --out must be below its derived/ directory')
+    ap.add_argument('--evidence-dir', help='New or empty absolute acquisition evidence directory; --out must be below its derived/ directory')
     args = ap.parse_args()
     global EVIDENCE
     EVIDENCE = None
@@ -526,6 +562,7 @@ def main():
         else:
             notes.append("figures: none found on PMC page for %s" % pmcid)
 
+    if EVIDENCE is not None:result.update(EVIDENCE.source_inventory())
     print(json.dumps(result, indent=2))
 
 

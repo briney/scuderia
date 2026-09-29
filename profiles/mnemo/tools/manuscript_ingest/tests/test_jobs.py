@@ -42,3 +42,21 @@ def only_local_tests(module_name):
 
 
 def load_tests(loader,tests,pattern):return only_local_tests(__name__)
+
+class LegacyIdentity(Jobs):
+    def test_numeric_pmid_and_relative_receipt(self):
+        receipt=self.brain/'docs/publication.json'; receipt.parent.mkdir(); receipt.write_text('{}')
+        self.page.write_text(self.page.read_text().replace('needs-ingest:', 'pmid: 12345\nneeds-ingest:')+'\nArticle archive: ../docs/publication.json\n')
+        out=workflow.start(self.page,runtime_root=self.runtime,identity={'pmid':'12345'})
+        job=workflow.load_job(out['job_id'],self.runtime)
+        self.assertEqual(job['prior_receipt'],str(receipt))
+        self.assertEqual(job['identity']['pmid'],'12345')
+
+    def test_relative_receipt_cannot_escape_or_follow_symlink(self):
+        for pointer in ('../../outside.json','../docs/link.json'):
+            docs=self.brain/'docs'; docs.mkdir(exist_ok=True)
+            link=docs/'link.json'
+            if not link.exists():link.symlink_to(self.page)
+            self.page.write_text('---\nkind: paper\nslug: paper\ntitle: Synthetic experiment\ndoi: 10.1234/synthetic\n---\n# Synthetic experiment\nArticle archive: '+pointer+'\n')
+            with self.assertRaises(ValueError):workflow.start(self.page,runtime_root=self.runtime)
+        self.assertFalse((self.runtime/'active.json').exists())

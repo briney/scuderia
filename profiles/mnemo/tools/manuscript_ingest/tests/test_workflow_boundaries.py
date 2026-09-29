@@ -62,3 +62,18 @@ class FileStage(Publication):
             with self.subTest(args=list(args)):
                 with self.assertRaises((ValueError,OSError)):dispatch(dict(base,**args),runtime_root=self.runtime)
         self.assertEqual(w.load_job(j,self.runtime)['revision'],0)
+
+class SourceReuse(Publication):
+    def test_reuse_restores_sources_not_old_enrichment_or_page_products(self):
+        j=self.staged(); manifest=archive.build(j,1,runtime_root=self.runtime)
+        with patch.object(archive.pa,'RcloneTransport',MemoryTransport):
+            pub=archive.publish(manifest,destination=w.config(self.runtime)['archive']); receipt=self.root/'receipt.json'; w.save(receipt,pub)
+            restored=archive.open_sources(receipt,self.root/'selected',transport=w.config(self.runtime)['archive'])
+            self.assertEqual(len(restored['inputs']),2)
+            self.assertFalse((self.root/'selected/page.md').exists())
+            self.assertFalse((self.root/'selected/review.txt').exists())
+            with patch.object(MemoryTransport,'download',side_effect=AssertionError('repeat download')):
+                archive.open_sources(receipt,self.root/'selected',transport=w.config(self.runtime)['archive'])
+            first=__import__('pathlib').Path(restored['inputs'][0]['path']); first.write_bytes(b'corrupt')
+            with self.assertRaisesRegex(ValueError,'corrupt'):
+                archive.open_sources(receipt,self.root/'selected',transport=w.config(self.runtime)['archive'])

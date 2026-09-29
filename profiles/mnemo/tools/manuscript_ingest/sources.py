@@ -48,29 +48,36 @@ def index(job):
     return [{k:v for k,v in row.items() if k not in ('key','text')} for row in job['sources']]
 
 
-def prepare(job_id,inputs=None,*,runtime_root):
+def prepare(job_id,inputs=None,*,runtime_root,supplement_inputs=None):
     settings=w.config(runtime_root); work=w.job_path(job_id,runtime_root)
     with w.locked(work):
         job=w.load_job(job_id,runtime_root)
-        if job.get('sources'):
-            w.require(inputs is None,'sources-already-bound; start a separately reconciled job for different source bytes')
+        adding=supplement_inputs is not None
+        if adding:
+            w.require(inputs is None and job.get('sources'),'supplement-append-requires-bound-manuscript')
+            w.require(isinstance(supplement_inputs,list) and all(r.get('role')=='supplement' for r in supplement_inputs),'supplement-inputs-only')
+            inputs=supplement_inputs
             verify_sources(job,work)
-            return w.result(job,runtime_root,sources=index(job))
+        if job.get('sources'):
+            if not adding:
+                w.require(inputs is None,'sources-already-bound; start a separately reconciled job for different source bytes')
+                verify_sources(job,work)
+                return w.result(job,runtime_root,sources=index(job))
         restoring=inputs is None and bool(job.get('prior_receipt'))
-        if job.get('prior_receipt'):
+        if job.get('prior_receipt') and not adding:
             from . import archive
-            restored=archive.open_sources(job['prior_receipt'],work/'prior',transport=settings.get('archive'),cache=settings.get('archive_cache'))
+            restored=archive.open_sources(job['prior_receipt'],work/'prior',transport=settings.get('archive'),cache=settings.get('archive_cache'),identity=job['identity'])
             for field in ('doi','pmid','version'):
                 before=restored['identity'].get(field); after=job['identity'].get(field)
-                w.require(not before or not after or before==after,'archive-identity-reconciliation-required:'+field)
+                w.require(not before or not after or w.same_identity(field,before,after),'archive-identity-reconciliation-required:'+field)
             if not job['identity'].get('version'): job['identity']['version']=restored['identity'].get('version')
             if restoring:inputs=restored['inputs']
             job['history']=restored['history']
-        if not inputs:
+        if not inputs and not adding:
             job.update(status='needs-input',next_action='Acquire the manuscript with the existing full-text acquisition helper, then supply retained inputs.',blocking_reason='essential-source-unavailable')
             w.store_job(job,runtime_root); return w.result(job,runtime_root)
         w.require(isinstance(inputs,list) and len(inputs)<=1000,'invalid-source-inputs')
-        w.require(sum(row.get('role')=='manuscript' for row in inputs)==1,'select-one-manuscript; retain alternatives as supplements')
+        w.require(adding or sum(row.get('role')=='manuscript' for row in inputs)==1,'select-one-manuscript; retain alternatives as supplements')
         # Validate all essential input identity before retaining anything.
         for row in inputs:
             w.require(row.get('role') in ('manuscript','body','supplement'),'invalid-source-role')
@@ -78,15 +85,17 @@ def prepare(job_id,inputs=None,*,runtime_root):
                 identity=row.get('identity',{}); supplied=False
                 for field in ('doi','pmid','version'):
                     if identity.get(field):
-                        supplied=True; w.require(identity[field]==job['identity'].get(field),'source-identity-mismatch:'+field)
+                        supplied=True; w.require(w.same_identity(field,identity[field],job['identity'].get(field)),'source-identity-mismatch:'+field)
                 w.require(supplied and str(row.get('basis','')).strip(),'source-identity-basis-required')
-        retained=[]; seen=set()
+        retained=list(job['sources']) if adding else []; seen={s['source_id'] for s in retained}
+        before=len(retained)
         for row in inputs:
             source=w.absolute(row['path'])
             if not source.is_file():
                 w.require(row['role']=='supplement','essential-source-unavailable')
                 job['warnings'].append('Supplement retention gap: '+source.name); continue
             h=w.sha(source); sid='s-'+h[:24]
+            if adding and sid in seen:continue
             w.require(sid not in seen,'duplicate-source-bytes; retain aliases as metadata')
             seen.add(sid)
             suffix=source.suffix.lower(); suffix=suffix if re.fullmatch(r'\.[a-z0-9]{1,10}',suffix) else '.bin'
@@ -116,7 +125,11 @@ def prepare(job_id,inputs=None,*,runtime_root):
                     if len(text.strip())<30:item['deficient_pages'].append(number)
                 if item['deficient_pages']:job['warnings'].append('Specific manuscript evidence needs inspection: '+sid+' pages '+str(item['deficient_pages']))
             retained.append(item)
-        job.update(sources=retained,status='working',blocking_reason=None,next_action='Read every manuscript location; use bounded inspection only where essential evidence is deficient.')
+        if adding:
+            if len(retained)>before:
+                if job['status']=='complete':job.setdefault('published_revision',job['revision'])
+                job.update(sources=retained,status='working',blocking_reason='sources-added-restage-required',next_action='Restage the retained annotated draft to include new supplements; preserve manuscript reading and use amendment fields if published.')
+        else:job.update(sources=retained,status='working',blocking_reason=None,next_action='Read every manuscript location; use bounded inspection only where essential evidence is deficient.')
         w.store_job(job,runtime_root)
         return w.result(job,runtime_root,sources=index(job))
 

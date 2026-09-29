@@ -10,6 +10,7 @@ SCHEMA=dict(name='paper_ingest',description='Ingest or refresh a paper from its 
         'page':dict(type='string',description='Existing or new absolute paper page; start only.'),
         'identity':dict(type='object',description='Resolved article title, DOI/PMID and version; cannot contradict the current page.'),
         'job_id':dict(type='string'),
+        'supplement_inputs':dict(type='array',items=dict(type='object'),description='Sources only: append retention-only supplement rows to an existing job, without inputs or manuscript replacement. Restage before publication; published jobs require an amendment.'),
         'inputs':dict(type='array',description='Acquired inputs with path, role manuscript/body/supplement, identity and source-backed basis for manuscript/body. Omit to reuse the existing archive.',items=dict(type='object')),
         'locations':dict(type='array',minItems=1,maxItems=8,items=dict(type='object',additionalProperties=False,required=['source_id','page'],properties={
             'source_id':dict(type='string'),'page':dict(type='integer',minimum=1),'start_char':dict(type='integer',minimum=0),'max_chars':dict(type='integer',minimum=1,maximum=32000)})),

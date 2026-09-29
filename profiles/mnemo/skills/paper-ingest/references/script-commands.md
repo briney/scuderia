@@ -6,8 +6,8 @@ candidates; verify sources and retain originals outside the brain.
 
 | Helper | Invocation / output contract |
 |---|---|
-| `fetch_source.py` | `--url <public-HTTP(S)-URL> --evidence-dir <NEW-absolute-dir> --filename <safe-basename>`; parent directory must already exist outside the brain. One retrieval with normal redirects, no automatic retry or parsing. Reuses the fulltext helper’s raw request/response evidence. Exit 0 returns JSON with `file`, `bytes`, `sha256`, `status`, `source_url`, `final_url`, and `evidence_dir`; read the returned file. Exit 2 means failure and never supplies an accepted source. Preserves bytes under `derived/<filename>`; use the correct extension and verify actual content. No authentication or caller-supplied headers; existing directories are refused. |
-| `fetch_fulltext.py` | `--out <prefix>` required; optional `--pmid`, `--doi`, `--pmcid`, `--publisher-url`, `--skip-publisher`. Production source retention adds `--evidence-dir <NEW-absolute-dir>` and requires `--out <that-dir>/derived/<prefix>`; every HTTP attempt/retry/redirect retains raw bytes or explicit missing/partial/error evidence. No headers/credentials are saved. Without it legacy behavior is unchanged. JSON gives `provenance`, `text_file`, `chars`, `figures_dir`, `notes`. Read `text_file`: `.txt` is appended even if the prefix already ends in `.txt`. Exit 0 includes `provenance: none`; validate the candidate body independently. |
+| `fetch_source.py` | `--url <public-HTTP(S)-URL> --evidence-dir <new-or-empty-absolute-dir> --filename <safe-basename>`; parent directory must already exist outside the brain. One retrieval with normal redirects, no automatic retry or parsing. Reuses the fulltext helper’s raw request/response evidence. Exit 0 returns JSON with `file`, `bytes`, `sha256`, `status`, `source_url`, `final_url`, and `evidence_dir`; read the returned file. Exit 2 means failure and never supplies an accepted source. Preserves bytes under `derived/<filename>`; use the correct extension and verify actual content. No authentication or caller-supplied headers; nonempty directories are refused. |
+| `fetch_fulltext.py` | `--out <prefix>` required; optional `--pmid`, `--doi`, `--pmcid`, `--publisher-url`, `--skip-publisher`. Production source retention adds `--evidence-dir <new-or-empty-absolute-dir>` and requires `--out <that-dir>/derived/<prefix>`; every HTTP attempt/retry/redirect retains raw bytes or explicit missing/partial/error evidence. No headers/credentials are saved. Without it legacy behavior is unchanged. JSON gives `provenance`, `text_file`, `chars`, `figures_dir`, `notes`. Read `text_file`: `.txt` is appended even if the prefix already ends in `.txt`. Exit 0 includes `provenance: none`; validate the candidate body independently. |
 | `dedup_check.py` | `--doi`, `--pmid`, `--title` (at least one), `--instance <brain>`, optional `--json`. Exit 0=no match; 1=matches with STUB/FULL state; 2=invocation error. Similar-title matches require review. |
 | `validate_identifiers.py` | `--batch <json-file> --recover`; single input uses `--title`, `--author`, `--year`, optional `--pmid`, `--doi`, `--pmcid`. Batch entries use those same field names. Read validated/recovered/HOLD results and the `dispatch` list; surface retraction flags. |
 | `slugify_name.py` | `--pubmed-xml <file>` for a batch; `--family`/`--given` for one author; `--filter-surname` with `--ledger-file` for token-match queries; `--crossref-family`/`--crossref-given` supply a name cross-check. Handles diacritics and documented compound-name misparses; confirmed existing identity takes precedence over a proposed slug. |
@@ -133,3 +133,22 @@ Run the configured runtime Python with `-m manuscript_ingest.cli --runtime-root
 <runtime-root> --input <external-work>/stage.json`. Use the deployment's existing
 PYTHONPATH. No inline interpreter or document embedded in a shell command is
 needed. Keep citation locators in the draft file.
+
+## Original retention and optional attachments
+
+Read `source_candidates` and `attachments` returned by acquisition helpers.
+Retain the original PDF/XML/HTML candidate after identity/body verification;
+`text_file` is a derivative, not a substitute for a fetched original. Candidate
+status does not certify full text. Attachment discovery exposes advertised XML
+links; inspect publisher metadata for other attachments. An empty discovery list
+means no links recognized by this helper, not proof that supplements do not exist.
+
+Use `fetch_source.py --supplement-state <external-paper-work>/supplement-budget.json
+--attachment <stable-attachment-id>` with its normal URL/output arguments for
+optional downloads. All attachments share one 120-second elapsed budget, including
+network time, and each attachment permits two observed URL attempts. Keep the same
+budget file on resume. The CLI stops an in-flight request when the budget expires.
+Record remaining files as unavailable/deferred with the observed reason. Do not
+restart the budget or continue speculative URL variations during ordinary ingest.
+Manuscript acquisition uses its separate campaign deadline. Available composites
+are archived only; they do not become a second processed manuscript.

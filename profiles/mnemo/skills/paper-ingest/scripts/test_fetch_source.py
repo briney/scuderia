@@ -73,3 +73,30 @@ class FetchSourceTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+class OriginalEvidence(unittest.TestCase):
+    def test_empty_directory_and_original_xml_inventory(self):
+        from fetch_fulltext import AcquisitionEvidence
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp).resolve()/'evidence'; root.mkdir()
+            try:evidence=AcquisitionEvidence(root)
+            except FileExistsError:self.fail('empty evidence directory rejected')
+            raw=b'<article><front><article-id pub-id-type="pmc">PMC123</article-id></front><body><p>Full manuscript</p><supplementary-material xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="mmc1.pdf"/></body></article>'
+            response=urllib.response.addinfourl(io.BytesIO(raw),Message(),'http://example.org/article.xml',200); response.msg='OK'
+            with patch('urllib.request.HTTPHandler.http_open',return_value=response):evidence.open(urllib.request.Request('http://example.org/article.xml')).close()
+            summary=evidence.source_inventory()
+            self.assertEqual(Path(summary['source_candidates'][0]['path']).read_bytes(),raw)
+            self.assertEqual(summary['attachments'][0]['url'],'https://pmc.ncbi.nlm.nih.gov/articles/PMC123/bin/mmc1.pdf')
+            with self.assertRaises(ValueError):AcquisitionEvidence(root)
+
+class SupplementBudget(unittest.TestCase):
+    def test_budget_limits_time_and_observed_urls(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state=Path(tmp).resolve()/'budget.json'
+            self.assertTrue(hasattr(fetch_source,'reserve_attachment'))
+            with patch('time.time',return_value=100):self.assertEqual(fetch_source.reserve_attachment(state,'S1','https://example.org/1'),120)
+            with patch('time.time',return_value=110):self.assertEqual(fetch_source.reserve_attachment(state,'S1','https://example.org/2'),110)
+            with self.assertRaisesRegex(ValueError,'attachment-attempt'):
+                fetch_source.reserve_attachment(state,'S1','https://example.org/3')
+            with patch('time.time',return_value=221),self.assertRaisesRegex(ValueError,'budget'):
+                fetch_source.reserve_attachment(state,'S2','https://example.org/4')

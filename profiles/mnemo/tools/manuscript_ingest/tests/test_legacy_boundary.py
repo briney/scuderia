@@ -38,3 +38,24 @@ class LegacyBoundary(unittest.TestCase):
                 reader.verify(root/'manifest.json')
 
 if __name__ == '__main__': unittest.main()
+
+class SelectiveLegacy(unittest.TestCase):
+    def test_original_reuse_excludes_derived_body_and_enrichment(self):
+        from article_archive_compat import portable_articles as pa
+        from manuscript_ingest import archive
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp).resolve(); source=root/'source.pdf'; source.write_bytes(b'original')
+            text=root/'body.txt'; text.write_text('derived body')
+            rows=[dict(role='source-original',key=p.name,sha256=pa.sha(p),size=p.stat().st_size) for p in (source,text)]
+            article=dict(slug='synthetic',doi=None,pmid=None,version='Corrected proof')
+            m=dict(schema=pa.SCHEMA,package_id='fixture',article=article,article_key=pa.article_key(article),files=rows,total_objects=2,
+                documents=[dict(identity='main',source_role='manuscript',source_sha256=pa.sha(source),source_version='Corrected proof',complete=False,fixture=True,raw_key=source.name)],
+                source_documents=[dict(identity='main',role='manuscript',key=source.name),dict(identity='body',role='body',key=text.name)],
+                common_dependencies=[source.name],elements=[],source_status=dict(complete=False,fixture=True,acquisition_verified=False,extraction_verified=False,holds=[]),dispositions=[],provenance=dict(fixture=True))
+            pa.save(root/'manifest.json',m)
+            pa.save(root/'local-map.json',dict(schema='portable-article-local-map-v2',manifest_sha256=pa.sha(root/'manifest.json'),sources={p.name:dict(root=str(root),path=p.name) for p in (source,text)}))
+            out=archive.open_sources(root/'manifest.json',root/'selected',identity={'version':'corrected-proof'})
+            self.assertEqual(len(out['inputs']),1); self.assertFalse((root/'selected/body.txt').exists())
+            with self.assertRaisesRegex(ValueError,'version'):
+                archive.open_sources(root/'manifest.json',root/'conflict',identity={'version':'preprint v2'})
+            self.assertFalse((root/'conflict/source.pdf').exists())

@@ -38,6 +38,18 @@ def page_metadata(text):
     return value
 
 
+def identity_value(field,value):
+    if field=='pmid' and (type(value) is int or isinstance(value,str)):
+        return str(value).strip()
+    if field=='version' and isinstance(value,str):
+        return re.sub(r'[\s_-]+',' ',value.strip().casefold())
+    return value
+
+
+def same_identity(field,left,right):
+    return identity_value(field,left)==identity_value(field,right)
+
+
 def job_path(job_id,runtime_root):
     require(isinstance(job_id,str) and re.fullmatch('[0-9a-f]{32}',job_id),'invalid-job-id')
     return absolute(runtime_root)/'jobs'/job_id
@@ -102,10 +114,11 @@ def start(page,*,runtime_root,identity=None):
     original=original_bytes.decode('utf-8') if original_bytes is not None else None
     fm=page_metadata(original) if original else {}
     bound={k:fm.get(k) for k in ('slug','title','doi','pmid','version')}; bound['slug']=page.stem
+    if bound.get('pmid') is not None:bound['pmid']=identity_value('pmid',bound['pmid'])
     for k,v in (identity or {}).items():
         require(k in bound,'unknown-identity-field')
-        require(not bound.get(k) or bound[k]==v,'article-identity-conflict:'+k)
-        bound[k]=v
+        require(not bound.get(k) or same_identity(k,bound[k],v),'article-identity-conflict:'+k)
+        bound[k]=identity_value(k,v) if k=='pmid' else v
     require(bound.get('title') and (bound.get('doi') or bound.get('pmid')),'resolved-article-identity-required')
     with locked(runtime_root):
         index_path=absolute(runtime_root)/'active.json'
@@ -113,7 +126,7 @@ def start(page,*,runtime_root,identity=None):
         if str(page) in index:
             prior=load_job(index[str(page)],runtime_root)
             if prior['status']!='complete':
-                require(all(prior['identity'].get(k)==v for k,v in bound.items() if v is not None),'active-job-identity-conflict')
+                require(all(same_identity(k,prior['identity'].get(k),v) for k,v in bound.items() if v is not None),'active-job-identity-conflict')
                 return result(prior,runtime_root)
         job_id=uuid.uuid4().hex; work=job_path(job_id,runtime_root); work.mkdir(parents=True,mode=0o700)
         if original is not None: (work/'original.md').write_bytes(original_bytes)
@@ -129,7 +142,9 @@ def start(page,*,runtime_root,identity=None):
                 receipt_key(pointer[1],settings.get('archive'))
                 job['prior_receipt']=pointer[1]
             else:
-                receipt=absolute(page.parent/pointer[1]); require(receipt.is_relative_to(instance),'archive-pointer-outside-instance')
+                raw=page.parent/pointer[1]
+                require(not any(p.is_symlink() for p in (raw,*raw.parents)),'archive-pointer-symlink')
+                receipt=absolute(Path(os.path.normpath(raw))); require(receipt.is_relative_to(instance),'archive-pointer-outside-instance')
                 job['prior_receipt']=str(receipt)
         store_job(job,runtime_root); index[str(page)]=job_id; save(index_path,index)
         return result(job,runtime_root)
@@ -200,7 +215,7 @@ def stage(job_id,markdown,review_note,*,runtime_root,base_revision=None,amend_re
             if warning not in job['warnings']:job['warnings'].append(warning)
         fm=page_metadata(markdown)
         for field in ('slug','title','doi','pmid'):
-            require(fm.get(field)==job['identity'].get(field),'candidate-identity-mismatch:'+field)
+            require(same_identity(field,fm.get(field),job['identity'].get(field)),'candidate-identity-mismatch:'+field)
         require(fm.get('kind')=='paper','paper-kind-required')
         for snapshot in {work/'original.md',base}:
             if not snapshot.exists() or not snapshot.read_bytes():continue
@@ -298,6 +313,7 @@ def publish(job_id,revision,*,runtime_root):
     with locked(work):
         job=load_job(job_id,runtime_root)
         require(type(revision) is int and revision==job['revision'],'publish-current-reviewed-revision')
+        require(job.get('blocking_reason')!='sources-added-restage-required','sources-added-restage-required')
         if job.get('applied_revision'):require(job['applied_revision']==revision,'different-revision-already-applied')
         manifest=archive.build(job_id,revision,runtime_root=runtime_root); m=archive.verify(manifest)
         page=absolute(job['page']); root=manifest.parent; pending=root/'pending-page.md'; final=root/'page.md'

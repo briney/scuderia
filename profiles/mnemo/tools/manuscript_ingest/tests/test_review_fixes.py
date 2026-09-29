@@ -100,9 +100,9 @@ class ReviewFixes(Publication):
             result=archive.open_sources(receipt,target,transport=w.config(self.runtime)['archive'])
         self.assertEqual(result['identity']['doi'],'10.1234/synthetic')
         # Completed corruption is evidence, not a reason to silently replace it.
-        (target/'page.md').write_text('corrupt completed object')
+        Path(result['inputs'][0]['path']).write_text('corrupt retained original')
         with patch.object(archive.pa,'RcloneTransport',side_effect=AssertionError('no redownload of completed corruption')):
-            with self.assertRaisesRegex(ValueError,'corrupt-article-object'):
+            with self.assertRaisesRegex(ValueError,'corrupt-restored-source'):
                 archive.open_sources(receipt,target,transport=w.config(self.runtime)['archive'])
 
     def test_source_retention_recovers_interrupted_copy(self):

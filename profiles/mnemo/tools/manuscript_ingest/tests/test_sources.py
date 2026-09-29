@@ -39,3 +39,17 @@ class Sources(Jobs):
 
 from test_jobs import only_local_tests
 def load_tests(loader,tests,pattern):return only_local_tests(__name__)
+
+class SupplementAppend(Sources):
+    def test_retention_only_append_preserves_reads_and_is_idempotent(self):
+        from unittest.mock import patch
+        j=workflow.start(self.page,runtime_root=self.runtime)['job_id']; sources.prepare(j,self.inputs(),runtime_root=self.runtime)
+        job=workflow.load_job(j,self.runtime); sid=job['sources'][0]['source_id']
+        sources.read(j,[dict(source_id=sid,page=1)],runtime_root=self.runtime)
+        before=workflow.load_job(j,self.runtime)['reads']; extra=self.root/'extra.xml'; extra.write_text('<extra>retention only</extra>')
+        with patch.object(sources,'text_pages',side_effect=AssertionError('no extraction')):
+            for _ in range(2):out=sources.prepare(j,runtime_root=self.runtime,supplement_inputs=[dict(path=str(extra),role='supplement')])
+        self.assertEqual(len(out['artifacts']['sources']),3)
+        self.assertEqual(workflow.load_job(j,self.runtime)['reads'],before)
+        with self.assertRaisesRegex(ValueError,'supplement'):
+            sources.prepare(j,runtime_root=self.runtime,supplement_inputs=[dict(path=str(extra),role='manuscript')])

@@ -7,7 +7,7 @@ from . import workflow as w, sources
 
 OPERATIONS={
     'start':({'page'},{'identity'}),
-    'sources':({'job_id'},{'inputs'}),
+    'sources':({'job_id'},{'inputs','supplement_inputs'}),
     'read':({'job_id','locations'},{'question','transcribe'}),
     'stage':({'job_id','review_note'},{'markdown','markdown_path','base_revision','amend_revision'}),
     'publish':({'job_id','revision'},set()),

@@ -37,3 +37,16 @@ layout; use them on preserved external historical artifacts, not as acceptance
 gates for a relocated live page. Ordinary source restoration supports both receipt
 formats. The modern page verifier accepts an exact hash-pinned receipt-pointer
 relocation while still rejecting any other change to the archived page bytes.
+
+For historical reuse, the runtime validates manifest identity before restoring
+selected originals and retained manuscript text. Old extraction/enrichment
+products remain in their immutable archive, referenced by provenance; they are
+not downloaded to inspect metadata. Cached originals are verified by hash and
+size. A derived body document is not a supplementary original. Identifier
+representation (numeric/string PMID) and version spacing/case may normalize;
+a different manuscript version or unproven version equivalence still holds.
+
+For newly found attachments, `sources` accepts `supplement_inputs` only after a
+manuscript is bound. This appends originals without reading or extracting them
+and without resetting manuscript coverage. Restage to include them in a new
+archive revision; use the published-page amendment procedure when applicable.
